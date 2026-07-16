@@ -1,0 +1,269 @@
+de:
+  label_helpdesk: Helpdesk
+  project_module_helpdesk: Helpdesk
+  permission_manage_helpdesk: Helpdesk-Postfächer verwalten
+  permission_fetch_helpdesk_mail: Helpdesk-Mails abrufen
+  permission_send_helpdesk_reply: Kundenantworten senden
+  permission_view_helpdesk_info: Kundeninformationen anzeigen
+
+  label_helpdesk_tenant_id: Tenant-ID (Verzeichnis-ID)
+  label_helpdesk_client_id: Client-ID (Anwendungs-ID)
+  label_helpdesk_client_secret: Client-Secret
+  label_helpdesk_fetch_api_key: API-Key für globalen Mailabruf
+  label_helpdesk_sla_api_key: API-Key für SLA-Prüfung
+  label_helpdesk_azure_hints: Hinweise zur Azure-App-Registrierung
+  text_helpdesk_fetch_api_key_info: Sichert den Endpunkt /helpdesk/fetch_all. Leer = Endpunkt deaktiviert.
+  text_helpdesk_sla_api_key_info: Sichert den Endpunkt /helpdesk/sla_check. Leer = Endpunkt deaktiviert.
+
+  label_helpdesk_mailbox_new: Neues Postfach
+  label_helpdesk_mailbox_edit: Postfach bearbeiten
+  field_helpdesk_mailbox_address: Postfach-Adresse
+  field_helpdesk_source_folder: Quellordner
+  field_helpdesk_processed_folder: Zielordner (verarbeitet)
+  field_helpdesk_skipped_folder: Zielordner (übersprungen)
+  field_helpdesk_failed_folder: Zielordner (Fehler)
+  field_helpdesk_enabled: Aktiv
+  field_helpdesk_last_fetched_at: Letzter Abruf
+  field_helpdesk_last_error: Letzter Fehler
+  field_helpdesk_unknown_user_mode: Unbekannte Absender
+  field_helpdesk_suppress_notifications: Redmine-Benachrichtigungen unterdrücken
+  text_helpdesk_processed_folder_info: Verarbeitete Mails werden in diesen Ordner verschoben. Leer = Mails bleiben im Quellordner (Achtung, Mehrfachverarbeitung möglich).
+  text_helpdesk_skipped_folder_info: Übersprungene Mails (Blacklist, Ignorier-Regeln, Auto-Reply-Filter) werden hier abgelegt. Leer = gleicher Ordner wie "Verarbeitet".
+  text_helpdesk_failed_folder_info: Mails, bei deren Verarbeitung ein Fehler aufgetreten ist, werden hier abgelegt. Leer = gleicher Ordner wie "Verarbeitet".
+  text_helpdesk_suppress_notifications_info: Verhindert doppelte Mails an Kunden, wenn der Autoresponder aktiv ist.
+
+  label_helpdesk_reopen: Ticket-Wiedereroeffnung
+  field_helpdesk_reopen_status: Wiedereroeffnungs-Status
+  text_helpdesk_reopen_status_info: Status, auf den ein geschlossenes Ticket gesetzt wird, wenn eine neue Kundenantwort eingeht. Leer = Ticket bleibt geschlossen.
+  field_helpdesk_reopen_max_age_days: Max. Alter (Tage)
+  text_helpdesk_reopen_max_age_days_info: Ist das Ticket aelter als diese Anzahl Tage (gemessen an der letzten Aktualisierung), wird stattdessen ein neues Ticket angelegt. Leer = kein Alterslimit.
+  label_helpdesk_defaults: Standardwerte für neue Tickets
+  label_helpdesk_unknown_user_accept: Akzeptieren (anonym)
+  label_helpdesk_unknown_user_create: Benutzerkonto anlegen
+  label_helpdesk_unknown_user_ignore: Ignorieren
+
+  label_helpdesk_filter: Absenderfilter
+  field_helpdesk_allow_list: Whitelist
+  field_helpdesk_deny_list: Blacklist
+  text_helpdesk_allow_list_info: Eine Adresse oder Domain pro Zeile. Wenn gepflegt, sind nur diese Absender erlaubt.
+  text_helpdesk_deny_list_info: Eine Adresse oder Domain pro Zeile. Mails dieser Absender werden verworfen.
+
+  label_helpdesk_auto_reply_filter: Auto-Reply-Filter
+  field_helpdesk_auto_reply_filter_enabled: Auto-Reply-Filter aktiv
+  text_helpdesk_auto_reply_filter_info: "Automatisch generierte Nachrichten (Abwesenheitsantworten, Auto-Replies) anhand gängiger Mail-Header erkennen und ignorieren (auto-submitted, x-auto-response-suppress, x-autorespond, precedence: bulk/list/junk u.à.)."
+  field_helpdesk_auto_reply_sender_whitelist: Absender-Ausnahmen
+  text_helpdesk_auto_reply_sender_whitelist_info: "Eine Adresse oder Domain pro Zeile. Auto-Replies von diesen Absendern werden trotzdem verarbeitet."
+  field_helpdesk_auto_reply_header_whitelist: Header-Ausnahmen
+  text_helpdesk_auto_reply_header_whitelist_info: "Ein Header-Wert-Paar pro Zeile (Format: \"Header-Name: Wert\" oder \"Header-Name: *\"). Mails, die einen dieser Header enthalten, werden trotz Auto-Reply-Kennzeichnung verarbeitet."
+
+  label_helpdesk_autoresponder: Autoresponder
+  field_helpdesk_autoresponder_enabled: Autoresponder aktiv
+  field_helpdesk_autoresponder_subject: Betreff
+  field_helpdesk_autoresponder_body: Text
+  text_helpdesk_macros_info: 'Verfügbare Makros: {{ticket_id}}, {{ticket_subject}}, {{ticket_url}}, {{contact_name}}, {{contact_email}}, {{user_name}}, {{project_name}}'
+  label_helpdesk_macros: 'Makros'
+  note_helpdesk_autoresponder_sent: 'Automatische Bestätigungsmail an %{email} versendet.'
+  label_helpdesk_message_plural: 'Helpdesk-Nachrichten'
+
+  label_helpdesk_phishtank: 'PhishTank (Phishing-Erkennung)'
+  field_helpdesk_phishtank_enabled: 'PhishTank-Integration aktiv'
+  field_helpdesk_phishtank_app_key: 'PhishTank App-Key (optional)'
+  field_helpdesk_phishtank_interval_hours: 'Download-Intervall (Stunden)'
+  text_helpdesk_phishtank_info: 'Gleicht Links in eingehenden Mails mit der PhishTank-Datenbank ab. Die Prüfung muss zusätzlich pro Projekt aktiviert werden.'
+  text_helpdesk_phishtank_app_key_info: 'Ohne Key wird der anonyme Endpunkt verwendet (strengeres Rate-Limit).'
+  field_helpdesk_phishtank_feed_url: 'Feed-URL'
+  text_helpdesk_phishtank_feed_url_info: 'Platzhalter {key} wird durch den App-Key ersetzt; ohne Key wird das Segment "/{key}" entfernt.'
+  text_helpdesk_phishtank_interval_info: 'Der Download erfolgt automatisch beim Mailabruf (fetch_all), frühestens nach Ablauf des Intervalls. Minimum: 1 Stunde.'
+  field_helpdesk_phishing_database_enabled: 'Phishing.Database-Feed aktiv'
+  field_helpdesk_phishing_database_feed_url: 'Phishing.Database Feed-URL'
+  text_helpdesk_phishing_database_info: 'Zusätzlicher Community-Feed (github.com/Phishing-Database) mit aktiven Phishing-URLs; kein Key nötig.'
+  text_helpdesk_phishing_source_status: 'Spiegel %{source}: %{count} URLs, letzter Import: %{last_import}'
+  notice_helpdesk_phishing_sync_done: 'Phishing-Feed-Sync abgeschlossen: %{summary} URLs importiert.'
+  error_helpdesk_phishing_sync_failed: 'Phishing-Feed-Sync fehlgeschlagen: %{message}'
+  field_helpdesk_phishing_check_enabled: 'Phishing-Prüfung für dieses Projekt aktivieren'
+  text_helpdesk_phishing_check_info: 'Links in eingehenden Mails werden gegen den PhishTank-Spiegel geprüft (inkl. Microsoft-SafeLinks-Auflösung).'
+  field_helpdesk_phishing_action: 'Aktion bei Phishing-Treffer'
+  label_helpdesk_phishing_action_neutralize: 'Links neutralisieren (Ticket wird erstellt)'
+  label_helpdesk_phishing_action_quarantine: 'Mail in Quarantäne (kein Ticket)'
+  note_helpdesk_phishing_links_removed: 'Achtung: %{count} bekannte Phishing-URL(s) wurden aus dieser E-Mail entfernt:'
+  text_helpdesk_phishing_link_removed: 'LINK ENTFERNT – Phishing-Verdacht (%{source})'
+  text_helpdesk_phishing_warning_banner: 'WARNUNG: Diese E-Mail enthielt bekannte Phishing-Links, die entfernt wurden. Keine Links anklicken, keine Daten eingeben!'
+  text_helpdesk_phishing_suspicion_banner: 'VORSICHT: Diese E-Mail enthält verschleierte Links (Weiterleitung, Kurz-URL oder abweichender Linktext). Links nicht unbedacht anklicken!'
+  text_helpdesk_phishing_suspicion_redirect: 'VORSICHT: Weiterleitungs-Link – tatsächliches Ziel: %{target}'
+  text_helpdesk_phishing_suspicion_shortener: 'VORSICHT: Kurz-URL-Dienst – tatsächliches Ziel nicht erkennbar'
+  text_helpdesk_phishing_suspicion_anchor: 'VORSICHT: Linktext und Ziel weichen ab (%{detail})'
+  note_helpdesk_phishing_suspicions: 'Achtung: %{count} verschleierte(r) Link(s) in dieser E-Mail markiert:'
+  button_helpdesk_phishtank_sync: 'Phishing-Feeds jetzt herunterladen'
+  text_helpdesk_phishtank_sync_confirm: 'Der Download kann einige Minuten dauern. Fortfahren?'
+  error_helpdesk_phishtank_disabled: 'Die PhishTank-Integration ist deaktiviert. Bitte zuerst aktivieren und speichern.'
+  label_helpdesk_legacy_import: 'Import aus redmine_contacts'
+  text_helpdesk_legacy_import_info: 'In der Datenbank wurden %{count} Kontakte des alten Plugins redmine_contacts / redmine_contacts_helpdesk gefunden (Tabellen contacts, contacts_projects, helpdesk_tickets). Der Import übernimmt Kontakte projektbezogen und verknüpft alte Tickets über die autoritative Kunden-Zuordnung aus helpdesk_tickets, damit die Kundenkarte dort erscheint. Bereits korrekte Verknüpfungen werden übersprungen, falsche synthetische Verknüpfungen früherer Import-Läufe repariert.'
+  button_helpdesk_legacy_import: 'Kontakte jetzt importieren'
+  text_helpdesk_legacy_import_confirm: 'Kontakte und Ticket-Verknüpfungen aus redmine_contacts importieren? Der Vorgang ist idempotent (kann gefahrlos wiederholt werden).'
+  notice_helpdesk_legacy_import_done: 'Import abgeschlossen: %{created} Kontakte angelegt, %{existing} bereits vorhanden, %{links} Tickets verknüpft, %{repaired} Verknüpfungen repariert, %{skipped} Tickets übersprungen.'
+  error_helpdesk_legacy_import_no_data: 'Keine Altdaten gefunden (Tabelle contacts fehlt oder ist leer).'
+  error_helpdesk_legacy_import_failed: 'Import fehlgeschlagen: %{message}'
+  label_helpdesk_legacy_import_select: 'Projekte für den Import auswählen'
+  text_helpdesk_legacy_import_select_info: 'Wählen Sie aus, von welchen Projekten die Alt-Kontakte importiert werden sollen. Nicht mehr genutzte alte Projekte können abgewählt bleiben. Die Zahl in Klammern ist die Anzahl der Alt-Kontakte dieses Projekts.'
+  label_helpdesk_legacy_select_all: 'Alle auswählen'
+  label_helpdesk_legacy_no_project: '(keine Projektzuordnung)'
+  label_helpdesk_legacy_deleted_project: '(gelöschtes Projekt #%{id})'
+  label_helpdesk_legacy_with_issues: 'mit Tickets'
+  label_helpdesk_legacy_without_issues: 'ohne Tickets'
+  error_helpdesk_legacy_import_no_selection: 'Bitte mindestens ein Projekt auswählen.'
+  text_helpdesk_legacy_fix_info: 'In der Datenbank hängen %{count} Anhänge (Original-Mails als EML) noch am alten HelpdeskTicket-Container und sind daher auf den Tickets nicht sichtbar. Die Reparatur hängt sie an das zugehörige Ticket um und verknüpft sie als Original-Mail.'
+  button_helpdesk_legacy_fix: 'EML-Anhänge jetzt reparieren'
+  text_helpdesk_legacy_fix_confirm: 'Alt-Anhänge an die Tickets umhängen? Der Vorgang ist idempotent (kann gefahrlos wiederholt werden).'
+  notice_helpdesk_legacy_fix_done: 'Reparatur abgeschlossen: %{fixed} Anhänge umgehängt, %{orphaned} verwaist (kein zugehöriges Ticket), %{linked} Original-Mail-Verknüpfungen gesetzt.'
+  error_helpdesk_legacy_fix_no_data: 'Keine Alt-Anhänge gefunden (container_type HelpdeskTicket).'
+  label_helpdesk_contact_search: 'Suche (Name, E-Mail, Firma)'
+  label_helpdesk_received_from: 'Empfangen von'
+  text_helpdesk_multi_recipients_hint: 'Mehrere Adressen mit Komma trennen'
+  label_helpdesk_sent_to: 'Gesendet an'
+
+  label_helpdesk_sla: 'SLA'
+  field_helpdesk_sla_enabled: 'SLA aktiv'
+  text_helpdesk_sla_enabled_info: 'Gilt nur für Tickets, die nach der Aktivierung erstellt wurden. Zeiten laufen nur innerhalb der Arbeitszeiten.'
+  field_helpdesk_sla_reaction_minutes: 'Reaktionszeit (Minuten)'
+  field_helpdesk_sla_solution_minutes: 'Lösungszeit (Minuten)'
+  text_helpdesk_sla_minutes_info: 'Geschäftsminuten (innerhalb der Arbeitszeiten). Leer = kein Ziel.'
+  field_helpdesk_sla_work_days: 'Arbeitstage'
+  field_helpdesk_sla_work_hours: 'Arbeitszeit'
+  text_helpdesk_sla_work_hours_info: 'Format HH:MM, z. B. 08:00 bis 17:00.'
+  label_helpdesk_sla_priorities: 'Zielzeiten je Priorität (optional)'
+  text_helpdesk_sla_priorities_info: 'Leere Felder verwenden die Projekt-Defaults.'
+  field_helpdesk_sla_notify_enabled: 'Bei Überschreitung benachrichtigen'
+  field_helpdesk_sla_notify_email: 'Eskalations-E-Mail'
+  text_helpdesk_sla_notify_email_info: 'Zusätzliche Adresse (z. B. Eskalationsmanager); wird beim SLA-Check per Mailabruf-Zyklus benachrichtigt.'
+  field_helpdesk_sla_notify_user: 'Benutzer benachrichtigen'
+  label_helpdesk_sla_reaction: 'Reaktion'
+  label_helpdesk_sla_solution: 'Lösung'
+  label_helpdesk_sla_met: 'erfüllt'
+  label_helpdesk_sla_running: 'läuft'
+  label_helpdesk_sla_warning: 'Warnung'
+  label_helpdesk_sla_breached: 'überschritten'
+  label_helpdesk_sla_breached_done: 'erledigt, Ziel überschritten'
+  label_helpdesk_sla_due_at: 'fällig bis %{time}'
+  label_helpdesk_sla_reaction_col: 'SLA Reaktion'
+  label_helpdesk_sla_solution_col: 'SLA Lösung'
+  label_helpdesk_sla_statistics: 'SLA-Statistik'
+  permission_view_helpdesk_sla_statistics: 'SLA-Statistik ansehen'
+  label_helpdesk_stats_group_by: 'Gruppieren nach'
+  label_helpdesk_stats_from: 'Von'
+  label_helpdesk_stats_to: 'Bis'
+  label_helpdesk_stats_day: 'Tag'
+  label_helpdesk_stats_week: 'Woche'
+  label_helpdesk_stats_month: 'Monat'
+  label_helpdesk_stats_year: 'Jahr'
+  label_helpdesk_stats_no_data: 'Keine SLA-Tickets im gewählten Zeitraum.'
+  label_helpdesk_stats_tickets: 'Tickets'
+  label_helpdesk_stats_open: 'Offen'
+  label_helpdesk_stats_closed: 'Geschlossen'
+  label_helpdesk_stats_created: 'Erstellt'
+  label_helpdesk_stats_open_breached: 'Offen überschritten'
+  label_helpdesk_stats_avg_first_response: 'Ø Erstreaktion'
+  label_helpdesk_stats_avg_resolution: 'Ø Lösungszeit'
+  label_helpdesk_stats_median: 'Median'
+  label_helpdesk_stats_compliance: 'SLA-Erfüllung'
+  label_helpdesk_stats_volume: 'Ticketvolumen'
+  label_helpdesk_stats_avg_over_time: 'Durchschnittszeiten im Zeitverlauf'
+  label_helpdesk_stats_busiest_hours: 'Stoßzeiten (Stunden)'
+  label_helpdesk_stats_busiest_weekdays: 'Stoßzeiten (Wochentage)'
+  mail_subject_helpdesk_sla_breach: 'SLA überschritten'
+  mail_body_helpdesk_sla_breach: 'Für Ticket #%{id} „%{subject}“ wurde die SLA-Zielzeit überschritten:'
+
+  label_helpdesk_reply_templates: Antwortvorlagen
+  field_helpdesk_reply_header: Kopfzeile
+  field_helpdesk_reply_footer: Fußzeile
+  label_helpdesk_global_footer: 'Zentrale Signatur'
+  field_helpdesk_global_footer: 'Signatur (Fußzeile)'
+  text_helpdesk_global_footer_info: 'Wird an ausgehende Kundenantworten und initiale Mails angehängt. Postfächer können sie überschreiben oder eigene Informationen voranstellen (Einstellung "Fußzeilen-Modus" am Postfach).'
+  field_helpdesk_footer_mode: 'Fußzeilen-Modus'
+  label_helpdesk_footer_mode_inherit: 'Zentrale Signatur verwenden'
+  label_helpdesk_footer_mode_prepend: 'Fußzeile vor zentraler Signatur einfügen'
+  label_helpdesk_footer_mode_override: 'Nur Postfach-Fußzeile verwenden'
+  text_helpdesk_footer_mode_info: 'Bestimmt, wie die Fußzeile dieses Postfachs mit der zentralen Signatur (Administration → Plugins) kombiniert wird. Solange keine zentrale Signatur gepflegt ist, wird bei "Zentrale Signatur verwenden" die Postfach-Fußzeile genutzt.'
+  label_helpdesk_footer_preview: 'Vorschau effektive Fußzeile'
+  text_helpdesk_footer_preview_info: 'Kombination aus Postfach-Fußzeile und zentraler Signatur gemäß Fußzeilen-Modus; Makros werden beim Versand ersetzt.'
+
+  label_helpdesk_rules: Automatisierungsregeln
+  label_helpdesk_rule_new: Neue Regel
+  field_helpdesk_condition: Bedingung
+  field_helpdesk_action: Aktion
+  field_helpdesk_condition_value: Wert
+  field_helpdesk_action_value: Aktionswert
+  label_helpdesk_field_subject: Betreff
+  label_helpdesk_field_sender: Absender
+  label_helpdesk_operator_contains: enthält
+  label_helpdesk_operator_equals: ist gleich
+  label_helpdesk_operator_regex: entspricht Regex
+  label_helpdesk_action_set_priority: Priorität setzen
+  label_helpdesk_action_set_tracker: Tracker setzen
+  label_helpdesk_action_set_category: Kategorie setzen
+  label_helpdesk_action_set_assignee: Zuweisen an
+  label_helpdesk_action_ignore: Mail ignorieren
+
+  button_helpdesk_fetch: Mails jetzt abrufen
+  notice_helpdesk_fetch_done: "Mailabruf abgeschlossen: %{count} Nachricht(en) verarbeitet."
+  error_helpdesk_fetch_failed: "Mailabruf fehlgeschlagen: %{message}"
+
+  label_helpdesk_customer: Kunde
+  label_helpdesk_customers: Kunden
+  label_helpdesk_edit_customer: Kunde bearbeiten
+  label_helpdesk_email: E-Mail-Adresse
+  label_helpdesk_company: Firma
+  label_helpdesk_phone: Telefon
+  label_helpdesk_ticket_count: Tickets
+  label_helpdesk_last_ticket: Letztes Ticket
+  label_helpdesk_all_tickets: Alle Tickets anzeigen
+  permission_manage_helpdesk_contacts: Kundenliste verwalten
+  label_helpdesk_mailbox: Postfach
+  label_helpdesk_original_mail: Original E-Mail
+  label_helpdesk_previous_tickets: Frühere Tickets
+  label_helpdesk_reply_to_customer: Antwort an Kunden
+  label_helpdesk_send_as_mail: Als E-Mail an Kunden senden
+  button_helpdesk_reply: Antworten
+  label_helpdesk_reply_to: "An"
+
+  label_helpdesk_reply_settings: Antworteinstellungen
+  label_helpdesk_send_reply_by_default: Antworten standardmäßig als E-Mail senden
+  label_helpdesk_reply_subject_template: Betreff-Vorlage
+  label_helpdesk_reply_status: "Status nach Antwort"
+  text_helpdesk_reply_status_info: "Wird nach dem Versand einer Antwort automatisch gesetzt. Leer lassen um den Status nicht zu ändern."
+  label_helpdesk_reply_assign_to_sender: "Ticket nach Antwort mir zuweisen"
+  text_helpdesk_subject_template_hint: "Verfügbare Makros: {{issue.id}}, {{issue.subject}}, {{contact.name}}, {{contact.email}}, {{project.name}}"
+  label_helpdesk_mail_footer_preview: Signatur-Vorschau
+  label_helpdesk_reply_addresses_hint: "Mehrere Adressen mit Komma trennen"
+  label_helpdesk_reply_attachments: "Anhänge"
+  field_helpdesk_reply_transport: "Versandweg"
+  label_helpdesk_transport_graph: "Microsoft Graph API (Exchange)"
+  label_helpdesk_transport_smtp: "SMTP (Redmine-Standard)"
+  text_helpdesk_reply_transport_info: "Graph API benötigt eine konfigurierte Azure-App-Registrierung. SMTP verwendet die in der Redmine-Konfiguration hinterlegten SMTP-Einstellungen."
+  button_helpdesk_send_reply: Antwort senden
+  label_helpdesk_reply_placeholder: Antworttext hier eingeben …
+  notice_helpdesk_reply_sent: "Antwort an %{email} gesendet."
+  error_helpdesk_reply_failed: "Antwort konnte nicht gesendet werden: %{message}"
+  error_helpdesk_no_recipient: Kein Postfach oder Kundenkontakt für dieses Ticket gefunden.
+  warning_helpdesk_folder_create_failed: "Ordner konnte nicht erstellt werden: %{message}"
+  error_helpdesk_empty_reply: Der Antworttext darf nicht leer sein.
+
+  label_helpdesk_display_settings: Anzeigeeinstellungen
+  label_helpdesk_contacts_per_page: Einträge pro Seite
+  text_helpdesk_contacts_per_page_info: "Anzahl Kontakte pro Seite in der Kundenliste (Standard: 25)."
+  label_helpdesk_contact_ticket_limit: Max. Tickets im Kundenprofil
+  text_helpdesk_contact_ticket_limit_info: "Anzahl der zuletzt angezeigten Tickets in der Kundendetailansicht (Standard: 10)."
+  label_helpdesk_showing_latest_n: Zeigt die %{n} neuesten von insgesamt %{total} Tickets.
+
+  # Initiale Mail / Kontakt zuordnen
+  label_helpdesk_send_initial_mail: Als E-Mail an Kunden senden
+  label_helpdesk_contact_name_optional: Name (optional)
+  label_helpdesk_initial_mail_body: Nachricht
+  label_helpdesk_initial_mail_body_hint: Leer lassen, um die Ticket-Beschreibung zu verwenden
+  text_helpdesk_init_uses_description: Die Nachricht entspricht der Ticket-Beschreibung.
+  button_helpdesk_assign_contact: Kontakt zuordnen
+  button_helpdesk_new_ticket: Neues Helpdesk-Ticket
+  label_helpdesk_assign_kunde: Kunde zuordnen
+  notice_helpdesk_init_mail_sent: Initiale Mail wurde erfolgreich gesendet.
+  notice_helpdesk_contact_assigned: Kundenkontakt wurde dem Ticket zugeordnet.
+  error_helpdesk_invalid_email: Ungültige E-Mail-Adresse.
+  error_helpdesk_no_mailbox: Kein aktives Postfach vorhanden.

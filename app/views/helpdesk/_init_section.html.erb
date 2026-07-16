@@ -1,0 +1,337 @@
+<%# Kontakt-Zuordnungs- und Initialmailformular.
+    Locals:
+      issue       – Issue (neu oder vorhanden)
+      project     – Project
+      mailboxes   – Array<HelpdeskMailbox>
+      in_new_form – true = innerhalb des Ticket-Erstellungsformulars,
+                    false = eigenes Formular fuer bestehende Tickets %>
+
+<style>
+/* CSS fuer das Helpdesk-Init-Formular, eigenstaendig ohne Abhaengigkeit von _reply_in_edit */
+#hd-init-section {
+  clear: both;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #edf2fa;
+  border: 1px solid #c8d8ec;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+/* Redmines .tabular label { float:left; width:180px; text-align:right; margin-left:-180px }
+   ueberschreiben – inkl. margin, sonst ragt der Text links aus dem sichtbaren Bereich */
+#hd-init-section label {
+  float: none !important;
+  width: auto !important;
+  margin: 0 !important;
+  text-align: left !important;
+  font-weight: normal !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.95em;
+  padding: 0 !important;
+  line-height: normal;
+}
+#hd-init-fields { margin-top: 8px; }
+.hd-init-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.hd-init-row span.hd-init-lbl {
+  min-width: 3.5em;
+  text-align: right;
+  color: #555;
+  font-size: 0.9em;
+  flex-shrink: 0;
+}
+.hd-init-input {
+  flex: 1;
+  max-width: 420px;
+  width: 100%;
+  padding: 2px 5px;
+  border: 1px solid #bbb;
+  border-radius: 2px;
+  font-size: 0.9em;
+  box-sizing: border-box;
+}
+.hd-init-send-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.95em;
+  cursor: pointer;
+}
+.hd-init-submit {
+  margin-top: 6px;
+}
+/* Autocomplete-Dropdown */
+.hd-init-ac-wrap { position: relative; flex: 1; max-width: 420px; }
+.hd-init-ac-wrap input { width: 100%; }
+.hd-init-ac-drop {
+  position: absolute;
+  top: 100%; left: 0;
+  background: #fff;
+  border: 1px solid #bbb;
+  border-radius: 2px;
+  max-height: 160px;
+  overflow-y: auto;
+  z-index: 9999;
+  min-width: 240px;
+  list-style: none;
+  margin: 0; padding: 0;
+  display: none;
+}
+.hd-init-ac-drop li { padding: 4px 8px; cursor: pointer; font-size: 0.9em; white-space: nowrap; }
+.hd-init-ac-drop li.hd-ac-active, .hd-init-ac-drop li:hover { background: #e8f0fb; }
+</style>
+
+<% ac_url = autocomplete_helpdesk_contacts_path(:project_id => project) %>
+
+<% if !in_new_form %>
+<form id="hd-init-form"
+      action="<%= issue_helpdesk_init_path(:project_id => project, :issue_id => issue) %>"
+      method="post" accept-charset="UTF-8">
+  <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>" />
+<% end %>
+
+<div id="hd-init-section">
+  <% if in_new_form %>
+    <%#  Neue Tickets: Checkbox blendet die Felder ein (opt-in) %>
+    <label>
+      <input type="checkbox" id="hd-init-send-cb" name="helpdesk_init[send_mail]" value="1" />
+      <strong><%= l(:label_helpdesk_send_initial_mail) %></strong>
+    </label>
+    <div id="hd-init-fields" style="display:none;">
+      <div class="hd-init-row">
+        <span class="hd-init-lbl"><%= l(:label_helpdesk_reply_to) %></span>
+        <div class="hd-init-ac-wrap">
+          <input type="text" id="hd-init-to" name="helpdesk_init[contact_email]"
+                 value="" class="hd-init-input" autocomplete="off"
+                 placeholder="<%= h(l(:text_helpdesk_multi_recipients_hint)) %>"
+                 data-ac-url="<%= h(ac_url) %>" />
+          <ul class="hd-init-ac-drop" id="hd-init-ac-drop"></ul>
+        </div>
+      </div>
+      <div class="hd-init-row">
+        <span class="hd-init-lbl">CC</span>
+        <div class="hd-init-ac-wrap">
+          <input type="text" id="hd-init-cc" name="helpdesk_init[cc]"
+                 value="" class="hd-init-input" autocomplete="off"
+                 data-ac-url="<%= h(ac_url) %>" />
+          <ul class="hd-init-ac-drop" id="hd-init-ac-drop-cc"></ul>
+        </div>
+      </div>
+      <div class="hd-init-row">
+        <span class="hd-init-lbl">BCC</span>
+        <div class="hd-init-ac-wrap">
+          <input type="text" id="hd-init-bcc" name="helpdesk_init[bcc]"
+                 value="" class="hd-init-input" autocomplete="off"
+                 data-ac-url="<%= h(ac_url) %>" />
+          <ul class="hd-init-ac-drop" id="hd-init-ac-drop-bcc"></ul>
+        </div>
+      </div>
+      <div class="hd-init-row">
+        <span class="hd-init-lbl"><%= l(:field_name) %></span>
+        <input type="text" id="hd-init-name" name="helpdesk_init[contact_name]"
+               value="" class="hd-init-input"
+               placeholder="<%= h(l(:label_helpdesk_contact_name_optional)) %>" />
+      </div>
+      <% if mailboxes.size > 1 %>
+        <div class="hd-init-row">
+          <span class="hd-init-lbl"><%= l(:label_helpdesk_mailbox) %></span>
+          <%= select_tag 'helpdesk_init[mailbox_id]',
+              options_from_collection_for_select(mailboxes, :id, :mailbox_address),
+              :class => 'hd-init-input', :style => 'max-width:320px; flex:none;' %>
+        </div>
+      <% elsif mailboxes.first %>
+        <%= hidden_field_tag 'helpdesk_init[mailbox_id]', mailboxes.first.id %>
+      <% end %>
+      <em style="display:block; margin-top:4px; color:#888; font-size:0.85em;">
+        <%= l(:text_helpdesk_init_uses_description) %>
+      </em>
+    </div>
+
+  <% else %>
+    <%# Bestehende Tickets: Felder sofort sichtbar, Kontakt zuordnen ohne Mail moeglich %>
+    <p style="margin:0 0 8px 0; font-weight:bold; font-size:0.95em;">
+      <%= l(:label_helpdesk_assign_kunde) %>
+    </p>
+    <div class="hd-init-row">
+      <span class="hd-init-lbl"><%= l(:label_helpdesk_reply_to) %></span>
+      <div class="hd-init-ac-wrap">
+        <input type="text" id="hd-init-to" name="helpdesk_init[contact_email]"
+               value="" class="hd-init-input" autocomplete="off"
+               placeholder="<%= h(l(:text_helpdesk_multi_recipients_hint)) %>"
+               data-ac-url="<%= h(ac_url) %>" />
+        <ul class="hd-init-ac-drop" id="hd-init-ac-drop"></ul>
+      </div>
+    </div>
+    <div class="hd-init-row">
+      <span class="hd-init-lbl">CC</span>
+      <div class="hd-init-ac-wrap">
+        <input type="text" id="hd-init-cc" name="helpdesk_init[cc]"
+               value="" class="hd-init-input" autocomplete="off"
+               data-ac-url="<%= h(ac_url) %>" />
+        <ul class="hd-init-ac-drop" id="hd-init-ac-drop-cc"></ul>
+      </div>
+    </div>
+    <div class="hd-init-row">
+      <span class="hd-init-lbl">BCC</span>
+      <div class="hd-init-ac-wrap">
+        <input type="text" id="hd-init-bcc" name="helpdesk_init[bcc]"
+               value="" class="hd-init-input" autocomplete="off"
+               data-ac-url="<%= h(ac_url) %>" />
+        <ul class="hd-init-ac-drop" id="hd-init-ac-drop-bcc"></ul>
+      </div>
+    </div>
+    <div class="hd-init-row">
+      <span class="hd-init-lbl"><%= l(:field_name) %></span>
+      <input type="text" id="hd-init-name" name="helpdesk_init[contact_name]"
+             value="" class="hd-init-input"
+             placeholder="<%= h(l(:label_helpdesk_contact_name_optional)) %>" />
+    </div>
+    <% if mailboxes.size > 1 %>
+      <div class="hd-init-row">
+        <span class="hd-init-lbl"><%= l(:label_helpdesk_mailbox) %></span>
+        <%= select_tag 'helpdesk_init[mailbox_id]',
+            options_from_collection_for_select(mailboxes, :id, :mailbox_address),
+            :class => 'hd-init-input', :style => 'max-width:320px; flex:none;' %>
+      </div>
+    <% elsif mailboxes.first %>
+      <%= hidden_field_tag 'helpdesk_init[mailbox_id]', mailboxes.first.id %>
+    <% end %>
+
+    <div class="hd-init-send-toggle">
+      <input type="checkbox" id="hd-init-send-cb" name="helpdesk_init[send_mail]" value="1" />
+      <strong><%= l(:label_helpdesk_send_initial_mail) %></strong>
+    </div>
+    <div id="hd-init-body-wrap" style="display:none; margin-top:4px;">
+      <div class="hd-init-row" style="align-items:flex-start;">
+        <span class="hd-init-lbl" style="padding-top:4px;"><%= l(:label_helpdesk_initial_mail_body) %></span>
+        <textarea name="helpdesk_init[mail_body]" rows="5"
+                  class="hd-init-input" style="height:auto; max-width:420px;"
+                  placeholder="<%= h(l(:label_helpdesk_initial_mail_body_hint)) %>"></textarea>
+      </div>
+    </div>
+    <div class="hd-init-submit">
+      <button type="submit" name="" class="icon icon-email"><%= hd_icon_label('email', l(:button_helpdesk_assign_contact)) %></button>
+    </div>
+  <% end %>
+</div>
+
+<% if !in_new_form %>
+</form>
+<% end %>
+
+<script>
+//<![CDATA[
+(function() {
+  var DEBOUNCE = 200;
+
+  function setupAc(inputId, dropId, nameInputId) {
+    var input     = document.getElementById(inputId);
+    var drop      = document.getElementById(dropId);
+    var nameInput = nameInputId ? document.getElementById(nameInputId) : null;
+    if (!input || !drop) return;
+
+    var acUrl = input.dataset.acUrl;
+    if (!acUrl) return;
+
+    var cache = {}, timer = null, activeIdx = -1;
+
+    function close() { drop.style.display = 'none'; drop.innerHTML = ''; activeIdx = -1; }
+
+    // Mehrfachempfaenger: nur das letzte Komma-Token ersetzen
+    function currentToken() {
+      var parts = input.value.split(',');
+      return parts[parts.length - 1].trim();
+    }
+
+    function pick(item) {
+      var parts = input.value.split(',');
+      parts[parts.length - 1] = ' ' + item.email;
+      input.value = parts.join(',').replace(/^\s+/, '');
+      if (nameInput && !nameInput.value.trim() && parts.length === 1) nameInput.value = item.name;
+      close();
+      input.focus();
+    }
+
+    function setActive(idx) {
+      Array.prototype.forEach.call(drop.querySelectorAll('li'), function(li, i) {
+        li.classList.toggle('hd-ac-active', i === idx);
+      });
+      activeIdx = idx;
+    }
+
+    function showResults(items) {
+      drop.innerHTML = ''; activeIdx = -1;
+      if (!items.length) { close(); return; }
+      items.forEach(function(item, idx) {
+        var li = document.createElement('li');
+        li.textContent   = item.label;
+        li.dataset.email = item.email;
+        li.dataset.name  = item.name;
+        li.addEventListener('mousedown', function(e) { e.preventDefault(); pick(item); });
+        li.addEventListener('mouseover',  function()  { setActive(idx); });
+        drop.appendChild(li);
+      });
+      drop.style.display = 'block';
+    }
+
+    function fetchSuggestions(q) {
+      if (cache[q]) { showResults(cache[q]); return; }
+      fetch(acUrl + '?q=' + encodeURIComponent(q), {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        cache[q] = data;
+        if (currentToken() === q) showResults(data);
+      }).catch(function() {});
+    }
+
+    input.addEventListener('input', function() {
+      clearTimeout(timer);
+      var q = currentToken();
+      if (q.length < 2) { close(); return; }
+      timer = setTimeout(function() { fetchSuggestions(q); }, DEBOUNCE);
+    });
+
+    input.addEventListener('keydown', function(e) {
+      var items = drop.querySelectorAll('li');
+      if (!items.length && e.key !== 'Escape') return;
+      if      (e.key === 'ArrowDown') { e.preventDefault(); setActive(Math.min(activeIdx + 1, items.length - 1)); }
+      else if (e.key === 'ArrowUp')   { e.preventDefault(); setActive(Math.max(activeIdx - 1, 0)); }
+      else if ((e.key === 'Enter' || e.key === 'Tab') && activeIdx >= 0) {
+        e.preventDefault();
+        var li = items[activeIdx];
+        pick({ email: li.dataset.email, name: li.dataset.name, label: li.textContent });
+      } else if (e.key === 'Escape') { close(); }
+    });
+
+    input.addEventListener('blur', function() { setTimeout(close, 150); });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Checkbox: zeigt/versteckt Felder (neues Ticket) oder Nachrichtenfeld (bestehendes Ticket)
+    var cb      = document.getElementById('hd-init-send-cb');
+    var fields  = document.getElementById('hd-init-fields');    // nur neues Ticket
+    var bodyWrap = document.getElementById('hd-init-body-wrap'); // nur bestehendes Ticket
+    if (cb) {
+      cb.addEventListener('change', function() {
+        if (fields)   fields.style.display   = this.checked ? '' : 'none';
+        if (bodyWrap) bodyWrap.style.display = this.checked ? '' : 'none';
+      });
+    }
+
+    setupAc('hd-init-to',  'hd-init-ac-drop',     'hd-init-name');
+    setupAc('hd-init-cc',  'hd-init-ac-drop-cc',  null);
+    setupAc('hd-init-bcc', 'hd-init-ac-drop-bcc', null);
+  });
+})();
+//]]>
+</script>
+

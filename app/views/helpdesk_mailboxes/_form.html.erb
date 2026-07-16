@@ -1,0 +1,346 @@
+<%# Formular fuer Postfach-Konfiguration (neu/bearbeiten) %>
+<%= error_messages_for @mailbox %>
+
+<div class="box tabular"
+     id="helpdesk-mailbox-box"
+     data-folders-url="<%= url_for(:controller => 'helpdesk_mailboxes', :action => 'folders', :project_id => @project.identifier) %>"
+     data-create-folder-url="<%= url_for(:controller => 'helpdesk_mailboxes', :action => 'create_folder', :project_id => @project.identifier) %>"
+     data-csrf="<%= form_authenticity_token %>">
+  <p>
+    <label><%= l(:field_helpdesk_mailbox_address) %> <span class="required">*</span></label>
+    <%= text_field_tag 'helpdesk_mailbox[mailbox_address]', @mailbox.mailbox_address,
+        :id => 'hd_mailbox_address', :size => 50 %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_source_folder) %></label>
+    <input type="text" id="hd_source_folder" name="helpdesk_mailbox[source_folder]"
+           value="<%= h(@mailbox.source_folder) %>" size="30"
+           list="hd_folder_datalist" autocomplete="off">
+    <button type="button" id="hd_refresh_folders" title="Ordnerliste vom Postfach laden"><span class="icon icon-reload"><%= hd_icon_label('reload') %>Ordner laden</span></button>
+    <span id="hd_folder_status" style="font-size:0.9em;margin-left:6px;"></span>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_processed_folder) %></label>
+    <input type="text" id="hd_processed_folder" name="helpdesk_mailbox[processed_folder]"
+           value="<%= h(@mailbox.processed_folder) %>" size="30"
+           list="hd_folder_datalist" autocomplete="off">
+    <em class="info"><%= l(:text_helpdesk_processed_folder_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_skipped_folder) %></label>
+    <input type="text" id="hd_skipped_folder" name="helpdesk_mailbox[skipped_folder]"
+           value="<%= h(@mailbox.skipped_folder) %>" size="30"
+           list="hd_folder_datalist" autocomplete="off">
+    <em class="info"><%= l(:text_helpdesk_skipped_folder_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_failed_folder) %></label>
+    <input type="text" id="hd_failed_folder" name="helpdesk_mailbox[failed_folder]"
+           value="<%= h(@mailbox.failed_folder) %>" size="30"
+           list="hd_folder_datalist" autocomplete="off">
+    <em class="info"><%= l(:text_helpdesk_failed_folder_info) %></em>
+  </p>
+  <datalist id="hd_folder_datalist"></datalist>
+  <p>
+    <label><%= l(:field_helpdesk_enabled) %></label>
+    <%= hidden_field_tag 'helpdesk_mailbox[enabled]', '0' %>
+    <%= check_box_tag 'helpdesk_mailbox[enabled]', '1', @mailbox.enabled? %>
+  </p>
+</div>
+
+<fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_defaults) %></legend>
+  <p>
+    <label><%= l(:field_tracker) %></label>
+    <%= select_tag 'helpdesk_mailbox[default_tracker_id]',
+        options_from_collection_for_select(@project.trackers, :id, :name, @mailbox.default_tracker_id),
+        :include_blank => true %>
+  </p>
+  <p>
+    <label><%= l(:field_priority) %></label>
+    <%= select_tag 'helpdesk_mailbox[default_priority_id]',
+        options_from_collection_for_select(IssuePriority.active, :id, :name, @mailbox.default_priority_id),
+        :include_blank => true %>
+  </p>
+  <p>
+    <label><%= l(:field_status) %></label>
+    <%= select_tag 'helpdesk_mailbox[default_status_id]',
+        options_from_collection_for_select(IssueStatus.sorted, :id, :name, @mailbox.default_status_id),
+        :include_blank => true %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_unknown_user_mode) %></label>
+    <%= select_tag 'helpdesk_mailbox[unknown_user_mode]',
+        options_for_select(HelpdeskMailbox::UNKNOWN_USER_MODES.map { |m| [l("label_helpdesk_unknown_user_#{m}"), m] },
+                           @mailbox.unknown_user_mode) %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_suppress_notifications) %></label>
+    <%= hidden_field_tag 'helpdesk_mailbox[suppress_notifications]', '0' %>
+    <%= check_box_tag 'helpdesk_mailbox[suppress_notifications]', '1', @mailbox.suppress_notifications? %>
+    <em class="info"><%= l(:text_helpdesk_suppress_notifications_info) %></em>
+  </p>
+</fieldset>
+
+<fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_reopen) %></legend>
+  <p>
+    <label><%= l(:field_helpdesk_reopen_status) %></label>
+    <%= select_tag 'helpdesk_mailbox[reopen_status_id]',
+        options_from_collection_for_select(IssueStatus.sorted, :id, :name, @mailbox.reopen_status_id),
+        :include_blank => true %>
+    <em class="info"><%= l(:text_helpdesk_reopen_status_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_reopen_max_age_days) %></label>
+    <%= number_field_tag 'helpdesk_mailbox[reopen_max_age_days]', @mailbox.reopen_max_age_days,
+        :min => 1, :size => 6, :style => 'width:5em' %>
+    <em class="info"><%= l(:text_helpdesk_reopen_max_age_days_info) %></em>
+  </p>
+</fieldset>
+
+<fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_filter) %></legend>
+  <p>
+    <label><%= l(:field_helpdesk_allow_list) %></label>
+    <%= text_area_tag 'helpdesk_mailbox[allow_list]', @mailbox.allow_list, :rows => 4, :cols => 50 %>
+    <em class="info"><%= l(:text_helpdesk_allow_list_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_deny_list) %></label>
+    <%= text_area_tag 'helpdesk_mailbox[deny_list]', @mailbox.deny_list, :rows => 4, :cols => 50 %>
+    <em class="info"><%= l(:text_helpdesk_deny_list_info) %></em>
+  </p>
+</fieldset>
+
+<fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_auto_reply_filter) %></legend>
+  <p>
+    <label><%= l(:field_helpdesk_auto_reply_filter_enabled) %></label>
+    <%= hidden_field_tag 'helpdesk_mailbox[auto_reply_filter_enabled]', '0' %>
+    <%= check_box_tag 'helpdesk_mailbox[auto_reply_filter_enabled]', '1', @mailbox.auto_reply_filter_enabled? %>
+    <em class="info"><%= l(:text_helpdesk_auto_reply_filter_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_auto_reply_sender_whitelist) %></label>
+    <%= text_area_tag 'helpdesk_mailbox[auto_reply_sender_whitelist]', @mailbox.auto_reply_sender_whitelist,
+        :rows => 3, :cols => 50 %>
+    <em class="info"><%= l(:text_helpdesk_auto_reply_sender_whitelist_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_auto_reply_header_whitelist) %></label>
+    <%= text_area_tag 'helpdesk_mailbox[auto_reply_header_whitelist]', @mailbox.auto_reply_header_whitelist,
+        :rows => 3, :cols => 50 %>
+    <em class="info"><%= l(:text_helpdesk_auto_reply_header_whitelist_info) %></em>
+  </p>
+</fieldset>
+
+<fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_autoresponder) %></legend>
+  <p>
+    <label><%= l(:field_helpdesk_autoresponder_enabled) %></label>
+    <%= hidden_field_tag 'helpdesk_mailbox[autoresponder_enabled]', '0' %>
+    <%= check_box_tag 'helpdesk_mailbox[autoresponder_enabled]', '1', @mailbox.autoresponder_enabled? %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_autoresponder_subject) %></label>
+    <%= text_field_tag 'helpdesk_mailbox[autoresponder_subject]', @mailbox.autoresponder_subject, :size => 60 %>
+    <%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'helpdesk_mailbox_autoresponder_subject' } %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_autoresponder_body) %></label>
+    <%= text_area_tag 'helpdesk_mailbox[autoresponder_body]', @mailbox.autoresponder_body, :rows => 6, :cols => 60 %>
+    <%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'helpdesk_mailbox_autoresponder_body' } %>
+  </p>
+</fieldset>
+
+<fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_reply_templates) %></legend>
+  <p>
+    <label><%= l(:field_helpdesk_reply_transport) %></label>
+    <%= select_tag 'helpdesk_mailbox[reply_transport]',
+        options_for_select(
+          [[l(:label_helpdesk_transport_graph), 'graph'],
+           [l(:label_helpdesk_transport_smtp),  'smtp']],
+          @mailbox.reply_transport.presence || 'graph'
+        ) %>
+    <em class="info"><%= l(:text_helpdesk_reply_transport_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_reply_header) %></label>
+    <%= text_area_tag 'helpdesk_mailbox[reply_header]', @mailbox.reply_header, :rows => 3, :cols => 60 %>
+    <%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'helpdesk_mailbox_reply_header' } %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_footer_mode) %></label>
+    <%= select_tag 'helpdesk_mailbox[footer_mode]',
+        options_for_select(
+          HelpdeskMailbox::FOOTER_MODES.map { |m| [l(:"label_helpdesk_footer_mode_#{m}"), m] },
+          @mailbox.footer_mode.presence || 'inherit'
+        ) %>
+    <em class="info"><%= l(:text_helpdesk_footer_mode_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_reply_footer) %></label>
+    <%= text_area_tag 'helpdesk_mailbox[reply_footer]', @mailbox.reply_footer, :rows => 3, :cols => 60 %>
+    <%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'helpdesk_mailbox_reply_footer' } %>
+  </p>
+  <p>
+    <label><%= l(:label_helpdesk_footer_preview) %></label>
+    <span id="hd_footer_preview"
+          data-global-footer="<%= h(Setting.plugin_redmine_expert_helpdesk['global_footer'].to_s) %>"
+          style="display:inline-block; vertical-align:top; box-sizing:border-box; width:460px; background:#eaf4fd; border:1px solid #a8c8e8; padding:8px; margin:0; white-space:pre-wrap; font-family:monospace; font-size:11px; color:#345;"></span>
+    <em class="info"><%= l(:text_helpdesk_footer_preview_info) %></em>
+  </p>
+</fieldset>
+
+<script>
+(function () {
+  // Live-Vorschau der effektiven Fusszeile (Kombination aus Postfach-Fusszeile
+  // und zentraler Signatur gemaess Fusszeilen-Modus, Makros unrendered).
+  var preview    = document.getElementById('hd_footer_preview');
+  var modeSelect = document.querySelector('select[name="helpdesk_mailbox[footer_mode]"]');
+  var footerArea = document.getElementById('helpdesk_mailbox_reply_footer');
+  if (!preview || !modeSelect || !footerArea) return;
+
+  var globalFooter = preview.dataset.globalFooter || '';
+
+  function updatePreview() {
+    var local = footerArea.value;
+    var text;
+    switch (modeSelect.value) {
+      case 'override':
+        text = local;
+        break;
+      case 'prepend':
+        text = [local, globalFooter].filter(function (s) { return s.trim() !== ''; }).join('\n\n');
+        break;
+      default: // inherit
+        text = globalFooter.trim() !== '' ? globalFooter : local;
+    }
+    preview.textContent = text.trim() !== '' ? text : '<%= j l(:label_none) %>';
+  }
+
+  modeSelect.addEventListener('change', updatePreview);
+  footerArea.addEventListener('input', updatePreview);
+  updatePreview();
+})();
+</script>
+
+<script>
+(function () {
+  var box          = document.getElementById('helpdesk-mailbox-box');
+  if (!box) return;
+
+  var foldersUrl   = box.dataset.foldersUrl;
+  var createUrl    = box.dataset.createFolderUrl;
+  var csrfToken    = box.dataset.csrf;
+  var addrInput    = document.getElementById('hd_mailbox_address');
+  var sourceInput  = document.getElementById('hd_source_folder');
+  var procInput    = document.getElementById('hd_processed_folder');
+  var datalist     = document.getElementById('hd_folder_datalist');
+  var refreshBtn   = document.getElementById('hd_refresh_folders');
+  var statusEl     = document.getElementById('hd_folder_status');
+  var knownFolders = [];
+
+  function setStatus(msg, color) {
+    statusEl.textContent = msg;
+    statusEl.style.color = color || '#888';
+  }
+
+  function populateDatalist(names) {
+    knownFolders = names;
+    datalist.innerHTML = '';
+    names.forEach(function (name) {
+      var opt = document.createElement('option');
+      opt.value = name;
+      datalist.appendChild(opt);
+    });
+  }
+
+  function loadFolders(address) {
+    if (!address) return;
+    setStatus('Lade Ordner\u2026', '#888');
+    fetch(foldersUrl + '?mailbox_address=' + encodeURIComponent(address), {
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (Array.isArray(data)) {
+          populateDatalist(data);
+          setStatus(data.length + ' Ordner geladen', 'green');
+        } else {
+          setStatus('Fehler: ' + (data.error || 'unbekannt'), 'red');
+        }
+      })
+      .catch(function () { setStatus('Netzwerkfehler', 'red'); });
+  }
+
+  function createFolderRequest(address, name) {
+    var body = new FormData();
+    body.append('mailbox_address', address);
+    body.append('folder_name', name);
+    return fetch(createUrl, {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+      body: body
+    }).then(function (r) {
+      return r.json().then(function (data) {
+        if (!r.ok || data.error) throw new Error(data.error || r.statusText);
+        return data;
+      });
+    });
+  }
+
+  // Ordner laden sobald Adresse vorhanden (z. B. beim Bearbeiten)
+  if (addrInput && addrInput.value.trim()) {
+    loadFolders(addrInput.value.trim());
+  }
+
+  // Ordner neu laden wenn Postfachadresse geaendert wird
+  if (addrInput) {
+    addrInput.addEventListener('change', function () {
+      loadFolders(this.value.trim());
+    });
+  }
+
+  // Refresh-Button
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', function () {
+      loadFolders(addrInput ? addrInput.value.trim() : '');
+    });
+  }
+
+  // Beim Absenden: fehlende Ordner anlegen
+  var form = box.closest('form');
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      var address = addrInput ? addrInput.value.trim() : '';
+      if (!address || knownFolders.length === 0) return;
+
+      var toCreate = [sourceInput, procInput].reduce(function (acc, inp) {
+        if (!inp) return acc;
+        var val = inp.value.trim();
+        if (val && !knownFolders.includes(val)) acc.push(val);
+        return acc;
+      }, []);
+
+      if (toCreate.length === 0) return;
+
+      e.preventDefault();
+      var names = toCreate.map(function (n) { return '\u201e' + n + '\u201c'; }).join(', ');
+      if (!confirm('Die Ordner ' + names + ' existieren noch nicht. Jetzt im Postfach anlegen?')) return;
+
+      setStatus('Erstelle Ordner\u2026', '#888');
+      toCreate.reduce(function (chain, name) {
+        return chain.then(function () { return createFolderRequest(address, name); });
+      }, Promise.resolve())
+        .then(function () { form.submit(); })
+        .catch(function (err) {
+          setStatus('Fehler: ' + err.message, 'red');
+          alert('Ordner konnte nicht erstellt werden:\n' + err.message);
+        });
+    });
+  }
+})();
+</script>

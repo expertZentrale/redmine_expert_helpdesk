@@ -1,0 +1,6 @@
+<h2><%= l(:label_helpdesk_mailbox_new) %></h2>
+
+<%= form_tag helpdesk_mailboxes_path(:project_id => @project) do %>
+  <%= render :partial => 'form' %>
+  <%= submit_tag l(:button_create) %>
+<% end %>

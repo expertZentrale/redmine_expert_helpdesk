@@ -1,0 +1,202 @@
+<%# Reiter "Helpdesk" in den Projekteinstellungen: Antworteinstellungen + Postfachliste %>
+<% mailboxes = @project.helpdesk_mailboxes.order(:mailbox_address) %>
+<% hd_setting = HelpdeskProjectSetting.for_project(@project) %>
+
+<%# --- Antworteinstellungen --- %>
+<fieldset class="tabular" style="margin-bottom: 14px;">
+  <legend><%= l(:label_helpdesk_reply_settings) %></legend>
+  <%= form_tag helpdesk_project_setting_path(:project_id => @project), :method => :put do %>
+    <p>
+      <%= check_box_tag 'helpdesk_project_setting[send_reply_by_default]', '1',
+                        hd_setting.send_reply_by_default,
+                        :id => 'hd_send_reply_by_default' %>
+      <%= label_tag 'hd_send_reply_by_default', l(:label_helpdesk_send_reply_by_default) %>
+    </p>
+    <p>
+      <label for="hd_reply_subject_template"><%= l(:label_helpdesk_reply_subject_template) %></label>
+      <%= text_field_tag 'helpdesk_project_setting[reply_subject_template]',
+                         hd_setting.effective_subject_template,
+                         :id => 'hd_reply_subject_template', :size => 70 %>
+      <%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'hd_reply_subject_template' } %>
+      <em class="info"><%= l(:text_helpdesk_subject_template_hint) %></em>
+    </p>
+    <p>
+      <label for="hd_reply_status_id"><%= l(:label_helpdesk_reply_status) %></label>
+      <%= select_tag 'helpdesk_project_setting[reply_status_id]',
+          options_for_select([[l(:label_none), '']] + IssueStatus.sorted.map { |s| [s.name, s.id] },
+                             hd_setting.reply_status_id),
+          :id => 'hd_reply_status_id' %>
+      <em class="info"><%= l(:text_helpdesk_reply_status_info) %></em>
+    </p>
+    <p>
+      <%= check_box_tag 'helpdesk_project_setting[reply_assign_to_sender]', '1',
+                        hd_setting.reply_assign_to_sender?,
+                        :id => 'hd_reply_assign_to_sender' %>
+      <%= label_tag 'hd_reply_assign_to_sender', l(:label_helpdesk_reply_assign_to_sender) %>
+    </p>
+    <% if Setting.plugin_redmine_expert_helpdesk['phishtank_enabled'] == '1' %>
+      <p>
+        <%= check_box_tag 'helpdesk_project_setting[phishing_check_enabled]', '1',
+                          hd_setting.phishing_check_enabled?,
+                          :id => 'hd_phishing_check_enabled' %>
+        <%= label_tag 'hd_phishing_check_enabled', l(:field_helpdesk_phishing_check_enabled) %>
+        <em class="info"><%= l(:text_helpdesk_phishing_check_info) %></em>
+      </p>
+      <p>
+        <label for="hd_phishing_action"><%= l(:field_helpdesk_phishing_action) %></label>
+        <%= select_tag 'helpdesk_project_setting[phishing_action]',
+            options_for_select(
+              HelpdeskProjectSetting::PHISHING_ACTIONS.map { |a| [l(:"label_helpdesk_phishing_action_#{a}"), a] },
+              hd_setting.effective_phishing_action),
+            :id => 'hd_phishing_action' %>
+      </p>
+    <% end %>
+    <p><%= submit_tag l(:button_save) %></p>
+  <% end %>
+</fieldset>
+
+<%# --- SLA-Einstellungen --- %>
+<fieldset class="tabular" style="margin-bottom: 14px;">
+  <legend><%= l(:label_helpdesk_sla) %></legend>
+  <%= form_tag helpdesk_project_setting_path(:project_id => @project), :method => :put do %>
+    <%= hidden_field_tag 'sla_form', '1' %>
+    <p>
+      <%= check_box_tag 'helpdesk_project_setting[sla_enabled]', '1',
+                        hd_setting.sla_enabled?, :id => 'hd_sla_enabled' %>
+      <%= label_tag 'hd_sla_enabled', l(:field_helpdesk_sla_enabled) %>
+      <em class="info"><%= l(:text_helpdesk_sla_enabled_info) %></em>
+    </p>
+    <p>
+      <label for="hd_sla_reaction"><%= l(:field_helpdesk_sla_reaction_minutes) %></label>
+      <%= number_field_tag 'helpdesk_project_setting[sla_reaction_minutes]',
+                           hd_setting.sla_reaction_minutes, :id => 'hd_sla_reaction', :min => 1, :size => 8 %>
+      <em class="info"><%= l(:text_helpdesk_sla_minutes_info) %></em>
+    </p>
+    <p>
+      <label for="hd_sla_solution"><%= l(:field_helpdesk_sla_solution_minutes) %></label>
+      <%= number_field_tag 'helpdesk_project_setting[sla_solution_minutes]',
+                           hd_setting.sla_solution_minutes, :id => 'hd_sla_solution', :min => 1, :size => 8 %>
+    </p>
+    <p>
+      <label><%= l(:field_helpdesk_sla_work_days) %></label>
+      <% day_names = [nil] + (1..7).map { |d| I18n.t('date.abbr_day_names')[d % 7] } %>
+      <% (1..7).each do |d| %>
+        <label style="float:none; margin-left:0; width:auto; font-weight:normal;">
+          <%= check_box_tag 'helpdesk_project_setting[sla_work_days][]', d,
+                            hd_setting.sla_work_days_array.include?(d), :id => "hd_sla_day_#{d}" %>
+          <%= day_names[d] %>
+        </label>
+      <% end %>
+    </p>
+    <p>
+      <label for="hd_sla_work_start"><%= l(:field_helpdesk_sla_work_hours) %></label>
+      <%= text_field_tag 'helpdesk_project_setting[sla_work_start]',
+                         hd_setting.sla_work_start.presence || '08:00', :id => 'hd_sla_work_start', :size => 5 %>
+      &ndash;
+      <%= text_field_tag 'helpdesk_project_setting[sla_work_end]',
+                         hd_setting.sla_work_end.presence || '17:00', :size => 5 %>
+      <em class="info"><%= l(:text_helpdesk_sla_work_hours_info) %></em>
+    </p>
+
+    <p><strong><%= l(:label_helpdesk_sla_priorities) %></strong>
+      <em class="info"><%= l(:text_helpdesk_sla_priorities_info) %></em>
+    </p>
+    <table class="list" style="width:auto; margin-bottom:8px;">
+      <thead>
+        <tr>
+          <th><%= l(:field_priority) %></th>
+          <th><%= l(:field_helpdesk_sla_reaction_minutes) %></th>
+          <th><%= l(:field_helpdesk_sla_solution_minutes) %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% overrides = HelpdeskSlaPriority.where(:project_id => @project.id).index_by(&:priority_id) %>
+        <% IssuePriority.active.each do |prio| %>
+          <% ov = overrides[prio.id] %>
+          <tr>
+            <td><%= h(prio.name) %></td>
+            <td><%= number_field_tag "sla_priorities[#{prio.id}][reaction_minutes]",
+                                     ov&.reaction_minutes, :min => 1, :size => 8 %></td>
+            <td><%= number_field_tag "sla_priorities[#{prio.id}][solution_minutes]",
+                                     ov&.solution_minutes, :min => 1, :size => 8 %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <p>
+      <%= check_box_tag 'helpdesk_project_setting[sla_notify_enabled]', '1',
+                        hd_setting.sla_notify_enabled?, :id => 'hd_sla_notify_enabled' %>
+      <%= label_tag 'hd_sla_notify_enabled', l(:field_helpdesk_sla_notify_enabled) %>
+    </p>
+    <p>
+      <label for="hd_sla_notify_email"><%= l(:field_helpdesk_sla_notify_email) %></label>
+      <%= text_field_tag 'helpdesk_project_setting[sla_notify_email]',
+                         hd_setting.sla_notify_email, :id => 'hd_sla_notify_email', :size => 40 %>
+      <em class="info"><%= l(:text_helpdesk_sla_notify_email_info) %></em>
+    </p>
+    <p>
+      <label for="hd_sla_notify_user"><%= l(:field_helpdesk_sla_notify_user) %></label>
+      <%= select_tag 'helpdesk_project_setting[sla_notify_user_id]',
+          options_for_select([[l(:label_none), '']] + @project.users.sorted.map { |u| [u.name, u.id] },
+                             hd_setting.sla_notify_user_id),
+          :id => 'hd_sla_notify_user' %>
+    </p>
+    <p><%= submit_tag l(:button_save) %></p>
+  <% end %>
+</fieldset>
+
+<p>
+  <%= link_to hd_icon_label('add', l(:label_helpdesk_mailbox_new)), new_helpdesk_mailbox_path(:project_id => @project),
+              :class => 'icon icon-add' %>
+  <% if User.current.allowed_to?(:fetch_helpdesk_mail, @project) && mailboxes.any?(&:enabled?) %>
+    <%= link_to hd_icon_label('reload', l(:button_helpdesk_fetch)), project_helpdesk_fetch_path(@project),
+                :method => :post, :class => 'icon icon-reload' %>
+  <% end %>
+</p>
+
+<% if mailboxes.any? %>
+  <table class="list">
+    <thead>
+      <tr>
+        <th><%= l(:field_helpdesk_mailbox_address) %></th>
+        <th><%= l(:field_helpdesk_source_folder) %></th>
+        <th><%= l(:field_helpdesk_processed_folder) %></th>
+        <th><%= l(:field_helpdesk_enabled) %></th>
+        <th><%= l(:field_helpdesk_last_fetched_at) %></th>
+        <th><%= l(:field_helpdesk_last_error) %></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% mailboxes.each do |mailbox| %>
+        <tr>
+          <td><%= mailbox.mailbox_address %></td>
+          <td><%= mailbox.source_folder %></td>
+          <td><%= mailbox.processed_folder %></td>
+          <td><%= mailbox.enabled? ? l(:general_text_Yes) : l(:general_text_No) %></td>
+          <td><%= mailbox.last_fetched_at ? format_time(mailbox.last_fetched_at) : '–' %></td>
+          <td>
+            <% if mailbox.last_error.present? %>
+              <span class="icon icon-warning" title="<%= format_time(mailbox.last_error_at) %>: <%= h(mailbox.last_error) %>"
+                    style="color:#c00; cursor:help;">
+                <%= hd_icon_label('warning') %><%= h(mailbox.last_error.truncate(60)) %>
+              </span>
+            <% else %>
+              –
+            <% end %>
+          </td>
+          <td class="buttons">
+            <%= link_to hd_icon_label('edit', l(:button_edit)), edit_helpdesk_mailbox_path(mailbox, :project_id => @project),
+                        :class => 'icon icon-edit' %>
+            <%= link_to hd_icon_label('del', l(:button_delete)), helpdesk_mailbox_path(mailbox, :project_id => @project),
+                        :method => :delete, :data => { :confirm => l(:text_are_you_sure) },
+                        :class => 'icon icon-del' %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <p class="nodata"><%= l(:label_no_data) %></p>
+<% end %>

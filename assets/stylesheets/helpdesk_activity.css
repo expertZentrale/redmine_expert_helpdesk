@@ -1,0 +1,66 @@
+/*
+ * Aktivitaets-Feed-Icons fuer Helpdesk-Nachrichten.
+ * Redmine 5.x verwendet CSS-Klassen (icon-{event_type}) mit background-image.
+ * Quellen: Bootstrap Icons v1.11 (MIT License, https://icons.getbootstrap.com/)
+ * SVGs verwenden viewBox="0 0 16 18" (2 Einheiten Puffer unten), damit der
+ * Pfeil-Kreis am unteren Rand nicht abgeschnitten wird.
+ */
+
+/* SLA-Anzeige am Ticket (Ampel-Chips fuer Reaktions-/Loesungszeit) */
+.helpdesk-sla-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 6px 0;
+}
+.hd-sla-title {
+  font-weight: bold;
+  color: #666;
+  font-size: 0.9em;
+}
+.hd-sla-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.85em;
+  border: 1px solid transparent;
+}
+.hd-sla-met      { background: #e4f2e4; border-color: #a3cfa3; color: #1a6b1a; }
+.hd-sla-running  { background: #eaf4fd; border-color: #a8c8e8; color: #2a5885; }
+.hd-sla-warning  { background: #fff3cd; border-color: #e0a800; color: #7a5c00; }
+.hd-sla-breached { background: #fce4e4; border-color: #e0a0a0; color: #a01818; font-weight: bold; }
+
+/* --- SLA-Statistik-Seite (CSS-Balkendiagramme, keine externen Libs) --- */
+.hd-stats-filter { margin: 0 0 1em; padding: 8px; background: #f6f6f6; border: 1px solid #e0e0e0; border-radius: 3px; }
+.hd-stats-filter label { margin-right: 12px; }
+
+.hd-stats-tiles { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 1.2em; }
+.hd-stats-tile { flex: 1 1 140px; min-width: 140px; padding: 10px 12px; background: #fafafa;
+  border: 1px solid #e0e0e0; border-radius: 4px; display: flex; flex-direction: column; }
+.hd-stats-tile-alert { background: #fce4e4; border-color: #e0a0a0; }
+.hd-stats-num { font-size: 1.6em; font-weight: bold; color: #333; }
+.hd-stats-lbl { font-size: 0.82em; color: #666; }
+.hd-stats-lbl em { color: #999; font-style: normal; }
+
+/* Chart.js-Container: feste Hoehe, responsiv in der Breite */
+.hd-chart-box { position: relative; width: 100%; height: 300px; margin: 0 0 1.2em; }
+.hd-chart-box-sm { height: 180px; }
+.hd-chart-box canvas { max-width: 100%; }
+
+.hd-stats-muted { color: #888; font-size: 0.85em; }
+.hd-stats-empty { color: #999; }
+
+.hd-stats-busy { display: flex; flex-wrap: wrap; gap: 24px; }
+.hd-stats-busy-col { flex: 1 1 320px; min-width: 0; }
+
+/*
+ * Aktivitaets-Feed-Richtungsicons: ab Redmine 6 werden sie als SVG-Sprite gerendert
+ * (activity_event_type_icon -> sprite_icon aus assets/icons.svg, fill="currentColor").
+ * Hier nur noch die Richtungsfarbe je Uhr setzen (gruen eingehend / rot ausgehend /
+ * grau Erstkontakt). Die alten background-image-Klassen entfielen, da sie unter
+ * Redmine 6+ ohne background-repeat:no-repeat kachelten.
+ */
+div#activity dt.icon-helpdesk-message-in   svg.icon-svg { color: #2e7d32; fill: currentColor; stroke: none; }
+div#activity dt.icon-helpdesk-message-out  svg.icon-svg { color: #4a90c7; fill: currentColor; stroke: none; }
+div#activity dt.icon-helpdesk-message-init svg.icon-svg { color: #777;    fill: currentColor; stroke: none; }

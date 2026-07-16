@@ -1,0 +1,314 @@
+<%# Kundenkarte in der Ticket-Seitenleiste.
+    Wird via view_issues_sidebar_queries_bottom-Hook eingebunden. %>
+<%
+  inbound_msgs   = HelpdeskMessage.includes(:helpdesk_mailbox, :helpdesk_contact, :eml_attachment)
+                                  .where(:issue_id => issue.id, :direction => 'in')
+                                  .order(:id => :asc)
+  origin_mailbox = HelpdeskTicketInfo.for_issue(issue)&.helpdesk_mailbox
+  eml_links      = inbound_msgs.select { |m| m.eml_attachment_id.present? }
+  previous       = contact.issues.where.not(:id => issue.id).order(:id => :desc).limit(4)
+%>
+
+<h3><%= l(:label_helpdesk_customer) %></h3>
+<div class="helpdesk-sidebar-card">
+  <div class="hd-contact-name">
+    <%= link_to contact.display_name,
+        edit_helpdesk_contact_path(contact, :project_id => project),
+        :title => l(:label_helpdesk_customer) %>
+  </div>
+  <div class="hd-contact-email">
+    <%= mail_to contact.email, contact.email, :class => 'hd-email-link' %>
+  </div>
+  <% if contact.company.present? %>
+    <div class="hd-contact-company"><%= h(contact.company) %></div>
+  <% end %>
+  <% if contact.phone.present? %>
+    <div class="hd-contact-phone">&#128222; <%= h(contact.phone) %></div>
+  <% end %>
+
+  <% if origin_mailbox %>
+    <div class="hd-section-label"><%= l(:label_helpdesk_mailbox) %></div>
+    <div class="hd-section-value"><%= h(origin_mailbox.mailbox_address) %></div>
+  <% end %>
+
+  <% if eml_links.any? %>
+    <div class="hd-section-label"><%= l(:label_helpdesk_original_mail) %></div>
+    <div class="hd-section-value">
+      <% eml_links.each_with_index do |m, i| %>
+        <%= link_to hd_icon_label('attachment', "##{i + 1}"),
+            download_named_attachment_path(m.eml_attachment_id, m.eml_attachment.filename),
+            :class => 'icon icon-attachment',
+            :title => m.subject.presence || m.eml_attachment.filename %>
+        <% if i < eml_links.size - 1 %>&ensp;<% end %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if previous.any? %>
+    <div class="hd-section-label"><%= l(:label_helpdesk_previous_tickets) %></div>
+    <ul class="hd-prev-tickets">
+      <% previous.each do |prev| %>
+        <li><%= link_to_issue prev, :truncate => 40 %></li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>
+
+<style>
+.helpdesk-sidebar-card {
+  background: #f5f8fd;
+  border: 1px solid #c8d8ec;
+  border-radius: 4px;
+  padding: 10px 12px 8px;
+  margin-bottom: 14px;
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+
+.hd-contact-name { font-weight: bold; }
+.hd-contact-name a { color: #333; }
+.hd-contact-email { color: #555; }
+.hd-email-link { color: #555; }
+.hd-contact-company,
+.hd-contact-phone { color: #666; }
+.hd-section-label {
+  color: #8899bb;
+  font-size: 0.9em;
+  margin-top: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.hd-section-value { color: #444; }
+.hd-prev-tickets {
+  list-style: none;
+  margin: 2px 0 0 0;
+  padding: 0;
+}
+.hd-prev-tickets li { margin: 1px 0; }
+.hd-prev-tickets li::before { content: '›'; color: #aaa; margin-right: 4px; }
+
+/* Badges in Journal-Headern */
+.helpdesk-mail-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8em;
+  font-weight: normal;
+  color: #666;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+.hd-sep-bar { color: #bbb; margin: 0 2px; }
+.hd-recipient { color: #555; cursor: default; }
+.helpdesk-mail-header .icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.hd-addr-tag {
+  display: inline-block;
+  font-size: 0.85em;
+  padding: 0 5px;
+  line-height: 1.5;
+  border-radius: 3px;
+  background: #dde8f6;
+  color: #3a6699;
+  cursor: default;
+  border: 1px solid #c0d4ed;
+}
+</style>
+
+<script>
+//<![CDATA[
+(function() {
+  // Mail-Badges in Journal-Headern: Zuordnung ueber die direkte
+  // Journal-Verknuepfung (helpdesk_messages.journal_id).
+
+  var hdMessages = <%= raw outgoing_msgs.map { |m|
+    {
+      :journalId   => m.journal_id,
+      :to          => m.recipient_to.to_s,
+      :cc          => m.recipient_cc.to_s,
+      :bcc         => m.recipient_bcc.to_s,
+      :attachments => m.sent_attachments.to_s
+    }
+  }.to_json %>;
+
+  // Eingehende Mails: Absender + Empfaenger + EML-Link als Badge im Journal-Header
+  var hdIncoming = <%= raw inbound_msgs.map { |m|
+    {
+      :journalId => m.journal_id,
+      :name      => m.helpdesk_contact&.display_name.to_s,
+      :email     => m.helpdesk_contact&.email.to_s,
+      :to        => m.recipient_to.to_s,
+      :cc        => m.recipient_cc.to_s,
+      :emlUrl    => (m.eml_attachment_id ? download_named_attachment_path(m.eml_attachment_id, m.eml_attachment.filename) : nil),
+      :emlSize   => (m.eml_attachment_id ? number_to_human_size(m.eml_attachment.filesize) : nil),
+      :sentAt    => (m.sent_at ? format_time(m.sent_at) : nil)
+    }
+  }.to_json %>;
+
+  // Liefert das Journal-Header-Element (h4) oder null. Versionsuebergreifend:
+  //   Redmine 6/7: <div id="change-<journal.id>"> ... <h4 class="journal-header">
+  //   Redmine 5:   <div id="journal-<journal.id>-notes"> in <div id="note-N"> ...
+  //                <h4 class="note-header">
+  function noteHeaderFor(journalId) {
+    if (!journalId) return null;
+    var container = document.getElementById('change-' + journalId);
+    if (!container) {
+      var notesDiv = document.getElementById('journal-' + journalId + '-notes');
+      if (notesDiv) { container = notesDiv.closest('[id^="note-"]') || notesDiv.parentElement; }
+    }
+    if (!container) return null;
+    var h4 = container.querySelector('h4.journal-header, h4.note-header');
+    if (!h4 || h4.querySelector('.helpdesk-mail-header')) return null;
+    return h4;
+  }
+
+  // Einfuegeziel fuer das Badge: Redmine 6/7 direkt neben Autor/Zeit in .journal-info
+  // (sonst landet es durch das Flex-Layout ganz rechts); Redmine 5 direkt im Header.
+  function badgeTarget(h4) {
+    return h4.querySelector('.journal-info') || h4;
+  }
+
+  function injectBadges() {
+    hdMessages.forEach(function(msg) {
+      var h4 = noteHeaderFor(msg.journalId);
+      if (h4) badgeTarget(h4).appendChild(buildBadge(msg.to, msg.cc, msg.bcc, msg.attachments));
+    });
+
+    hdIncoming.forEach(function(msg) {
+      var h4 = noteHeaderFor(msg.journalId);
+      if (h4) badgeTarget(h4).appendChild(buildIncomingBadge(msg));
+    });
+  }
+
+  // Badge fuer eingehende Mails: ✉ Name (E-Mail) 📎 Original (Groesse) Zeit
+  function buildIncomingBadge(msg) {
+    var wrap = document.createElement('span');
+    wrap.className = 'helpdesk-mail-header';
+
+    var bar = document.createElement('span');
+    bar.className = 'hd-sep-bar';
+    bar.textContent = '|';
+    wrap.appendChild(bar);
+
+    var iconSpan = document.createElement('span');
+    iconSpan.className = 'icon icon-email';
+    if (window.hdSpriteIcon) { iconSpan.innerHTML = window.hdSpriteIcon('email'); }
+    wrap.appendChild(iconSpan);
+
+    var who = document.createElement('span');
+    who.className = 'hd-recipient';
+    who.title = '<%= j l(:label_helpdesk_received_from) %>';
+    who.textContent = msg.name && msg.name !== msg.email
+      ? msg.name + ' (' + msg.email + ')'
+      : msg.email;
+    wrap.appendChild(who);
+
+    // Empfaenger der eingehenden Mail (An/CC) als Tags mit Tooltip
+    [['An', msg.to], ['CC', msg.cc]].forEach(function(pair) {
+      var label = pair[0], val = pair[1];
+      if (!val) return;
+      var addrs = val.split(/[,;]+/).map(function(a){return a.trim();}).filter(Boolean);
+      if (!addrs.length) return;
+      var tag = document.createElement('span');
+      tag.className = 'hd-addr-tag';
+      tag.title = label + ': ' + addrs.join(', ');
+      tag.textContent = label + (addrs.length > 1 ? ' +' + (addrs.length - 1) : '');
+      wrap.appendChild(tag);
+    });
+
+    if (msg.emlUrl) {
+      var attIcon = document.createElement('span');
+      attIcon.className = 'icon icon-attachment';
+      if (window.hdSpriteIcon) { attIcon.innerHTML = window.hdSpriteIcon('attachment'); }
+      wrap.appendChild(attIcon);
+
+      var emlLink = document.createElement('a');
+      emlLink.href = msg.emlUrl;
+      emlLink.textContent = '<%= j l(:label_helpdesk_original_mail) %>' + (msg.emlSize ? ' (' + msg.emlSize + ')' : '');
+      wrap.appendChild(emlLink);
+    }
+
+    if (msg.sentAt) {
+      var time = document.createElement('span');
+      time.className = 'hd-recipient';
+      time.textContent = msg.sentAt;
+      wrap.appendChild(time);
+    }
+
+    return wrap;
+  }
+
+  function buildBadge(to, cc, bcc, attachments) {
+    var toAddrs = (to || '').split(/[,;]+/).map(function(a){return a.trim();}).filter(Boolean);
+    var wrap = document.createElement('span');
+    wrap.className = 'helpdesk-mail-header';
+
+    var bar = document.createElement('span');
+    bar.className = 'hd-sep-bar';
+    bar.textContent = '|';
+    wrap.appendChild(bar);
+
+    if (toAddrs.length) {
+      var iconSpan = document.createElement('span');
+      iconSpan.className = 'icon icon-email';
+      if (window.hdSpriteIcon) { iconSpan.innerHTML = window.hdSpriteIcon('email'); }
+      wrap.appendChild(iconSpan);
+
+      var addrSpan = document.createElement('span');
+      addrSpan.className = 'hd-recipient';
+      addrSpan.title = toAddrs.join(', ');
+      addrSpan.textContent = toAddrs[0];
+      wrap.appendChild(addrSpan);
+
+      if (toAddrs.length > 1) {
+        var extra = document.createElement('span');
+        extra.className = 'hd-addr-tag';
+        extra.title = toAddrs.join(', ');
+        extra.textContent = '+' + (toAddrs.length - 1);
+        wrap.appendChild(extra);
+      }
+    }
+
+    ['cc', 'bcc'].forEach(function(field) {
+      var val = field === 'cc' ? cc : bcc;
+      if (!val) return;
+      var addrs = val.split(/[,;]+/).map(function(a){return a.trim();}).filter(Boolean).join(', ');
+      var tag = document.createElement('span');
+      tag.className = 'hd-addr-tag';
+      tag.title = field.toUpperCase() + ': ' + addrs;
+      tag.textContent = field.toUpperCase();
+      wrap.appendChild(tag);
+    });
+
+    if (attachments) {
+      var attFiles = attachments.split(/,\s*/).filter(Boolean);
+      if (attFiles.length) {
+        var attIcon = document.createElement('span');
+        attIcon.className = 'icon icon-attachment';
+        if (window.hdSpriteIcon) { attIcon.innerHTML = window.hdSpriteIcon('attachment'); }
+        wrap.appendChild(attIcon);
+        var attSpan = document.createElement('span');
+        attSpan.className = 'hd-addr-tag';
+        attSpan.title = attFiles.join(', ');
+        attSpan.textContent = attFiles.length === 1 ? attFiles[0] : attFiles.length + ' Anh\u00e4nge';
+        wrap.appendChild(attSpan);
+      }
+    }
+
+    return wrap;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectBadges);
+  } else {
+    injectBadges();
+  }
+})();
+//]]>
+</script>

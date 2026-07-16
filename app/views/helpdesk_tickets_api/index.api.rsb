@@ -1,0 +1,7 @@
+api.array :helpdesk_tickets,
+          api_meta(:total_count => @issue_count, :offset => @offset, :limit => @limit) do
+  @issues.each do |issue|
+    RedmineExpertHelpdesk::ApiSerializers.ticket(
+      api, issue, :info => @infos[issue.id], :sla => @sla_by_issue[issue.id], :detail => false)
+  end
+end

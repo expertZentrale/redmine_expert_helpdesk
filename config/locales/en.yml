@@ -1,0 +1,269 @@
+en:
+  label_helpdesk: Helpdesk
+  project_module_helpdesk: Helpdesk
+  permission_manage_helpdesk: Manage helpdesk mailboxes
+  permission_fetch_helpdesk_mail: Fetch helpdesk mail
+  permission_send_helpdesk_reply: Send customer replies
+  permission_view_helpdesk_info: View customer information
+
+  label_helpdesk_tenant_id: Tenant ID (directory ID)
+  label_helpdesk_client_id: Client ID (application ID)
+  label_helpdesk_client_secret: Client secret
+  label_helpdesk_fetch_api_key: API key for global mail fetch
+  label_helpdesk_sla_api_key: API key for SLA check
+  label_helpdesk_azure_hints: Azure app registration hints
+  text_helpdesk_fetch_api_key_info: Secures the /helpdesk/fetch_all endpoint. Empty = endpoint disabled.
+  text_helpdesk_sla_api_key_info: Secures the /helpdesk/sla_check endpoint. Empty = endpoint disabled.
+
+  label_helpdesk_mailbox_new: New mailbox
+  label_helpdesk_mailbox_edit: Edit mailbox
+  field_helpdesk_mailbox_address: Mailbox address
+  field_helpdesk_source_folder: Source folder
+  field_helpdesk_processed_folder: Processed folder
+  field_helpdesk_skipped_folder: Skipped folder
+  field_helpdesk_failed_folder: Failed folder
+  field_helpdesk_enabled: Enabled
+  field_helpdesk_last_fetched_at: Last fetch
+  field_helpdesk_last_error: Last error
+  field_helpdesk_unknown_user_mode: Unknown senders
+  field_helpdesk_suppress_notifications: Suppress Redmine notifications
+  text_helpdesk_processed_folder_info: Processed mails are moved to this folder. Empty = mails stay in the source folder (risk of duplicate processing).
+  text_helpdesk_skipped_folder_info: Skipped mails (blacklist, ignore rules, auto-reply filter) are moved here. Empty = same folder as "Processed".
+  text_helpdesk_failed_folder_info: Mails that caused an error during processing are moved here. Empty = same folder as "Processed".
+  text_helpdesk_suppress_notifications_info: Prevents duplicate mails to customers when the autoresponder is active.
+
+  label_helpdesk_reopen: Issue reopening
+  field_helpdesk_reopen_status: Reopen status
+  text_helpdesk_reopen_status_info: Status to set on a closed issue when a new customer reply is received. Empty = issue stays closed.
+  field_helpdesk_reopen_max_age_days: Max. age (days)
+  text_helpdesk_reopen_max_age_days_info: If the issue was last updated more than this many days ago, a new issue is created instead of reopening the existing one. Empty = no age limit.
+  label_helpdesk_defaults: Defaults for new tickets
+  label_helpdesk_unknown_user_accept: Accept (anonymous)
+  label_helpdesk_unknown_user_create: Create user account
+  label_helpdesk_unknown_user_ignore: Ignore
+
+  label_helpdesk_filter: Sender filter
+  field_helpdesk_allow_list: Whitelist
+  field_helpdesk_deny_list: Blacklist
+  text_helpdesk_allow_list_info: One address or domain per line. If set, only these senders are allowed.
+  text_helpdesk_deny_list_info: One address or domain per line. Mails from these senders are discarded.
+
+  label_helpdesk_auto_reply_filter: Auto-reply filter
+  field_helpdesk_auto_reply_filter_enabled: Auto-reply filter enabled
+  text_helpdesk_auto_reply_filter_info: "Detect and ignore automatically generated messages (out-of-office, auto-replies) based on common mail headers (auto-submitted, x-auto-response-suppress, x-autorespond, precedence: bulk/list/junk, etc.)."
+  field_helpdesk_auto_reply_sender_whitelist: Sender exceptions
+  text_helpdesk_auto_reply_sender_whitelist_info: "One address or domain per line. Auto-replies from these senders will still be processed."
+  field_helpdesk_auto_reply_header_whitelist: Header exceptions
+  text_helpdesk_auto_reply_header_whitelist_info: "One header-value pair per line (format: \"Header-Name: Value\" or \"Header-Name: *\"). Mails containing one of these headers will be processed despite auto-reply indicators."
+
+  label_helpdesk_autoresponder: Autoresponder
+  field_helpdesk_autoresponder_enabled: Autoresponder enabled
+  field_helpdesk_autoresponder_subject: Subject
+  field_helpdesk_autoresponder_body: Body
+  text_helpdesk_macros_info: 'Available macros: {{ticket_id}}, {{ticket_subject}}, {{ticket_url}}, {{contact_name}}, {{contact_email}}, {{user_name}}, {{project_name}}'
+  label_helpdesk_macros: 'Macros'
+  note_helpdesk_autoresponder_sent: 'Autoresponse sent to %{email}.'
+  label_helpdesk_message_plural: 'Helpdesk Messages'
+
+  label_helpdesk_phishtank: 'PhishTank (phishing detection)'
+  field_helpdesk_phishtank_enabled: 'Enable PhishTank integration'
+  field_helpdesk_phishtank_app_key: 'PhishTank app key (optional)'
+  field_helpdesk_phishtank_interval_hours: 'Download interval (hours)'
+  text_helpdesk_phishtank_info: 'Checks links in incoming mails against the PhishTank database. The check must additionally be enabled per project.'
+  text_helpdesk_phishtank_app_key_info: 'Without a key the anonymous endpoint is used (stricter rate limit).'
+  field_helpdesk_phishtank_feed_url: 'Feed URL'
+  text_helpdesk_phishtank_feed_url_info: 'Placeholder {key} is replaced with the app key; without a key the "/{key}" segment is removed.'
+  text_helpdesk_phishtank_interval_info: 'The download runs automatically during mail fetch (fetch_all), at most once per interval. Minimum: 1 hour.'
+  field_helpdesk_phishing_database_enabled: 'Enable Phishing.Database feed'
+  field_helpdesk_phishing_database_feed_url: 'Phishing.Database feed URL'
+  text_helpdesk_phishing_database_info: 'Additional community feed (github.com/Phishing-Database) with active phishing URLs; no key required.'
+  text_helpdesk_phishing_source_status: 'Mirror %{source}: %{count} URLs, last import: %{last_import}'
+  notice_helpdesk_phishing_sync_done: 'Phishing feed sync completed: %{summary} URLs imported.'
+  error_helpdesk_phishing_sync_failed: 'Phishing feed sync failed: %{message}'
+  field_helpdesk_phishing_check_enabled: 'Enable phishing check for this project'
+  text_helpdesk_phishing_check_info: 'Links in incoming mails are checked against the PhishTank mirror (including Microsoft SafeLinks resolution).'
+  field_helpdesk_phishing_action: 'Action on phishing hit'
+  label_helpdesk_phishing_action_neutralize: 'Neutralize links (ticket is created)'
+  label_helpdesk_phishing_action_quarantine: 'Quarantine mail (no ticket)'
+  note_helpdesk_phishing_links_removed: 'Warning: %{count} known phishing URL(s) were removed from this email:'
+  text_helpdesk_phishing_link_removed: 'LINK REMOVED – suspected phishing (%{source})'
+  text_helpdesk_phishing_warning_banner: 'WARNING: This email contained known phishing links which have been removed. Do not click any links or enter any data!'
+  text_helpdesk_phishing_suspicion_banner: 'CAUTION: This email contains disguised links (redirect, URL shortener or mismatching link text). Do not click links carelessly!'
+  text_helpdesk_phishing_suspicion_redirect: 'CAUTION: redirect link – actual target: %{target}'
+  text_helpdesk_phishing_suspicion_shortener: 'CAUTION: URL shortener – actual target unknown'
+  text_helpdesk_phishing_suspicion_anchor: 'CAUTION: link text and target differ (%{detail})'
+  note_helpdesk_phishing_suspicions: 'Warning: %{count} disguised link(s) marked in this email:'
+  button_helpdesk_phishtank_sync: 'Download phishing feeds now'
+  text_helpdesk_phishtank_sync_confirm: 'The download may take a few minutes. Continue?'
+  error_helpdesk_phishtank_disabled: 'The PhishTank integration is disabled. Please enable and save it first.'
+  label_helpdesk_legacy_import: 'Import from redmine_contacts'
+  text_helpdesk_legacy_import_info: 'The database contains %{count} contacts from the legacy redmine_contacts / redmine_contacts_helpdesk plugin (tables contacts, contacts_projects, helpdesk_tickets). The import migrates contacts per project and links old issues via the authoritative customer mapping from helpdesk_tickets so the customer card appears there. Correct existing links are skipped, wrong synthetic links from earlier import runs are repaired.'
+  button_helpdesk_legacy_import: 'Import contacts now'
+  text_helpdesk_legacy_import_confirm: 'Import contacts and issue links from redmine_contacts? The operation is idempotent (safe to repeat).'
+  notice_helpdesk_legacy_import_done: 'Import completed: %{created} contacts created, %{existing} already existed, %{links} issues linked, %{repaired} links repaired, %{skipped} issues skipped.'
+  error_helpdesk_legacy_import_no_data: 'No legacy data found (contacts table missing or empty).'
+  error_helpdesk_legacy_import_failed: 'Import failed: %{message}'
+  label_helpdesk_legacy_import_select: 'Select projects to import'
+  text_helpdesk_legacy_import_select_info: 'Choose which projects'' legacy contacts to import. Unused old projects can be left unchecked. The number in parentheses is the count of legacy contacts for that project.'
+  label_helpdesk_legacy_select_all: 'Select all'
+  label_helpdesk_legacy_no_project: '(no project assignment)'
+  label_helpdesk_legacy_deleted_project: '(deleted project #%{id})'
+  label_helpdesk_legacy_with_issues: 'with issues'
+  label_helpdesk_legacy_without_issues: 'without issues'
+  error_helpdesk_legacy_import_no_selection: 'Please select at least one project.'
+  text_helpdesk_legacy_fix_info: 'The database contains %{count} attachments (original mails as EML) still attached to the legacy HelpdeskTicket container, making them invisible on the issues. The fix re-attaches them to the corresponding issue and links them as original mail.'
+  button_helpdesk_legacy_fix: 'Fix EML attachments now'
+  text_helpdesk_legacy_fix_confirm: 'Re-attach legacy attachments to their issues? The operation is idempotent (safe to repeat).'
+  notice_helpdesk_legacy_fix_done: 'Fix completed: %{fixed} attachments re-attached, %{orphaned} orphaned (no matching ticket), %{linked} original-mail links set.'
+  error_helpdesk_legacy_fix_no_data: 'No legacy attachments found (container_type HelpdeskTicket).'
+  label_helpdesk_contact_search: 'Search (name, email, company)'
+  label_helpdesk_received_from: 'Received from'
+  text_helpdesk_multi_recipients_hint: 'Separate multiple addresses with commas'
+  label_helpdesk_sent_to: 'Sent to'
+
+  label_helpdesk_sla: 'SLA'
+  field_helpdesk_sla_enabled: 'Enable SLA'
+  text_helpdesk_sla_enabled_info: 'Applies only to tickets created after activation. Clocks run only within working hours.'
+  field_helpdesk_sla_reaction_minutes: 'Reaction time (minutes)'
+  field_helpdesk_sla_solution_minutes: 'Solution time (minutes)'
+  text_helpdesk_sla_minutes_info: 'Business minutes (within working hours). Empty = no target.'
+  field_helpdesk_sla_work_days: 'Working days'
+  field_helpdesk_sla_work_hours: 'Working hours'
+  text_helpdesk_sla_work_hours_info: 'Format HH:MM, e.g. 08:00 to 17:00.'
+  label_helpdesk_sla_priorities: 'Targets per priority (optional)'
+  text_helpdesk_sla_priorities_info: 'Empty fields use the project defaults.'
+  field_helpdesk_sla_notify_enabled: 'Notify on breach'
+  field_helpdesk_sla_notify_email: 'Escalation email'
+  text_helpdesk_sla_notify_email_info: 'Additional address (e.g. escalation manager); notified during the SLA check in the mail fetch cycle.'
+  field_helpdesk_sla_notify_user: 'Notify user'
+  label_helpdesk_sla_reaction: 'Reaction'
+  label_helpdesk_sla_solution: 'Solution'
+  label_helpdesk_sla_met: 'met'
+  label_helpdesk_sla_running: 'running'
+  label_helpdesk_sla_warning: 'warning'
+  label_helpdesk_sla_breached: 'breached'
+  label_helpdesk_sla_breached_done: 'done, target breached'
+  label_helpdesk_sla_due_at: 'due by %{time}'
+  label_helpdesk_sla_reaction_col: 'SLA reaction'
+  label_helpdesk_sla_solution_col: 'SLA solution'
+  label_helpdesk_sla_statistics: 'SLA statistics'
+  permission_view_helpdesk_sla_statistics: 'View SLA statistics'
+  label_helpdesk_stats_group_by: 'Group by'
+  label_helpdesk_stats_from: 'From'
+  label_helpdesk_stats_to: 'To'
+  label_helpdesk_stats_day: 'Day'
+  label_helpdesk_stats_week: 'Week'
+  label_helpdesk_stats_month: 'Month'
+  label_helpdesk_stats_year: 'Year'
+  label_helpdesk_stats_no_data: 'No SLA tickets in the selected period.'
+  label_helpdesk_stats_tickets: 'Tickets'
+  label_helpdesk_stats_open: 'Open'
+  label_helpdesk_stats_closed: 'Closed'
+  label_helpdesk_stats_created: 'Created'
+  label_helpdesk_stats_open_breached: 'Open breached'
+  label_helpdesk_stats_avg_first_response: 'Avg. first response'
+  label_helpdesk_stats_avg_resolution: 'Avg. resolution'
+  label_helpdesk_stats_median: 'median'
+  label_helpdesk_stats_compliance: 'SLA compliance'
+  label_helpdesk_stats_volume: 'Ticket volume'
+  label_helpdesk_stats_avg_over_time: 'Average times over time'
+  label_helpdesk_stats_busiest_hours: 'Busiest hours'
+  label_helpdesk_stats_busiest_weekdays: 'Busiest weekdays'
+  mail_subject_helpdesk_sla_breach: 'SLA breached'
+  mail_body_helpdesk_sla_breach: 'The SLA target for issue #%{id} "%{subject}" has been breached:'
+
+  label_helpdesk_reply_templates: Reply templates
+  field_helpdesk_reply_header: Header
+  field_helpdesk_reply_footer: Footer
+  label_helpdesk_global_footer: 'Central signature'
+  field_helpdesk_global_footer: 'Signature (footer)'
+  text_helpdesk_global_footer_info: 'Appended to outgoing customer replies and initial mails. Mailboxes can override it or prepend their own information ("Footer mode" setting on the mailbox).'
+  field_helpdesk_footer_mode: 'Footer mode'
+  label_helpdesk_footer_mode_inherit: 'Use central signature'
+  label_helpdesk_footer_mode_prepend: 'Prepend footer to central signature'
+  label_helpdesk_footer_mode_override: 'Use mailbox footer only'
+  text_helpdesk_footer_mode_info: 'Controls how this mailbox footer is combined with the central signature (Administration → Plugins). As long as no central signature is configured, "Use central signature" falls back to the mailbox footer.'
+  label_helpdesk_footer_preview: 'Effective footer preview'
+  text_helpdesk_footer_preview_info: 'Combination of mailbox footer and central signature according to the footer mode; macros are replaced on sending.'
+
+  label_helpdesk_rules: Automation rules
+  label_helpdesk_rule_new: New rule
+  field_helpdesk_condition: Condition
+  field_helpdesk_action: Action
+  field_helpdesk_condition_value: Value
+  field_helpdesk_action_value: Action value
+  label_helpdesk_field_subject: Subject
+  label_helpdesk_field_sender: Sender
+  label_helpdesk_operator_contains: contains
+  label_helpdesk_operator_equals: equals
+  label_helpdesk_operator_regex: matches regex
+  label_helpdesk_action_set_priority: Set priority
+  label_helpdesk_action_set_tracker: Set tracker
+  label_helpdesk_action_set_category: Set category
+  label_helpdesk_action_set_assignee: Assign to
+  label_helpdesk_action_ignore: Ignore mail
+
+  button_helpdesk_fetch: Fetch mails now
+  notice_helpdesk_fetch_done: "Mail fetch finished: %{count} message(s) processed."
+  error_helpdesk_fetch_failed: "Mail fetch failed: %{message}"
+
+  label_helpdesk_customer: Customer
+  label_helpdesk_customers: Customers
+  label_helpdesk_edit_customer: Edit customer
+  label_helpdesk_email: Email address
+  label_helpdesk_company: Company
+  label_helpdesk_phone: Phone
+  label_helpdesk_ticket_count: Tickets
+  label_helpdesk_last_ticket: Last ticket
+  label_helpdesk_all_tickets: Show all tickets
+  permission_manage_helpdesk_contacts: Manage customer list
+  label_helpdesk_mailbox: Mailbox
+  label_helpdesk_original_mail: Original Email
+  label_helpdesk_previous_tickets: Previous tickets
+  label_helpdesk_reply_to_customer: Reply to customer
+  label_helpdesk_send_as_mail: Send as email to customer
+  button_helpdesk_reply: Reply
+  label_helpdesk_reply_to: "To"
+
+  label_helpdesk_reply_settings: Reply settings
+  label_helpdesk_send_reply_by_default: Send replies as email by default
+  label_helpdesk_reply_subject_template: Subject template
+  label_helpdesk_reply_status: "Status after reply"
+  text_helpdesk_reply_status_info: "Automatically set after sending a reply. Leave empty to keep the current status."
+  label_helpdesk_reply_assign_to_sender: "Assign ticket to me after reply"
+  text_helpdesk_subject_template_hint: "Available macros: {{issue.id}}, {{issue.subject}}, {{contact.name}}, {{contact.email}}, {{project.name}}"
+  label_helpdesk_mail_footer_preview: Signature preview
+  label_helpdesk_reply_addresses_hint: "Separate multiple addresses with a comma"
+  label_helpdesk_reply_attachments: "Attachments"
+  field_helpdesk_reply_transport: "Send via"
+  label_helpdesk_transport_graph: "Microsoft Graph API (Exchange)"
+  label_helpdesk_transport_smtp: "SMTP (Redmine default)"
+  text_helpdesk_reply_transport_info: "Graph API requires a configured Azure app registration. SMTP uses the SMTP settings from the Redmine configuration."
+  button_helpdesk_send_reply: Send reply
+  label_helpdesk_reply_placeholder: Enter reply text here …
+  notice_helpdesk_reply_sent: "Reply sent to %{email}."
+  error_helpdesk_reply_failed: "Reply could not be sent: %{message}"
+  error_helpdesk_no_recipient: No mailbox or customer contact found for this ticket.
+  warning_helpdesk_folder_create_failed: "Folder could not be created: %{message}"
+  error_helpdesk_empty_reply: The reply body must not be empty.
+
+  label_helpdesk_display_settings: Display Settings
+  label_helpdesk_contacts_per_page: Entries per page
+  text_helpdesk_contacts_per_page_info: "Number of contacts per page in the customer list (default: 25)."
+  label_helpdesk_contact_ticket_limit: Max. tickets in customer profile
+  text_helpdesk_contact_ticket_limit_info: "Number of recently shown tickets in the customer detail view (default: 10)."
+  label_helpdesk_showing_latest_n: Showing the %{n} most recent of %{total} tickets total.
+
+  # Initial mail / assign contact
+  label_helpdesk_send_initial_mail: Send as e-mail to customer
+  label_helpdesk_contact_name_optional: Name (optional)
+  label_helpdesk_initial_mail_body: Message
+  label_helpdesk_initial_mail_body_hint: Leave empty to use the ticket description
+  text_helpdesk_init_uses_description: The message body is taken from the ticket description.
+  button_helpdesk_assign_contact: Assign Contact
+  button_helpdesk_new_ticket: New Helpdesk Ticket
+  label_helpdesk_assign_kunde: Assign Customer
+  notice_helpdesk_init_mail_sent: Initial mail was sent successfully.
+  notice_helpdesk_contact_assigned: Customer contact was assigned to the ticket.
+  error_helpdesk_invalid_email: Invalid e-mail address.
+  error_helpdesk_no_mailbox: No active mailbox available.

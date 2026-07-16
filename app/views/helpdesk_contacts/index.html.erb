@@ -1,0 +1,89 @@
+<%# Kundenliste des Projekts %>
+<h2><%= l(:label_helpdesk_customers) %></h2>
+
+<div style="float:right; color:#666; font-size:0.9em; margin-bottom:0.5em;">
+  <%= l(:label_helpdesk_contacts_per_page) %>:
+  <% [10, 25, 50, 100].each do |n| %>
+    &nbsp;<% if @per_page == n %>
+      <strong><%= n %></strong>
+    <% else %>
+      <%= link_to n, helpdesk_contacts_path(:project_id => @project, :per_page => n, :search => @search.presence) %>
+    <% end %>
+  <% end %>
+</div>
+
+<%= form_tag helpdesk_contacts_path(:project_id => @project), :method => :get, :style => 'margin-bottom:0.8em;' do %>
+  <%= text_field_tag :search, @search, :size => 30, :placeholder => l(:label_helpdesk_contact_search) %>
+  <%= submit_tag l(:button_apply), :name => nil %>
+  <% if @search.present? %>
+    <%= link_to l(:button_clear), helpdesk_contacts_path(:project_id => @project) %>
+  <% end %>
+<% end %>
+
+<% if @contact_count > 0 %>
+  <table class="list">
+    <thead>
+      <tr>
+        <th><%= l(:field_name) %></th>
+        <th><%= l(:label_helpdesk_email) %></th>
+        <th><%= l(:label_helpdesk_company) %></th>
+        <th><%= l(:label_helpdesk_phone) %></th>
+        <th><%= l(:label_helpdesk_ticket_count) %></th>
+        <th><%= l(:label_helpdesk_last_ticket) %></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @contacts.each do |contact| %>
+        <%
+          msgs      = contact.helpdesk_messages
+          issue_ids = msgs.map(&:issue_id).uniq
+          last_msg  = msgs.max_by(&:sent_at)
+        %>
+        <tr>
+          <td><strong><%= link_to contact.display_name,
+              edit_helpdesk_contact_path(contact, :project_id => @project) %></strong></td>
+          <td><%= mail_to contact.email %></td>
+          <td><%= contact.company.presence || '–' %></td>
+          <td><%= contact.phone.presence    || '–' %></td>
+          <td>
+            <% issues_url = project_issues_path(@project,
+                 :set_filter => 1,
+                 :f          => ['helpdesk_kunde'],
+                 :op         => { :helpdesk_kunde => '=' },
+                 :v          => { :helpdesk_kunde => [contact.email] }) %>
+            <%= link_to issue_ids.size, issues_url %>
+          </td>
+          <td>
+            <% if last_msg&.sent_at %>
+              <%= format_date(last_msg.sent_at) %>
+            <% else %>
+              –
+            <% end %>
+          </td>
+          <td class="buttons">
+            <%= link_to hd_icon_label('edit', l(:button_edit)),
+                edit_helpdesk_contact_path(contact, :project_id => @project),
+                :class => 'icon icon-edit' %>
+            <%= link_to hd_icon_label('del', l(:button_delete)),
+                helpdesk_contact_path(contact, :project_id => @project),
+                :method => :delete,
+                :data   => { :confirm => l(:text_are_you_sure) },
+                :class  => 'icon icon-del' %>
+          </td>
+        </tr>
+        <% if contact.notes.present? %>
+          <tr>
+            <td colspan="7" style="padding-left:1.5em; color:#555; font-size:0.9em;">
+              <%= contact.notes %>
+            </td>
+          </tr>
+        <% end %>
+      <% end %>
+    </tbody>
+  </table>
+
+  <span class="pagination"><%= pagination_links_full @contact_pages, @contact_count %></span>
+<% else %>
+  <p class="nodata"><%= l(:label_no_data) %></p>
+<% end %>

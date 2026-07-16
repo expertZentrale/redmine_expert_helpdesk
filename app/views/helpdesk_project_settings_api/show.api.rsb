@@ -1,0 +1,1 @@
+RedmineExpertHelpdesk::ApiSerializers.project_setting(api, @setting, @priorities)

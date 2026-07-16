@@ -1,0 +1,124 @@
+<%# SLA-Statistik des Projekts (Diagramme via Chart.js, lokal gebundelt) %>
+<% html_title l(:label_helpdesk_sla_statistics) %>
+<% content_for :header_tags do %>
+  <%= javascript_include_tag 'chart.umd.min', 'chartjs-plugin-datalabels.min', 'helpdesk_sla_stats', :plugin => 'redmine_expert_helpdesk' %>
+<% end %>
+
+<h2><%= l(:label_helpdesk_sla_statistics) %></h2>
+
+<%= form_tag helpdesk_sla_statistics_path(:project_id => @project), :method => :get,
+             :class => 'hd-stats-filter' do %>
+  <label><%= l(:label_helpdesk_stats_group_by) %>:
+    <%= select_tag :period,
+          options_for_select(
+            RedmineExpertHelpdesk::SlaStatistics::PERIODS.map { |p| [l("label_helpdesk_stats_#{p}"), p] },
+            @period) %>
+  </label>
+  <label><%= l(:label_helpdesk_stats_from) %>:
+    <%= date_field_tag :date_from, @date_from.iso8601 %></label>
+  <label><%= l(:label_helpdesk_stats_to) %>:
+    <%= date_field_tag :date_to, @date_to.iso8601 %></label>
+  <%= submit_tag l(:button_apply), :name => nil %>
+<% end %>
+
+<% totals = @stats[:totals] %>
+<% if totals[:tickets] == 0 %>
+  <p class="nodata"><%= l(:label_helpdesk_stats_no_data) %></p>
+<% else %>
+  <%# --- KPI-Kacheln --- %>
+  <div class="hd-stats-tiles">
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= totals[:tickets] %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_stats_tickets) %></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= totals[:open] %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_stats_open) %></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= totals[:closed] %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_stats_closed) %></span>
+    </div>
+    <div class="hd-stats-tile hd-stats-tile-alert">
+      <span class="hd-stats-num"><%= totals[:breached_open] %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_stats_open_breached) %></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= hd_stats_minutes(@stats[:avg][:reaction_mean]) %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_stats_avg_first_response) %>
+        <em>(<%= l(:label_helpdesk_stats_median) %> <%= hd_stats_minutes(@stats[:avg][:reaction_median]) %>)</em></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= hd_stats_minutes(@stats[:avg][:solution_mean]) %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_stats_avg_resolution) %>
+        <em>(<%= l(:label_helpdesk_stats_median) %> <%= hd_stats_minutes(@stats[:avg][:solution_median]) %>)</em></span>
+    </div>
+  </div>
+
+  <%# --- SLA-Erfuellung --- %>
+  <h3><%= l(:label_helpdesk_stats_compliance) %></h3>
+  <div class="hd-chart-box hd-chart-box-sm"><canvas id="hd-chart-compliance"></canvas></div>
+  <p class="hd-stats-muted">
+    <% [[:reaction, :label_helpdesk_sla_reaction], [:solution, :label_helpdesk_sla_solution]].each do |ck, lbl| %>
+      <% c = @stats[:compliance][ck] %>
+      <span><%= l(lbl) %>:
+        <strong><%= c[:met_ratio] ? "#{c[:met_ratio]}%" : '–' %></strong>
+        (<%= l(:label_helpdesk_sla_met) %> <%= c[:met] %> / <%= l(:label_helpdesk_sla_breached) %> <%= c[:breached_done] %><%
+          %><% if c[:breached_open] > 0 %> · <%= l(:label_helpdesk_stats_open_breached) %> <%= c[:breached_open] %><% end %><%
+          %><% if c[:warning] > 0 %> · <%= l(:label_helpdesk_sla_warning) %> <%= c[:warning] %><% end %>)</span>
+      <% unless ck == :solution %><br><% end %>
+    <% end %>
+  </p>
+
+  <%# --- Ticketvolumen --- %>
+  <h3><%= l(:label_helpdesk_stats_volume) %></h3>
+  <div class="hd-chart-box"><canvas id="hd-chart-volume"></canvas></div>
+
+  <%# --- Durchschnittszeiten im Zeitverlauf --- %>
+  <h3><%= l(:label_helpdesk_stats_avg_over_time) %></h3>
+  <div class="hd-chart-box"><canvas id="hd-chart-avg"></canvas></div>
+
+  <%# --- Stosszeiten --- %>
+  <div class="hd-stats-busy">
+    <div class="hd-stats-busy-col">
+      <h3><%= l(:label_helpdesk_stats_busiest_hours) %></h3>
+      <div class="hd-chart-box"><canvas id="hd-chart-hours"></canvas></div>
+    </div>
+    <div class="hd-stats-busy-col">
+      <h3><%= l(:label_helpdesk_stats_busiest_weekdays) %></h3>
+      <div class="hd-chart-box"><canvas id="hd-chart-weekdays"></canvas></div>
+    </div>
+  </div>
+
+  <%
+    chart_data = {
+      :labels => {
+        :created  => l(:label_helpdesk_stats_created),
+        :closed   => l(:label_helpdesk_stats_closed),
+        :reaction => l(:label_helpdesk_sla_reaction),
+        :solution => l(:label_helpdesk_sla_solution),
+        :met      => l(:label_helpdesk_sla_met),
+        :breached => l(:label_helpdesk_sla_breached),
+        :hours    => l(:label_helpdesk_stats_busiest_hours),
+        :weekdays => l(:label_helpdesk_stats_busiest_weekdays)
+      },
+      :volume => {
+        :labels  => @stats[:volume].map { |b| b[:label] },
+        :created => @stats[:volume].map { |b| b[:created] },
+        :closed  => @stats[:volume].map { |b| b[:closed] }
+      },
+      :avgTrend => {
+        :labels   => @stats[:avg_trend].map { |b| b[:label] },
+        :reaction => @stats[:avg_trend].map { |b| b[:reaction] },
+        :solution => @stats[:avg_trend].map { |b| b[:solution] }
+      },
+      :compliance => {
+        :reaction => { :met => @stats[:compliance][:reaction][:met], :breached => @stats[:compliance][:reaction][:breached_done] },
+        :solution => { :met => @stats[:compliance][:solution][:met], :breached => @stats[:compliance][:solution][:breached_done] }
+      },
+      :busiestHours    => { :labels => (0..23).map { |h| format('%02d', h) }, :data => @stats[:busiest_hours] },
+      :busiestWeekdays => { :labels => (1..7).map { |i| hd_stats_weekday_name(i) }, :data => @stats[:busiest_weekdays] }
+    }
+  %>
+  <script type="application/json" id="hd-sla-stats-data"><%= raw chart_data.to_json %></script>
+<% end %>

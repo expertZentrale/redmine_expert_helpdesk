@@ -1,0 +1,75 @@
+<%# Kontakt bearbeiten %>
+<h2><%= l(:label_helpdesk_edit_customer) %>: <%= @contact.display_name %></h2>
+
+<%= form_for @contact,
+    :url    => helpdesk_contact_path(@contact, :project_id => @project),
+    :method => :put do |f| %>
+
+  <%= render :partial => 'shared/error_messages', :locals => { :objects => [@contact] } rescue nil %>
+
+  <div class="box tabular">
+    <p>
+      <label><%= l(:label_helpdesk_email) %></label>
+      <%= @contact.email %>
+    </p>
+    <p>
+      <%= f.label :name, l(:field_name) %>
+      <%= f.text_field :name, :size => 50 %>
+    </p>
+    <p>
+      <%= f.label :company, l(:label_helpdesk_company) %>
+      <%= f.text_field :company, :size => 50 %>
+    </p>
+    <p>
+      <%= f.label :phone, l(:label_helpdesk_phone) %>
+      <%= f.text_field :phone, :size => 30 %>
+    </p>
+    <p>
+      <%= f.label :notes, l(:field_notes) %>
+      <%= f.text_area :notes, :rows => 5, :cols => 60 %>
+    </p>
+  </div>
+
+  <p>
+    <%= f.submit l(:button_save) %>
+    &nbsp;
+    <%= link_to l(:button_cancel), helpdesk_contacts_path(:project_id => @project) %>
+  </p>
+<% end %>
+
+<% if @contact_issues_total > 0 %>
+  <hr />
+  <h3><%= l(:label_helpdesk_previous_tickets) %>
+    &nbsp;<small><%= link_to l(:label_helpdesk_all_tickets),
+        project_issues_path(@project,
+          :set_filter => 1,
+          :f          => ['helpdesk_kunde'],
+          :op         => { :helpdesk_kunde => '=' },
+          :v          => { :helpdesk_kunde => [@contact.email] }) %></small>
+  </h3>
+  <table class="list">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th><%= l(:field_subject) %></th>
+        <th><%= l(:field_status) %></th>
+        <th><%= l(:field_updated_on) %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @contact_issues.each do |issue| %>
+        <tr>
+          <td><%= link_to "##{issue.id}", issue_path(issue) %></td>
+          <td><%= link_to issue.subject, issue_path(issue) %></td>
+          <td><%= issue.status.name %></td>
+          <td><%= format_date(issue.updated_on) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <% if @contact_issues_total > @ticket_limit %>
+    <p style="color:#666; font-size:0.9em; margin-top:0.3em;">
+      <%= l(:label_helpdesk_showing_latest_n, :n => @ticket_limit, :total => @contact_issues_total) %>
+    </p>
+  <% end %>
+<% end %>

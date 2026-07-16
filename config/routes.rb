@@ -1,0 +1,70 @@
+# Routen des Expert-Helpdesk-Plugins
+RedmineApp::Application.routes.draw do
+  # Manueller Mailabruf pro Projekt (Button in den Projekteinstellungen)
+  post 'projects/:project_id/helpdesk/fetch', :to => 'helpdesk_fetch#fetch', :as => 'project_helpdesk_fetch'
+
+  # Globaler Abruf aller aktiven Postfaecher (z. B. via curl/CronJob), gesichert per API-Key
+  match 'helpdesk/fetch_all', :to => 'helpdesk_fetch#fetch_all', :via => [:get, :post], :as => 'helpdesk_fetch_all'
+
+  # SLA-Pruefung fuer externen CronJob, gesichert per eigenem API-Key
+  match 'helpdesk/sla_check', :to => 'helpdesk_fetch#sla_check', :via => [:get, :post], :as => 'helpdesk_sla_check'
+
+  # Manueller PhishTank-Sync (Button in den Plugin-Einstellungen, nur Admins)
+  post 'helpdesk/phishtank_sync', :to => 'helpdesk_phishtank#sync', :as => 'helpdesk_phishtank_sync'
+
+  # Import der Altdaten aus redmine_contacts (Button in den Plugin-Einstellungen, nur Admins)
+  get  'helpdesk/legacy_import/select', :to => 'helpdesk_legacy_import#new', :as => 'helpdesk_legacy_import_select'
+  post 'helpdesk/legacy_import', :to => 'helpdesk_legacy_import#import', :as => 'helpdesk_legacy_import'
+  post 'helpdesk/legacy_fix_attachments', :to => 'helpdesk_legacy_import#fix_attachments', :as => 'helpdesk_legacy_fix_attachments'
+
+  # Postfach-Konfiguration je Projekt
+  scope 'projects/:project_id' do
+    resources :helpdesk_mailboxes, :except => [:index, :show] do
+      collection do
+        get  :folders
+        post :create_folder
+      end
+    end
+
+    # Kundenliste und -bearbeitung je Projekt
+    resources :helpdesk_contacts, :only => [:index, :edit, :update, :destroy] do
+      collection do
+        get :autocomplete
+      end
+    end
+
+    # Projekt-spezifische Helpdesk-Einstellungen (Antwort-Standardwerte)
+    resource :helpdesk_project_setting, :only => [:update]
+
+    # SLA-Statistik je Projekt (nur sichtbar/erreichbar bei aktivem SLA)
+    resources :helpdesk_sla_statistics, :only => [:index]
+
+    # REST-API (projektbezogen: Liste/Anlegen), JSON/XML via .api.rsb
+    resources :helpdesk_contacts_api, :path => 'helpdesk/contacts',
+              :controller => 'helpdesk_contacts_api', :only => [:index, :create]
+    resources :helpdesk_tickets_api, :path => 'helpdesk/tickets',
+              :controller => 'helpdesk_tickets_api', :only => [:index, :create]
+    # Projekt-Helpdesk-Einstellungen (Singleton je Projekt)
+    resource :helpdesk_project_setting_api, :path => 'helpdesk/settings',
+             :controller => 'helpdesk_project_settings_api', :only => [:show, :update]
+  end
+
+  # REST-API (global per ID: Anzeigen/Aendern/Loeschen)
+  resources :helpdesk_contacts_api, :path => 'helpdesk/contacts',
+            :controller => 'helpdesk_contacts_api', :only => [:show, :update, :destroy]
+  resources :helpdesk_tickets_api, :path => 'helpdesk/tickets',
+            :controller => 'helpdesk_tickets_api', :only => [:show, :update, :destroy]
+
+  # Regeln je Postfach
+  resources :helpdesk_mailboxes, :only => [] do
+    resources :helpdesk_rules, :only => [:create, :destroy]
+  end
+
+  # Antwort an den Kunden aus dem Ticket heraus
+  post 'issues/:issue_id/helpdesk_reply', :to => 'helpdesk_replies#create', :as => 'issue_helpdesk_reply'
+
+  # Kontakt manuell zuordnen / initiale Mail senden (bestehende Tickets)
+  scope 'projects/:project_id' do
+    post 'issues/:issue_id/helpdesk_init', :to => 'helpdesk_init#create', :as => 'issue_helpdesk_init'
+  end
+end

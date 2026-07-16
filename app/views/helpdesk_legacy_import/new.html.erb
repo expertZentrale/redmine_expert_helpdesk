@@ -1,0 +1,58 @@
+<%# Auswahl der Projekte fuer den Alt-Kontaktimport (nur Admins) %>
+<% html_title l(:label_helpdesk_legacy_import_select) %>
+<h2><%= l(:label_helpdesk_legacy_import_select) %></h2>
+
+<p><em class="info"><%= l(:text_helpdesk_legacy_import_select_info) %></em></p>
+
+<%= form_tag helpdesk_legacy_import_path, :method => :post do %>
+  <fieldset class="box">
+    <legend>
+      <label>
+        <%= check_box_tag 'toggle_all', '1', true, :id => 'hd-legacy-toggle-all' %>
+        <%= l(:label_helpdesk_legacy_select_all) %>
+      </label>
+    </legend>
+
+    <% @project_options.each do |opt| %>
+      <%
+        label =
+          if opt[:project_id].nil?
+            l(:label_helpdesk_legacy_no_project)
+          elsif opt[:name].blank?
+            l(:label_helpdesk_legacy_deleted_project, :id => opt[:project_id])
+          else
+            opt[:name]
+          end
+        value = opt[:project_id].nil? ? 'none' : opt[:project_id]
+      %>
+      <p>
+        <label>
+          <%= check_box_tag 'project_ids[]', value, true, :class => 'hd-legacy-project' %>
+          <%= label %>
+          <span class="hd-stats-muted">
+            (<%= opt[:count] %> –
+             <%= opt[:with_issues] %> <%= l(:label_helpdesk_legacy_with_issues) %>,
+             <%= opt[:without_issues] %> <%= l(:label_helpdesk_legacy_without_issues) %>)
+          </span>
+        </label>
+      </p>
+    <% end %>
+  </fieldset>
+
+  <p>
+    <%= submit_tag l(:button_helpdesk_legacy_import),
+                   :data => { :confirm => l(:text_helpdesk_legacy_import_confirm) } %>
+    <%= link_to l(:button_cancel), plugin_settings_path('redmine_expert_helpdesk') %>
+  </p>
+<% end %>
+
+<%= javascript_tag do %>
+  (function () {
+    var all = document.getElementById('hd-legacy-toggle-all');
+    if (!all) { return; }
+    all.addEventListener('change', function () {
+      var boxes = document.querySelectorAll('.hd-legacy-project');
+      for (var i = 0; i < boxes.length; i++) { boxes[i].checked = all.checked; }
+    });
+  })();
+<% end %>

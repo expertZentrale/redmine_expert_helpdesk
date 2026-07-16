@@ -1,0 +1,117 @@
+<%# Helpdesk-Info-Leiste innerhalb der Ticketfelder (view_issues_show_details_bottom).
+    Eingehende Tickets: Absender, EML-Download-Link, Empfangszeitstempel.
+    Ausgehende Tickets (initiale Mail): Empfaenger (An/CC/BCC) und Sendezeitpunkt.
+    Locals: issue, inbound (HelpdeskMessage|nil), outbound (HelpdeskMessage|nil), contact %>
+<% outbound = nil unless defined?(outbound) %>
+<div class="helpdesk-issue-header">
+  <span class="hih-from">
+    <% recipients_tooltip = []
+       recipients_tooltip << "An: #{inbound.recipient_to}" if inbound&.recipient_to.present?
+       recipients_tooltip << "CC: #{inbound.recipient_cc}" if inbound&.recipient_cc.present?
+    %>
+    <span class="icon icon-email"<% if recipients_tooltip.any? %> title="<%= recipients_tooltip.map { |r| h(r) }.join('&#10;').html_safe %>"<% end %>><%= hd_icon_label('email') %></span>
+    <%= link_to contact.display_name,
+        edit_helpdesk_contact_path(contact, :project_id => issue.project),
+        :title => l(:label_helpdesk_customer) %>
+    (<%= mail_to contact.email, contact.email %>)
+  </span>
+
+  <% if outbound %>
+    <%# Initiale ausgehende Mail: alle Empfaenger anzeigen %>
+    <span class="hih-sent">
+      <%= l(:label_helpdesk_sent_to) %>:
+      <% to_addrs = outbound.recipient_to.to_s.split(/[,;]+/).map(&:strip).reject(&:blank?) %>
+      <span title="<%= h(to_addrs.join(', ')) %>"><%= h(to_addrs.first.to_s) %></span>
+      <% if to_addrs.size > 1 %>
+        <span class="hih-addr-tag" title="<%= h(to_addrs.join(', ')) %>">+<%= to_addrs.size - 1 %></span>
+      <% end %>
+      <% if outbound.recipient_cc.present? %>
+        <span class="hih-addr-tag" title="CC: <%= h(outbound.recipient_cc) %>">CC</span>
+      <% end %>
+      <% if outbound.recipient_bcc.present? %>
+        <span class="hih-addr-tag" title="BCC: <%= h(outbound.recipient_bcc) %>">BCC</span>
+      <% end %>
+      <% sent_files = outbound.sent_attachments.to_s.split(/,\s*/).reject(&:blank?) %>
+      <% if sent_files.any? %>
+        <span class="icon icon-attachment"><%= hd_icon_label('attachment') %></span>
+        <span class="hih-addr-tag" title="<%= h(sent_files.join(', ')) %>"><%=
+          sent_files.size == 1 ? h(sent_files.first) : "#{sent_files.size} Anhänge" %></span>
+      <% end %>
+    </span>
+  <% end %>
+
+  <% if inbound&.eml_attachment_id.present? %>
+    <span class="hih-eml">
+      <span class="icon icon-attachment"><%= hd_icon_label('attachment') %></span>
+      <%= link_to "#{l(:label_helpdesk_original_mail)} (#{number_to_human_size(inbound.eml_attachment.filesize)})",
+          download_named_attachment_path(inbound.eml_attachment_id, inbound.eml_attachment.filename) %>
+    </span>
+  <% end %>
+
+  <% if inbound&.sent_at.present? %>
+    <span class="hih-time"><%= format_time(inbound.sent_at) %></span>
+  <% elsif outbound&.sent_at.present? %>
+    <span class="hih-time"><%= format_time(outbound.sent_at) %></span>
+  <% end %>
+</div>
+
+<style>
+.helpdesk-issue-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f0f4fb;
+  border: 1px solid #c8d8ec;
+  border-radius: 3px;
+  padding: 5px 10px;
+  margin: 8px 0 4px 0;
+  font-size: 0.9em;
+  color: #444;
+  flex-wrap: wrap;
+}
+.helpdesk-issue-header a { color: #3a6699; }
+.hih-time { margin-left: auto; color: #888; white-space: nowrap; }
+.hih-addr-tag {
+  display: inline-block;
+  font-size: 0.85em;
+  padding: 0 5px;
+  line-height: 1.5;
+  border-radius: 3px;
+  background: #dde8f6;
+  color: #3a6699;
+  cursor: default;
+  border: 1px solid #c0d4ed;
+}
+a.hd-reply-btn { color: #2a7a2a !important; font-weight: bold; }
+</style>
+
+<script>
+//<![CDATA[
+(function() {
+  function hdInjectReplyBtn() {
+    if (document.getElementById('hd-reply-link')) return;
+    var contextual = document.querySelector('#content > div.contextual');
+    if (!contextual) return;
+    var link = document.createElement('a');
+    link.id        = 'hd-reply-link';
+    link.href      = '/issues/<%= issue.id %>';
+    link.className = 'icon icon-email hd-reply-btn';
+    link.textContent = '<%= j(l(:button_helpdesk_reply)) %>';
+    if (window.hdSpriteIcon) { link.insertAdjacentHTML('afterbegin', window.hdSpriteIcon('email')); }
+    link.setAttribute('onclick',
+      "showAndScrollTo('update','hd-send-mail-cb');" +
+      "var cb=document.getElementById('hd-send-mail-cb');" +
+      "if(cb&&!cb.checked){cb.checked=true;}" +
+      "var ex=document.getElementById('hd-mail-extra');" +
+      "if(ex)ex.style.display='';" +
+      "return false;");
+    contextual.insertBefore(link, contextual.firstChild);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', hdInjectReplyBtn);
+  } else {
+    hdInjectReplyBtn();
+  }
+})();
+//]]>
+</script>

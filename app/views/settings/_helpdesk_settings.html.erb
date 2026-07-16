@@ -1,0 +1,147 @@
+<%# Zentrale Konfiguration der Azure-App-Registrierung (Administration -> Plugins) %>
+<table>
+  <tr>
+    <td style="vertical-align: top; padding-right: 2em;">
+      <p>
+        <label><%= l(:label_helpdesk_tenant_id) %></label>
+        <%= text_field_tag 'settings[tenant_id]', @settings['tenant_id'], :size => 50 %>
+      </p>
+      <p>
+        <label><%= l(:label_helpdesk_client_id) %></label>
+        <%= text_field_tag 'settings[client_id]', @settings['client_id'], :size => 50 %>
+      </p>
+      <p>
+        <label><%= l(:label_helpdesk_client_secret) %></label>
+        <%= password_field_tag 'settings[client_secret]', @settings['client_secret'], :size => 50 %>
+      </p>
+      <p>
+        <label><%= l(:label_helpdesk_fetch_api_key) %></label>
+        <%= text_field_tag 'settings[fetch_api_key]', @settings['fetch_api_key'], :size => 50 %>
+        <em class="info"><%= l(:text_helpdesk_fetch_api_key_info) %></em>
+      </p>
+      <p>
+        <label><%= l(:label_helpdesk_sla_api_key) %></label>
+        <%= text_field_tag 'settings[sla_api_key]', @settings['sla_api_key'], :size => 50 %>
+        <em class="info"><%= l(:text_helpdesk_sla_api_key_info) %></em>
+      </p>
+    </td>
+    <td style="vertical-align: top;">
+      <div class="wiki">
+        <strong><%= l(:label_helpdesk_azure_hints) %></strong>
+        <ul>
+          <li>Application-Permissions: <code>Mail.ReadWrite</code>, <code>Mail.Send</code> (Admin-Consent erforderlich)</li>
+          <li>Zugriff per <code>ApplicationAccessPolicy</code> auf die Helpdesk-Postf&auml;cher einschr&auml;nken</li>
+          <li>Abruf aller Postf&auml;cher: <code>curl "<%= Setting.protocol %>://<%= Setting.host_name %>/helpdesk/fetch_all?key=API-KEY"</code></li>
+        </ul>
+      </div>
+    </td>
+  </tr>
+</table>
+
+<hr />
+<h3 style="margin-top:1em;"><%= l(:label_helpdesk_display_settings) %></h3>
+<p>
+  <label><%= l(:label_helpdesk_contacts_per_page) %></label>
+  <%= text_field_tag 'settings[contacts_per_page]', @settings['contacts_per_page'].presence || '25', :size => 5 %>
+  <em class="info"><%= l(:text_helpdesk_contacts_per_page_info) %></em>
+</p>
+<p>
+  <label><%= l(:label_helpdesk_contact_ticket_limit) %></label>
+  <%= text_field_tag 'settings[contact_ticket_limit]', @settings['contact_ticket_limit'].presence || '10', :size => 5 %>
+  <em class="info"><%= l(:text_helpdesk_contact_ticket_limit_info) %></em>
+</p>
+
+<hr />
+<h3 style="margin-top:1em;"><%= l(:label_helpdesk_global_footer) %></h3>
+<p>
+  <label><%= l(:field_helpdesk_global_footer) %></label>
+  <%= text_area_tag 'settings[global_footer]', @settings['global_footer'], :rows => 5, :cols => 70, :id => 'settings_global_footer' %>
+  <%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'settings_global_footer' } %>
+  <em class="info"><%= l(:text_helpdesk_global_footer_info) %></em>
+</p>
+
+<hr />
+<h3 style="margin-top:1em;"><%= l(:label_helpdesk_phishtank) %></h3>
+<p>
+  <%= hidden_field_tag 'settings[phishtank_enabled]', '0' %>
+  <%= check_box_tag 'settings[phishtank_enabled]', '1', @settings['phishtank_enabled'] == '1',
+                    :id => 'settings_phishtank_enabled' %>
+  <%= label_tag 'settings_phishtank_enabled', l(:field_helpdesk_phishtank_enabled) %>
+  <em class="info"><%= l(:text_helpdesk_phishtank_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_phishtank_app_key) %></label>
+  <%= text_field_tag 'settings[phishtank_app_key]', @settings['phishtank_app_key'], :size => 50 %>
+  <em class="info"><%= l(:text_helpdesk_phishtank_app_key_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_phishtank_feed_url) %></label>
+  <%= text_field_tag 'settings[phishtank_feed_url]',
+                     @settings['phishtank_feed_url'].presence || RedmineExpertHelpdesk::PhishtankSync::DEFAULT_FEED_URL,
+                     :size => 70 %>
+  <em class="info"><%= l(:text_helpdesk_phishtank_feed_url_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_phishtank_interval_hours) %></label>
+  <%= text_field_tag 'settings[phishtank_interval_hours]', @settings['phishtank_interval_hours'].presence || '6', :size => 5 %>
+  <em class="info"><%= l(:text_helpdesk_phishtank_interval_info) %></em>
+</p>
+<p>
+  <%= hidden_field_tag 'settings[phishing_database_enabled]', '0' %>
+  <%= check_box_tag 'settings[phishing_database_enabled]', '1', @settings['phishing_database_enabled'] == '1',
+                    :id => 'settings_phishing_database_enabled' %>
+  <%= label_tag 'settings_phishing_database_enabled', l(:field_helpdesk_phishing_database_enabled) %>
+  <em class="info"><%= l(:text_helpdesk_phishing_database_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_phishing_database_feed_url) %></label>
+  <%= text_field_tag 'settings[phishing_database_feed_url]',
+                     @settings['phishing_database_feed_url'].presence || RedmineExpertHelpdesk::PhishingDatabaseSync::DEFAULT_FEED_URL,
+                     :size => 70 %>
+</p>
+<p>
+  <% counts  = HelpdeskPhishingUrl.group(:source).count %>
+  <% imports = HelpdeskPhishingUrl.group(:source).maximum(:imported_at) %>
+  <% HelpdeskPhishingUrl::SOURCES.each do |source| %>
+    <em class="info">
+      <%= l(:text_helpdesk_phishing_source_status,
+            :source => source,
+            :count => counts[source] || 0,
+            :last_import => imports[source] ? format_time(imports[source]) : '–') %>
+    </em><br />
+  <% end %>
+</p>
+<p>
+  <%= link_to hd_icon_label('reload', l(:button_helpdesk_phishtank_sync)), helpdesk_phishtank_sync_path,
+              :method => :post, :class => 'icon icon-reload',
+              :data => { :confirm => l(:text_helpdesk_phishtank_sync_confirm) } %>
+</p>
+
+<% legacy_available = RedmineExpertHelpdesk::LegacyContactsImport.available? %>
+<% misplaced_count  = RedmineExpertHelpdesk::LegacyContactsImport.misplaced_attachment_count %>
+<% if legacy_available || misplaced_count > 0 %>
+  <hr />
+  <h3 style="margin-top:1em;"><%= l(:label_helpdesk_legacy_import) %></h3>
+  <% if legacy_available %>
+    <p>
+      <em class="info">
+        <%= l(:text_helpdesk_legacy_import_info,
+              :count => RedmineExpertHelpdesk::LegacyContactsImport.legacy_contact_count) %>
+      </em>
+    </p>
+    <p>
+      <%= link_to hd_icon_label('reload', l(:button_helpdesk_legacy_import)), helpdesk_legacy_import_select_path,
+                  :class => 'icon icon-reload' %>
+    </p>
+  <% end %>
+  <% if misplaced_count > 0 %>
+    <p>
+      <em class="info"><%= l(:text_helpdesk_legacy_fix_info, :count => misplaced_count) %></em>
+    </p>
+    <p>
+      <%= link_to hd_icon_label('attachment', l(:button_helpdesk_legacy_fix)), helpdesk_legacy_fix_attachments_path,
+                  :method => :post, :class => 'icon icon-attachment',
+                  :data => { :confirm => l(:text_helpdesk_legacy_fix_confirm) } %>
+    </p>
+  <% end %>
+<% end %>

@@ -1,0 +1,39 @@
+<%# Clickbare Makro-Chips: Klick fuegt das Makro an der Cursor-Position im Zielfeld ein.
+    Locals: field_id (String) — HTML-id des Ziel-Inputs/Textareas %>
+<% unless @hd_macro_chips_assets_loaded
+     @hd_macro_chips_assets_loaded = true %>
+  <% content_for :header_tags do %>
+    <style>
+      .hd-macro-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
+      .hd-macro-label { font-size: 0.82em; color: #888; white-space: nowrap; }
+      .hd-macro-chip {
+        cursor: pointer; font-family: monospace; font-size: 0.82em;
+        background: #eef2ff; border: 1px solid #b0c4f8; border-radius: 3px;
+        padding: 1px 6px; color: #2244aa; user-select: none;
+        transition: background 0.12s, border-color 0.12s;
+      }
+      .hd-macro-chip:hover { background: #d4e0ff; border-color: #5577cc; color: #001880; }
+    </style>
+    <script>
+      document.addEventListener('click', function(ev) {
+        if (!ev.target.classList.contains('hd-macro-chip')) return;
+        var macro = ev.target.dataset.macro;
+        var field = document.getElementById(ev.target.dataset.target);
+        if (!field) return;
+        var start = field.selectionStart;
+        var end   = field.selectionEnd;
+        field.value = field.value.substring(0, start) + macro + field.value.substring(end);
+        field.selectionStart = field.selectionEnd = start + macro.length;
+        field.focus();
+        // Input-Event ausloesen, damit Live-Vorschauen (z. B. Fusszeile) aktualisieren
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    </script>
+  <% end %>
+<% end %>
+<span class="hd-macro-bar">
+  <span class="hd-macro-label"><%= l(:label_helpdesk_macros) %>:</span>
+  <% %w[{{ticket_id}} {{ticket_subject}} {{ticket_url}} {{contact_name}} {{contact_email}} {{user_name}} {{project_name}}].each do |m| %>
+    <code class="hd-macro-chip" data-macro="<%= m %>" data-target="<%= field_id %>"><%= m %></code>
+  <% end %>
+</span>

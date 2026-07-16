@@ -1,0 +1,2 @@
+RedmineExpertHelpdesk::ApiSerializers.ticket(
+  api, @issue, :info => @info, :sla => @sla, :messages => @messages, :detail => true)

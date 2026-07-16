@@ -1,0 +1,131 @@
+<h2><%= l(:label_helpdesk_mailbox_edit) %>: <%= @mailbox.mailbox_address %></h2>
+
+<%= form_tag helpdesk_mailbox_path(@mailbox, :project_id => @project), :method => :put do %>
+  <%= render :partial => 'form' %>
+  <%= submit_tag l(:button_save) %>
+<% end %>
+
+<h3><%= l(:label_helpdesk_rules) %></h3>
+
+<% if @mailbox.helpdesk_rules.any? %>
+  <table class="list">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th><%= l(:field_helpdesk_condition) %></th>
+        <th><%= l(:field_helpdesk_action) %></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @mailbox.helpdesk_rules.order(:position).each do |rule| %>
+        <tr>
+          <td><%= rule.position %></td>
+          <td>
+            <%= l("label_helpdesk_field_#{rule.condition_field}") %>
+            <%= l("label_helpdesk_operator_#{rule.operator}") %>
+            "<%= rule.condition_value %>"
+          </td>
+          <td>
+            <%= l("label_helpdesk_action_#{rule.action_type}") %>
+            <% if rule.action_value.present? %>
+              "<%=
+                if rule.action_type == 'set_assignee'
+                  User.find_by(:login => rule.action_value)&.name || rule.action_value
+                else
+                  rule.action_value
+                end
+              %>"
+            <% end %>
+          </td>
+          <td class="buttons">
+            <%= link_to hd_icon_label('del', l(:button_delete)),
+                        helpdesk_mailbox_helpdesk_rule_path(@mailbox, rule),
+                        :method => :delete, :data => { :confirm => l(:text_are_you_sure) },
+                        :class => 'icon icon-del' %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <p class="nodata"><%= l(:label_no_data) %></p>
+<% end %>
+
+<%
+  rule_action_options = {
+    'set_priority' => IssuePriority.active.map { |p| [p.name, p.name] },
+    'set_tracker'  => @project.trackers.map    { |t| [t.name, t.name] },
+    'set_category' => @project.issue_categories.map { |c| [c.name, c.name] },
+    'set_assignee' => @project.users.sort_by(&:name).map { |u| [u.name, u.login] },
+    'ignore'       => []
+  }
+%>
+
+<%= form_tag helpdesk_mailbox_helpdesk_rules_path(@mailbox),
+    :id => 'hd-new-rule-form',
+    'data-action-options' => rule_action_options.to_json do %>
+  <fieldset class="box">
+    <legend><%= l(:label_helpdesk_rule_new) %></legend>
+    <%= select_tag 'helpdesk_rule[condition_field]',
+        options_for_select(HelpdeskRule::CONDITION_FIELDS.map { |f| [l("label_helpdesk_field_#{f}"), f] }) %>
+    <%= select_tag 'helpdesk_rule[operator]',
+        options_for_select(HelpdeskRule::OPERATORS.map { |o| [l("label_helpdesk_operator_#{o}"), o] }) %>
+    <%= text_field_tag 'helpdesk_rule[condition_value]', '', :size => 25,
+        :placeholder => l(:field_helpdesk_condition_value) %>
+    &rarr;
+    <%= select_tag 'helpdesk_rule[action_type]',
+        options_for_select(HelpdeskRule::ACTION_TYPES.map { |a| [l("label_helpdesk_action_#{a}"), a] }),
+        :id => 'hd-rule-action-type' %>
+    <span id="hd-rule-action-value-wrap"></span>
+    <%= submit_tag l(:button_add) %>
+  </fieldset>
+<% end %>
+
+<script>
+//<![CDATA[
+(function () {
+  var form = document.getElementById('hd-new-rule-form');
+  if (!form) return;
+
+  var actionOptions  = JSON.parse(form.dataset.actionOptions || '{}');
+  var typeSelect     = document.getElementById('hd-rule-action-type');
+  var valueWrap      = document.getElementById('hd-rule-action-value-wrap');
+  var submitBtn      = form.querySelector('[type="submit"]');
+
+  function buildValueField() {
+    var type = typeSelect.value;
+    var opts = actionOptions[type];
+    valueWrap.innerHTML = '';
+
+    if (!opts || opts.length === 0) {
+      // "ignore" oder leere Liste → kein Wertfeld nötig
+      return;
+    }
+
+    var sel = document.createElement('select');
+    sel.name = 'helpdesk_rule[action_value]';
+
+    var blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = '\u2013 <%= j(l(:field_helpdesk_action_value)) %> \u2013';
+    sel.appendChild(blank);
+
+    opts.forEach(function (pair) {
+      var opt = document.createElement('option');
+      opt.textContent = pair[0];
+      opt.value        = pair[1];
+      sel.appendChild(opt);
+    });
+
+    valueWrap.appendChild(sel);
+
+    // Leicht Abstand zum Submit-Button
+    valueWrap.insertAdjacentHTML('beforeend', '&ensp;');
+  }
+
+  typeSelect.addEventListener('change', buildValueField);
+  buildValueField();
+})();
+//]]>
+</script>

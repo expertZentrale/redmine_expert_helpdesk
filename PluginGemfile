@@ -1,0 +1,8 @@
+# Gems this plugin needs that are not in Redmine core's bundle.
+# Redmine loads this file automatically (plugins/*/{Gemfile,PluginGemfile}).
+#
+# base64: no longer a Ruby default gem on Ruby 4.0 (Redmine 7 / Rails 8), and
+# Redmine 7's Gemfile does not declare it. This plugin uses Base64.* for MIME
+# building (Graph client, agent replies, initial mail), so declare it explicitly.
+# Harmless on Redmine 5/6 (Ruby 3.x), where base64 still resolves.
+gem 'base64'

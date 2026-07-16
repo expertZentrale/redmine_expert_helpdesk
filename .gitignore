@@ -1,0 +1,8 @@
+# Local-only dev secrets (API keys, credentials) — never commit
+.dev.env
+.dev.env.*
+
+# claude and stuff
+.tokensave
+.claude
+

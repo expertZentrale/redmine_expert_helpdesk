@@ -1,0 +1,32 @@
+<%# SLA-Status am Ticket: zwei Uhren (Reaktion/Loesung) als Ampel-Chips.
+    Locals: sla_state (Hash von Sla.state_for) %>
+<%
+  fmt = ->(minutes) {
+    m = minutes.to_i
+    m >= 60 ? "#{m / 60}h #{m % 60}m" : "#{m}m"
+  }
+  chip = ->(clock_key, s) {
+    label = l(clock_key == :reaction ? :label_helpdesk_sla_reaction : :label_helpdesk_sla_solution)
+    case s[:status]
+    when :met
+      ["hd-sla-met", "#{label}: #{l(:label_helpdesk_sla_met)} (#{fmt.call(s[:minutes])} / #{fmt.call(s[:target])})"]
+    when :breached_done
+      ["hd-sla-breached", "#{label}: #{l(:label_helpdesk_sla_breached_done)} (#{fmt.call(s[:minutes])} / #{fmt.call(s[:target])})"]
+    when :breached
+      ["hd-sla-breached", "#{label}: #{l(:label_helpdesk_sla_breached)} (#{fmt.call(s[:minutes])} / #{fmt.call(s[:target])})"]
+    when :warning
+      ["hd-sla-warning", "#{label}: #{l(:label_helpdesk_sla_due_at, :time => (s[:due_at] ? format_time(s[:due_at]) : '?'))} (#{fmt.call(s[:minutes])} / #{fmt.call(s[:target])})"]
+    else # :running
+      ["hd-sla-running", "#{label}: #{l(:label_helpdesk_sla_due_at, :time => (s[:due_at] ? format_time(s[:due_at]) : '?'))}"]
+    end
+  }
+%>
+<div class="helpdesk-sla-box">
+  <span class="hd-sla-title"><%= l(:label_helpdesk_sla) %></span>
+  <% [:reaction, :solution].each do |clock| %>
+    <% s = sla_state[clock] %>
+    <% next unless s %>
+    <% css, text = chip.call(clock, s) %>
+    <span class="hd-sla-chip <%= css %>"><%= text %></span>
+  <% end %>
+</div>

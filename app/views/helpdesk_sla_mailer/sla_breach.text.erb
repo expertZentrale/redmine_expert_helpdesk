@@ -1,0 +1,14 @@
+<%# SLA-Ueberschreitungs-Benachrichtigung (Text) %>
+<%= l(:mail_body_helpdesk_sla_breach, :id => @issue.id, :subject => @issue.subject) %>
+
+<% @clocks.each do |clock| -%>
+<% s = @state[clock] -%>
+* <%= clock == :reaction ? l(:label_helpdesk_sla_reaction) : l(:label_helpdesk_sla_solution) %>: <%= l(:label_helpdesk_sla_breached) %> (<%= s[:minutes] %>/<%= s[:target] %> min)
+<% end -%>
+
+<%= l(:field_project) %>: <%= @issue.project.name %>
+<%= l(:field_priority) %>: <%= @issue.priority&.name %>
+<%= l(:field_author) %>: <%= @issue.author&.name %>
+<%= l(:field_assigned_to) %>: <%= @issue.assigned_to&.name || '-' %>
+
+<%= issue_url(@issue) %>

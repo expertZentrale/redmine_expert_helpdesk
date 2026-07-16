@@ -1,0 +1,6 @@
+api.array :helpdesk_contacts,
+          api_meta(:total_count => @contact_count, :offset => @offset, :limit => @limit) do
+  @contacts.each do |contact|
+    RedmineExpertHelpdesk::ApiSerializers.contact(api, contact)
+  end
+end
