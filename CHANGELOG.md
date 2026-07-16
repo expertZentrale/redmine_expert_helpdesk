@@ -1,5 +1,17 @@
 # Changelog – redmine_expert_helpdesk
 
+## [Unreleased] 2026-07-16 (72)
+
+### Added
+- GitHub-Actions-CI (`.github/workflows/ci.yml`): führt die MiniTest-Suite (unit +
+  integration) bei jedem Push und Pull Request gegen **alle aktuell unterstützten
+  Redmine-Versionen** in sauberer Umgebung aus. Build-Matrix: Redmine 5.1-stable (Ruby 3.2),
+  6.0-stable (Ruby 3.3), 6.1-stable (Ruby 3.3), 7.0-stable (Ruby 3.4). Pro Matrix-Eintrag
+  wird Redmine frisch ausgecheckt, das Plugin einkopiert, eine leere MariaDB (utf8mb4,
+  READ-COMMITTED, wie in Produktion) migriert und danach `redmine:plugins:migrate` +
+  `redmine:plugins:test` gestartet. CI-Badge und Test-/CI-Abschnitt in `README.md` /
+  `README.de.md` ergänzt.
+
 ## [Unreleased] 2026-07-16 (71)
 
 ### Added

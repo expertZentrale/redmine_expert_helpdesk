@@ -2,8 +2,14 @@
 
 # Redmine Expert Helpdesk
 
+[![CI](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml)
+
 E-Mail-zu-Ticket-Plugin für Redmine mit Microsoft-365-Anbindung über die
 Microsoft Graph API (OAuth 2.0 Client-Credentials-Flow, App-Only).
+
+Die Testsuite läuft bei jedem Push und Pull Request automatisch über
+[GitHub Actions](.github/workflows/ci.yml) gegen alle aktuell unterstützten
+Redmine-Versionen (5.1, 6.0, 6.1, 7.0) auf einer frischen MariaDB – siehe [Tests ausführen](#tests-ausführen).
 
 ## Funktionen
 
@@ -649,6 +655,21 @@ bundle exec ruby -Itest \
 - Nach einem Redmine-Versionsupdate.
 - Nach `bundle update`, um Gem-Kompatibilitätsprobleme zu erkennen.
 - In CI/CD als Schritt nach `redmine:plugins:migrate`.
+
+### Automatisierte Tests (GitHub Actions / CI)
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) führt die komplette Suite bei
+jedem Push und Pull Request aus. Eine Build-Matrix checkt jede unterstützte
+Redmine-Version frisch aus, kopiert das Plugin hinein, migriert eine leere MariaDB
+und startet die Tests – so werden alle Versionen in einem isolierten, reproduzierbaren
+Zustand geprüft:
+
+| Redmine | Ruby | Rails |
+|---------|------|-------|
+| 5.1-stable | 3.2 | 6.1 |
+| 6.0-stable | 3.3 | 7.2 |
+| 6.1-stable | 3.3 | 7.2 |
+| 7.0-stable | 3.4 | 8.1 |
 
 ### Container-Workflow
 

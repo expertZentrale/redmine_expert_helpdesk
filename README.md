@@ -2,8 +2,14 @@
 
 # Redmine expert Helpdesk
 
+[![CI](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml)
+
 Email-to-ticket plugin for Redmine with Microsoft 365 integration via the
 Microsoft Graph API (OAuth 2.0 Client Credentials Flow, app-only).
+
+The test suite runs automatically on every push and pull request via
+[GitHub Actions](.github/workflows/ci.yml) against all currently supported Redmine
+versions (5.1, 6.0, 6.1, 7.0) on a clean MariaDB — see [Tests](#tests).
 
 ## Features
 
@@ -267,6 +273,33 @@ curl -H "X-Redmine-API-Key: $KEY" -H "Content-Type: application/json" \
      -d '{"helpdesk_ticket":{"subject":"Printer down","tracker_id":1,"contact_email":"jane@acme.example"}}' \
      "https://redmine.example.com/projects/42/helpdesk/tickets.json"
 ```
+
+## Tests
+
+The plugin ships MiniTest unit and integration tests (`test/`). They require a
+Redmine environment (they load Redmine's own test helper and fixtures), so they
+run inside a Redmine checkout with the plugin in `plugins/redmine_expert_helpdesk`:
+
+```bash
+# All plugin tests
+bundle exec rake redmine:plugins:test NAME=redmine_expert_helpdesk RAILS_ENV=test
+
+# A single file / a single test
+bundle exec ruby -Itest plugins/redmine_expert_helpdesk/test/unit/sla_test.rb
+bundle exec ruby -Itest plugins/redmine_expert_helpdesk/test/unit/sla_test.rb -n test_reaction_deadline
+```
+
+**Continuous integration:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+runs the full suite on every push and pull request. A build matrix checks out each
+supported Redmine version fresh, copies the plugin in, migrates a clean MariaDB and
+runs the tests — so all versions are covered in an isolated, reproducible state:
+
+| Redmine | Ruby | Rails |
+|---------|------|-------|
+| 5.1-stable | 3.2 | 6.1 |
+| 6.0-stable | 3.3 | 7.2 |
+| 6.1-stable | 3.3 | 7.2 |
+| 7.0-stable | 3.4 | 8.1 |
 
 ## Azure App Registration (one-time setup)
 
