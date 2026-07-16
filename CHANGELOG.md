@@ -1,5 +1,15 @@
 # Changelog – redmine_expert_helpdesk
 
+## [Unreleased] 2026-07-16 (71)
+
+### Added
+- GitHub-Copilot-Instructions-Datei (`.github/copilot-instructions.md`): dieselben
+  Projektregeln und Architektur-Orientierung wie in `CLAUDE.md`, damit auch GitHub Copilot
+  die harten Vorgaben kennt (kein `docker exec`; Änderungen erfordern CHANGELOG-/README-Pflege;
+  deutsche Kommentare/i18n; keine ausgelieferten Migrationen editieren; Rebuild via
+  `docker-compose ... up --build`, da das Plugin ins Image kopiert wird). `CLAUDE.md` und
+  `.github/copilot-instructions.md` sind synchron zu halten.
+
 ## [Unreleased] 2026-07-13 (70)
 
 ### Added
