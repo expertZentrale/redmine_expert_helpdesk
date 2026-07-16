@@ -1,6 +1,6 @@
-> 🇬🇧 English version · [Deutsche Version](README.de.md)
+> English version · [Deutsche Version](README.de.md)
 
-# Redmine Expert Helpdesk
+# Redmine expert Helpdesk
 
 Email-to-ticket plugin for Redmine with Microsoft 365 integration via the
 Microsoft Graph API (OAuth 2.0 Client Credentials Flow, app-only).
