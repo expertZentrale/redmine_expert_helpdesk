@@ -1,5 +1,22 @@
 # Changelog – redmine_expert_helpdesk
 
+## [Unreleased] 2026-07-16 (73)
+
+### Fixed
+- Testsuite unter CI grün gemacht (der erste CI-Lauf deckte 6 Failures + 4 Errors auf,
+  identisch über alle Redmine-Versionen — die CI-Umgebung selbst war korrekt):
+  - **Bugfix Code:** `PhishingDatabaseSync#build_rows` änderte den Feed-String per
+    `force_encoding` in-place und scheiterte an eingefrorenen Strings
+    (`can't modify frozen String`). Jetzt wird vor der Verarbeitung dupliziert
+    (`lib/redmine_expert_helpdesk/phishing_database_sync.rb`).
+  - **Testfix:** `TemplateRendererTest` und `HelpdeskRuleTest` nutzten Mocha
+    `mock(attr => val)` (erwartet *genau ein* Aufruf) für Felder, die der Code
+    berechtigterweise mehrfach bzw. wegen Kurzschluss gar nicht liest (`issue.id`,
+    `issue.project`, `project.trackers`, `user.id`). Auf tolerante `stubs` umgestellt.
+  - **Testfix:** `HelpdeskApiTest#test_api_disabled_rejects_key` erwartete 401; Redmine
+    antwortet bei deaktivierter REST-API in `require_login` (format.api) jedoch mit
+    403 Forbidden. Erwartung auf `:forbidden` korrigiert.
+
 ## [Unreleased] 2026-07-16 (72)
 
 ### Added

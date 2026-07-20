@@ -34,9 +34,11 @@ class HelpdeskApiTest < Redmine::IntegrationTest
   end
 
   def test_api_disabled_rejects_key
+    # Bei deaktivierter REST-API ignoriert Redmine den Key und antwortet in
+    # require_login (format.api) mit 403 Forbidden (nicht 401) — Core-Verhalten.
     Setting.rest_api_enabled = '0'
     get "/projects/#{@project.id}/helpdesk/contacts.json", :headers => auth
-    assert_response :unauthorized
+    assert_response :forbidden
   end
 
   def test_contact_create_forbidden_without_permission

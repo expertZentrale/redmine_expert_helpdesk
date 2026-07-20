@@ -20,8 +20,14 @@ class TemplateRendererTest < ActiveSupport::TestCase
   end
 
   def test_renders_issue_dot_notation
-    project = mock('project', :name => 'Support')
-    issue   = mock('issue', :id => 42, :subject => 'Server ausgefallen', :project => project)
+    # stubs statt mock(attr => val): der Renderer darf Felder wie issue.id
+    # mehrfach lesen; wir pruefen die Ausgabe, nicht die Aufrufanzahl.
+    project = mock('project')
+    project.stubs(:name).returns('Support')
+    issue = mock('issue')
+    issue.stubs(:id).returns(42)
+    issue.stubs(:subject).returns('Server ausgefallen')
+    issue.stubs(:project).returns(project)
     result  = RedmineExpertHelpdesk::TemplateRenderer.render(
       '[#{{issue.id}}] {{issue.subject}} ({{project.name}})',
       :issue => issue
@@ -48,8 +54,12 @@ class TemplateRendererTest < ActiveSupport::TestCase
   end
 
   def test_issue_url_uses_setting
-    project = mock('project', :name => 'P')
-    issue   = mock('issue', :id => 7, :subject => 'x', :project => project)
+    project = mock('project')
+    project.stubs(:name).returns('P')
+    issue = mock('issue')
+    issue.stubs(:id).returns(7)
+    issue.stubs(:subject).returns('x')
+    issue.stubs(:project).returns(project)
     Setting.stubs(:host_name).returns('redmine.example.de')
     Setting.stubs(:protocol).returns('https')
     result = RedmineExpertHelpdesk::TemplateRenderer.render('{{issue.url}}', :issue => issue)
@@ -57,8 +67,12 @@ class TemplateRendererTest < ActiveSupport::TestCase
   end
 
   def test_legacy_and_dot_notation_are_equivalent
-    project = mock('project', :name => 'Demo')
-    issue   = mock('issue', :id => 1, :subject => 'Test', :project => project)
+    project = mock('project')
+    project.stubs(:name).returns('Demo')
+    issue = mock('issue')
+    issue.stubs(:id).returns(1)
+    issue.stubs(:subject).returns('Test')
+    issue.stubs(:project).returns(project)
     Setting.stubs(:host_name).returns('r.example.de')
     Setting.stubs(:protocol).returns('http')
     legacy = RedmineExpertHelpdesk::TemplateRenderer.render(

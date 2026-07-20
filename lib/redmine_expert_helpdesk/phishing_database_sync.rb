@@ -87,7 +87,10 @@ module RedmineExpertHelpdesk
     # Zeilen ohne Schema als http:// interpretieren (Domain-Listen).
     def build_rows(body, now)
       seen = {}
-      body.force_encoding('UTF-8').scrub(' ').split(/\r?\n/).each_with_object([]) do |line, rows|
+      # dup vor force_encoding: der Body darf eingefroren sein (z. B. im Test),
+      # und wir wollen die Eingabe des Aufrufers ohnehin nicht in-place aendern.
+      normalized = body.to_s.dup.force_encoding('UTF-8').scrub(' ')
+      normalized.split(/\r?\n/).each_with_object([]) do |line, rows|
         url = line.strip
         next if url.empty? || url.start_with?('#')
 

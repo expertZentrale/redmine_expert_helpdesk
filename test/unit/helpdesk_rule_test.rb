@@ -136,7 +136,10 @@ class HelpdeskRuleTest < ActiveSupport::TestCase
   def test_apply_to_set_tracker_not_found
     scope   = mock('trackers')
     scope.stubs(:find_by).returns(nil)
-    project = mock('project', :trackers => scope)
+    # stubs: bei "nicht gefunden" fragt apply_to project.trackers zweimal ab
+    # (find_by name || find_by id) — das ist erlaubt, keine feste Aufrufanzahl.
+    project = mock('project')
+    project.stubs(:trackers).returns(scope)
     issue   = IssueStub.new(nil, nil, nil, nil, project)
     rule    = build_rule(:action_type => 'set_tracker', :action_value => 'Nope')
     assert_not rule.apply_to(issue)
@@ -155,8 +158,14 @@ class HelpdeskRuleTest < ActiveSupport::TestCase
   end
 
   def test_apply_to_set_assignee_found
-    user    = mock('user', :login => 'john', :id => 5, :present? => true)
-    project = mock('project', :users => [user])
+    # stubs: bei Treffer ueber den Login wird u.id dank Kurzschluss nie gelesen —
+    # deshalb keine feste Aufrufanzahl erwarten.
+    user    = mock('user')
+    user.stubs(:login).returns('john')
+    user.stubs(:id).returns(5)
+    user.stubs(:present?).returns(true)
+    project = mock('project')
+    project.stubs(:users).returns([user])
     issue   = IssueStub.new(nil, nil, nil, nil, project)
     rule    = build_rule(:action_type => 'set_assignee', :action_value => 'john')
     assert rule.apply_to(issue)
