@@ -3,13 +3,17 @@
 # Redmine Expert Helpdesk
 
 [![CI](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml)
+[![Docker image smoke test](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/docker-image.yml/badge.svg)](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/docker-image.yml)
 
 E-Mail-zu-Ticket-Plugin für Redmine mit Microsoft-365-Anbindung über die
 Microsoft Graph API (OAuth 2.0 Client-Credentials-Flow, App-Only).
 
-Die Testsuite läuft bei jedem Push und Pull Request automatisch über
-[GitHub Actions](.github/workflows/ci.yml) gegen alle aktuell unterstützten
-Redmine-Versionen (5.1, 6.0, 6.1, 7.0) auf einer frischen MariaDB – siehe [Tests ausführen](#tests-ausführen).
+Zwei CI-Workflows laufen bei jedem Push und Pull Request: die
+[Testsuite](.github/workflows/ci.yml) (MiniTest gegen den Redmine-Quellcode für alle
+unterstützten Versionen – 5.1, 6.0, 6.1, 7.0 – auf frischer MariaDB) und ein
+[Docker-Image-Smoke-Test](.github/workflows/docker-image.yml), der das Plugin in den
+**offiziellen `redmine`-Docker-Images** startet, mit denen wir deployen (Tags 5.1, 6.0, 6.1) –
+siehe [Tests ausführen](#tests-ausführen).
 
 ## Funktionen
 
@@ -670,6 +674,15 @@ Zustand geprüft:
 | 6.0-stable | 3.3 | 7.2 |
 | 6.1-stable | 3.3 | 7.2 |
 | 7.0-stable | 3.4 | 8.1 |
+
+**Docker-Image-Smoke-Test:** [`.github/workflows/docker-image.yml`](.github/workflows/docker-image.yml)
+startet das Plugin zusätzlich in den **offiziellen `redmine`-Docker-Images**, mit denen wir
+deployen (Tags `5.1`, `6.0`, `6.1`). Pro Tag wird das offizielle Image gegen eine frische
+MariaDB gestartet, das Plugin read-only eingehängt, via `REDMINE_PLUGINS_MIGRATE=1` migriert
+und geprüft, dass Redmine `/login` (HTTP 200) mit geladenem Plugin ausliefert — fängt also
+`init.rb`-Lade-, Migrations- oder Gem-Versionsprobleme ab, die nur im ausgelieferten Image
+auftreten. `7.0`/`7` in die Matrix aufnehmen, sobald das offizielle Image einen Redmine-7-Tag
+anbietet.
 
 ### Container-Workflow
 

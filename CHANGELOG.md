@@ -1,5 +1,19 @@
 # Changelog – redmine_expert_helpdesk
 
+## [Unreleased] 2026-07-21 (74)
+
+### Added
+- Zweite CI-Workflow-Datei `.github/workflows/docker-image.yml`: Smoke-Test gegen die
+  **offiziellen Redmine-Docker-Images** (https://hub.docker.com/_/redmine) — also die
+  Images, mit denen wir deployen. Matrix über die aktuell veröffentlichten Tags
+  `5.1`, `6.0`, `6.1`. Pro Tag wird das offizielle Image mit frischer MariaDB gestartet,
+  das Plugin read-only eingehängt und via `REDMINE_PLUGINS_MIGRATE=1` migriert; ein
+  erfolgreiches `/login` (HTTP 200) beweist, dass Plugin-`init.rb` und alle Migrationen im
+  Produktions-Image sauber laden. Zusätzliche Prüfung, dass das Plugin wirklich erkannt/
+  migriert wurde. Ergänzt die quellbasierte `ci.yml` (Unit-/Integrationstests). CI-Badge in
+  `README.md` / `README.de.md` ergänzt. ('7.0'/'7' ergänzen, sobald das offizielle Image
+  Redmine 7 anbietet.)
+
 ## [Unreleased] 2026-07-16 (73)
 
 ### Fixed

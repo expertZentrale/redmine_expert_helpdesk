@@ -1,0 +1,118 @@
+name: Docker image smoke test
+
+# Ergaenzt die quellbasierte CI (ci.yml): testet das Plugin gegen die *offiziellen*
+# Redmine-Docker-Images (https://hub.docker.com/_/redmine) — also genau die Images,
+# mit denen wir deployen. Pro Tag wird das offizielle Image mit einer frischen MariaDB
+# gestartet, das Plugin eingehaengt und ueber REDMINE_PLUGINS_MIGRATE migriert.
+#
+# Der offizielle Entrypoint laeuft mit `set -Eeo pipefail`: schlaegt eine Core- oder
+# Plugin-Migration bzw. das Laden von init.rb fehl, beendet sich der Container und die
+# Seite kommt nie hoch. Ein erfolgreiches `/login` (HTTP 200) beweist damit, dass das
+# Plugin im Produktions-Image sauber laedt und migriert.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: docker-image-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: redmine:${{ matrix.tag }} (official image)
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Aktuell von Docker Hub veroeffentlichte, unterstuetzte Redmine-Tags.
+        # '7.0'/'7' ergaenzen, sobald das offizielle Image Redmine 7 anbietet.
+        tag: [ '5.1', '6.0', '6.1' ]
+
+    env:
+      DB_NAME: redmine
+      DB_PASS: root
+
+    steps:
+      - name: Checkout plugin
+        uses: actions/checkout@v4
+        with:
+          path: redmine_expert_helpdesk
+
+      - name: Create docker network
+        run: docker network create rmnet
+
+      - name: Start MariaDB
+        run: |
+          docker run -d --name db --network rmnet \
+            -e MARIADB_ROOT_PASSWORD="$DB_PASS" \
+            -e MARIADB_DATABASE="$DB_NAME" \
+            --health-cmd="healthcheck.sh --connect --innodb_initialized" \
+            --health-interval=5s --health-timeout=5s --health-retries=20 \
+            mariadb:11.4 --transaction-isolation=READ-COMMITTED
+
+      - name: Wait for MariaDB to be healthy
+        run: |
+          for i in $(seq 1 30); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' db 2>/dev/null || echo starting)
+            echo "attempt $i: db health=$status"
+            [ "$status" = "healthy" ] && exit 0
+            sleep 3
+          done
+          echo "MariaDB did not become healthy in time"; docker logs db; exit 1
+
+      - name: Start official Redmine ${{ matrix.tag }} with the plugin
+        run: |
+          docker run -d --name redmine --network rmnet -p 3000:3000 \
+            -e REDMINE_DB_MYSQL=db \
+            -e REDMINE_DB_DATABASE="$DB_NAME" \
+            -e REDMINE_DB_USERNAME=root \
+            -e REDMINE_DB_PASSWORD="$DB_PASS" \
+            -e REDMINE_PLUGINS_MIGRATE=1 \
+            -v "$GITHUB_WORKSPACE/redmine_expert_helpdesk:/usr/src/redmine/plugins/redmine_expert_helpdesk:ro" \
+            redmine:${{ matrix.tag }}
+
+      - name: Wait for Redmine to boot (migrations + init.rb load)
+        run: |
+          code=000
+          for i in $(seq 1 60); do
+            # Bricht der Container ab (fehlgeschlagene Migration / init.rb), sofort scheitern.
+            if [ "$(docker inspect -f '{{.State.Running}}' redmine 2>/dev/null)" != "true" ]; then
+              echo "Redmine container exited early — dumping logs:"; docker logs redmine; exit 1
+            fi
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/login || true)
+            echo "attempt $i: GET /login -> HTTP $code"
+            [ "$code" = "200" ] && break
+            sleep 5
+          done
+          [ "$code" = "200" ] || { echo "Timed out waiting for Redmine to serve /login"; docker logs redmine; exit 1; }
+
+      - name: Assert the plugin was actually loaded and migrated
+        run: |
+          # Der Entrypoint gibt beim Plugin-Migrate den Plugin-Namen aus. Fehlt er,
+          # wurde das Plugin nicht eingehaengt/erkannt — dann ist der Boot wertlos.
+          if ! docker logs redmine 2>&1 | grep -iq 'redmine_expert_helpdesk'; then
+            echo "Plugin 'redmine_expert_helpdesk' not present in Redmine output — not loaded/migrated:"
+            docker logs redmine
+            exit 1
+          fi
+          echo "Plugin loaded and migrated in official redmine:${{ matrix.tag }} image."
+          docker logs redmine 2>&1 | grep -i 'redmine_expert_helpdesk' | head -n 20 || true
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: |
+          echo "===== redmine logs ====="; docker logs redmine 2>&1 || true
+          echo "===== db logs ====="; docker logs db 2>&1 || true
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f redmine db 2>/dev/null || true
+          docker network rm rmnet 2>/dev/null || true

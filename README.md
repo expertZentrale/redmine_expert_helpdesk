@@ -3,13 +3,17 @@
 # Redmine expert Helpdesk
 
 [![CI](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml)
+[![Docker image smoke test](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/docker-image.yml/badge.svg)](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/docker-image.yml)
 
 Email-to-ticket plugin for Redmine with Microsoft 365 integration via the
 Microsoft Graph API (OAuth 2.0 Client Credentials Flow, app-only).
 
-The test suite runs automatically on every push and pull request via
-[GitHub Actions](.github/workflows/ci.yml) against all currently supported Redmine
-versions (5.1, 6.0, 6.1, 7.0) on a clean MariaDB — see [Tests](#tests).
+Two CI workflows run on every push and pull request: the
+[test suite](.github/workflows/ci.yml) (MiniTest against Redmine source for all
+supported versions — 5.1, 6.0, 6.1, 7.0 — on a clean MariaDB) and a
+[Docker image smoke test](.github/workflows/docker-image.yml) that boots the plugin
+inside the **official `redmine` Docker images** we deploy with (tags 5.1, 6.0, 6.1) —
+see [Tests](#tests).
 
 ## Features
 
@@ -300,6 +304,14 @@ runs the tests — so all versions are covered in an isolated, reproducible stat
 | 6.0-stable | 3.3 | 7.2 |
 | 6.1-stable | 3.3 | 7.2 |
 | 7.0-stable | 3.4 | 8.1 |
+
+**Docker image smoke test:** [`.github/workflows/docker-image.yml`](.github/workflows/docker-image.yml)
+additionally boots the plugin inside the **official `redmine` Docker images** used in
+deployment (tags `5.1`, `6.0`, `6.1`). Per tag it starts the official image against a fresh
+MariaDB, mounts the plugin read-only, migrates via `REDMINE_PLUGINS_MIGRATE=1`, and asserts
+Redmine serves `/login` (HTTP 200) with the plugin loaded — catching `init.rb` load,
+migration or gem-version issues specific to the shipped image. Add `7.0`/`7` to the matrix
+once the official image publishes a Redmine 7 tag.
 
 ## Azure App Registration (one-time setup)
 
