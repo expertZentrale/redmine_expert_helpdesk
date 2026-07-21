@@ -95,15 +95,19 @@ jobs:
 
       - name: Assert the plugin was actually loaded and migrated
         run: |
-          # Der Entrypoint gibt beim Plugin-Migrate den Plugin-Namen aus. Fehlt er,
-          # wurde das Plugin nicht eingehaengt/erkannt — dann ist der Boot wertlos.
-          if ! docker logs redmine 2>&1 | grep -iq 'redmine_expert_helpdesk'; then
-            echo "Plugin 'redmine_expert_helpdesk' not present in Redmine output — not loaded/migrated:"
+          # Beim Plugin-Migrate erscheinen die Migrationsklassen des Plugins
+          # (== N CreateHelpdeskMailboxes: migrating ...). Case-insensitiv auf
+          # "helpdesk" pruefen — versionsunabhaengig (Redmine 5.x nennt im Header
+          # den Plugin-*Namen* "Redmine expert Helpdesk", 6.x/7.x die *ID*
+          # "redmine_expert_helpdesk"; die Migrationsnamen enthalten immer "Helpdesk").
+          # Fehlt jede Helpdesk-Ausgabe, wurde das Plugin nicht eingehaengt/erkannt.
+          if ! docker logs redmine 2>&1 | grep -iq 'helpdesk'; then
+            echo "No helpdesk output in Redmine logs — plugin not mounted/migrated:"
             docker logs redmine
             exit 1
           fi
           echo "Plugin loaded and migrated in official redmine:${{ matrix.tag }} image."
-          docker logs redmine 2>&1 | grep -i 'redmine_expert_helpdesk' | head -n 20 || true
+          docker logs redmine 2>&1 | grep -i 'helpdesk' | head -n 20 || true
 
       - name: Dump container logs on failure
         if: failure()
