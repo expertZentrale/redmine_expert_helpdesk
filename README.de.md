@@ -611,6 +611,51 @@ Standard-Betreff-Vorlage: `Re: [#{{issue.id}}] {{issue.subject}}`
 
 ---
 
+## KI-Zusammenfassungen
+
+Bei aus eingehenden Mails erzeugten Tickets (optional auch bei Journal-Antworten) kann das
+Plugin eine KI das eigentliche Anliegen des Kunden zusammenfassen lassen und die
+Zusammenfassung als **private (interne) Journal-Notiz** ans Ticket hängen – hilfreich bei
+schwer verständlichen Mails oder weitergeleiteten Verläufen mit verstreuten Informationen.
+Standardmäßig deaktiviert, Opt-in pro Projekt.
+
+**Zentrale Konfiguration** (*Administration → Plugins → Redmine Expert Helpdesk*):
+- **Anbieter** – OpenAI (Chat Completions), Anthropic (Messages) oder **Eigener Endpunkt**
+  (beliebige OpenAI-kompatible Basis-URL, z. B. self-hosted Ollama / vLLM / LocalAI / LM Studio).
+- **API-Key**, **Endpunkt** (leer = Anbieter-Standard; für „Eigener Endpunkt" erforderlich),
+  **Modell**.
+- **Standard-Prompt** (guter deutscher Default mitgeliefert) sowie Limits (max.
+  Eingabezeichen / Ausgabe-Tokens / Timeout).
+
+**Projekt-Konfiguration** (Projekt-*Einstellungen → Helpdesk*, sichtbar wenn KI zentral
+aktiviert ist):
+- Für das Projekt aktivieren; **Umfang** wählen (nur Erstmail oder Erstmail und Antworten).
+- **Prompt-Modus** – zentralen Prompt *erben*, *erweitern* oder durch einen
+  Projekt-Prompt *ersetzen*.
+- **Anhänge** – unabhängig wählbar, was an die KI geht: Dateinamen/Metadaten, extrahierter
+  Text (PDF via optionalem `pdf-reader`, Textdateien) und/oder Bilder (erfordert ein
+  vision-fähiges Modell).
+- **Ticketverlauf** – optional den gesamten Verlauf (Beschreibung + alle Notizen) statt nur
+  der auslösenden Mail senden, optional inklusive **privater Notizen** (Standard aus; diese
+  internen Notizen gehen dann ebenfalls an den Anbieter). Die eigenen KI-Zusammenfassungs-
+  Notizen werden immer ausgeschlossen.
+
+Die Zusammenfassung läuft **asynchron** (ActiveJob `HelpdeskAiSummaryJob`); KI-Latenz oder
+-Fehler blockieren den Mailabruf nicht – scheitert der Call, wird das Ticket dennoch erzeugt
+und der Fehler nur geloggt. Der **Token-Verbrauch** jeder Zusammenfassung wird als 🤖-Badge
+im Journal-Header der Notiz angezeigt (Tooltip: Eingabe-/Ausgabe-Tokens und Modell) – analog
+zu den An/CC/BCC-Empfänger-Badges. Eine Zusammenfassung lässt sich zudem manuell über die
+Helpdesk-Seitenleiste des Tickets **neu erzeugen** (*🤖 KI-Zusammenfassung neu erzeugen*) –
+praktisch nach einem fehlgeschlagenen Lauf oder für Tickets, die vor Aktivierung der Funktion
+eingingen.
+
+> **Datenschutz:** Der Inhalt eingehender Mails und die gewählten Anhänge werden an den
+> konfigurierten Anbieter übertragen. Für einen vollständig lokalen Betrieb den Anbieter
+> **Eigener Endpunkt** mit einer self-hosted, OpenAI-kompatiblen URL verwenden. Die Funktion
+> ist standardmäßig aus und pro Projekt zu aktivieren.
+
+---
+
 ## Tests ausführen
 
 Das Plugin enthält Minitest-Unit-Tests unter `test/unit/`. Sie laufen in der

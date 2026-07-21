@@ -278,6 +278,48 @@ curl -H "X-Redmine-API-Key: $KEY" -H "Content-Type: application/json" \
      "https://redmine.example.com/projects/42/helpdesk/tickets.json"
 ```
 
+## AI summaries
+
+When a ticket is created from an incoming mail (and optionally on follow-up/journal
+replies), the plugin can ask an AI provider to summarize the customer's actual concern and
+post it as a **private (internal) journal note** — useful for hard-to-parse mails or
+forwarded threads where the relevant information is scattered. Disabled by default, opt-in
+per project.
+
+**Central configuration** (*Administration → Plugins → Redmine Expert Helpdesk*):
+- **Provider** — OpenAI (Chat Completions), Anthropic (Messages), or **Custom** (any
+  OpenAI-compatible base URL, e.g. self-hosted Ollama / vLLM / LocalAI / LM Studio).
+- **API key**, **endpoint** (blank = provider default; required for Custom), **model**.
+- **Default prompt** (a sensible German default is shipped) + limits (max input characters
+  / output tokens / timeout).
+
+**Per-project configuration** (project *Settings → Helpdesk*, shown when AI is enabled
+centrally):
+- Enable summaries for the project; choose **scope** (initial mail only, or initial mail
+  and replies).
+- **Prompt mode** — *inherit* the central prompt, *extend* it, or *override* it with a
+  project-specific prompt.
+- **Attachments** — independently choose what is sent to the AI: filenames/metadata,
+  extracted text (PDF via optional `pdf-reader`, text files), and/or images (requires a
+  vision-capable model).
+- **Ticket history** — optionally send the whole conversation (description + all notes)
+  instead of only the triggering mail, and optionally include **private notes** (off by
+  default; those internal notes are then sent to the provider too). The plugin's own AI
+  summary notes are always excluded.
+
+Summaries run **asynchronously** (ActiveJob `HelpdeskAiSummaryJob`), so AI latency or
+failures never block or slow the mail-fetch cycle; if the call fails, the ticket is still
+created and the error is only logged. The **token usage** of each summary is shown as a 🤖
+badge in the note's journal header (tooltip: input/output tokens and model), mirroring the
+to/cc/bcc recipient badges. You can **regenerate** a summary on demand from the ticket's
+Helpdesk sidebar (*🤖 Regenerate AI summary*) — handy after a failed run or for tickets that
+predate the feature.
+
+> **Data protection:** incoming mail content and the selected attachments are sent to the
+> configured provider. For a fully on-premise flow, use the **Custom** provider pointed at
+> a self-hosted, OpenAI-compatible endpoint. The feature is off by default and opt-in per
+> project.
+
 ## Tests
 
 The plugin ships MiniTest unit and integration tests (`test/`). They require a

@@ -5,6 +5,7 @@
 # bzw. Ticket-Antworten verarbeitet werden.
 
 require File.expand_path('../lib/redmine_expert_helpdesk/graph_client', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/ai_client', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/template_renderer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mail_processor', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/init_mailer', __FILE__)
@@ -49,7 +50,16 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'phishtank_interval_hours' => '6',
              'phishing_database_enabled'  => '0',
              'phishing_database_feed_url' => 'https://raw.githubusercontent.com/Phishing-Database/Phishing.Database/master/phishing-links-ACTIVE.txt',
-             'global_footer'            => ''
+             'global_footer'            => '',
+             'ai_enabled'           => '0',
+             'ai_provider'          => 'openai',
+             'ai_api_key'           => '',
+             'ai_endpoint'          => '',
+             'ai_model'             => '',
+             'ai_prompt'            => RedmineExpertHelpdesk::AiClient::DEFAULT_PROMPT,
+             'ai_max_input_chars'   => '12000',
+             'ai_max_output_tokens' => '500',
+             'ai_timeout'           => '60'
            }
 
   project_module :helpdesk do

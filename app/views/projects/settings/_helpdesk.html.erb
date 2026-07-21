@@ -146,6 +146,77 @@
   <% end %>
 </fieldset>
 
+<%# --- KI-Zusammenfassung (nur wenn zentral aktiviert) --- %>
+<% if Setting.plugin_redmine_expert_helpdesk['ai_enabled'] == '1' %>
+  <fieldset class="tabular" style="margin-bottom: 14px;">
+    <legend><%= l(:label_helpdesk_ai_summary) %></legend>
+    <%= form_tag helpdesk_project_setting_path(:project_id => @project), :method => :put do %>
+      <%= hidden_field_tag 'ai_form', '1' %>
+      <p>
+        <%= check_box_tag 'helpdesk_project_setting[ai_summary_enabled]', '1',
+                          hd_setting.ai_summary_enabled?, :id => 'hd_ai_enabled' %>
+        <%= label_tag 'hd_ai_enabled', l(:field_helpdesk_ai_summary_enabled) %>
+        <em class="info"><%= l(:text_helpdesk_ai_summary_enabled_info) %></em>
+      </p>
+      <p>
+        <label for="hd_ai_scope"><%= l(:field_helpdesk_ai_scope) %></label>
+        <%= select_tag 'helpdesk_project_setting[ai_summary_scope]',
+            options_for_select(
+              HelpdeskProjectSetting::AI_SCOPES.map { |s| [l(:"label_helpdesk_ai_scope_#{s}"), s] },
+              hd_setting.ai_summary_scope.presence || 'initial'),
+            :id => 'hd_ai_scope' %>
+      </p>
+      <p>
+        <label for="hd_ai_prompt_mode"><%= l(:field_helpdesk_ai_prompt_mode) %></label>
+        <%= select_tag 'helpdesk_project_setting[ai_prompt_mode]',
+            options_for_select(
+              HelpdeskProjectSetting::AI_PROMPT_MODES.map { |m| [l(:"label_helpdesk_ai_prompt_mode_#{m}"), m] },
+              hd_setting.ai_prompt_mode.presence || 'inherit'),
+            :id => 'hd_ai_prompt_mode' %>
+        <em class="info"><%= l(:text_helpdesk_ai_prompt_mode_info) %></em>
+      </p>
+      <p>
+        <label for="hd_ai_prompt"><%= l(:field_helpdesk_ai_prompt) %></label>
+        <%= text_area_tag 'helpdesk_project_setting[ai_prompt]', hd_setting.ai_prompt,
+                          :rows => 6, :cols => 70, :id => 'hd_ai_prompt' %>
+        <%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'hd_ai_prompt' } %>
+      </p>
+      <p><label><%= l(:field_helpdesk_ai_attachments) %></label></p>
+      <p style="margin-left:0;">
+        <label style="float:none; margin-left:0; width:auto; font-weight:normal;">
+          <%= check_box_tag 'helpdesk_project_setting[ai_attach_metadata]', '1',
+                            hd_setting.ai_attach_metadata?, :id => 'hd_ai_attach_metadata' %>
+          <%= l(:label_helpdesk_ai_attach_metadata) %>
+        </label>
+        <label style="float:none; margin-left:14px; width:auto; font-weight:normal;">
+          <%= check_box_tag 'helpdesk_project_setting[ai_attach_text]', '1',
+                            hd_setting.ai_attach_text?, :id => 'hd_ai_attach_text' %>
+          <%= l(:label_helpdesk_ai_attach_text) %>
+        </label>
+        <label style="float:none; margin-left:14px; width:auto; font-weight:normal;">
+          <%= check_box_tag 'helpdesk_project_setting[ai_attach_images]', '1',
+                            hd_setting.ai_attach_images?, :id => 'hd_ai_attach_images' %>
+          <%= l(:label_helpdesk_ai_attach_images) %>
+        </label>
+      </p>
+      <p><em class="info"><%= l(:text_helpdesk_ai_attachments_info) %></em></p>
+      <p>
+        <%= check_box_tag 'helpdesk_project_setting[ai_include_journal]', '1',
+                          hd_setting.ai_include_journal?, :id => 'hd_ai_include_journal' %>
+        <%= label_tag 'hd_ai_include_journal', l(:field_helpdesk_ai_include_journal) %>
+        <em class="info"><%= l(:text_helpdesk_ai_include_journal_info) %></em>
+      </p>
+      <p style="margin-left: 22px;">
+        <%= check_box_tag 'helpdesk_project_setting[ai_include_private_notes]', '1',
+                          hd_setting.ai_include_private_notes?, :id => 'hd_ai_include_private' %>
+        <%= label_tag 'hd_ai_include_private', l(:field_helpdesk_ai_include_private_notes) %>
+        <em class="info"><%= l(:text_helpdesk_ai_include_private_notes_info) %></em>
+      </p>
+      <p><%= submit_tag l(:button_save) %></p>
+    <% end %>
+  </fieldset>
+<% end %>
+
 <p>
   <%= link_to hd_icon_label('add', l(:label_helpdesk_mailbox_new)), new_helpdesk_mailbox_path(:project_id => @project),
               :class => 'icon icon-add' %>

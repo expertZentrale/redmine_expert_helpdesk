@@ -6,6 +6,7 @@
                                   .order(:id => :asc)
   origin_mailbox = HelpdeskTicketInfo.for_issue(issue)&.helpdesk_mailbox
   eml_links      = inbound_msgs.select { |m| m.eml_attachment_id.present? }
+  ai_summaries   = HelpdeskAiSummary.where(:issue_id => issue.id).where.not(:journal_id => nil)
   previous       = contact.issues.where.not(:id => issue.id).order(:id => :desc).limit(4)
 %>
 
@@ -51,6 +52,17 @@
         <li><%= link_to_issue prev, :truncate => 40 %></li>
       <% end %>
     </ul>
+  <% end %>
+
+  <% if Setting.plugin_redmine_expert_helpdesk['ai_enabled'] == '1' &&
+        User.current.allowed_to?(:send_helpdesk_reply, project) %>
+    <div class="hd-ai-regen">
+      <%= button_to "🤖 #{l(:button_helpdesk_ai_regenerate)}",
+            issue_helpdesk_regenerate_ai_path(:issue_id => issue),
+            :method => :post,
+            :class  => 'hd-ai-regen-btn',
+            :title  => l(:text_helpdesk_ai_regenerate_info) %>
+    </div>
   <% end %>
 </div>
 
@@ -100,6 +112,13 @@
 }
 .hd-sep-bar { color: #bbb; margin: 0 2px; }
 .hd-recipient { color: #555; cursor: default; }
+.hd-ai-regen { margin-top: 10px; }
+.hd-ai-regen form { display: inline; margin: 0; }
+.hd-ai-regen-btn {
+  font-size: 0.9em; padding: 3px 9px; cursor: pointer;
+  background: #eaf1fb; border: 1px solid #b8cbe6; border-radius: 3px; color: #3a6699;
+}
+.hd-ai-regen-btn:hover { background: #dde8f6; }
 .helpdesk-mail-header .icon {
   display: inline-block;
   width: 16px;
@@ -151,6 +170,17 @@
     }
   }.to_json %>;
 
+  // KI-Zusammenfassungen: Token-Verbrauch als Badge im Journal-Header
+  var hdAiSummaries = <%= raw ai_summaries.map { |s|
+    {
+      :journalId => s.journal_id,
+      :input     => s.input_tokens,
+      :output    => s.output_tokens,
+      :total     => s.total_tokens,
+      :model     => s.model.to_s
+    }
+  }.to_json %>;
+
   // Liefert das Journal-Header-Element (h4) oder null. Versionsuebergreifend:
   //   Redmine 6/7: <div id="change-<journal.id>"> ... <h4 class="journal-header">
   //   Redmine 5:   <div id="journal-<journal.id>-notes"> in <div id="note-N"> ...
@@ -184,6 +214,39 @@
       var h4 = noteHeaderFor(msg.journalId);
       if (h4) badgeTarget(h4).appendChild(buildIncomingBadge(msg));
     });
+
+    hdAiSummaries.forEach(function(s) {
+      if (!s.total) return;
+      var h4 = noteHeaderFor(s.journalId);
+      if (h4) badgeTarget(h4).appendChild(buildAiBadge(s));
+    });
+  }
+
+  // Badge fuer KI-Zusammenfassungen: 🤖 <Tokens> (Tooltip: In/Out + Modell)
+  function buildAiBadge(s) {
+    var wrap = document.createElement('span');
+    wrap.className = 'helpdesk-mail-header';
+
+    var bar = document.createElement('span');
+    bar.className = 'hd-sep-bar';
+    bar.textContent = '|';
+    wrap.appendChild(bar);
+
+    var marker = document.createElement('span');
+    marker.className = 'hd-recipient';
+    marker.textContent = '🤖';
+    wrap.appendChild(marker);
+
+    var tag = document.createElement('span');
+    tag.className = 'hd-addr-tag';
+    var tip = '<%= j l(:label_helpdesk_ai_input_tokens) %>: ' + (s.input != null ? s.input : '?') +
+              ' · <%= j l(:label_helpdesk_ai_output_tokens) %>: ' + (s.output != null ? s.output : '?');
+    if (s.model) { tip += ' · ' + s.model; }
+    tag.title = tip;
+    tag.textContent = s.total + ' <%= j l(:label_helpdesk_ai_tokens) %>';
+    wrap.appendChild(tag);
+
+    return wrap;
   }
 
   // Badge fuer eingehende Mails: ✉ Name (E-Mail) 📎 Original (Groesse) Zeit

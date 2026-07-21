@@ -63,6 +63,9 @@ RedmineApp::Application.routes.draw do
   # Antwort an den Kunden aus dem Ticket heraus
   post 'issues/:issue_id/helpdesk_reply', :to => 'helpdesk_replies#create', :as => 'issue_helpdesk_reply'
 
+  # KI-Zusammenfassung manuell (neu) erzeugen (Button in der Ticket-Seitenleiste)
+  post 'issues/:issue_id/helpdesk_ai_summary', :to => 'helpdesk_ai#regenerate', :as => 'issue_helpdesk_regenerate_ai'
+
   # Kontakt manuell zuordnen / initiale Mail senden (bestehende Tickets)
   scope 'projects/:project_id' do
     post 'issues/:issue_id/helpdesk_init', :to => 'helpdesk_init#create', :as => 'issue_helpdesk_init'

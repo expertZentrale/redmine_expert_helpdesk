@@ -9,6 +9,8 @@ class HelpdeskProjectSettingsController < ApplicationController
     sla_form = params[:sla_form].present?
     if sla_form
       update_sla_settings(setting)
+    elsif params[:ai_form].present?
+      update_ai_settings(setting)
     else
       update_reply_settings(setting)
     end
@@ -66,6 +68,23 @@ class HelpdeskProjectSettingsController < ApplicationController
     setting.sla_notify_user_id = hp[:sla_notify_user_id].presence
 
     update_sla_priorities
+  end
+
+  # KI-Zusammenfassungs-Einstellungen (drittes Formular im Tab)
+  def update_ai_settings(setting)
+    hp = params[:helpdesk_project_setting] || {}
+
+    setting.ai_summary_enabled = hp[:ai_summary_enabled] == '1'
+    scope = hp[:ai_summary_scope].to_s
+    setting.ai_summary_scope = scope if HelpdeskProjectSetting::AI_SCOPES.include?(scope)
+    mode = hp[:ai_prompt_mode].to_s
+    setting.ai_prompt_mode = mode if HelpdeskProjectSetting::AI_PROMPT_MODES.include?(mode)
+    setting.ai_prompt = hp[:ai_prompt].to_s.strip.presence
+    setting.ai_attach_metadata = hp[:ai_attach_metadata] == '1'
+    setting.ai_attach_text     = hp[:ai_attach_text] == '1'
+    setting.ai_attach_images   = hp[:ai_attach_images] == '1'
+    setting.ai_include_journal       = hp[:ai_include_journal] == '1'
+    setting.ai_include_private_notes = hp[:ai_include_private_notes] == '1'
   end
 
   # Prioritaets-Overrides: leere Zeilen loeschen, gefuellte anlegen/aktualisieren

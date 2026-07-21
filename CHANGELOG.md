@@ -1,5 +1,67 @@
 # Changelog – redmine_expert_helpdesk
 
+## [Unreleased] 2026-07-21 (77)
+
+### Added
+- Projekt-KI-Einstellungen: Option **„Kompletten Ticketverlauf einbeziehen"** – statt nur der
+  auslösenden Mail wird der gesamte Verlauf (Beschreibung + Notizen) an die KI gegeben; die
+  eigenen KI-Zusammenfassungs-Notizen werden ausgeschlossen (keine Rekursion). Zusätzliche
+  Unteroption **„Auch private Notizen einbeziehen"** (Standard aus; Datenschutz-Hinweis: private
+  Notizen gehen dann ebenfalls an den Anbieter). Migration `029`
+  (`ai_include_journal`, `ai_include_private_notes`).
+
+## [Unreleased] 2026-07-21 (76)
+
+### Fixed
+- KI-Zusammenfassung mit OpenAI **GPT-5-/o-Modellen** (z. B. `gpt-5-nano`) schlug mit
+  `HTTP 400 – Unsupported parameter: 'max_tokens' ... Use 'max_completion_tokens' instead`
+  fehl. Der OpenAI-Provider sendet jetzt `max_completion_tokens` (funktioniert auch für
+  ältere Modelle wie `gpt-4o-mini`); der `custom`-Provider bleibt bei `max_tokens`
+  (self-hosted Ollama/vLLM/LocalAI verstehen meist nur diesen Parameter).
+- KI-Fehler protokollieren jetzt zusätzlich den **Antwort-Body des Providers** (gekürzt) –
+  dort steht der eigentliche Grund (falsches Modell, nicht unterstützter Parameter,
+  Kontextlänge …), statt nur „HTTP 400".
+
+### Added
+- Button **„KI-Zusammenfassung neu erzeugen"** in der Ticket-Seitenleiste
+  (`HelpdeskAiController#regenerate`, Berechtigung `send_helpdesk_reply`): stößt die
+  Zusammenfassung der Erstmail manuell an (`force`, unabhängig von der projektspezifischen
+  Aktivierung/Umfang) – nützlich für Tickets, deren KI-Lauf zuvor fehlschlug oder die vor
+  Aktivierung der Funktion eingingen. Erzeugt eine neue private Notiz inkl. Token-Badge.
+- **Modell-Hinweis** in den zentralen Einstellungen: empfohlene, schnelle/günstige Modelle je
+  Provider (OpenAI `gpt-4o-mini`/`gpt-5-nano`, Anthropic `claude-haiku-4-5`, self-hosted
+  `llama3.1`), Vision-Hinweis und Hinweis, bei Reasoning-Modellen „Max. Ausgabe-Tokens" nicht zu
+  niedrig zu setzen.
+
+## [Unreleased] 2026-07-21 (75)
+
+### Added
+- **KI-Zusammenfassungen eingehender Mails (pro Projekt).** Bei aus eingehenden Mails
+  erzeugten Tickets (optional auch bei Journal-Antworten) fasst eine KI das Anliegen des
+  Kunden zusammen – hilfreich bei schwer verständlichen Mails oder weitergeleiteten
+  Verläufen mit verstreuten Informationen. Die Zusammenfassung wird als **private
+  (interne) Journal-Notiz** ans Ticket gehängt.
+  - **Zentrale Konfiguration** (*Administration → Plugins*): Anbieter (OpenAI /
+    Anthropic / Eigener OpenAI-kompatibler Endpunkt für self-hosted wie Ollama, vLLM,
+    LocalAI, LM Studio), API-Key, Endpunkt, Modell, Standard-Prompt (guter Default
+    mitgeliefert) sowie Limits (Eingabezeichen / Ausgabe-Tokens / Timeout).
+  - **Projekt-Konfiguration** (Helpdesk-Tab): aktivieren, Umfang (nur Erstmail vs. auch
+    Antworten), Prompt erben/erweitern/ersetzen, und **pro Projekt wählbar**, welche
+    Anhänge an die KI gehen: Dateinamen/Metadaten, extrahierter Text (PDF via optionalem
+    `pdf-reader`, Textdateien) und/oder Bilder (Vision-Modell nötig).
+  - **Asynchron** via ActiveJob (`HelpdeskAiSummaryJob`) – KI-Latenz/-Fehler blockieren
+    den Mailabruf nicht; scheitert der Call, wird das Ticket dennoch erzeugt (Fehler wird
+    nur geloggt). Neuer `lib/redmine_expert_helpdesk/ai_client.rb`, Migration `027`,
+    Einstellungs- und Projekt-UI, i18n (de/en). Default **deaktiviert** (Opt-in pro
+    Projekt); Datenschutz-Hinweis in READMEs (Mailinhalt + gewählte Anhänge gehen an den
+    Anbieter – Eigener Endpunkt ermöglicht rein lokalen Betrieb).
+  - **Token-Verbrauch** wird je Zusammenfassung protokolliert (neues Modell/Tabelle
+    `HelpdeskAiSummary`, Migration `028`) und – analog zu den Empfänger-Badges (An/CC/BCC) –
+    als 🤖-Badge im Journal-Header der Zusammenfassungs-Notiz angezeigt (Tooltip:
+    Eingabe-/Ausgabe-Tokens + Modell). `AiClient#last_usage` liest die `usage`-Angaben der
+    Provider (OpenAI/kompatibel: `prompt_tokens`/`completion_tokens`; Anthropic:
+    `input_tokens`/`output_tokens`).
+
 ## [Unreleased] 2026-07-21 (74)
 
 ### Added

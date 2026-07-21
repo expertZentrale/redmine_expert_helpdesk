@@ -177,6 +177,7 @@ module RedmineExpertHelpdesk
         if phishing_hits.any? || phishing_suspicions.any?
           add_phishing_note(issue, phishing_hits, phishing_suspicions)
         end
+        enqueue_ai_summary(issue, object, new_issue, msg)
         (new_issue ? result.created_issues : result.updated_issues) << issue.id
       end
 
@@ -206,6 +207,26 @@ module RedmineExpertHelpdesk
       when Journal then [object.journalized.is_a?(Issue) ? object.journalized : nil, false]
       else [nil, false]
       end
+    end
+
+    # KI-Zusammenfassung asynchron anstossen (nicht blockierend). Prueft globale
+    # und projektspezifische Aktivierung sowie den Umfang (nur Erstmail vs. auch
+    # Antworten), damit ohne aktivierte Funktion kein Job in die Queue geht.
+    # Fehler beim Enqueue duerfen die Mailverarbeitung nicht abbrechen.
+    def enqueue_ai_summary(issue, object, new_issue, msg)
+      return unless Setting.plugin_redmine_expert_helpdesk['ai_enabled'].to_s == '1'
+
+      ps = HelpdeskProjectSetting.for_project(issue.project)
+      return unless ps.ai_summary_enabled?
+      return if !new_issue && !ps.ai_summary_for_replies?
+
+      HelpdeskAiSummaryJob.perform_later(
+        issue.id,
+        :journal_id => (object.is_a?(Journal) ? object.id : nil),
+        :message_id => msg.id
+      )
+    rescue => e
+      Rails.logger.warn("[helpdesk][ai] Enqueue fehlgeschlagen (Issue ##{issue.id}): #{e.message}")
     end
 
     # --- Ticket-Wiedereroeffnung --------------------------------------------

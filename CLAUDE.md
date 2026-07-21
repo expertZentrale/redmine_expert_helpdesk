@@ -127,6 +127,20 @@ nested registration would never fire in production.
   and opts to email them (also used by the "New Helpdesk Ticket" flow).
 - **`template_renderer.rb`** — `{{issue.*}}`-style Mustache-ish templating for subjects,
   headers/footers, autoresponder bodies.
+- **`ai_client.rb`** — AI provider client for per-project mail summaries. `Net::HTTP` (mirrors
+  `graph_client.rb`), three providers: `openai` (Chat Completions), `anthropic` (Messages),
+  `custom` (OpenAI-compatible base URL for self-hosted). Central config in the plugin settings
+  (`ai_*` keys). Ships `DEFAULT_PROMPT`. Called from **`HelpdeskAiSummaryJob`**
+  (`app/jobs/`, ActiveJob), which `MailProcessor#enqueue_ai_summary` fires `perform_later` after
+  ingest (opt-in per project via `HelpdeskProjectSetting` `ai_summary_enabled`/`ai_summary_scope`/
+  `ai_prompt_mode`/`ai_prompt`/`ai_attach_*`/`ai_include_journal`/`ai_include_private_notes`); the job builds input from the `.eml` body (or the full ticket journal) +
+  selected attachments and posts a **private** journal note. Off by default; failures are logged,
+  never break ingestion. Token usage is captured (`AiClient#last_usage`) and stored per note in
+  **`HelpdeskAiSummary`** (`app/models/`, migration 028); the `_issue_sidebar` badge JS renders a
+  🤖 token badge on that note's journal header, mirroring the to/cc/bcc recipient badges.
+  Agents can re-run it on demand via **`HelpdeskAiController#regenerate`** (sidebar button,
+  `send_helpdesk_reply` permission), which enqueues the job with `force: true` (bypasses the
+  per-project enable/scope).
 - **`business_hours.rb` / `sla.rb` / `sla_breach_check.rb`** — SLA in *business minutes*.
   `business_hours` defines the working-day/time window; `sla` computes reaction/solution
   deadlines (with per-priority overrides via `HelpdeskSlaPriority`); `sla_breach_check`

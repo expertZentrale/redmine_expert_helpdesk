@@ -61,6 +61,58 @@
 </p>
 
 <hr />
+<h3 style="margin-top:1em;"><%= l(:label_helpdesk_ai_settings) %></h3>
+<p>
+  <%= hidden_field_tag 'settings[ai_enabled]', '0' %>
+  <%= check_box_tag 'settings[ai_enabled]', '1', @settings['ai_enabled'] == '1', :id => 'settings_ai_enabled' %>
+  <%= label_tag 'settings_ai_enabled', l(:field_helpdesk_ai_enabled) %>
+  <em class="info"><%= l(:text_helpdesk_ai_enabled_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_provider) %></label>
+  <%= select_tag 'settings[ai_provider]',
+        options_for_select(
+          RedmineExpertHelpdesk::AiClient::PROVIDERS.map { |p| [l(:"label_helpdesk_ai_provider_#{p}"), p] },
+          @settings['ai_provider'].presence || 'openai') %>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_api_key) %></label>
+  <%= password_field_tag 'settings[ai_api_key]', @settings['ai_api_key'], :size => 50, :autocomplete => 'new-password' %>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_endpoint) %></label>
+  <%= text_field_tag 'settings[ai_endpoint]', @settings['ai_endpoint'], :size => 60 %>
+  <em class="info"><%= l(:text_helpdesk_ai_endpoint_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_model) %></label>
+  <%= text_field_tag 'settings[ai_model]', @settings['ai_model'], :size => 40 %>
+  <em class="info"><%= l(:text_helpdesk_ai_model_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_prompt) %></label>
+  <%= text_area_tag 'settings[ai_prompt]',
+                    @settings['ai_prompt'].presence || RedmineExpertHelpdesk::AiClient::DEFAULT_PROMPT,
+                    :rows => 10, :cols => 70, :id => 'settings_ai_prompt' %>
+  <%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'settings_ai_prompt' } %>
+  <em class="info"><%= l(:text_helpdesk_ai_prompt_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_max_input_chars) %></label>
+  <%= text_field_tag 'settings[ai_max_input_chars]', @settings['ai_max_input_chars'].presence || '12000', :size => 8 %>
+  <em class="info"><%= l(:text_helpdesk_ai_max_input_chars_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_max_output_tokens) %></label>
+  <%= text_field_tag 'settings[ai_max_output_tokens]', @settings['ai_max_output_tokens'].presence || '500', :size => 8 %>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_timeout) %></label>
+  <%= text_field_tag 'settings[ai_timeout]', @settings['ai_timeout'].presence || '60', :size => 8 %>
+</p>
+<p><em class="info"><%= l(:text_helpdesk_ai_privacy_info) %></em></p>
+
+<hr />
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_phishtank) %></h3>
 <p>
   <%= hidden_field_tag 'settings[phishtank_enabled]', '0' %>

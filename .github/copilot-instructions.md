@@ -80,6 +80,17 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     `.eml`, moves the mail. Reply-vs-new matching is delegated entirely to `MailHandler`.
   - `init_mailer.rb` — outbound "initial" mail (contact-assign / "New Helpdesk Ticket" flow).
   - `template_renderer.rb` — `{{issue.*}}` templating for subjects/headers/footers/autoresponder.
+  - `ai_client.rb` — AI provider client (`Net::HTTP`, mirrors `graph_client.rb`) for per-project
+    mail summaries: `openai` / `anthropic` / `custom` (OpenAI-compatible, self-hosted). Central
+    `ai_*` plugin settings; ships `DEFAULT_PROMPT`. Runs via `HelpdeskAiSummaryJob` (`app/jobs/`,
+    ActiveJob) enqueued from `MailProcessor#enqueue_ai_summary` after ingest; opt-in per project
+    (`HelpdeskProjectSetting` `ai_summary_enabled`/`ai_summary_scope`/`ai_prompt_mode`/`ai_prompt`/
+    `ai_attach_*`/`ai_include_journal`/`ai_include_private_notes`); posts a **private** journal note. Off by default; failures are logged, never
+    break ingestion. Token usage (`AiClient#last_usage`) is stored per note in `HelpdeskAiSummary`
+    (migration 028) and shown as a 🤖 token badge in the note's journal header (via the
+    `_issue_sidebar` badge JS, like the to/cc/bcc recipient badges). Manual re-run via
+    `HelpdeskAiController#regenerate` (sidebar button, `send_helpdesk_reply`) enqueues the job
+    with `force: true` (bypasses per-project enable/scope).
   - `business_hours.rb` / `sla.rb` / `sla_breach_check.rb` — SLA in *business minutes*.
   - `phish*.rb` / `phishing_scanner.rb` — PhishTank + Phishing.Database mirror, link scanning
     (decodes Microsoft SafeLinks locally), neutralize/quarantine.

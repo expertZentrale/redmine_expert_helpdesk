@@ -6,3 +6,8 @@
 # building (Graph client, agent replies, initial mail), so declare it explicitly.
 # Harmless on Redmine 5/6 (Ruby 3.x), where base64 still resolves.
 gem 'base64'
+
+# pdf-reader: optionale Textextraktion aus PDF-Anhaengen fuer die KI-Zusammenfassung
+# (HelpdeskAiSummaryJob). Der Aufruf ist LoadError-gekapselt – fehlt das Gem im
+# Image, wird PDF-Text uebersprungen, der Rest der Funktion bleibt nutzbar.
+gem 'pdf-reader'
