@@ -56,6 +56,18 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
 
     prompt  = ps.effective_ai_prompt.presence || RedmineExpertHelpdesk::AiClient::DEFAULT_PROMPT
     system  = RedmineExpertHelpdesk::TemplateRenderer.render(prompt, :issue => issue, :contact => contact_for(issue))
+
+    # RAG: aehnliche geloeste Tickets aus der projekteigenen Wissensbasis.
+    # Fuer die Suche einen fokussierten Query nutzen (Betreff + Textkern statt des
+    # anhangslastigen user_text), das erhoeht die Aehnlichkeit zu den destillierten
+    # Wissensbasis-Eintraegen.
+    query_text = "#{issue.subject}\n#{base_text}"
+    proposals = retrieve_proposals(issue, ps, settings, client, query_text)
+    if proposals.any?
+      persist_proposals(issue, proposals) if ps.kb_show_in_sidebar?
+      system += kb_context_block(proposals) if ps.kb_show_in_summary?
+    end
+
     summary = client.summarize(system, user_text, image_parts)
 
     journal = create_note(issue, summary)
@@ -198,6 +210,58 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
 
   def contact_for(issue)
     HelpdeskTicketInfo.find_by(:issue_id => issue.id)&.helpdesk_contact
+  end
+
+  # RAG: aehnliche geloeste Tickets aus der Wissensbasis DES PROJEKTS holen
+  # (strikte Isolation ueber den Store). Liefert nur, wenn genug Treffer ueber
+  # dem Score-Schwellwert liegen. Fehler blockieren die Zusammenfassung nicht.
+  def retrieve_proposals(issue, ps, settings, client, query_text)
+    return [] unless settings['kb_enabled'].to_s == '1'
+    return [] unless ps.kb_show_in_summary? || ps.kb_show_in_sidebar?
+    return [] if query_text.blank?
+
+    store = RedmineExpertHelpdesk::KnowledgeStore.for(settings)
+    return [] unless store.configured? && client.embed_configured?
+
+    top_k = settings['kb_top_k'].to_i
+    top_k = 3 unless top_k.positive?
+    min_score   = settings['kb_min_score'].to_f
+    min_results = settings['kb_min_results'].to_i
+    min_results = 1 unless min_results.positive?
+
+    vec  = client.embed(query_text.to_s[0, 8000])
+    hits = store.search(issue.project_id, vec, top_k)
+    hits = hits.select { |h| h[:score].to_f >= min_score }
+    hits = hits.reject { |h| (h[:payload] || {})['issue_id'].to_i == issue.id }
+    hits.size >= min_results ? hits : []
+  rescue => e
+    Rails.logger.warn("[helpdesk][kb] Retrieval fehlgeschlagen (Issue ##{issue.id}): #{e.message}")
+    []
+  end
+
+  def persist_proposals(issue, proposals)
+    HelpdeskKbProposal.where(:issue_id => issue.id).delete_all
+    proposals.each do |h|
+      p = h[:payload] || {}
+      HelpdeskKbProposal.create!(
+        :issue_id        => issue.id,
+        :source_issue_id => p['issue_id'],
+        :score           => h[:score],
+        :problem         => p['problem'],
+        :solution        => p['solution']
+      )
+    end
+  end
+
+  def kb_context_block(proposals)
+    lines = proposals.each_with_index.map do |h, i|
+      p = h[:payload] || {}
+      "#{i + 1}. (Ticket ##{p['issue_id']}) Problem: #{p['problem']}\n   Loesung: #{p['solution']}"
+    end
+    "\n\n---\nAehnliche frueher geloeste Faelle aus der Wissensbasis:\n#{lines.join("\n")}\n\n" \
+      'Wenn einer dieser Faelle zum aktuellen Anliegen passt, ergaenze am Ende der Zusammenfassung ' \
+      'einen Abschnitt "Loesungsvorschlag" mit dem passenden Vorgehen und nenne die Ticketnummer(n). ' \
+      'Passt nichts, lasse den Abschnitt weg.'
   end
 
   def create_note(issue, summary)

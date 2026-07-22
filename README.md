@@ -320,6 +320,38 @@ predate the feature.
 > a self-hosted, OpenAI-compatible endpoint. The feature is off by default and opt-in per
 > project.
 
+## Knowledge base (RAG)
+
+Resolved tickets can be turned into a **per-project knowledge base**: an AI call extracts a
+`{problem, solution}` pair from each closed ticket, embeds the problem, and stores it in an
+external vector database. When a new mail arrives, the summary job searches **only that
+project's** knowledge for similar solved tickets and — if enough clear the score threshold —
+adds a **proposed solution** to the summary and/or a sidebar panel. Disabled by default.
+
+**Central configuration** (*Administration → Plugins*):
+- **Vector store** (`kb_backend`): **Qdrant** (REST, no extra gem) or **Postgres + pgvector**
+  (needs the `pg` gem in your deployment; `PgvectorStore` loads it via a guarded `require`).
+- **Embeddings**: provider (OpenAI or a self-hosted OpenAI-compatible endpoint — Anthropic has
+  no embeddings API), model, endpoint, key (blank reuses the summary key for the same provider).
+- Extraction prompt and retrieval params (Top-K, min. score, min. results).
+
+**Per-project configuration** (project *Settings → Helpdesk*, shown when the KB is enabled):
+- **Contribute** (`kb_ingest_mode`): off / **auto** (ingest on close if a solution was found) /
+  **manual** (close creates a *pending* entry; approve it from the ticket sidebar).
+- **Show proposed solutions** (`kb_proposal_display`): off / summary note / sidebar panel / both.
+
+**Isolation:** each project has its own vector namespace (Qdrant collection / enforced
+`project_id` filter), so a project never retrieves another project's knowledge.
+
+**Batch:** `rake redmine_expert_helpdesk:kb_backfill` ingests existing closed tickets;
+`kb_reembed` rebuilds the vectors after an embedding-model change.
+
+**Setup:** run a vector service reachable from Redmine — e.g. a `qdrant/qdrant` container
+(`http://qdrant:6333`) or a `pgvector/pgvector` Postgres — and point the plugin settings at it.
+
+> **Data protection:** problem/solution text is sent to the embeddings provider and stored in
+> the vector DB. Use a self-hosted embeddings endpoint for a fully on-premise flow.
+
 ## Tests
 
 The plugin ships MiniTest unit and integration tests (`test/`). They require a

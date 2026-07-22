@@ -14,9 +14,16 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   AI_SCOPES       = %w[initial initial_and_replies].freeze
   AI_PROMPT_MODES = %w[inherit extend override].freeze
 
+  # Wissensbasis (RAG): traegt das Projekt geloeste Tickets bei (off/auto/manual)
+  # und wo werden Loesungsvorschlaege angezeigt (off/summary/sidebar/both)?
+  KB_INGEST_MODES  = %w[off auto manual].freeze
+  KB_DISPLAY_MODES = %w[off summary sidebar both].freeze
+
   validates :phishing_action, :inclusion => { :in => PHISHING_ACTIONS }, :allow_nil => true
   validates :ai_summary_scope, :inclusion => { :in => AI_SCOPES }, :allow_nil => true
   validates :ai_prompt_mode,   :inclusion => { :in => AI_PROMPT_MODES }, :allow_nil => true
+  validates :kb_ingest_mode,      :inclusion => { :in => KB_INGEST_MODES }, :allow_nil => true
+  validates :kb_proposal_display, :inclusion => { :in => KB_DISPLAY_MODES }, :allow_nil => true
   validates :sla_work_start, :sla_work_end,
             :format => { :with => /\A\d{1,2}:\d{2}\z/ }, :allow_blank => true
   validates :sla_reaction_minutes, :sla_solution_minutes,
@@ -42,6 +49,23 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   # KI-Zusammenfassung auch fuer Journal-Antworten (nicht nur die Erstmail)?
   def ai_summary_for_replies?
     ai_summary_scope == 'initial_and_replies'
+  end
+
+  # --- Wissensbasis (RAG) ---
+  def kb_ingest_auto?
+    kb_ingest_mode == 'auto'
+  end
+
+  def kb_ingest_manual?
+    kb_ingest_mode == 'manual'
+  end
+
+  def kb_show_in_summary?
+    %w[summary both].include?(kb_proposal_display.to_s)
+  end
+
+  def kb_show_in_sidebar?
+    %w[sidebar both].include?(kb_proposal_display.to_s)
   end
 
   # Effektiver Prompt: erben (zentraler Default), erweitern (zentral + Projekt)

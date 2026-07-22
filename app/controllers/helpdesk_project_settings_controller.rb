@@ -11,6 +11,8 @@ class HelpdeskProjectSettingsController < ApplicationController
       update_sla_settings(setting)
     elsif params[:ai_form].present?
       update_ai_settings(setting)
+    elsif params[:kb_form].present?
+      update_kb_settings(setting)
     else
       update_reply_settings(setting)
     end
@@ -85,6 +87,16 @@ class HelpdeskProjectSettingsController < ApplicationController
     setting.ai_attach_images   = hp[:ai_attach_images] == '1'
     setting.ai_include_journal       = hp[:ai_include_journal] == '1'
     setting.ai_include_private_notes = hp[:ai_include_private_notes] == '1'
+  end
+
+  # Wissensbasis-Einstellungen (viertes Formular im Tab)
+  def update_kb_settings(setting)
+    hp = params[:helpdesk_project_setting] || {}
+
+    mode = hp[:kb_ingest_mode].to_s
+    setting.kb_ingest_mode = mode if HelpdeskProjectSetting::KB_INGEST_MODES.include?(mode)
+    disp = hp[:kb_proposal_display].to_s
+    setting.kb_proposal_display = disp if HelpdeskProjectSetting::KB_DISPLAY_MODES.include?(disp)
   end
 
   # Prioritaets-Overrides: leere Zeilen loeschen, gefuellte anlegen/aktualisieren

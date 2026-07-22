@@ -113,6 +113,73 @@
 <p><em class="info"><%= l(:text_helpdesk_ai_privacy_info) %></em></p>
 
 <hr />
+<h3 style="margin-top:1em;"><%= l(:label_helpdesk_kb_settings) %></h3>
+<p>
+  <%= hidden_field_tag 'settings[kb_enabled]', '0' %>
+  <%= check_box_tag 'settings[kb_enabled]', '1', @settings['kb_enabled'] == '1', :id => 'settings_kb_enabled' %>
+  <%= label_tag 'settings_kb_enabled', l(:field_helpdesk_kb_enabled) %>
+  <em class="info"><%= l(:text_helpdesk_kb_enabled_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_kb_backend) %></label>
+  <%= select_tag 'settings[kb_backend]',
+        options_for_select([['Qdrant', 'qdrant'], ['Postgres + pgvector', 'pgvector']],
+                           @settings['kb_backend'].presence || 'qdrant') %>
+  <em class="info"><%= l(:text_helpdesk_kb_backend_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_kb_qdrant_url) %></label>
+  <%= text_field_tag 'settings[kb_qdrant_url]', @settings['kb_qdrant_url'], :size => 50 %>
+  <em class="info"><%= l(:text_helpdesk_kb_qdrant_url_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_kb_qdrant_api_key) %></label>
+  <%= password_field_tag 'settings[kb_qdrant_api_key]', @settings['kb_qdrant_api_key'], :size => 40, :autocomplete => 'new-password' %>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_kb_pg_url) %></label>
+  <%= text_field_tag 'settings[kb_pg_url]', @settings['kb_pg_url'], :size => 50 %>
+  <em class="info"><%= l(:text_helpdesk_kb_pg_url_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_kb_embed_provider) %></label>
+  <%= select_tag 'settings[kb_embed_provider]',
+        options_for_select([['OpenAI', 'openai'], ['Custom (OpenAI-compatible)', 'custom']],
+                           @settings['kb_embed_provider'].presence || 'openai') %>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_kb_embed_model) %></label>
+  <%= text_field_tag 'settings[kb_embed_model]', @settings['kb_embed_model'].presence || 'text-embedding-3-small', :size => 30 %>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_kb_embed_endpoint) %></label>
+  <%= text_field_tag 'settings[kb_embed_endpoint]', @settings['kb_embed_endpoint'], :size => 50 %>
+  <em class="info"><%= l(:text_helpdesk_kb_embed_endpoint_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_kb_embed_api_key) %></label>
+  <%= password_field_tag 'settings[kb_embed_api_key]', @settings['kb_embed_api_key'], :size => 40, :autocomplete => 'new-password' %>
+  <em class="info"><%= l(:text_helpdesk_kb_embed_api_key_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_kb_extract_prompt) %></label>
+  <%= text_area_tag 'settings[kb_extract_prompt]',
+                    @settings['kb_extract_prompt'].presence || RedmineExpertHelpdesk::KnowledgeExtractor::DEFAULT_PROMPT,
+                    :rows => 8, :cols => 70 %>
+  <em class="info"><%= l(:text_helpdesk_kb_extract_prompt_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_kb_top_k) %></label>
+  <%= text_field_tag 'settings[kb_top_k]', @settings['kb_top_k'].presence || '3', :size => 4 %>
+  <label style="margin-left:12px; width:auto;"><%= l(:field_helpdesk_kb_min_score) %></label>
+  <%= text_field_tag 'settings[kb_min_score]', @settings['kb_min_score'].presence || '0.5', :size => 4 %>
+  <label style="margin-left:12px; width:auto;"><%= l(:field_helpdesk_kb_min_results) %></label>
+  <%= text_field_tag 'settings[kb_min_results]', @settings['kb_min_results'].presence || '1', :size => 4 %>
+  <em class="info"><%= l(:text_helpdesk_kb_retrieval_info) %></em>
+</p>
+<p><em class="info"><%= l(:text_helpdesk_kb_privacy_info) %></em></p>
+
+<hr />
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_phishtank) %></h3>
 <p>
   <%= hidden_field_tag 'settings[phishtank_enabled]', '0' %>

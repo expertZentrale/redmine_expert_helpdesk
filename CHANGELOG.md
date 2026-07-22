@@ -1,5 +1,31 @@
 # Changelog – redmine_expert_helpdesk
 
+## [Unreleased] 2026-07-22 (78)
+
+### Added
+- **Wissensbasis (RAG) aus KI-Zusammenfassungen.** Aus geloesten Tickets wird per KI ein
+  `{Problem, Loesung}`-Paar extrahiert, als Embedding in einem **externen Vektor-Store**
+  abgelegt und bei kuenftigen Zusammenfassungen fuer **Loesungsvorschlaege** aus aehnlichen
+  frueheren Faellen genutzt.
+  - **Vektor-Store zentral waehlbar** (`kb_backend`): **Qdrant** (reines HTTP, kein Zusatz-Gem)
+    oder **Postgres + pgvector** (benoetigt das `pg`-Gem im Deployment; `PgvectorStore` laedt es
+    LoadError-gekapselt). Beide hinter einer `KnowledgeStore`-Schnittstelle
+    (`lib/redmine_expert_helpdesk/knowledge_store.rb`).
+  - **Strikte Projekt-Isolation:** Qdrant eine Collection je Projekt (`helpdesk_kb_p<id>`),
+    pgvector ein zwingendes `WHERE project_id = $1` – ein Projekt sieht nie das Wissen eines anderen.
+  - **Pro-Projekt-Optionen:** Beitrag `kb_ingest_mode` = off/auto/**manual** (manuell: beim
+    Schliessen entsteht ein `pending`-Eintrag, Freigabe per Seitenleisten-Button) und Anzeige
+    `kb_proposal_display` = off/summary/sidebar/both.
+  - **Aufnahme** beim Schliessen (via `Issue#after_save` in `patches/issue_patch.rb`, damit auch
+    Sammel-Updates (Bulk) und API-/Skript-Aenderungen erfasst werden – nicht nur Einzel-Updates;
+    async `HelpdeskKnowledgeIngestJob`) und per Batch-Rake `redmine_expert_helpdesk:kb_backfill`;
+    `kb_reembed` baut die Vektoren nach Modellwechsel neu.
+  - **Embeddings** zentral konfiguriert (OpenAI oder self-hosted OpenAI-kompatibel – Anthropic
+    hat keine Embeddings-API; Fallback auf den Chat-Key bei gleichem Anbieter). Neuer
+    `AiClient#embed`, `KnowledgeExtractor`, Modelle `HelpdeskKnowledgeEntry`/`HelpdeskKbProposal`,
+    Migrationen `030`–`032`, i18n (de/en), Unit-Tests. Default **deaktiviert**; Datenschutz-Hinweis
+    (Problem-/Loesungstext geht an den Embeddings-Anbieter – self-hosted fuer rein lokalen Betrieb).
+
 ## [Unreleased] 2026-07-21 (77)
 
 ### Added

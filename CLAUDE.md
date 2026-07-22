@@ -141,6 +141,20 @@ nested registration would never fire in production.
   Agents can re-run it on demand via **`HelpdeskAiController#regenerate`** (sidebar button,
   `send_helpdesk_reply` permission), which enqueues the job with `force: true` (bypasses the
   per-project enable/scope).
+- **`knowledge_store.rb` / `knowledge_extractor.rb`** — RAG knowledge base from resolved tickets.
+  On close (**`Issue#after_save`** in `patches/issue_patch.rb` → `saved_change_to_status_id? &&
+  closed?`, so single **and** bulk/API closes are caught) or via rake
+  (`redmine_expert_helpdesk:kb_backfill` / `kb_reembed`), **`HelpdeskKnowledgeIngestJob`** extracts
+  `{problem, solution}` (`AiClient.summarize`), stores a `HelpdeskKnowledgeEntry` (SQL = system of
+  record + curation), and — when approved — embeds the problem (`AiClient#embed`) into the vector
+  store. **`KnowledgeStore.for(settings)`** picks the backend by `kb_backend`: `QdrantStore` (REST,
+  no gem, collection per project) or `PgvectorStore` (`gem 'pg'`, guarded require; single table with
+  a mandatory `WHERE project_id`). **Strict per-project isolation.** `HelpdeskAiSummaryJob` retrieves
+  similar entries and injects a "Lösungsvorschlag" into the summary and/or writes `HelpdeskKbProposal`
+  rows for the sidebar (per-project `kb_ingest_mode` / `kb_proposal_display`; `HelpdeskKnowledgeController`
+  for manual approve/ingest). Off by default; failures logged, never break ingestion. Migrations 030–032.
+  The **pgvector backend needs `gem 'pg'`** added in the deployment (not in `PluginGemfile`, to keep
+  the default Qdrant build free of libpq).
 - **`business_hours.rb` / `sla.rb` / `sla_breach_check.rb`** — SLA in *business minutes*.
   `business_hours` defines the working-day/time window; `sla` computes reaction/solution
   deadlines (with per-priority overrides via `HelpdeskSlaPriority`); `sla_breach_check`

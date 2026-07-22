@@ -11,3 +11,10 @@ gem 'base64'
 # (HelpdeskAiSummaryJob). Der Aufruf ist LoadError-gekapselt – fehlt das Gem im
 # Image, wird PDF-Text uebersprungen, der Rest der Funktion bleibt nutzbar.
 gem 'pdf-reader'
+
+# Wissensbasis (RAG): Das Standard-Backend ist Qdrant (reines HTTP, kein Gem).
+# Nur fuer das optionale pgvector-Backend (kb_backend=pgvector) wird das pg-Gem
+# benoetigt. Es wird hier BEWUSST NICHT aktiviert, damit der Standard-Build ohne
+# libpq-dev nicht bricht; PgvectorStore laedt pg per LoadError-gekapseltem require.
+# Zum Aktivieren in der Deployment-Gemfile ergaenzen (und libpq-dev im Image):
+#   gem 'pg'

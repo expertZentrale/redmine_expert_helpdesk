@@ -8,6 +8,7 @@ module RedmineExpertHelpdesk
     module IssuePatch
       def self.included(base)
         base.after_save :helpdesk_refresh_sla_deadlines
+        base.after_save :helpdesk_enqueue_kb_ingest
       end
 
       # Gibt den Anzeigenamen des ersten eingehenden Absenderkontakts zurueck
@@ -54,6 +55,23 @@ module RedmineExpertHelpdesk
         return unless relevant
 
         RedmineExpertHelpdesk::Sla.refresh_deadlines!(self)
+      end
+
+      # Beim Schliessen das geloeste Ticket in die Wissensbasis aufnehmen (async).
+      # Am Modell (after_save), damit auch Sammel-Aenderungen (Bulk-Update) und
+      # API-/Skript-Aenderungen erfasst werden, nicht nur Einzel-Updates ueber den
+      # Controller. Fehler duerfen das Speichern nicht abbrechen.
+      def helpdesk_enqueue_kb_ingest
+        return unless saved_change_to_status_id? && closed?
+        return unless project&.module_enabled?(:helpdesk)
+        return unless Setting.plugin_redmine_expert_helpdesk['kb_enabled'].to_s == '1'
+
+        ps = HelpdeskProjectSetting.for_project(project)
+        return if ps.kb_ingest_mode.to_s == 'off'
+
+        HelpdeskKnowledgeIngestJob.perform_later(id)
+      rescue StandardError => e
+        Rails.logger.warn("Helpdesk: KB-Enqueue (after_save) fehlgeschlagen (Issue ##{id}): #{e.message}")
       end
     end
   end

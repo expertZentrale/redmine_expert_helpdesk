@@ -120,6 +120,54 @@ module RedmineExpertHelpdesk
       end
     end
 
+    # --- Embeddings (fuer die Wissensbasis / RAG) --------------------------
+    # Anthropic hat keine Embeddings-API; daher eigener Provider (openai/custom).
+    # Key/Endpunkt fallen auf die Chat-Konfiguration zurueck, wenn derselbe
+    # Provider genutzt wird und kb_embed_* leer ist.
+    EMBED_PROVIDERS     = %w[openai custom].freeze
+    DEFAULT_EMBED_MODEL = 'text-embedding-3-small'.freeze
+
+    def embed_provider
+      p = @settings['kb_embed_provider'].to_s.strip
+      EMBED_PROVIDERS.include?(p) ? p : 'openai'
+    end
+
+    def embed_model
+      @settings['kb_embed_model'].to_s.strip.presence || DEFAULT_EMBED_MODEL
+    end
+
+    def embed_api_key
+      key = @settings['kb_embed_api_key'].to_s.strip
+      return key if key.present?
+
+      embed_provider == provider ? api_key : ''
+    end
+
+    def embed_endpoint
+      ep = @settings['kb_embed_endpoint'].to_s.strip
+      return ep.chomp('/') if ep.present?
+
+      base = embed_provider == provider ? endpoint : DEFAULT_ENDPOINTS[embed_provider].to_s
+      base.to_s.chomp('/')
+    end
+
+    def embed_configured?
+      embed_api_key.present? && embed_model.present? && embed_endpoint.present?
+    end
+
+    # Liefert den Embedding-Vektor (Array<Float>) fuer text oder wirft AiError.
+    def embed(text)
+      raise ConfigurationError, 'Embeddings sind nicht konfiguriert (Key/Modell/Endpunkt fehlt)' unless embed_configured?
+
+      body = post_json("#{embed_endpoint}/embeddings",
+                       { 'model' => embed_model, 'input' => text.to_s },
+                       'Authorization' => "Bearer #{embed_api_key}")
+      vec = body.dig('data', 0, 'embedding')
+      raise AiError.new('Leere Embedding-Antwort vom Provider', nil, body.to_s) if vec.blank?
+
+      vec
+    end
+
     private
 
     # --- OpenAI / OpenAI-kompatibel (custom) -------------------------------

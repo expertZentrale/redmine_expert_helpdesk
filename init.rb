@@ -6,6 +6,8 @@
 
 require File.expand_path('../lib/redmine_expert_helpdesk/graph_client', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_client', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_store', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_extractor', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/template_renderer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mail_processor', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/init_mailer', __FILE__)
@@ -59,7 +61,20 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'ai_prompt'            => RedmineExpertHelpdesk::AiClient::DEFAULT_PROMPT,
              'ai_max_input_chars'   => '12000',
              'ai_max_output_tokens' => '500',
-             'ai_timeout'           => '60'
+             'ai_timeout'           => '60',
+             'kb_enabled'         => '0',
+             'kb_backend'         => 'qdrant',
+             'kb_qdrant_url'      => '',
+             'kb_qdrant_api_key'  => '',
+             'kb_pg_url'          => '',
+             'kb_embed_provider'  => 'openai',
+             'kb_embed_model'     => 'text-embedding-3-small',
+             'kb_embed_endpoint'  => '',
+             'kb_embed_api_key'   => '',
+             'kb_extract_prompt'  => RedmineExpertHelpdesk::KnowledgeExtractor::DEFAULT_PROMPT,
+             'kb_top_k'           => '3',
+             'kb_min_score'       => '0.5',
+             'kb_min_results'     => '1'
            }
 
   project_module :helpdesk do

@@ -230,6 +230,8 @@ module RedmineExpertHelpdesk
       end
 
       # SLA: Loesungszeit beim Schliessen setzen / beim Wiedereroeffnen zuruecksetzen
+      # (Wissensbasis-Aufnahme laeuft ueber Issue#after_save, damit auch Bulk-/API-
+      # Aenderungen erfasst werden – siehe patches/issue_patch.rb).
       RedmineExpertHelpdesk::Sla.sync_solution!(issue) if issue&.saved_change_to_status_id?
     rescue StandardError => e
       Rails.logger.warn("Helpdesk: edit_after_save-Hook fehlgeschlagen: #{e.message}")

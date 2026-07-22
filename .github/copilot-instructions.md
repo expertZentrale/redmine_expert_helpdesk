@@ -91,6 +91,16 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     `_issue_sidebar` badge JS, like the to/cc/bcc recipient badges). Manual re-run via
     `HelpdeskAiController#regenerate` (sidebar button, `send_helpdesk_reply`) enqueues the job
     with `force: true` (bypasses per-project enable/scope).
+  - `knowledge_store.rb` / `knowledge_extractor.rb` — RAG knowledge base from resolved tickets.
+    On close (`Issue#after_save` in `patches/issue_patch.rb` — catches single + bulk + API) or rake
+    (`kb_backfill`/`kb_reembed`), `HelpdeskKnowledgeIngestJob` extracts
+    `{problem, solution}`, stores a `HelpdeskKnowledgeEntry` (SQL system of record), and embeds
+    approved entries (`AiClient#embed`) into the vector store. `KnowledgeStore.for(settings)` picks
+    `QdrantStore` (REST, no gem) or `PgvectorStore` (`gem 'pg'`, guarded) per `kb_backend`. **Strict
+    per-project isolation** (collection / enforced `project_id`). `HelpdeskAiSummaryJob` injects a
+    "Lösungsvorschlag" and/or writes `HelpdeskKbProposal` rows (per-project `kb_ingest_mode` /
+    `kb_proposal_display`; `HelpdeskKnowledgeController` for manual approve/ingest). Migrations 030–032.
+    pgvector needs `gem 'pg'` in the deployment (kept out of `PluginGemfile`).
   - `business_hours.rb` / `sla.rb` / `sla_breach_check.rb` — SLA in *business minutes*.
   - `phish*.rb` / `phishing_scanner.rb` — PhishTank + Phishing.Database mirror, link scanning
     (decodes Microsoft SafeLinks locally), neutralize/quarantine.

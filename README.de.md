@@ -656,6 +656,44 @@ eingingen.
 
 ---
 
+## Wissensbasis (RAG)
+
+Aus gelösten Tickets lässt sich eine **projektbezogene Wissensbasis** aufbauen: ein KI-Aufruf
+extrahiert je geschlossenem Ticket ein `{Problem, Lösung}`-Paar, bettet das Problem ein und legt
+es in einer externen Vektor-Datenbank ab. Bei einer neuen Mail sucht der Zusammenfassungs-Job
+**nur in der Wissensbasis dieses Projekts** nach ähnlichen gelösten Tickets und ergänzt – wenn
+genügend über dem Schwellwert liegen – einen **Lösungsvorschlag** in der Zusammenfassung und/oder
+ein Seitenleisten-Panel. Standardmäßig deaktiviert.
+
+**Zentrale Konfiguration** (*Administration → Plugins*):
+- **Vektor-Store** (`kb_backend`): **Qdrant** (REST, kein Zusatz-Gem) oder **Postgres + pgvector**
+  (benötigt das `pg`-Gem im Deployment; `PgvectorStore` lädt es per gekapseltem `require`).
+- **Embeddings**: Anbieter (OpenAI oder ein self-hosted OpenAI-kompatibler Endpunkt – Anthropic
+  hat keine Embeddings-API), Modell, Endpunkt, Key (leer nutzt den Key der Zusammenfassung beim
+  gleichen Anbieter).
+- Extraktions-Prompt und Retrieval-Parameter (Top-K, Min. Score, Min. Treffer).
+
+**Projekt-Konfiguration** (Projekt-*Einstellungen → Helpdesk*, sichtbar wenn die KB aktiv ist):
+- **Beitrag** (`kb_ingest_mode`): aus / **auto** (beim Schließen, wenn eine Lösung erkannt wurde) /
+  **manuell** (beim Schließen entsteht ein *pending*-Eintrag; Freigabe über die Ticket-Seitenleiste).
+- **Lösungsvorschläge anzeigen** (`kb_proposal_display`): aus / Zusammenfassung / Seitenleiste / beides.
+
+**Isolation:** jedes Projekt hat einen eigenen Vektor-Namensraum (Qdrant-Collection / erzwungener
+`project_id`-Filter) – ein Projekt ruft nie das Wissen eines anderen ab.
+
+**Batch:** `rake redmine_expert_helpdesk:kb_backfill` nimmt bestehende geschlossene Tickets auf;
+`kb_reembed` baut die Vektoren nach einem Modellwechsel neu.
+
+**Einrichtung:** einen von Redmine erreichbaren Vektor-Dienst betreiben – z. B. einen
+`qdrant/qdrant`-Container (`http://qdrant:6333`) oder eine `pgvector/pgvector`-Postgres – und die
+Plugin-Einstellungen darauf zeigen lassen.
+
+> **Datenschutz:** Problem-/Lösungstext wird an den Embeddings-Anbieter übertragen und im
+> Vektor-Store gespeichert. Für einen rein lokalen Betrieb einen self-hosted Embeddings-Endpunkt
+> verwenden.
+
+---
+
 ## Tests ausführen
 
 Das Plugin enthält Minitest-Unit-Tests unter `test/unit/`. Sie laufen in der

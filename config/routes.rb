@@ -66,6 +66,10 @@ RedmineApp::Application.routes.draw do
   # KI-Zusammenfassung manuell (neu) erzeugen (Button in der Ticket-Seitenleiste)
   post 'issues/:issue_id/helpdesk_ai_summary', :to => 'helpdesk_ai#regenerate', :as => 'issue_helpdesk_regenerate_ai'
 
+  # Wissensbasis: Ticket manuell aufnehmen / pending-Eintrag freigeben
+  post 'issues/:issue_id/helpdesk_kb_ingest',  :to => 'helpdesk_knowledge#ingest',  :as => 'issue_helpdesk_kb_ingest'
+  post 'issues/:issue_id/helpdesk_kb_approve', :to => 'helpdesk_knowledge#approve', :as => 'issue_helpdesk_kb_approve'
+
   # Kontakt manuell zuordnen / initiale Mail senden (bestehende Tickets)
   scope 'projects/:project_id' do
     post 'issues/:issue_id/helpdesk_init', :to => 'helpdesk_init#create', :as => 'issue_helpdesk_init'

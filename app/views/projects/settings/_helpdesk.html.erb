@@ -217,6 +217,35 @@
   </fieldset>
 <% end %>
 
+<%# --- Wissensbasis (RAG), nur wenn zentral aktiviert --- %>
+<% if Setting.plugin_redmine_expert_helpdesk['kb_enabled'] == '1' %>
+  <fieldset class="tabular" style="margin-bottom: 14px;">
+    <legend><%= l(:label_helpdesk_kb_settings) %></legend>
+    <%= form_tag helpdesk_project_setting_path(:project_id => @project), :method => :put do %>
+      <%= hidden_field_tag 'kb_form', '1' %>
+      <p>
+        <label for="hd_kb_ingest"><%= l(:field_helpdesk_kb_ingest_mode) %></label>
+        <%= select_tag 'helpdesk_project_setting[kb_ingest_mode]',
+            options_for_select(
+              HelpdeskProjectSetting::KB_INGEST_MODES.map { |m| [l(:"label_helpdesk_kb_ingest_#{m}"), m] },
+              hd_setting.kb_ingest_mode.presence || 'off'),
+            :id => 'hd_kb_ingest' %>
+        <em class="info"><%= l(:text_helpdesk_kb_ingest_mode_info) %></em>
+      </p>
+      <p>
+        <label for="hd_kb_display"><%= l(:field_helpdesk_kb_proposal_display) %></label>
+        <%= select_tag 'helpdesk_project_setting[kb_proposal_display]',
+            options_for_select(
+              HelpdeskProjectSetting::KB_DISPLAY_MODES.map { |m| [l(:"label_helpdesk_kb_display_#{m}"), m] },
+              hd_setting.kb_proposal_display.presence || 'off'),
+            :id => 'hd_kb_display' %>
+        <em class="info"><%= l(:text_helpdesk_kb_proposal_display_info) %></em>
+      </p>
+      <p><%= submit_tag l(:button_save) %></p>
+    <% end %>
+  </fieldset>
+<% end %>
+
 <p>
   <%= link_to hd_icon_label('add', l(:label_helpdesk_mailbox_new)), new_helpdesk_mailbox_path(:project_id => @project),
               :class => 'icon icon-add' %>
