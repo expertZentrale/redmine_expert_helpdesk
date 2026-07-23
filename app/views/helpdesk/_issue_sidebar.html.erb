@@ -8,6 +8,21 @@
   eml_links      = inbound_msgs.select { |m| m.eml_attachment_id.present? }
   ai_summaries   = HelpdeskAiSummary.where(:issue_id => issue.id).where.not(:journal_id => nil)
   previous       = contact.issues.where.not(:id => issue.id).order(:id => :desc).limit(4)
+
+  # KI-Assistent-Bereich (eigene Karte unter der Kundenkarte): nur anzeigen, wenn
+  # KI oder Wissensbasis fuer das Projekt tatsaechlich aktiv ist. Jede Zeile hat
+  # ihr eigenes Gate; die Karte erscheint, sobald mindestens ein Element sichtbar ist.
+  ai_on   = Setting.plugin_redmine_expert_helpdesk['ai_enabled'] == '1'
+  kb_on   = Setting.plugin_redmine_expert_helpdesk['kb_enabled'] == '1'
+  hd_ps   = (ai_on || kb_on) ? HelpdeskProjectSetting.for_project(project) : nil
+  can_rep = User.current.allowed_to?(:send_helpdesk_reply, project)
+
+  show_regen   = ai_on && hd_ps&.ai_summary_enabled? && can_rep
+  kb_props     = (kb_on && hd_ps&.kb_show_in_sidebar?) ?
+                   HelpdeskKbProposal.where(:issue_id => issue.id).order('score DESC') : []
+  show_kb_acts = kb_on && hd_ps && hd_ps.kb_ingest_mode.to_s != 'off' && issue.closed? && can_rep
+  kb_entry     = show_kb_acts ? HelpdeskKnowledgeEntry.find_by(:issue_id => issue.id) : nil
+  show_ai_area = show_regen || kb_props.any? || show_kb_acts
 %>
 
 <h3><%= l(:label_helpdesk_customer) %></h3>
@@ -54,39 +69,38 @@
     </ul>
   <% end %>
 
-  <% if Setting.plugin_redmine_expert_helpdesk['ai_enabled'] == '1' &&
-        User.current.allowed_to?(:send_helpdesk_reply, project) %>
-    <div class="hd-ai-regen">
-      <%= button_to "🤖 #{l(:button_helpdesk_ai_regenerate)}",
-            issue_helpdesk_regenerate_ai_path(:issue_id => issue),
-            :method => :post,
-            :class  => 'hd-ai-regen-btn',
-            :title  => l(:text_helpdesk_ai_regenerate_info) %>
-    </div>
-  <% end %>
+</div>
 
-  <%# --- Wissensbasis (RAG): Vorschlaege + manuelle Kuratierung --- %>
-  <% if Setting.plugin_redmine_expert_helpdesk['kb_enabled'] == '1'
-       hd_ps = HelpdeskProjectSetting.for_project(project) %>
-    <% if hd_ps.kb_show_in_sidebar?
-         kb_props = HelpdeskKbProposal.where(:issue_id => issue.id).order('score DESC') %>
-      <% if kb_props.any? %>
-        <div class="hd-section-label">💡 <%= l(:label_helpdesk_kb_proposals) %></div>
-        <ul class="hd-kb-proposals">
-          <% kb_props.each do |pr| %>
-            <li>
-              <% if pr.source_issue_id %><%= link_to "##{pr.source_issue_id}", issue_path(pr.source_issue_id) %><% end %>
-              <span class="hd-kb-score"><%= "#{(pr.score.to_f * 100).round}%" %></span>
-              <div class="hd-kb-sol"><%= truncate(pr.solution.to_s, :length => 180) %></div>
-            </li>
-          <% end %>
-        </ul>
-      <% end %>
+<%# --- KI-Assistent: eigene Karte unter der Kundenkarte (Issue-bezogen, nicht Kunde) --- %>
+<% if show_ai_area %>
+  <h3><%= l(:label_helpdesk_ai_assistant) %></h3>
+  <div class="helpdesk-sidebar-card">
+    <% if show_regen %>
+      <div class="hd-ai-regen">
+        <%= button_to "🤖 #{l(:button_helpdesk_ai_regenerate)}",
+              issue_helpdesk_regenerate_ai_path(:issue_id => issue),
+              :method => :post,
+              :class  => 'hd-ai-regen-btn',
+              :title  => l(:text_helpdesk_ai_regenerate_info) %>
+      </div>
     <% end %>
 
-    <% if hd_ps.kb_ingest_mode.to_s != 'off' && issue.closed? &&
-          User.current.allowed_to?(:send_helpdesk_reply, project)
-         kb_entry = HelpdeskKnowledgeEntry.find_by(:issue_id => issue.id) %>
+    <%# --- Wissensbasis (RAG): Loesungsvorschlaege --- %>
+    <% if kb_props.any? %>
+      <div class="hd-section-label">💡 <%= l(:label_helpdesk_kb_proposals) %></div>
+      <ul class="hd-kb-proposals">
+        <% kb_props.each do |pr| %>
+          <li>
+            <% if pr.source_issue_id %><%= link_to "##{pr.source_issue_id}", issue_path(pr.source_issue_id) %><% end %>
+            <span class="hd-kb-score"><%= "#{(pr.score.to_f * 100).round}%" %></span>
+            <div class="hd-kb-sol"><%= truncate(pr.solution.to_s, :length => 180) %></div>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+
+    <%# --- Wissensbasis (RAG): manuelle Kuratierung --- %>
+    <% if show_kb_acts %>
       <div class="hd-kb-actions">
         <% if kb_entry&.approved? %>
           <span class="hd-kb-status hd-kb-ok">✓ <%= l(:text_helpdesk_kb_in_base) %></span>
@@ -103,8 +117,8 @@
         <% end %>
       </div>
     <% end %>
-  <% end %>
-</div>
+  </div>
+<% end %>
 
 <style>
 .helpdesk-sidebar-card {
@@ -152,7 +166,7 @@
 }
 .hd-sep-bar { color: #bbb; margin: 0 2px; }
 .hd-recipient { color: #555; cursor: default; }
-.hd-ai-regen { margin-top: 10px; }
+.hd-ai-regen { margin-top: 0; }
 .hd-ai-regen form { display: inline; margin: 0; }
 .hd-ai-regen-btn {
   font-size: 0.9em; padding: 3px 9px; cursor: pointer;

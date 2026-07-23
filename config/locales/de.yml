@@ -300,6 +300,7 @@ de:
   field_helpdesk_ai_timeout: 'Timeout (Sekunden)'
   text_helpdesk_ai_privacy_info: 'Datenschutz: Der Inhalt eingehender Mails und die gewählten Anhänge werden an den konfigurierten Anbieter übertragen. Für einen vollständig lokalen Betrieb den Anbieter "Eigener Endpunkt" mit einer self-hosted URL verwenden.'
   label_helpdesk_ai_summary: 'KI-Zusammenfassung'
+  label_helpdesk_ai_assistant: 'KI-Assistent'
   field_helpdesk_ai_summary_enabled: 'KI-Zusammenfassungen für dieses Projekt erzeugen'
   text_helpdesk_ai_summary_enabled_info: 'Fügt Tickets aus eingehenden Mails eine private Zusammenfassungs-Notiz hinzu.'
   field_helpdesk_ai_scope: 'Umfang'

@@ -1,5 +1,17 @@
 # Changelog – redmine_expert_helpdesk
 
+## [Unreleased] 2026-07-23 (83)
+
+### Changed
+- Ticket-Seitenleiste: Die KI-/Wissensbasis-Bedienelemente (🤖 KI-Zusammenfassung neu erzeugen,
+  💡 KB-Lösungsvorschläge und manuelle KB-Kuratierung) sind nicht mehr in die Kundenkarte
+  eingebettet, sondern stehen in einer eigenen Karte **„KI-Assistent"** direkt unterhalb der
+  Kundenkarte (sie beziehen sich auf das Ticket, nicht auf den Kunden). Die Karte erscheint nur,
+  wenn für das Projekt tatsächlich KI/KB aktiv ist. Der **🤖-Neu-erzeugen-Button** berücksichtigt
+  jetzt zusätzlich den projektbezogenen Schalter *KI-Zusammenfassungen für dieses Projekt erzeugen*
+  (`ai_summary_enabled`) – nicht mehr nur den globalen `ai_enabled`
+  (`app/views/helpdesk/_issue_sidebar.html.erb`, neuer i18n-Key `label_helpdesk_ai_assistant`).
+
 ## [Unreleased] 2026-07-23 (82)
 
 ### Fixed

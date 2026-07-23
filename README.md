@@ -311,9 +311,10 @@ Summaries run **asynchronously** (ActiveJob `HelpdeskAiSummaryJob`), so AI laten
 failures never block or slow the mail-fetch cycle; if the call fails, the ticket is still
 created and the error is only logged. The **token usage** of each summary is shown as a 🤖
 badge in the note's journal header (tooltip: input/output tokens and model), mirroring the
-to/cc/bcc recipient badges. You can **regenerate** a summary on demand from the ticket's
-Helpdesk sidebar (*🤖 Regenerate AI summary*) — handy after a failed run or for tickets that
-predate the feature.
+to/cc/bcc recipient badges. You can **regenerate** a summary on demand from the **AI Assistant**
+card in the ticket's Helpdesk sidebar (a dedicated card below the customer card, shown only when
+AI/KB is enabled for the project) — handy after a failed run or for tickets that predate the
+feature. The regenerate button appears only when *Generate AI summaries for this project* is on.
 
 > **Data protection:** incoming mail content and the selected attachments are sent to the
 > configured provider. For a fully on-premise flow, use the **Custom** provider pointed at

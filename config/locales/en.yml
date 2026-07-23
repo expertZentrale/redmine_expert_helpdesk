@@ -300,6 +300,7 @@ en:
   field_helpdesk_ai_timeout: 'Timeout (seconds)'
   text_helpdesk_ai_privacy_info: 'Data protection: incoming mail content and the selected attachments are sent to the configured provider. Use the "Custom" provider with a self-hosted endpoint for a fully on-premise flow.'
   label_helpdesk_ai_summary: 'AI summary'
+  label_helpdesk_ai_assistant: 'AI Assistant'
   field_helpdesk_ai_summary_enabled: 'Generate AI summaries for this project'
   text_helpdesk_ai_summary_enabled_info: 'Adds a private summary note to tickets created from incoming mail.'
   field_helpdesk_ai_scope: 'Scope'

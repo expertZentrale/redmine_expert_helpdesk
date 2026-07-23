@@ -645,9 +645,11 @@ Die Zusammenfassung läuft **asynchron** (ActiveJob `HelpdeskAiSummaryJob`); KI-
 und der Fehler nur geloggt. Der **Token-Verbrauch** jeder Zusammenfassung wird als 🤖-Badge
 im Journal-Header der Notiz angezeigt (Tooltip: Eingabe-/Ausgabe-Tokens und Modell) – analog
 zu den An/CC/BCC-Empfänger-Badges. Eine Zusammenfassung lässt sich zudem manuell über die
-Helpdesk-Seitenleiste des Tickets **neu erzeugen** (*🤖 KI-Zusammenfassung neu erzeugen*) –
-praktisch nach einem fehlgeschlagenen Lauf oder für Tickets, die vor Aktivierung der Funktion
-eingingen.
+Karte **„KI-Assistent"** in der Helpdesk-Seitenleiste des Tickets **neu erzeugen**
+(*🤖 KI-Zusammenfassung neu erzeugen*) – eine eigene Karte unterhalb der Kundenkarte, die nur
+erscheint, wenn KI/KB für das Projekt aktiv ist. Der Button erscheint nur, wenn
+*KI-Zusammenfassungen für dieses Projekt erzeugen* aktiviert ist. Praktisch nach einem
+fehlgeschlagenen Lauf oder für Tickets, die vor Aktivierung der Funktion eingingen.
 
 > **Datenschutz:** Der Inhalt eingehender Mails und die gewählten Anhänge werden an den
 > konfigurierten Anbieter übertragen. Für einen vollständig lokalen Betrieb den Anbieter
