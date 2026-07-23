@@ -12,7 +12,7 @@ Two CI workflows run on every push and pull request: the
 [test suite](.github/workflows/ci.yml) (MiniTest against Redmine source for all
 supported versions — 5.1, 6.0, 6.1, 7.0 — on a clean MariaDB) and a
 [Docker image smoke test](.github/workflows/docker-image.yml) that boots the plugin
-inside the **official `redmine` Docker images** we deploy with (tags 5.1, 6.0, 6.1) —
+inside the **official `redmine` Docker images** we deploy with (tags 5.1, 6.0, 6.1, 7.0) —
 see [Tests](#tests).
 
 ## Features
@@ -381,7 +381,7 @@ runs the tests — so all versions are covered in an isolated, reproducible stat
 
 **Docker image smoke test:** [`.github/workflows/docker-image.yml`](.github/workflows/docker-image.yml)
 additionally boots the plugin inside the **official `redmine` Docker images** used in
-deployment (tags `5.1`, `6.0`, `6.1`). Per tag it starts the official image against a fresh
+deployment (tags `5.1`, `6.0`, `6.1`, `7.0`). Per tag it starts the official image against a fresh
 MariaDB, mounts the plugin read-only, migrates via `REDMINE_PLUGINS_MIGRATE=1`, and asserts
 Redmine serves `/login` (HTTP 200) with the plugin loaded — catching `init.rb` load,
 migration or gem-version issues specific to the shipped image. Add `7.0`/`7` to the matrix

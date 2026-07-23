@@ -1,5 +1,12 @@
 # Changelog – redmine_expert_helpdesk
 
+## [Unreleased] 2026-07-23 (79)
+
+### Changed
+- Docker-Image-Smoke-Test (`.github/workflows/docker-image.yml`): **Redmine 7.0** in die Matrix
+  aufgenommen (offizielles Image `redmine:7.0` ist jetzt veröffentlicht) – getestet werden nun die
+  Tags `5.1`, `6.0`, `6.1`, `7.0`. README-Tag-Listen entsprechend ergänzt.
+
 ## [Unreleased] 2026-07-22 (78)
 
 ### Added
