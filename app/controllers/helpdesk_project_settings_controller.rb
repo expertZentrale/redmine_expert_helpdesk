@@ -25,11 +25,11 @@ class HelpdeskProjectSettingsController < ApplicationController
 
     flash[:notice] = l(:notice_successful_update)
     redirect_to :controller => 'projects', :action => 'settings',
-                :id => @project, :tab => 'helpdesk'
+                :id => @project, :tab => 'expert_helpdesk'
   rescue => e
     flash[:error] = e.message
     redirect_to :controller => 'projects', :action => 'settings',
-                :id => @project, :tab => 'helpdesk'
+                :id => @project, :tab => 'expert_helpdesk'
   end
 
   private

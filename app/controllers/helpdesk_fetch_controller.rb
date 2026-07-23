@@ -17,7 +17,7 @@ class HelpdeskFetchController < ApplicationController
     respond_to do |format|
       format.html do
         flash[:notice] = l(:notice_helpdesk_fetch_done, :count => results.values.sum { |r| r[:processed] })
-        redirect_to settings_project_path(@project, :tab => 'helpdesk')
+        redirect_to settings_project_path(@project, :tab => 'expert_helpdesk')
       end
       format.json { render :json => results }
     end
@@ -25,7 +25,7 @@ class HelpdeskFetchController < ApplicationController
     respond_to do |format|
       format.html do
         flash[:error] = l(:error_helpdesk_fetch_failed, :message => e.message)
-        redirect_to settings_project_path(@project, :tab => 'helpdesk')
+        redirect_to settings_project_path(@project, :tab => 'expert_helpdesk')
       end
       format.json { render :json => { :error => e.message }, :status => 502 }
     end

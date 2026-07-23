@@ -136,9 +136,10 @@ end
 unless IssueQuery.ancestors.include?(RedmineExpertHelpdesk::Patches::IssueQueryPatch)
   IssueQuery.prepend(RedmineExpertHelpdesk::Patches::IssueQueryPatch)
 end
-unless QueriesHelper.ancestors.include?(RedmineExpertHelpdesk::Patches::QueriesHelperPatch)
-  QueriesHelper.prepend(RedmineExpertHelpdesk::Patches::QueriesHelperPatch)
-end
+# column_content ebenfalls per UnboundMethod-Capture (nicht prepend/super), damit
+# die SLA-Chip-Spalten mit alias_method_chain-Plugins koexistieren
+# (z. B. RedmineUP redmine_contacts_helpdesk). Siehe queries_helper_patch.rb.
+RedmineExpertHelpdesk::Patches::QueriesHelperPatch.apply!(QueriesHelper)
 # hd_icon_label global verfuegbar machen: Redmine setzt include_all_helpers = false,
 # daher werden Plugin-Helfer nicht automatisch in Kern-Views eingebunden.
 # ApplicationHelper ist in allen Views verfuegbar.

@@ -15,7 +15,7 @@ class HelpdeskMailboxesController < ApplicationController
     if @mailbox.save
       ensure_mailbox_folders(@mailbox)
       flash[:notice] = l(:notice_successful_create)
-      redirect_to settings_project_path(@project, :tab => 'helpdesk')
+      redirect_to settings_project_path(@project, :tab => 'expert_helpdesk')
     else
       render :action => 'new'
     end
@@ -29,7 +29,7 @@ class HelpdeskMailboxesController < ApplicationController
     if @mailbox.save
       ensure_mailbox_folders(@mailbox)
       flash[:notice] = l(:notice_successful_update)
-      redirect_to settings_project_path(@project, :tab => 'helpdesk')
+      redirect_to settings_project_path(@project, :tab => 'expert_helpdesk')
     else
       render :action => 'edit'
     end
@@ -38,7 +38,7 @@ class HelpdeskMailboxesController < ApplicationController
   def destroy
     @mailbox.destroy
     flash[:notice] = l(:notice_successful_delete)
-    redirect_to settings_project_path(@project, :tab => 'helpdesk')
+    redirect_to settings_project_path(@project, :tab => 'expert_helpdesk')
   end
 
   # Liefert JSON-Array aller Ordnernamen fuer das angegebene Postfach (AJAX).

@@ -170,11 +170,14 @@ nested registration would never fire in production.
 ### Patches (`lib/redmine_expert_helpdesk/patches/`)
 `Issue`, `IssueQuery`, `Project`, `ProjectsHelper` — extend Redmine core with helpdesk
 associations, query columns/filters, and helpers. Applied in `init.rb` (see above). Most are
-`prepend`ed; **`ProjectsHelperPatch` is the exception** — it adds the project-settings "Helpdesk"
-tab via **UnboundMethod capture** (`apply!` captures `project_settings_tabs`, `define_method`s a
-replacement calling the captured original), **not** prepend/super, so it coexists with
-`alias_method_chain`-based plugins that patch the same method (e.g. RedmineUP
-`redmine_contacts_helpdesk`) — prepend/super collides there (`super: no superclass method`).
+`prepend`ed; **`ProjectsHelperPatch` and `QueriesHelperPatch` are the exceptions** — both wrap a
+core helper (`project_settings_tabs` resp. `column_content`) via **UnboundMethod capture**
+(`apply!` captures the current method as an `UnboundMethod`, `define_method`s a replacement that
+calls the captured original explicitly), **not** prepend/super, so they coexist with
+`alias_method_chain`-based plugins that patch the same methods (e.g. RedmineUP
+`redmine_contacts_helpdesk`) — prepend/super collides there (`super: no superclass method`). For the
+same coexistence, our project-settings tab is named **`expert_helpdesk`** (not `helpdesk`, which
+RedmineUP also registers); the internal `:tab => 'expert_helpdesk'` redirects match.
 
 ### Web layer (`app/`)
 Standard Rails MVC under the plugin. Controllers map to permissions declared in `init.rb`'s
@@ -205,4 +208,4 @@ never edit a shipped migration.
 - **`unknown_user_mode` on the mailbox** (`accept`/`create`/`ignore`) controls handling of
   senders with no Redmine user — enforced by `MailHandler`.
 - Azure app registration is a one-time external setup (README has PowerShell/Terraform/CLI
-  recipes); central credentials live under *Administration → Plugins → Redmine Expert Helpdesk*.
+  recipes); central credentials live under *Administration → Plugins → Redmine expert Helpdesk*.

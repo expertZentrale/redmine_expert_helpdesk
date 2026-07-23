@@ -17,11 +17,16 @@ module RedmineExpertHelpdesk
         base.send(:define_method, :project_settings_tabs) do
           tabs = original.bind(self).call
           if User.current.allowed_to?(:manage_helpdesk, @project)
+            # Tab-Name bewusst 'expert_helpdesk' (nicht 'helpdesk'): RedmineUP
+            # redmine_contacts_helpdesk registriert ebenfalls einen Tab namens
+            # 'helpdesk'; identische Namen kollidieren (gleiche DOM-ID, nur ein
+            # Tab zeigt den korrekten Inhalt). Interne Redirects verwenden
+            # denselben Namen (:tab => 'expert_helpdesk').
             tabs << {
-              :name    => 'helpdesk',
+              :name    => 'expert_helpdesk',
               :action  => :manage_helpdesk,
               :partial => 'projects/settings/helpdesk',
-              :label   => :label_helpdesk
+              :label   => :label_expert_helpdesk
             }
           end
           tabs

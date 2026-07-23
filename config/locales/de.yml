@@ -1,6 +1,9 @@
 de:
   label_helpdesk: Helpdesk
-  project_module_helpdesk: Helpdesk
+  # Eindeutige Anzeigenamen, damit Modul/Reiter nicht mit RedmineUP
+  # redmine_contacts_helpdesk kollidieren (dort ebenfalls "Helpdesk").
+  label_expert_helpdesk: expert Helpdesk
+  project_module_helpdesk: expert Helpdesk
   permission_manage_helpdesk: Helpdesk-Postfächer verwalten
   permission_fetch_helpdesk_mail: Helpdesk-Mails abrufen
   permission_send_helpdesk_reply: Kundenantworten senden

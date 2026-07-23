@@ -10,6 +10,22 @@
   `ProjectsHelperPatch` erweitert `project_settings_tabs` jetzt per **UnboundMethod-Capture**
   (statt prepend/super) und koexistiert reihenfolgeunabhängig mit alias_method_chain-Plugins
   (`lib/redmine_expert_helpdesk/patches/projects_helper_patch.rb`, `init.rb`).
+- Kompatibilität mit RedmineUP `redmine_contacts_helpdesk` (Fortsetzung): Bei aktivem RedmineUP-
+  Helpdesk-Modul im Projekt schlug die **Ticket-Liste mit HTTP 500** fehl
+  („super: no superclass method 'column_content'") — dieselbe prepend/super-vs-alias_method_chain-
+  Kollision auf `QueriesHelper#column_content`. `QueriesHelperPatch` nutzt jetzt ebenfalls
+  **UnboundMethod-Capture**; die SLA-Ampel-Spalten koexistieren mit RedmineUPs Spalten-Rendering
+  (`lib/redmine_expert_helpdesk/patches/queries_helper_patch.rb`, `init.rb`).
+- Namenskollisionen mit RedmineUP behoben: beide Plugins meldeten einen Einstellungs-Reiter namens
+  `helpdesk` an (gleiche DOM-ID → nur ein Reiter zeigte den korrekten Inhalt), und beide zeigten
+  Modul **und** Reiter mit dem identischen Anzeigenamen „Helpdesk". Behoben:
+  - Reiter-Name jetzt **`expert_helpdesk`** (interne Redirects in
+    `helpdesk_fetch`/`helpdesk_mailboxes`/`helpdesk_project_settings` angepasst).
+  - Anzeigenamen jetzt **„expert Helpdesk"** für den Reiter (neuer i18n-Key
+    `label_expert_helpdesk`) und das Projektmodul (`project_module_helpdesk`), damit sie sich vom
+    RedmineUP-„Helpdesk" unterscheiden. Der Modul-Bezeichner bleibt `:helpdesk` (kein Daten-
+    Migrationsbedarf; RedmineUP nutzt `:contacts_helpdesk`).
+  (`lib/redmine_expert_helpdesk/patches/projects_helper_patch.rb`, `config/locales/{en,de}.yml`).
 
 ## [Unreleased] 2026-07-23 (81)
 

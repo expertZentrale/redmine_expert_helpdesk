@@ -1,6 +1,6 @@
 > 🇩🇪 Deutsche Version · [English version](README.md)
 
-# Redmine Expert Helpdesk
+# Redmine expert Helpdesk
 
 [![CI](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml)
 [![Docker image smoke test](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/docker-image.yml/badge.svg)](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/docker-image.yml)
@@ -24,7 +24,7 @@ siehe [Tests ausführen](#tests-ausführen).
   Reiter *Helpdesk* der Projekteinstellungen (Quell-/Zielordner, Standardwerte
   für Tracker/Priorität/Status, Umgang mit unbekannten Absendern).
 - **Zentrale App-Registrierung**: Tenant-ID, Client-ID und Client-Secret werden
-  einmalig unter *Administration → Plugins → Redmine Expert Helpdesk* gepflegt.
+  einmalig unter *Administration → Plugins → Redmine expert Helpdesk* gepflegt.
 - **Autoresponder**: Konfigurierbare Bestätigungsmail bei neuen Tickets.
 - **Kundenantworten**: Antwort an den Kunden direkt von der Ticketseite, mit
   Header-/Footer-Vorlagen; Versand per MIME-basiertem Graph-API-Endpunkt aus
@@ -162,7 +162,7 @@ Abgleich zwischen `HelpdeskMessage.sent_at` und `Journal.created_on`,
 Toleranz 30 Sekunden).
 
 **Automatische Feldaktualisierung nach dem Senden**: Optional können in den
-Projekteinstellungen (*Helpdesk → Antwort-Einstellungen*) ein Ziel-Status
+Projekteinstellungen (*expert Helpdesk → Antwort-Einstellungen*) ein Ziel-Status
 und die automatische Zuweisung an den Absender konfiguriert werden. Beide
 werden nach erfolgreichem Versand gesetzt, bevor das Ticket-Formular
 abgesendet wird.
@@ -201,7 +201,7 @@ gespeichert und dem Projekt zugeordnet.
 
 Es gibt bewusst keinen eingebauten Scheduler. Zwei Wege:
 
-1. **Button**: *Projekteinstellungen → Helpdesk → „Mails jetzt abrufen"*
+1. **Button**: *Projekteinstellungen → expert Helpdesk → „Mails jetzt abrufen"*
    (Berechtigung *Helpdesk-Mails abrufen*).
 2. **HTTP-Endpunkt** für curl/CronJob (alle aktiven Postfächer):
 
@@ -229,7 +229,7 @@ JSON-Zusammenfassung (`{"checked_at": …, "notified": N}`).
 
 ## Plugin-Einstellungen
 
-Unter *Administration → Plugins → Redmine Expert Helpdesk*:
+Unter *Administration → Plugins → Redmine expert Helpdesk*:
 
 | Einstellung | Beschreibung |
 |---|---|
@@ -547,7 +547,7 @@ Vollständige Dokumentation: [Exchange Online Application RBAC](https://learn.mi
 
 ### Schritt 5 – Zugangsdaten in Redmine eintragen
 
-In Redmine unter *Administration → Plugins → Redmine Expert Helpdesk*
+In Redmine unter *Administration → Plugins → Redmine expert Helpdesk*
 Tenant-ID, Client-ID und Client-Secret eintragen.
 
 ## Installation
@@ -560,7 +560,7 @@ automatisch, wenn `REDMINE_PLUGINS_MIGRATE=1` gesetzt ist, sonst manuell:
 bundle exec rake redmine:plugins:migrate RAILS_ENV=production
 ```
 
-Danach im Projekt das Modul **Helpdesk** aktivieren und die Berechtigungen
+Danach im Projekt das Modul **expert Helpdesk** aktivieren und die Berechtigungen
 den Rollen zuordnen:
 
 | Berechtigung | Beschreibung |
@@ -619,7 +619,7 @@ Zusammenfassung als **private (interne) Journal-Notiz** ans Ticket hängen – h
 schwer verständlichen Mails oder weitergeleiteten Verläufen mit verstreuten Informationen.
 Standardmäßig deaktiviert, Opt-in pro Projekt.
 
-**Zentrale Konfiguration** (*Administration → Plugins → Redmine Expert Helpdesk*):
+**Zentrale Konfiguration** (*Administration → Plugins → Redmine expert Helpdesk*):
 - **Anbieter** – OpenAI (Chat Completions), Anthropic (Messages) oder **Eigener Endpunkt**
   (beliebige OpenAI-kompatible Basis-URL, z. B. self-hosted Ollama / vLLM / LocalAI / LM Studio).
 - **API-Key**, **Endpunkt** (leer = Anbieter-Standard; für „Eigener Endpunkt" erforderlich),
@@ -627,7 +627,7 @@ Standardmäßig deaktiviert, Opt-in pro Projekt.
 - **Standard-Prompt** (guter deutscher Default mitgeliefert) sowie Limits (max.
   Eingabezeichen / Ausgabe-Tokens / Timeout).
 
-**Projekt-Konfiguration** (Projekt-*Einstellungen → Helpdesk*, sichtbar wenn KI zentral
+**Projekt-Konfiguration** (Projekt-*Einstellungen → expert Helpdesk*, sichtbar wenn KI zentral
 aktiviert ist):
 - Für das Projekt aktivieren; **Umfang** wählen (nur Erstmail oder Erstmail und Antworten).
 - **Prompt-Modus** – zentralen Prompt *erben*, *erweitern* oder durch einen
@@ -673,7 +673,7 @@ ein Seitenleisten-Panel. Standardmäßig deaktiviert.
   gleichen Anbieter).
 - Extraktions-Prompt und Retrieval-Parameter (Top-K, Min. Score, Min. Treffer).
 
-**Projekt-Konfiguration** (Projekt-*Einstellungen → Helpdesk*, sichtbar wenn die KB aktiv ist):
+**Projekt-Konfiguration** (Projekt-*Einstellungen → expert Helpdesk*, sichtbar wenn die KB aktiv ist):
 - **Beitrag** (`kb_ingest_mode`): aus / **auto** (beim Schließen, wenn eine Lösung erkannt wurde) /
   **manuell** (beim Schließen entsteht ein *pending*-Eintrag; Freigabe über die Ticket-Seitenleiste).
 - **Lösungsvorschläge anzeigen** (`kb_proposal_display`): aus / Zusammenfassung / Seitenleiste / beides.

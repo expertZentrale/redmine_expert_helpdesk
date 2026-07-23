@@ -24,7 +24,7 @@ see [Tests](#tests).
   *Helpdesk* tab in project settings (source/target folder, defaults for
   tracker/priority/status, handling of unknown senders).
 - **Central app registration**: Tenant ID, Client ID and Client Secret are
-  configured once under *Administration → Plugins → Redmine Expert Helpdesk*.
+  configured once under *Administration → Plugins → Redmine expert Helpdesk*.
 - **Autoresponder**: Configurable confirmation email for new tickets.
 - **Customer replies**: Reply to the customer directly from the ticket page,
   with header/footer templates; sent via MIME-based Graph API endpoint from
@@ -212,7 +212,7 @@ in the sidebar allows:
 
 There is intentionally no built-in scheduler. Two options:
 
-1. **Button**: *Project settings → Helpdesk → "Fetch mails now"*
+1. **Button**: *Project settings → expert Helpdesk → "Fetch mails now"*
    (permission *Fetch helpdesk mails*).
 2. **HTTP endpoint** for curl/cron (all active mailboxes):
 
@@ -240,7 +240,7 @@ instead of processing again. The response is a JSON summary
 
 ## Plugin Settings
 
-Under *Administration → Plugins → Redmine Expert Helpdesk*:
+Under *Administration → Plugins → Redmine expert Helpdesk*:
 
 | Setting | Description |
 |---------|-------------|
@@ -286,14 +286,14 @@ post it as a **private (internal) journal note** — useful for hard-to-parse ma
 forwarded threads where the relevant information is scattered. Disabled by default, opt-in
 per project.
 
-**Central configuration** (*Administration → Plugins → Redmine Expert Helpdesk*):
+**Central configuration** (*Administration → Plugins → Redmine expert Helpdesk*):
 - **Provider** — OpenAI (Chat Completions), Anthropic (Messages), or **Custom** (any
   OpenAI-compatible base URL, e.g. self-hosted Ollama / vLLM / LocalAI / LM Studio).
 - **API key**, **endpoint** (blank = provider default; required for Custom), **model**.
 - **Default prompt** (a sensible German default is shipped) + limits (max input characters
   / output tokens / timeout).
 
-**Per-project configuration** (project *Settings → Helpdesk*, shown when AI is enabled
+**Per-project configuration** (project *Settings → expert Helpdesk*, shown when AI is enabled
 centrally):
 - Enable summaries for the project; choose **scope** (initial mail only, or initial mail
   and replies).
@@ -335,7 +335,7 @@ adds a **proposed solution** to the summary and/or a sidebar panel. Disabled by 
   no embeddings API), model, endpoint, key (blank reuses the summary key for the same provider).
 - Extraction prompt and retrieval params (Top-K, min. score, min. results).
 
-**Per-project configuration** (project *Settings → Helpdesk*, shown when the KB is enabled):
+**Per-project configuration** (project *Settings → expert Helpdesk*, shown when the KB is enabled):
 - **Contribute** (`kb_ingest_mode`): off / **auto** (ingest on close if a solution was found) /
   **manual** (close creates a *pending* entry; approve it from the ticket sidebar).
 - **Show proposed solutions** (`kb_proposal_display`): off / summary note / sidebar panel / both.
@@ -657,7 +657,7 @@ Full documentation: [Exchange Online Application RBAC](https://learn.microsoft.c
 
 ### Step 5 – Enter credentials in Redmine
 
-In Redmine under *Administration → Plugins → Redmine Expert Helpdesk* enter
+In Redmine under *Administration → Plugins → Redmine expert Helpdesk* enter
 Tenant ID, Client ID and Client Secret.
 
 ---
@@ -672,7 +672,7 @@ image via the Dockerfile. Migrations run automatically on container start when
 bundle exec rake redmine:plugins:migrate RAILS_ENV=production
 ```
 
-Then enable the **Helpdesk** module in the project and assign permissions to
+Then enable the **expert Helpdesk** module in the project and assign permissions to
 roles:
 
 | Permission | Description |

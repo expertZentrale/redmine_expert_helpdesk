@@ -1,6 +1,9 @@
 en:
   label_helpdesk: Helpdesk
-  project_module_helpdesk: Helpdesk
+  # Distinct display names so the module/tab don't clash with RedmineUP
+  # redmine_contacts_helpdesk (which also shows "Helpdesk").
+  label_expert_helpdesk: expert Helpdesk
+  project_module_helpdesk: expert Helpdesk
   permission_manage_helpdesk: Manage helpdesk mailboxes
   permission_fetch_helpdesk_mail: Fetch helpdesk mail
   permission_send_helpdesk_reply: Send customer replies

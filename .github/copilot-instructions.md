@@ -108,9 +108,11 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     form, activity-feed CSS) + `controller_issues_*_after_save` hooks. No Deface.
 - **`lib/redmine_expert_helpdesk/patches/`** — `Issue`, `IssueQuery`, `Project`, `ProjectsHelper`
   core extensions (associations, query columns/filters, helpers). Applied in `init.rb`. Mostly
-  `prepend`; **`ProjectsHelperPatch` uses UnboundMethod capture** (not prepend/super) so the
-  settings "Helpdesk" tab coexists with `alias_method_chain` plugins (RedmineUP
-  `redmine_contacts_helpdesk`) — prepend/super collides there.
+  `prepend`; **`ProjectsHelperPatch` and `QueriesHelperPatch` use UnboundMethod capture** (not
+  prepend/super) for `project_settings_tabs` resp. `column_content`, so they coexist with
+  `alias_method_chain` plugins (RedmineUP `redmine_contacts_helpdesk`) — prepend/super collides
+  there (`super: no superclass method`). Our settings tab is named `expert_helpdesk` (not
+  `helpdesk`, which RedmineUP also uses); internal `:tab => 'expert_helpdesk'` redirects match.
 - **`app/`** — standard Rails MVC. Controllers map to permissions in `init.rb`'s
   `project_module :helpdesk` block. Key: `helpdesk_fetch`, `helpdesk_replies` (largest —
   MIME / CID inline images / transport choice), `helpdesk_mailboxes`, `helpdesk_contacts`,
@@ -131,4 +133,4 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
 - `unknown_user_mode` on the mailbox (`accept`/`create`/`ignore`) controls senders with no
   Redmine user, enforced by `MailHandler`.
 - Azure app registration is a one-time external setup; central credentials live under
-  *Administration → Plugins → Redmine Expert Helpdesk*.
+  *Administration → Plugins → Redmine expert Helpdesk*.
