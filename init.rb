@@ -32,7 +32,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
   name 'Redmine expert Helpdesk'
   author 'Dennis Buehring'
   description 'Helpdesk plugin: email-to-ticket via Microsoft Graph (O365 OAuth), autoresponder, customer replies, and rules engine'
-  version '0.1.0'
+  version '0.1.3'
   requires_redmine :version_or_higher => '5.0'
   url 'https://github.com/expertZentrale/redmine_expert_helpdesk'
 
