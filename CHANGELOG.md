@@ -1,5 +1,14 @@
 # Changelog – redmine_expert_helpdesk
 
+## [Unreleased] 2026-07-23 (80)
+
+### Fixed
+- SLA-Statistik: Beim Wechsel der Gruppierung (Tag/Woche/Monat/Jahr) wurde der zuvor gewählte
+  (breite) Zeitraum übernommen — z. B. zeigte „Tag" nach der Monatsansicht ein ganzes Jahr an
+  Tagesbalken. Der Zeitraum wird beim Gruppierungswechsel jetzt auf ein passendes Fenster
+  begrenzt (Tag 30 Tage, Woche 12 Wochen, Monat 12 Monate, Jahr 5 Jahre; Enddatum bleibt); eine
+  bereits engere Auswahl bleibt erhalten (`assets/javascripts/helpdesk_sla_stats.js`).
+
 ## [Unreleased] 2026-07-23 (79)
 
 ### Changed

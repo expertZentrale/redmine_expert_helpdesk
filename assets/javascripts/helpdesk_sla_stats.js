@@ -178,9 +178,47 @@
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
+  function todayStr() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  // Zur Gruppierung passendes Startdatum (Enddatum bleibt): Tag -> 30 Tage,
+  // Woche -> 12 Wochen, Jahr -> 5 Jahre, sonst (Monat) -> 12 Monate.
+  function windowStart(toStr, period) {
+    var d = new Date((toStr || todayStr()) + 'T00:00:00');
+    if (isNaN(d.getTime())) { d = new Date(); }
+    if (period === 'day')       { d.setDate(d.getDate() - 30); }
+    else if (period === 'week') { d.setDate(d.getDate() - 84); }
+    else if (period === 'year') { d.setFullYear(d.getFullYear() - 5); }
+    else                        { d.setMonth(d.getMonth() - 12); }
+    return d.toISOString().slice(0, 10);
+  }
+
+  // Beim Wechsel der Gruppierung den Zeitraum auf ein passendes Fenster
+  // begrenzen, damit z. B. "Tag" nicht ein ganzes Jahr an Tagesbalken zeigt.
+  // Eine bereits engere Auswahl bleibt erhalten (ISO-Datumsstrings vergleichen
+  // sich chronologisch).
+  function wireGroupingReset() {
+    var form = document.querySelector('.hd-stats-filter');
+    if (!form) { return; }
+    var period = form.querySelector('[name="period"]');
+    var from   = form.querySelector('[name="date_from"]');
+    var to     = form.querySelector('[name="date_to"]');
+    if (!period || !from || !to) { return; }
+    period.addEventListener('change', function () {
+      var start = windowStart(to.value, period.value);
+      if (!from.value || from.value < start) { from.value = start; }
+    });
+  }
+
+  function boot() {
+    wireGroupingReset();
     init();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
   }
 })();
