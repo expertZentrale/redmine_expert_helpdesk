@@ -3,10 +3,11 @@ name: Release
 # Baut bei jedem gepushten vX.Y.Z-Tag ein Plugin-Archiv (.zip + .tar.gz) und
 # veroeffentlicht ein GitHub-Release mit Notizen aus der CHANGELOG.md.
 # Laeuft NUR auf Tags (nicht auf Branches/PRs) – Releases entstehen also nur,
-# wenn der Maintainer bewusst einen Tag pusht:
-#   git tag vX.Y.Z && git push origin vX.Y.Z
-# Der Tag ist die Quelle der Versionsnummer; sie wird beim Paketieren in init.rb
-# geschrieben (nur im Archiv, main bleibt unveraendert).
+# wenn der Maintainer bewusst einen Tag pusht. Ablauf zum Veroeffentlichen:
+#   1. version '...' in init.rb setzen, committen, nach main pushen
+#   2. git tag vX.Y.Z (auf denselben Commit) && git push origin vX.Y.Z
+# Die Versionsnummer lebt in init.rb (Single Source of Truth); der Workflow
+# PRUEFT nur, dass init.rb-Version und Tag uebereinstimmen, und paketiert unveraendert.
 
 on:
   push:
@@ -50,13 +51,16 @@ jobs:
             *)   echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
           esac
 
-      # 3. Versionsnummer in init.rb setzen – nur im Checkout, wird nicht committet,
-      #    landet aber im Paket. Danach Syntax-Check, damit das sed nichts zerstoert.
-      - name: Version in init.rb setzen (nur fuers Paket)
+      # 3. Sicherstellen, dass die in init.rb gepflegte Version zum Tag passt.
+      #    init.rb ist die Single Source of Truth – der Tag muss darauf zeigen.
+      - name: init.rb-Version gegen Tag pruefen
         run: |
-          sed -i -E "s/^([[:space:]]*version )'[^']*'/\1'${{ steps.ver.outputs.version }}'/" init.rb
-          grep -nE "^[[:space:]]*version '" init.rb
-          ruby -c init.rb
+          INIT_VER=$(sed -nE "s/^[[:space:]]*version '([^']*)'.*/\1/p" init.rb | head -1)
+          echo "init.rb: '${INIT_VER}'  /  Tag: '${{ steps.ver.outputs.version }}'"
+          if [ "$INIT_VER" != "${{ steps.ver.outputs.version }}" ]; then
+            echo "::error::init.rb-Version '${INIT_VER}' stimmt nicht mit dem Tag '${{ steps.ver.outputs.version }}' ueberein. Bitte version in init.rb setzen, committen und den Tag auf diesen Commit zeigen lassen."
+            exit 1
+          fi
 
       # 4. Release-Notes aus der CHANGELOG.md erzeugen: die seit dem vorherigen Tag
       #    neu hinzugekommenen Eintraege unter einer Versions-Ueberschrift.

@@ -580,14 +580,18 @@ bundle exec rake redmine:plugins:migrate RAILS_ENV=production
 
 ### Release veröffentlichen (Maintainer)
 
-Releases sind **Tag-gesteuert**. Von einem grünen `main` aus einen semver-Tag pushen:
+Releases sind **Tag-gesteuert**; `init.rb` ist die Single Source of Truth für die Version. Zuerst
+die Version in `init.rb` setzen und committen, dann einen passenden semver-Tag pushen:
 
 ```bash
+# 1. `version '1.2.0'` in init.rb setzen, dann:
+git commit -am "release 1.2.0" && git push origin main
+# 2. denselben Commit taggen und Tag pushen:
 git tag v1.2.0 && git push origin v1.2.0
 ```
 
-Der [`release.yml`](.github/workflows/release.yml)-Workflow baut daraufhin die `.zip`/`.tar.gz`-
-Archive, schreibt die Version (`1.2.0`, aus dem Tag) in das `init.rb` des Pakets und
+Der [`release.yml`](.github/workflows/release.yml)-Workflow **prüft** daraufhin, dass die
+`init.rb`-Version zum Tag passt (und bricht sonst ab), baut die `.zip`/`.tar.gz`-Archive und
 veröffentlicht ein GitHub-Release mit Notizen aus den seit dem letzten Tag hinzugekommenen
 CHANGELOG-Einträgen. CHANGELOG aktuell halten, damit die Notizen vollständig sind. Bei normalen
 Pushes wird nichts veröffentlicht – nur auf Tags.

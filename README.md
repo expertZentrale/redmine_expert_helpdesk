@@ -692,14 +692,18 @@ bundle exec rake redmine:plugins:migrate RAILS_ENV=production
 
 ### Cutting a release (maintainers)
 
-Releases are **tag-driven**. From a green `main`, push a semver tag:
+Releases are **tag-driven**, and `init.rb` is the single source of truth for the version. First
+bump the version in `init.rb` and commit it, then push a matching semver tag:
 
 ```bash
+# 1. set `version '1.2.0'` in init.rb, then:
+git commit -am "release 1.2.0" && git push origin main
+# 2. tag the same commit and push the tag:
 git tag v1.2.0 && git push origin v1.2.0
 ```
 
-The [`release.yml`](.github/workflows/release.yml) workflow then builds the `.zip`/`.tar.gz`
-archives, writes the version (`1.2.0`, from the tag) into the packaged `init.rb`, and publishes a
+The [`release.yml`](.github/workflows/release.yml) workflow then **verifies** that the `init.rb`
+version matches the tag (and fails if not), builds the `.zip`/`.tar.gz` archives, and publishes a
 GitHub Release with notes taken from the CHANGELOG entries added since the previous tag. Keep the
 CHANGELOG current so the notes are complete. Nothing is published on normal pushes — only on tags.
 

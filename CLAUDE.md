@@ -62,14 +62,14 @@ The plugin also ships a rake task for the phishing mirror:
 
 ## Releases (tag-driven)
 
-GitHub Releases are produced only by pushing a semver tag (`git tag vX.Y.Z && git push origin
-vX.Y.Z`) — never on normal pushes/PRs. `.github/workflows/release.yml` (triggered on `push: tags:
-v*`) derives the version from the tag, writes it into the **packaged** `init.rb` (main is not
-committed back), builds `redmine_expert_helpdesk-<version>.{zip,tar.gz}` (top-level
-`redmine_expert_helpdesk/` dir, dev files excluded), and publishes the release with notes taken
-from the CHANGELOG entries added since the previous tag. The two other workflows (`ci.yml`,
-`docker-image.yml`) run on `main`/PRs only. The plugin version lives solely at `init.rb`'s
-`version '...'` line.
+GitHub Releases are produced only by pushing a semver tag — never on normal pushes/PRs. The plugin
+version is the **single source of truth in `init.rb`** (`version '...'`): bump it and commit
+first, then tag the same commit and push (`git tag vX.Y.Z && git push origin vX.Y.Z`).
+`.github/workflows/release.yml` (triggered on `push: tags: v*`) **verifies** that the `init.rb`
+version equals the tag (fails on mismatch), builds `redmine_expert_helpdesk-<version>.{zip,tar.gz}`
+(top-level `redmine_expert_helpdesk/` dir, dev files excluded) from the tagged tree, and publishes
+the release with notes taken from the CHANGELOG entries added since the previous tag. The two
+other workflows (`ci.yml`, `docker-image.yml`) run on `main`/PRs only.
 
 ### REST API smoke tests against local dev
 

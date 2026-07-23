@@ -62,13 +62,14 @@ host — source `.dev.env` for `REDMINE_URL` + `REDMINE_API_KEY`, then `curl` wi
 
 ## Releases (tag-driven)
 
-GitHub Releases are produced only by pushing a semver tag (`git tag vX.Y.Z && git push origin
-vX.Y.Z`), never on normal pushes/PRs. `.github/workflows/release.yml` (`push: tags: v*`) derives
-the version from the tag, writes it into the **packaged** `init.rb` (main not committed back),
-builds `redmine_expert_helpdesk-<version>.{zip,tar.gz}` (top-level `redmine_expert_helpdesk/` dir,
-dev files excluded), and publishes the release with notes from the CHANGELOG entries added since
-the previous tag. `ci.yml` / `docker-image.yml` run on `main`/PRs only. Plugin version lives only
-at `init.rb`'s `version '...'` line.
+GitHub Releases are produced only by pushing a semver tag, never on normal pushes/PRs. The plugin
+version is the **single source of truth in `init.rb`** (`version '...'`): bump + commit it, then
+tag the same commit and push (`git tag vX.Y.Z && git push origin vX.Y.Z`).
+`.github/workflows/release.yml` (`push: tags: v*`) **verifies** `init.rb` version == tag (fails on
+mismatch), builds `redmine_expert_helpdesk-<version>.{zip,tar.gz}` (top-level
+`redmine_expert_helpdesk/` dir, dev files excluded) from the tagged tree, and publishes the release
+with notes from the CHANGELOG entries added since the previous tag. `ci.yml` / `docker-image.yml`
+run on `main`/PRs only.
 
 ## Triggering mail fetch
 

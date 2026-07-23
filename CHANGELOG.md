@@ -7,10 +7,11 @@
   semver-Tags (`git tag vX.Y.Z && git push origin vX.Y.Z`) baut ein Workflow das Plugin als
   `redmine_expert_helpdesk-<version>.zip` **und** `.tar.gz` (Top-Level-Ordner
   `redmine_expert_helpdesk/`, Dev-/CI-Dateien ausgeschlossen) und veröffentlicht ein
-  GitHub-Release mit diesen Archiven. Die Versionsnummer wird aus dem Tag abgeleitet und ins
-  `init.rb` des Pakets geschrieben; die Release-Notes stammen aus den seit dem letzten Tag neu
-  hinzugekommenen CHANGELOG-Einträgen. Releases entstehen ausschließlich auf Tags, nicht bei
-  normalen Pushes/PRs.
+  GitHub-Release mit diesen Archiven. Die Version wird in `init.rb` gepflegt (Single Source of
+  Truth); vor dem Tag setzt der Maintainer `version '...'` in `init.rb`, der Workflow **prüft**
+  nur, dass die init.rb-Version zum Tag passt (sonst bricht er ab). Die Release-Notes stammen aus
+  den seit dem letzten Tag neu hinzugekommenen CHANGELOG-Einträgen. Releases entstehen
+  ausschließlich auf Tags, nicht bei normalen Pushes/PRs.
 
 ## [Unreleased] 2026-07-23 (83)
 
