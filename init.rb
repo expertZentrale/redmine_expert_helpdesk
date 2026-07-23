@@ -123,9 +123,10 @@ end
 # Dev-Modus bei jedem Reload erneut. Eigene to_prepare-Registrierungen aus
 # init.rb heraus wuerden in Produktion nie ausgefuehrt, da die Callbacks zu
 # diesem Zeitpunkt bereits in den Reloader kopiert wurden.
-unless ProjectsHelper.ancestors.include?(RedmineExpertHelpdesk::Patches::ProjectsHelperPatch)
-  ProjectsHelper.prepend(RedmineExpertHelpdesk::Patches::ProjectsHelperPatch)
-end
+# project_settings_tabs per UnboundMethod-Capture patchen (nicht prepend/super),
+# damit der Helpdesk-Reiter mit alias_method_chain-Plugins koexistiert
+# (z. B. RedmineUP redmine_contacts_helpdesk). Siehe projects_helper_patch.rb.
+RedmineExpertHelpdesk::Patches::ProjectsHelperPatch.apply!(ProjectsHelper)
 unless Project.included_modules.include?(RedmineExpertHelpdesk::Patches::ProjectPatch)
   Project.include(RedmineExpertHelpdesk::Patches::ProjectPatch)
 end

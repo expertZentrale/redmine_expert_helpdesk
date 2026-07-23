@@ -1,5 +1,16 @@
 # Changelog – redmine_expert_helpdesk
 
+## [Unreleased] 2026-07-23 (82)
+
+### Fixed
+- Kompatibilität mit RedmineUP `redmine_contacts_helpdesk`: In Umgebungen mit diesem Plugin
+  führte das Öffnen der Projekteinstellungen zu **HTTP 500**
+  („super: no superclass method 'project_settings_tabs'"). Ursache war die Kollision unseres
+  `prepend`/`super`-Patches mit deren `alias_method_chain`-Patch derselben Methode.
+  `ProjectsHelperPatch` erweitert `project_settings_tabs` jetzt per **UnboundMethod-Capture**
+  (statt prepend/super) und koexistiert reihenfolgeunabhängig mit alias_method_chain-Plugins
+  (`lib/redmine_expert_helpdesk/patches/projects_helper_patch.rb`, `init.rb`).
+
 ## [Unreleased] 2026-07-23 (81)
 
 ### Changed

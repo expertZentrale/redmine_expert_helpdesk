@@ -107,7 +107,10 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
   - `hooks.rb` — `ViewListener` view hooks (customer sidebar card, ticket-header info bar, reply
     form, activity-feed CSS) + `controller_issues_*_after_save` hooks. No Deface.
 - **`lib/redmine_expert_helpdesk/patches/`** — `Issue`, `IssueQuery`, `Project`, `ProjectsHelper`
-  core extensions (associations, query columns/filters, helpers). Applied in `init.rb`.
+  core extensions (associations, query columns/filters, helpers). Applied in `init.rb`. Mostly
+  `prepend`; **`ProjectsHelperPatch` uses UnboundMethod capture** (not prepend/super) so the
+  settings "Helpdesk" tab coexists with `alias_method_chain` plugins (RedmineUP
+  `redmine_contacts_helpdesk`) — prepend/super collides there.
 - **`app/`** — standard Rails MVC. Controllers map to permissions in `init.rb`'s
   `project_module :helpdesk` block. Key: `helpdesk_fetch`, `helpdesk_replies` (largest —
   MIME / CID inline images / transport choice), `helpdesk_mailboxes`, `helpdesk_contacts`,

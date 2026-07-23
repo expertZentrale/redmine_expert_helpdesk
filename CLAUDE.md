@@ -169,7 +169,12 @@ nested registration would never fire in production.
 
 ### Patches (`lib/redmine_expert_helpdesk/patches/`)
 `Issue`, `IssueQuery`, `Project`, `ProjectsHelper` — extend Redmine core with helpdesk
-associations, query columns/filters, and helpers. Applied in `init.rb` (see above).
+associations, query columns/filters, and helpers. Applied in `init.rb` (see above). Most are
+`prepend`ed; **`ProjectsHelperPatch` is the exception** — it adds the project-settings "Helpdesk"
+tab via **UnboundMethod capture** (`apply!` captures `project_settings_tabs`, `define_method`s a
+replacement calling the captured original), **not** prepend/super, so it coexists with
+`alias_method_chain`-based plugins that patch the same method (e.g. RedmineUP
+`redmine_contacts_helpdesk`) — prepend/super collides there (`super: no superclass method`).
 
 ### Web layer (`app/`)
 Standard Rails MVC under the plugin. Controllers map to permissions declared in `init.rb`'s
