@@ -1,5 +1,15 @@
 # Changelog – redmine_expert_helpdesk
 
+## [Unreleased] 2026-07-23 (81)
+
+### Changed
+- SLA-Statistik: **fertige Zeitraum-Auswahl** (Letzte 7/30/90 Tage, 6/12 Monate, 5 Jahre,
+  Benutzerdefiniert). Die Datumsfelder erscheinen nur noch bei „Benutzerdefiniert". Der
+  Gruppierungswechsel verengt breite Presets weiterhin auf ein passendes Fenster (ersetzt die
+  bisherige Datums-Klemme). Server berechnet die Daten aus dem Preset; explizite Datums-Links
+  gelten weiterhin als „Benutzerdefiniert" (`helpdesk_sla_statistics_controller.rb`,
+  `index.html.erb`, `helpdesk_sla_stats.js`).
+
 ## [Unreleased] 2026-07-23 (80)
 
 ### Fixed

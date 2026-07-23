@@ -178,41 +178,52 @@
     }
   }
 
-  function todayStr() {
-    return new Date().toISOString().slice(0, 10);
-  }
+  // Zeitraum-Presets nach ungefaehrer Spanne (Tage) und sinnvoller Default je
+  // Gruppierung, damit z. B. "Tag" nicht ein ganzes Jahr an Tagesbalken zeigt.
+  var RANGE_SPAN = {
+    last_7_days: 7, last_30_days: 30, last_90_days: 90,
+    last_6_months: 182, last_12_months: 365, last_5_years: 1825
+  };
+  var GROUP_DEFAULT_RANGE = {
+    day: 'last_30_days', week: 'last_90_days', month: 'last_12_months', year: 'last_5_years'
+  };
 
-  // Zur Gruppierung passendes Startdatum (Enddatum bleibt): Tag -> 30 Tage,
-  // Woche -> 12 Wochen, Jahr -> 5 Jahre, sonst (Monat) -> 12 Monate.
-  function windowStart(toStr, period) {
-    var d = new Date((toStr || todayStr()) + 'T00:00:00');
-    if (isNaN(d.getTime())) { d = new Date(); }
-    if (period === 'day')       { d.setDate(d.getDate() - 30); }
-    else if (period === 'week') { d.setDate(d.getDate() - 84); }
-    else if (period === 'year') { d.setFullYear(d.getFullYear() - 5); }
-    else                        { d.setMonth(d.getMonth() - 12); }
-    return d.toISOString().slice(0, 10);
-  }
-
-  // Beim Wechsel der Gruppierung den Zeitraum auf ein passendes Fenster
-  // begrenzen, damit z. B. "Tag" nicht ein ganzes Jahr an Tagesbalken zeigt.
-  // Eine bereits engere Auswahl bleibt erhalten (ISO-Datumsstrings vergleichen
-  // sich chronologisch).
-  function wireGroupingReset() {
+  function wireFilter() {
     var form = document.querySelector('.hd-stats-filter');
     if (!form) { return; }
-    var period = form.querySelector('[name="period"]');
-    var from   = form.querySelector('[name="date_from"]');
-    var to     = form.querySelector('[name="date_to"]');
-    if (!period || !from || !to) { return; }
-    period.addEventListener('change', function () {
-      var start = windowStart(to.value, period.value);
-      if (!from.value || from.value < start) { from.value = start; }
-    });
+    var period = form.querySelector('#hd-stats-period');
+    var range  = form.querySelector('#hd-stats-range');
+    var custom = document.getElementById('hd-stats-custom-dates');
+
+    // Datumsfelder nur im Modus "Benutzerdefiniert" zeigen; sonst deaktivieren,
+    // damit keine veralteten Datumswerte mitgesendet werden.
+    function toggleCustom() {
+      var isCustom = !!(range && range.value === 'custom');
+      if (!custom) { return; }
+      custom.style.display = isCustom ? '' : 'none';
+      Array.prototype.forEach.call(custom.querySelectorAll('input'), function (i) {
+        i.disabled = !isCustom;
+      });
+    }
+    if (range) { range.addEventListener('change', toggleCustom); }
+    toggleCustom();
+
+    // Beim Gruppierungswechsel breite Presets auf ein passendes Fenster
+    // verengen; engere Auswahl und "Benutzerdefiniert" bleiben unangetastet.
+    if (period && range) {
+      period.addEventListener('change', function () {
+        if (range.value === 'custom') { return; }
+        var def = GROUP_DEFAULT_RANGE[period.value] || 'last_12_months';
+        if ((RANGE_SPAN[range.value] || 0) > (RANGE_SPAN[def] || 0)) {
+          range.value = def;
+          toggleCustom();
+        }
+      });
+    }
   }
 
   function boot() {
-    wireGroupingReset();
+    wireFilter();
     init();
   }
 

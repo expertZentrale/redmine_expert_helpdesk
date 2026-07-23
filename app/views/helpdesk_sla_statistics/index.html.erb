@@ -12,12 +12,20 @@
     <%= select_tag :period,
           options_for_select(
             RedmineExpertHelpdesk::SlaStatistics::PERIODS.map { |p| [l("label_helpdesk_stats_#{p}"), p] },
-            @period) %>
+            @period), :id => 'hd-stats-period' %>
   </label>
-  <label><%= l(:label_helpdesk_stats_from) %>:
-    <%= date_field_tag :date_from, @date_from.iso8601 %></label>
-  <label><%= l(:label_helpdesk_stats_to) %>:
-    <%= date_field_tag :date_to, @date_to.iso8601 %></label>
+  <label><%= l(:label_helpdesk_stats_range) %>:
+    <%= select_tag :range,
+          options_for_select(
+            HelpdeskSlaStatisticsController::RANGES.map { |r| [l("label_helpdesk_stats_range_#{r}"), r] },
+            @range), :id => 'hd-stats-range' %>
+  </label>
+  <span id="hd-stats-custom-dates"<%= @range == 'custom' ? '' : raw(' style="display:none;"') %>>
+    <label><%= l(:label_helpdesk_stats_from) %>:
+      <%= date_field_tag :date_from, @date_from.iso8601 %></label>
+    <label><%= l(:label_helpdesk_stats_to) %>:
+      <%= date_field_tag :date_to, @date_to.iso8601 %></label>
+  </span>
   <%= submit_tag l(:button_apply), :name => nil %>
 <% end %>
 
