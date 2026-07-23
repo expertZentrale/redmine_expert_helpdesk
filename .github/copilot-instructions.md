@@ -60,6 +60,16 @@ The REST API (see `API.md`) can be smoke-tested live against the local stack ove
 host — source `.dev.env` for `REDMINE_URL` + `REDMINE_API_KEY`, then `curl` with an
 `X-Redmine-API-Key` header. Use a `project_id` with the Helpdesk module enabled.
 
+## Releases (tag-driven)
+
+GitHub Releases are produced only by pushing a semver tag (`git tag vX.Y.Z && git push origin
+vX.Y.Z`), never on normal pushes/PRs. `.github/workflows/release.yml` (`push: tags: v*`) derives
+the version from the tag, writes it into the **packaged** `init.rb` (main not committed back),
+builds `redmine_expert_helpdesk-<version>.{zip,tar.gz}` (top-level `redmine_expert_helpdesk/` dir,
+dev files excluded), and publishes the release with notes from the CHANGELOG entries added since
+the previous tag. `ci.yml` / `docker-image.yml` run on `main`/PRs only. Plugin version lives only
+at `init.rb`'s `version '...'` line.
+
 ## Triggering mail fetch
 
 No built-in scheduler. Fetch runs via the project settings button (*Helpdesk → Fetch mails now*)

@@ -665,6 +665,23 @@ Tenant ID, Client ID and Client Secret.
 
 ## Installation
 
+### From a release (recommended)
+
+Download the latest `redmine_expert_helpdesk-<version>.zip` (or `.tar.gz`) from the
+repository's [**Releases**](https://github.com/expertZentrale/redmine_expert_helpdesk/releases)
+page and extract it into your Redmine `plugins/` directory (the archive already contains a
+top-level `redmine_expert_helpdesk/` folder), then migrate and restart:
+
+```bash
+cd /path/to/redmine/plugins
+unzip redmine_expert_helpdesk-<version>.zip          # → plugins/redmine_expert_helpdesk/
+cd /path/to/redmine
+bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=production
+# restart Redmine
+```
+
+### From source (deploy repo)
+
 The plugin lives in `plugins/redmine_expert_helpdesk` and is copied into the
 image via the Dockerfile. Migrations run automatically on container start when
 `REDMINE_PLUGINS_MIGRATE=1` is set, otherwise manually:
@@ -672,6 +689,19 @@ image via the Dockerfile. Migrations run automatically on container start when
 ```bash
 bundle exec rake redmine:plugins:migrate RAILS_ENV=production
 ```
+
+### Cutting a release (maintainers)
+
+Releases are **tag-driven**. From a green `main`, push a semver tag:
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+The [`release.yml`](.github/workflows/release.yml) workflow then builds the `.zip`/`.tar.gz`
+archives, writes the version (`1.2.0`, from the tag) into the packaged `init.rb`, and publishes a
+GitHub Release with notes taken from the CHANGELOG entries added since the previous tag. Keep the
+CHANGELOG current so the notes are complete. Nothing is published on normal pushes — only on tags.
 
 Then enable the **expert Helpdesk** module in the project and assign permissions to
 roles:

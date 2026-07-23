@@ -60,6 +60,17 @@ bundle exec ruby -Itest plugins/redmine_expert_helpdesk/test/unit/sla_test.rb -n
 The plugin also ships a rake task for the phishing mirror:
 `bundle exec rake redmine_expert_helpdesk:phishtank_sync`.
 
+## Releases (tag-driven)
+
+GitHub Releases are produced only by pushing a semver tag (`git tag vX.Y.Z && git push origin
+vX.Y.Z`) — never on normal pushes/PRs. `.github/workflows/release.yml` (triggered on `push: tags:
+v*`) derives the version from the tag, writes it into the **packaged** `init.rb` (main is not
+committed back), builds `redmine_expert_helpdesk-<version>.{zip,tar.gz}` (top-level
+`redmine_expert_helpdesk/` dir, dev files excluded), and publishes the release with notes taken
+from the CHANGELOG entries added since the previous tag. The two other workflows (`ci.yml`,
+`docker-image.yml`) run on `main`/PRs only. The plugin version lives solely at `init.rb`'s
+`version '...'` line.
+
 ### REST API smoke tests against local dev
 
 The plugin's REST API (see `API.md`) can be exercised live against the local Docker stack —

@@ -1,0 +1,116 @@
+name: Release
+
+# Baut bei jedem gepushten vX.Y.Z-Tag ein Plugin-Archiv (.zip + .tar.gz) und
+# veroeffentlicht ein GitHub-Release mit Notizen aus der CHANGELOG.md.
+# Laeuft NUR auf Tags (nicht auf Branches/PRs) – Releases entstehen also nur,
+# wenn der Maintainer bewusst einen Tag pusht:
+#   git tag vX.Y.Z && git push origin vX.Y.Z
+# Der Tag ist die Quelle der Versionsnummer; sie wird beim Paketieren in init.rb
+# geschrieben (nur im Archiv, main bleibt unveraendert).
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write            # zum Anlegen des Releases + Hochladen der Archive
+
+# Laeufe desselben Tags nicht abbrechen (ein Release soll fertig werden).
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Vollstaendige Historie + Tags auschecken (fuer den Diff der
+      #    Release-Notes gegen den vorherigen Tag).
+      - name: Checkout (volle Historie + Tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Version aus dem Tag ableiten und als semver validieren.
+      - name: Version aus Tag ableiten + validieren
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VER="${TAG#v}"
+          if ! echo "$VER" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$'; then
+            echo "::error::Tag '$TAG' ist keine gueltige semver-Version (erwartet vX.Y.Z)"
+            exit 1
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG"     >> "$GITHUB_OUTPUT"
+          case "$VER" in
+            *-*) echo "prerelease=true"  >> "$GITHUB_OUTPUT" ;;
+            *)   echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      # 3. Versionsnummer in init.rb setzen – nur im Checkout, wird nicht committet,
+      #    landet aber im Paket. Danach Syntax-Check, damit das sed nichts zerstoert.
+      - name: Version in init.rb setzen (nur fuers Paket)
+        run: |
+          sed -i -E "s/^([[:space:]]*version )'[^']*'/\1'${{ steps.ver.outputs.version }}'/" init.rb
+          grep -nE "^[[:space:]]*version '" init.rb
+          ruby -c init.rb
+
+      # 4. Release-Notes aus der CHANGELOG.md erzeugen: die seit dem vorherigen Tag
+      #    neu hinzugekommenen Eintraege unter einer Versions-Ueberschrift.
+      - name: Release-Notes aus CHANGELOG erzeugen
+        run: |
+          PREV=$(git tag --sort=-v:refname | grep -vFx "${{ steps.ver.outputs.tag }}" | head -1 || true)
+          {
+            echo "## redmine_expert_helpdesk ${{ steps.ver.outputs.version }} – $(date +%Y-%m-%d)"
+            echo
+            if [ -n "$PREV" ]; then
+              echo "_Aenderungen seit ${PREV}:_"
+              echo
+              # Netto neu hinzugekommene CHANGELOG-Zeilen (+) seit dem letzten Tag;
+              # Diff-Kopf (+++) und die Sammel-Header (## [Unreleased] ...) entfernen.
+              git diff --no-color "$PREV" HEAD -- CHANGELOG.md \
+                | grep '^+' | grep -v '^+++' | sed 's/^+//' | grep -vE '^## \[Unreleased\]'
+            else
+              # Erstes Release: obersten ## -Block der CHANGELOG uebernehmen.
+              awk '/^## /{c++} c==1' CHANGELOG.md | grep -vE '^## \[Unreleased\]'
+            fi
+          } > RELEASE_NOTES.md
+          echo "----- RELEASE_NOTES.md -----"
+          cat RELEASE_NOTES.md
+
+      # 5. Plugin paketieren: Laufzeit-Dateien unter einem Top-Level-Ordner
+      #    redmine_expert_helpdesk/ (entpackt direkt nach redmine/plugins/).
+      #    Dev-/CI-/Doku-nur-intern-Dateien werden ausgeschlossen.
+      - name: Plugin paketieren (.zip + .tar.gz)
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          STAGE="$RUNNER_TEMP/pkg/redmine_expert_helpdesk"
+          mkdir -p "$STAGE"
+          rsync -a \
+            --exclude='.git' --exclude='.github' --exclude='.claude' \
+            --exclude='.gitignore' --exclude='.gitattributes' \
+            --exclude='test' --exclude='scripts' \
+            --exclude='CLAUDE.md' --exclude='plan.md' --exclude='ROADMAP.md' \
+            --exclude='.dev.env*' --exclude='.tokensave' --exclude='RELEASE_NOTES.md' \
+            ./ "$STAGE/"
+          (
+            cd "$RUNNER_TEMP/pkg"
+            zip -rq "$GITHUB_WORKSPACE/redmine_expert_helpdesk-${VER}.zip"    redmine_expert_helpdesk
+            tar czf "$GITHUB_WORKSPACE/redmine_expert_helpdesk-${VER}.tar.gz" redmine_expert_helpdesk
+          )
+          echo "----- Paketinhalt (.zip) -----"
+          unzip -l "redmine_expert_helpdesk-${VER}.zip" | head -n 40
+
+      # 6. GitHub-Release fuer den Tag anlegen und beide Archive anhaengen.
+      - name: GitHub-Release anlegen
+        uses: softprops/action-gh-release@v2   # nutzt GITHUB_TOKEN automatisch
+        with:
+          name: redmine_expert_helpdesk ${{ steps.ver.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          prerelease: ${{ steps.ver.outputs.prerelease }}
+          files: |
+            redmine_expert_helpdesk-${{ steps.ver.outputs.version }}.zip
+            redmine_expert_helpdesk-${{ steps.ver.outputs.version }}.tar.gz
