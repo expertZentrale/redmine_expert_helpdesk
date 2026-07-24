@@ -2,9 +2,17 @@
 
 > 🇩🇪 Deutsche Version · [English version](CHANGELOG.md)
 >
-> Die englische `CHANGELOG.md` ist maßgeblich; diese deutsche Fassung wird synchron gehalten.
+> Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
+> enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
 ## [Unreleased] 2026-07-24 (85)
+
+### Added
+- **Administrationsmenü**-Eintrag („expert Helpdesk", mit Headset-Icon), der direkt auf die
+  Plugin-Einstellungen verlinkt – die Konfiguration ist so mit einem Klick über die
+  Administrations-Sidebar und die Administrations-Übersicht erreichbar, statt über den Umweg
+  *Plugins → Konfigurieren*. Das Icon ist versionsabhängig: SVG-Sprite-Icon aus dem Plugin auf
+  Redmine 6/7, klassisches `icon-*`-CSS-Icon auf Redmine 5 (`init.rb`, `assets/images/icons.svg`).
 
 ### Fixed
 - Ticket-Listenansicht: Der per JavaScript eingefügte Button **„Neues Helpdesk-Ticket"**

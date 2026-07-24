@@ -32,7 +32,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
   name 'Redmine expert Helpdesk'
   author 'Dennis Buehring'
   description 'Helpdesk plugin: email-to-ticket via Microsoft Graph (O365 OAuth), autoresponder, customer replies, and rules engine'
-  version '0.1.3'
+  version '0.1.4'
   requires_redmine :version_or_higher => '5.0'
   url 'https://github.com/expertZentrale/redmine_expert_helpdesk'
 
@@ -116,6 +116,28 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
          p.module_enabled?(:helpdesk) &&
            HelpdeskProjectSetting.for_project(p).sla_enabled?
        }
+
+  # Direkter Eintrag im Administrationsmenue (Sidebar + Admin-Uebersicht),
+  # der ohne Umweg ueber "Plugins > Konfigurieren" direkt auf die
+  # Plugin-Einstellungen verlinkt. Icon versionsabhaengig:
+  #  - Redmine 6/7: SVG-Sprite-Icon aus dem Plugin-Sprite (assets/images/icons.svg,
+  #    Symbol `icon--helpdesk`) ueber :icon + :plugin (render_single_menu_node ruft
+  #    sprite_icon(item.icon, plugin: item.plugin)).
+  #  - Redmine 5: die alten SVG-Sprites/`:icon` gibt es noch nicht -> altes
+  #    CSS-Sprite-Icon ueber die `icon icon-*`-Klasse am Link.
+  admin_menu_options = { :caption => :label_expert_helpdesk }
+  if Redmine::VERSION::MAJOR >= 6
+    admin_menu_options[:icon]   = 'helpdesk'
+    admin_menu_options[:plugin] = 'redmine_expert_helpdesk'
+    # `icon`-Klasse noetig, damit das SVG die blaue currentColor-Strichfarbe der
+    # anderen Admin-Menue-Icons erbt (ohne sie bleibt es im .icon-svg-Standardgrau).
+    admin_menu_options[:html]   = { :class => 'icon' }
+  else
+    admin_menu_options[:html] = { :class => 'icon icon-email' }
+  end
+  menu :admin_menu, :redmine_expert_helpdesk,
+       { :controller => 'settings', :action => 'plugin', :id => 'redmine_expert_helpdesk' },
+       admin_menu_options
 end
 
 # Patches direkt anwenden: Redmine fuehrt init.rb innerhalb eines

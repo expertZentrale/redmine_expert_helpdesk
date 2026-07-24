@@ -229,7 +229,8 @@ JSON-Zusammenfassung (`{"checked_at": …, "notified": N}`).
 
 ## Plugin-Einstellungen
 
-Unter *Administration → Plugins → Redmine expert Helpdesk*:
+Unter *Administration → Plugins → Redmine expert Helpdesk* – oder als Abkürzung über den
+Eintrag **expert Helpdesk** im Administrationsmenü, der direkt hierher verlinkt:
 
 | Einstellung | Beschreibung |
 |---|---|

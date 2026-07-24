@@ -1,9 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg">
   <!--
-    Icon-Sprite fuer den Redmine-Aktivitaets-Feed.
-    Quellen: Bootstrap Icons v1.11 (MIT License, https://icons.getbootstrap.com/)
+    Icon-Sprite fuer den Redmine-Aktivitaets-Feed und das Administrationsmenue.
+    Quellen:
+      - helpdesk-message-{in|out|init}: Bootstrap Icons v1.11 (MIT, https://icons.getbootstrap.com/)
+      - helpdesk (Admin-Menue): Tabler Icons "headset" (MIT, https://tabler.io/icons) -
+        gleiche Icon-Familie wie Redmines Kern-Sprite (Outline, 24x24, Strichbreite/Farbe
+        kommen aus der .icon-svg-CSS-Klasse), damit der Eintrag optisch zu den anderen
+        Admin-Menue-Icons passt.
     Verwendet von sprite_icon('helpdesk-message-{in|out|init}', plugin: 'redmine_expert_helpdesk')
+    sowie sprite_icon('helpdesk', plugin: 'redmine_expert_helpdesk') fuer den Admin-Menue-Eintrag.
   -->
+
+  <!-- Helpdesk / Support (headset, Tabler-Outline-Stil wie Redmine-Kern-Icons) -->
+  <symbol id="icon--helpdesk" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 14v-3a8 8 0 0 1 16 0v3"/>
+    <path d="M18 19c0 1.657 -2.686 3 -6 3"/>
+    <path d="M4 14a2 2 0 0 1 2 -2h1a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-1a2 2 0 0 1 -2 -2v-2z"/>
+    <path d="M20 14a2 2 0 0 0 -2 -2h-1a1 1 0 0 0 -1 1v4a1 1 0 0 0 1 1h1a2 2 0 0 0 2 -2v-2z"/>
+  </symbol>
 
   <!-- Eingehende E-Mail (envelope-arrow-down) -->
   <symbol id="icon--helpdesk-message-in" viewBox="0 0 16 16">

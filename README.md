@@ -240,7 +240,8 @@ instead of processing again. The response is a JSON summary
 
 ## Plugin Settings
 
-Under *Administration → Plugins → Redmine expert Helpdesk*:
+Under *Administration → Plugins → Redmine expert Helpdesk* — or, as a shortcut, via the
+**expert Helpdesk** entry in the Administration menu, which links here directly:
 
 | Setting | Description |
 |---------|-------------|
