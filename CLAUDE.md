@@ -15,8 +15,12 @@ NOT a Redmine checkout** — there is no Gemfile, `rake`, or `config/database.ym
 `../../`. Base Redmine is supplied by a Docker image; the app only exists inside the running
 container (`/usr/src/redmine`), so host-level `bundle exec rake` does not work.
 
-Comments, i18n and much documentation are in **German**; match the surrounding language
-when editing (`README.md` is EN, `README.de.md` is DE — keep both in sync for user-facing changes).
+**Language policy:** **code comments are English** (write new comments in English; the surrounding
+codebase still has legacy German comments — leave them unless you're already editing that code).
+**i18n stays bilingual** (`config/locales/en.yml` + `de.yml`) and the plugin UI is German.
+Docs are **English-first with a German mirror kept in sync**: `README.md` (EN) / `README.de.md` (DE),
+and `CHANGELOG.md` (EN, authoritative — release notes are generated from it) / `CHANGELOG.de.md` (DE).
+Keep each EN/DE pair in sync for user-facing changes.
 
 ## Development workflow (Docker)
 

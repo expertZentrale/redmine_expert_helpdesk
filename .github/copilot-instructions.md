@@ -22,10 +22,12 @@ Redmine is supplied by a Docker image; the app only exists inside the running co
 - Because the plugin is **`COPY`'d into the image** (see `Dockerfile.dev`), not volume-mounted,
   a plain `restart` does **not** pick up edited source or new routes. Rebuild with
   `docker-compose -f docker-compose.yml up --build` (run from the parent repo root `../../`).
-- **Every change must update `CHANGELOG.md`** and, for user-facing changes, **`README.md` (EN)
-  and `README.de.md` (DE)** — keep both READMEs in sync.
-- Comments, i18n and much documentation are in **German**; match the surrounding language when
-  editing.
+- **Every change must update `CHANGELOG.md` (EN, authoritative)** and its German mirror
+  **`CHANGELOG.de.md`**; for user-facing changes also **`README.md` (EN) and `README.de.md` (DE)**.
+  Keep each EN/DE pair in sync. GitHub release notes are generated from `CHANGELOG.md`.
+- **Language policy:** write **code comments in English** (legacy German comments may remain until
+  that code is next touched). **i18n stays bilingual** (`config/locales/en.yml` + `de.yml`) and the
+  plugin UI is German.
 - **Never edit a shipped migration.** When changing schema, add the next sequential number in
   `db/migrate/` (`001_...` onward).
 - Don't hard-code secrets/API keys. Local dev credentials live in `.dev.env` (git-ignored).

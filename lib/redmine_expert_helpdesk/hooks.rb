@@ -258,6 +258,9 @@ module RedmineExpertHelpdesk
   a.className = 'icon icon-email';
   a.style.marginRight = '6px';
   a.textContent = #{btn_label.to_json};
+  // Redmine 6/7 renders icons as SVG sprites; the old `icon icon-*` class no longer
+  // supplies an icon (button looks mangled). Prepend the SVG when available.
+  if (window.hdSpriteIcon) { a.insertAdjacentHTML('afterbegin', window.hdSpriteIcon('email')); }
   ctx.insertBefore(a, ctx.firstChild);
 })();
 //]]>

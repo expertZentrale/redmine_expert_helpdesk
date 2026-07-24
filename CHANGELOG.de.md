@@ -1,5 +1,9 @@
 # Changelog – redmine_expert_helpdesk
 
+> 🇩🇪 Deutsche Version · [English version](CHANGELOG.md)
+>
+> Die englische `CHANGELOG.md` ist maßgeblich; diese deutsche Fassung wird synchron gehalten.
+
 ## [Unreleased] 2026-07-24 (85)
 
 ### Fixed
