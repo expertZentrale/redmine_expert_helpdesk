@@ -597,13 +597,13 @@ New-ServicePrincipal `
 
 # 4b. Restrict the management scope to the helpdesk mailboxes.
 #
-#     Option A: all mailboxes whose address ends with @helpdesk.expert.de
+#     Option A: all mailboxes whose address ends with @helpdesk.example.com
 New-ManagementScope `
   -Name "Redmine-Helpdesk-Mailboxes" `
-  -RecipientRestrictionFilter "PrimarySmtpAddress -like '*@helpdesk.expert.de'"
+  -RecipientRestrictionFilter "PrimarySmtpAddress -like '*@helpdesk.example.com'"
 #
 #     Option B: members of a mail-enabled security group
-#     $dn = (Get-Group "helpdesk-mailboxes@expert.de").DistinguishedName
+#     $dn = (Get-Group "helpdesk-mailboxes@example.com").DistinguishedName
 New-ManagementScope `
   -Name "Redmine-Helpdesk-Mailboxes" `
   -RecipientRestrictionFilter "MemberOfGroup -eq '<GROUP-DN>'"
@@ -627,7 +627,7 @@ New-ManagementRoleAssignment `
 # 4d. Test access (InScope must be true).
 Test-ServicePrincipalAuthorization `
   -Identity "Redmine Helpdesk" `
-  -Resource helpdesk@expert.de | Format-Table
+  -Resource helpdesk@example.com | Format-Table
 ```
 
 > ⚠️ **Important — remove Entra permissions**: After the EXO RBAC assignment,

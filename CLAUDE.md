@@ -24,7 +24,7 @@ Keep each EN/DE pair in sync for user-facing changes.
 
 ## Development workflow (Docker)
 
-Run everything from the **parent repo root** (`../../`, i.e. `/home/buehring/GIT/redmine-expert`).
+Run everything from the **parent repo root** (`../../`, i.e. the `redmine-expert` checkout).
 
 ```bash
 # Start / rebuild the local stack (MariaDB + Redmine + phpMyAdmin) — Redmine on :3000

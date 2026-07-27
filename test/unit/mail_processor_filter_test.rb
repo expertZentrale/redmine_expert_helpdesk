@@ -9,7 +9,7 @@ class MailProcessorFilterTest < ActiveSupport::TestCase
 
   AUTO_REPLY_MIME = <<~MIME.freeze
     From: vacations@example.de
-    To: helpdesk@expert.de
+    To: helpdesk@example.com
     Subject: Out of Office
     Auto-Submitted: auto-replied
     MIME-Version: 1.0
@@ -20,7 +20,7 @@ class MailProcessorFilterTest < ActiveSupport::TestCase
 
   AUTO_REPLY_WITH_MONITORING_MIME = <<~MIME.freeze
     From: vacations@example.de
-    To: helpdesk@expert.de
+    To: helpdesk@example.com
     Subject: Out of Office
     Auto-Submitted: auto-replied
     X-Monitoring: true
@@ -32,7 +32,7 @@ class MailProcessorFilterTest < ActiveSupport::TestCase
 
   NDR_MIME = <<~MIME.freeze
     From: MAILER-DAEMON@example.de
-    To: helpdesk@expert.de
+    To: helpdesk@example.com
     Subject: Undelivered Mail Returned to Sender
     Content-Type: multipart/report; report-type=delivery-status; boundary="NDR"
     MIME-Version: 1.0
@@ -71,8 +71,8 @@ class MailProcessorFilterTest < ActiveSupport::TestCase
   end
 
   def test_allow_list_restricts_to_entries
-    p = processor_for("expert.de\nkunde@partner.de", nil)
-    assert_not rejected?(p, 'mitarbeiter@expert.de')
+    p = processor_for("example.com\nkunde@partner.de", nil)
+    assert_not rejected?(p, 'mitarbeiter@example.com')
     assert_not rejected?(p, 'kunde@partner.de')
     assert rejected?(p, 'fremd@anders.de')
   end

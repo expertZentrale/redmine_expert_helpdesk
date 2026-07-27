@@ -31,6 +31,15 @@
   `window.hdSpriteIcon('email')` voran (Fallback auf reines Label, wenn nicht verfügbar)
   (`lib/redmine_expert_helpdesk/hooks.rb`).
 
+### Changed
+- **Dokumentationsbeispiele verwenden jetzt neutrale Platzhalter**: Die Microsoft-Graph-/Exchange-
+  Beispiele in `README.md`, `README.de.md` und `scripts/setup-azure-app.ps1` nutzen durchgängig
+  `helpdesk.example.com` / `@example.com`, und der Abschnitt zum Entwicklungs-Workflow in
+  `CLAUDE.md` verweist relativ auf das Repository-Wurzelverzeichnis statt über einen absoluten
+  Pfad. Damit sind die Beispiele für jede Installation direkt übernehmbar –
+  `-MailboxDomainSuffix` / `-MailboxEmailList` sind ohnehin installationsspezifische Parameter
+  und mussten immer gesetzt werden. Keine funktionale Änderung.
+
 ## [Unreleased] 2026-07-23 (84)
 
 ### Added

@@ -473,14 +473,14 @@ New-ServicePrincipal `
 
 # 4b. Management Scope auf die Helpdesk-Postfächer einschränken.
 #
-#     Variante A: alle Postfächer, deren Adresse auf @helpdesk.expert.de endet.
+#     Variante A: alle Postfächer, deren Adresse auf @helpdesk.example.com endet.
 New-ManagementScope `
   -Name "Redmine-Helpdesk-Postfaecher" `
-  -RecipientRestrictionFilter "PrimarySmtpAddress -like '*@helpdesk.expert.de'"
+  -RecipientRestrictionFilter "PrimarySmtpAddress -like '*@helpdesk.example.com'"
 #
 #     Variante B: Mitglieder einer Mail-aktivierten Sicherheitsgruppe
 #     (Distinguished Name der Gruppe mit Get-Group ermitteln).
-#     $dn = (Get-Group "helpdesk-postfaecher@expert.de").DistinguishedName
+#     $dn = (Get-Group "helpdesk-postfaecher@example.com").DistinguishedName
 New-ManagementScope `
   -Name "Redmine-Helpdesk-Postfaecher" `
   -RecipientRestrictionFilter "MemberOfGroup -eq '<DN-DER-GRUPPE>'"
@@ -505,7 +505,7 @@ New-ManagementRoleAssignment `
 # 4d. Zugriff testen (InScope muss true sein).
 Test-ServicePrincipalAuthorization `
   -Identity "Redmine Helpdesk" `
-  -Resource helpdesk@expert.de | Format-Table
+  -Resource helpdesk@example.com | Format-Table
 ```
 
 > ⚠️ **Wichtig – Entra-Berechtigungen entfernen**: Nach der EXO-RBAC-Zuweisung

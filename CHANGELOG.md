@@ -29,3 +29,11 @@
   removed, so no icon was supplied. Like the other JS-generated buttons, it now prepends the SVG sprite
   icon via `window.hdSpriteIcon('email')` (falling back to a plain label when unavailable)
   (`lib/redmine_expert_helpdesk/hooks.rb`).
+
+### Changed
+- **Documentation examples now use neutral placeholders**: the Microsoft Graph / Exchange setup
+  snippets in `README.md`, `README.de.md` and `scripts/setup-azure-app.ps1` use
+  `helpdesk.example.com` / `@example.com` throughout, and the development-workflow section of
+  `CLAUDE.md` refers to the repository root relatively instead of by absolute path. This makes the
+  examples copy-pasteable for any installation — `-MailboxDomainSuffix` / `-MailboxEmailList` are
+  per-installation parameters and always had to be supplied. No functional change.

@@ -34,7 +34,7 @@
 
 .PARAMETER MailboxDomainSuffix
     Only with -MailboxScopeOption DomainSuffix: domain suffix of the allowed
-    mailboxes, e.g. '@helpdesk.expert.de'.
+    mailboxes, e.g. '@helpdesk.example.com'.
 
 .PARAMETER MailboxSecurityGroup
     Only with -MailboxScopeOption SecurityGroup: name/email of the
@@ -46,7 +46,7 @@
 
 .PARAMETER MailboxEmailList
     Only with -MailboxScopeOption EmailList: fixed list of allowed mailbox
-    addresses, e.g. -MailboxEmailList "a@expert.de","b@expert.de".
+    addresses, e.g. -MailboxEmailList "a@example.com","b@example.com".
 
 .PARAMETER SecretValidityYears
     Validity period of the client secret in years (default: 1).
@@ -63,14 +63,14 @@
 
 .EXAMPLE
     ./setup-azure-app.ps1 -AppDisplayName "redmine-helpdesk" `
-        -MailboxScopeOption DomainSuffix -MailboxDomainSuffix "@helpdesk.expert.de" `
-        -TestMailbox "helpdesk@expert.de"
+        -MailboxScopeOption DomainSuffix -MailboxDomainSuffix "@helpdesk.example.com" `
+        -TestMailbox "helpdesk@example.com"
 
 .EXAMPLE
     ./setup-azure-app.ps1 -AppDisplayName "redmine-helpdesk" `
         -MailboxScopeOption EmailList `
-        -MailboxEmailList "helpdesk@expert.de", "support@expert.de" `
-        -TestMailbox "helpdesk@expert.de"
+        -MailboxEmailList "helpdesk@example.com", "support@example.com" `
+        -TestMailbox "helpdesk@example.com"
 
 .EXAMPLE
     # Second run, after the RBAC scope has been successfully tested:
@@ -84,7 +84,7 @@ param(
     [ValidateSet("DomainSuffix", "SecurityGroup", "CustomAttribute", "EmailList")]
     [string]$MailboxScopeOption = "DomainSuffix",
 
-    [string]$MailboxDomainSuffix = "@helpdesk.expert.de",
+    [string]$MailboxDomainSuffix = "@helpdesk.example.com",
 
     [string]$MailboxSecurityGroup,
 
@@ -111,7 +111,7 @@ function Get-MailboxRecipientFilter {
     switch ($MailboxScopeOption) {
         "DomainSuffix" {
             if (-not $MailboxDomainSuffix) {
-                throw "Please provide -MailboxDomainSuffix (e.g. '@helpdesk.expert.de')."
+                throw "Please provide -MailboxDomainSuffix (e.g. '@helpdesk.example.com')."
             }
             return "PrimarySmtpAddress -like '*$MailboxDomainSuffix'"
         }

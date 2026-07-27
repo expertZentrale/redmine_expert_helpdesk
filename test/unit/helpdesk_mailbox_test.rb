@@ -2,7 +2,7 @@ require File.expand_path('../../test_helper', __FILE__)
 
 # Tests fuer die Fusszeilen-Logik (zentrale Signatur vs. Postfach-Fusszeile).
 class HelpdeskMailboxTest < ActiveSupport::TestCase
-  GLOBAL = "--\nexpert.de Zentrale".freeze
+  GLOBAL = "--\nexample.com Zentrale".freeze
   LOCAL  = "Team Nord\nTel. 0123".freeze
 
   def setup
