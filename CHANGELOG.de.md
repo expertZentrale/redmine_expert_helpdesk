@@ -39,6 +39,17 @@
   Pfad. Damit sind die Beispiele für jede Installation direkt übernehmbar –
   `-MailboxDomainSuffix` / `-MailboxEmailList` sind ohnehin installationsspezifische Parameter
   und mussten immer gesetzt werden. Keine funktionale Änderung.
+- **Bildschirmfotos in beiden READMEs**: `README.md` und `README.de.md` beginnen jetzt mit einer
+  kurzen Galerie der wichtigsten Ansichten (SLA-Statistik, KI-Statistik, Kundenliste, Ticketseite)
+  und enthalten Bildschirmfotos in den Abschnitten zu Kunden, KI-Zusammenfassungen und
+  Wissensbasis – so lässt sich das Plugin beurteilen, ohne es vorher zu installieren. Die Bilder
+  liegen unter `docs/screenshots/{en,de}/` und sind **aus den Release-Archiven ausgeschlossen**
+  (`--exclude='docs'` in `.github/workflows/release.yml`), das Installationspaket wächst also nicht.
+- **Neue Hilfsskripte** `scripts/seed_screenshot_demo.rb` und `scripts/teardown_screenshot_demo.rb`
+  erzeugen und entfernen das synthetische Demo-Projekt, aus dem die Bildschirmfotos stammen
+  (Kontakte, Tickets mit realistischer SLA-Verteilung, KI-Protokoll, Wissensbasis-Einträge). Beide
+  arbeiten ausschließlich innerhalb eines Projekts, schreiben keine globalen Einstellungen und sind
+  – wie der übrige `scripts/`-Ordner – nicht Teil der Release-Archive.
 
 ## [Unreleased] 2026-07-23 (84)
 

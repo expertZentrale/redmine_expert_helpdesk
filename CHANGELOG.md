@@ -37,3 +37,14 @@
   `CLAUDE.md` refers to the repository root relatively instead of by absolute path. This makes the
   examples copy-pasteable for any installation — `-MailboxDomainSuffix` / `-MailboxEmailList` are
   per-installation parameters and always had to be supplied. No functional change.
+- **Screenshots in both READMEs**: `README.md` and `README.de.md` now open with a short gallery of
+  the main screens (SLA statistics, AI statistics, customer list, ticket view) and carry inline
+  screenshots in the customer, AI-summary and knowledge-base sections, so the plugin can be
+  evaluated without installing it first. Images live in `docs/screenshots/{en,de}/` and are
+  **excluded from the release archives** (`--exclude='docs'` in `.github/workflows/release.yml`),
+  so the installable package does not grow.
+- **New maintenance scripts** `scripts/seed_screenshot_demo.rb` and
+  `scripts/teardown_screenshot_demo.rb` build and remove the synthetic demo project the
+  screenshots are taken from (contacts, tickets with a realistic SLA mix, AI request log,
+  knowledge-base entries). Both are scoped to a single project, write no global settings and are
+  excluded from the release archives along with the rest of `scripts/`.

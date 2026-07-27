@@ -65,6 +65,77 @@ see [Tests](#tests).
   "New Helpdesk Ticket" button in the issue list and a "Send as E-Mail"
   option in the create form support this workflow.
 
+## Screenshots
+
+All screenshots show a demo project with synthetic data.
+
+### Customer list
+
+Every sender becomes a customer record, with ticket count and last contact per
+customer.
+
+![Customer list of a helpdesk project: a searchable, paginated table with name, email
+address, company, phone number, ticket count and date of the last ticket](docs/screenshots/en/03-contacts.png)
+
+### Ticket with customer context
+
+The ticket page shows who wrote, from which mailbox, and how both SLA clocks stand.
+
+![Ticket page with the helpdesk info bar: sender name and address, the origin mailbox and
+two green SLA chips for reaction and solution time](docs/screenshots/en/04-issue-detail.png)
+
+The sidebar adds the customer card, the customer's earlier tickets and — if the knowledge
+base is enabled — proposed solutions from similar resolved tickets.
+
+![Ticket sidebar with the customer card (name, email, company, phone, origin mailbox, list
+of earlier tickets) and below it the AI assistant with proposed solutions from similar
+resolved tickets, each with a match score](docs/screenshots/en/05-issue-sidebar.png)
+
+### Replying to the customer
+
+Replies are written in the normal Redmine note field; the helpdesk panel adds recipients
+and a preview of the signature that will be appended.
+
+![Reply panel inside the ticket edit form: a "send as email to customer" checkbox with the
+recipient, To/CC/BCC fields and a preview of the signature](docs/screenshots/en/06-reply.png)
+
+### SLA statistics
+
+Per-project reaction and solution times, measured in working hours only.
+
+![SLA statistics dashboard: key figures for tickets, open, closed and breached, a
+compliance bar chart, monthly ticket volume, average times over time and busiest hours and
+weekdays](docs/screenshots/en/01-sla-dashboard.png)
+
+The same SLA state is available as ticket-list columns, so a queue can be sorted and
+filtered by it.
+
+![Ticket list with the additional columns Customer, SLA reaction and SLA solution, the SLA
+cells shown as green, red and blue status chips](docs/screenshots/en/09-issue-list.png)
+
+### AI usage statistics
+
+If AI summaries or the knowledge base are enabled, every request is logged and reported.
+
+![AI statistics dashboard: request count, token usage, success rate and latency, plus
+charts for request volume, token usage over time, success versus failure, request type,
+provider model and busiest times](docs/screenshots/en/02-ai-dashboard.png)
+
+### Configuration
+
+Mailboxes, SLA targets, AI and knowledge-base options are configured per project.
+
+![Helpdesk tab in the project settings with sections for reply settings, SLA targets
+including per-priority overrides, AI summary options, knowledge base and the mailbox
+list](docs/screenshots/en/07-project-settings.png)
+
+Each mailbox carries its own folders, defaults for new tickets, sender filters,
+autoresponder and reply templates.
+
+![Mailbox configuration form with mailbox address and folders, defaults for new tickets,
+reopening rules, sender filter, auto-reply filter, autoresponder text and reply templates
+including a signature preview](docs/screenshots/en/08-mailbox-form.png)
+
 ## Email Processing
 
 ### Flow per mailbox fetch
@@ -187,6 +258,10 @@ mailbox fetch and assigned to the project.
   *Administration → Plugins → Display settings → Max. tickets in customer profile*
   (default: 10). When there are more tickets a note
   "Showing the N most recent of X tickets total" is shown.
+
+![Customer profile: editable fields for name, company, phone and notes, below them a table
+of the customer's previous tickets with number, subject, status and last
+update](docs/screenshots/en/10-contact-profile.png)
 
 ### Contact display on the ticket page
 

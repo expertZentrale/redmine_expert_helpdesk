@@ -96,7 +96,7 @@ jobs:
           rsync -a \
             --exclude='.git' --exclude='.github' --exclude='.claude' \
             --exclude='.gitignore' --exclude='.gitattributes' \
-            --exclude='test' --exclude='scripts' \
+            --exclude='test' --exclude='scripts' --exclude='docs' \
             --exclude='CLAUDE.md' --exclude='plan.md' --exclude='ROADMAP.md' \
             --exclude='.dev.env*' --exclude='.tokensave' --exclude='RELEASE_NOTES.md' \
             ./ "$STAGE/"

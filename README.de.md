@@ -63,6 +63,83 @@ siehe [Tests ausführen](#tests-ausführen).
 - **Regeln**: Automatisierung nach Betreff/Absender (Priorität, Tracker,
   Kategorie, Zuweisung setzen oder Mail ignorieren).
 
+## Bildschirmfotos
+
+Alle Bildschirmfotos zeigen ein Demo-Projekt mit synthetischen Daten.
+
+### Kundenliste
+
+Jeder Absender wird als Kunde gepflegt – mit Ticketanzahl und letztem Kontakt.
+
+![Kundenliste eines Helpdesk-Projekts: durchsuchbare, seitenweise Tabelle mit Name,
+E-Mail-Adresse, Firma, Telefonnummer, Ticketanzahl und Datum des letzten
+Tickets](docs/screenshots/de/03-contacts.png)
+
+### Ticket mit Kundenkontext
+
+Die Ticketseite zeigt, wer geschrieben hat, aus welchem Postfach und wie beide SLA-Uhren
+stehen.
+
+![Ticketseite mit Helpdesk-Infozeile: Absendername und -adresse, Ursprungspostfach sowie
+zwei grüne SLA-Chips für Reaktions- und Lösungszeit](docs/screenshots/de/04-issue-detail.png)
+
+Die Seitenleiste ergänzt die Kundenkarte, frühere Tickets des Kunden und – bei aktiver
+Wissensbasis – Lösungsvorschläge aus ähnlichen gelösten Tickets.
+
+![Seitenleiste eines Tickets mit Kundenkarte (Name, E-Mail, Firma, Telefon,
+Ursprungspostfach, Liste früherer Tickets) und darunter der KI-Assistent mit
+Lösungsvorschlägen aus ähnlichen gelösten Tickets samt
+Trefferquote](docs/screenshots/de/05-issue-sidebar.png)
+
+### Antwort an den Kunden
+
+Antworten werden im gewohnten Redmine-Notizfeld geschrieben; das Helpdesk-Panel ergänzt
+Empfänger und eine Vorschau der angehängten Signatur.
+
+![Antwort-Panel im Bearbeiten-Formular eines Tickets: Auswahlfeld „Als E-Mail an Kunden
+senden“ mit Empfänger, An/CC/BCC-Feldern und einer Vorschau der
+Signatur](docs/screenshots/de/06-reply.png)
+
+### SLA-Statistik
+
+Reaktions- und Lösungszeiten je Projekt, gemessen ausschließlich in Geschäftszeiten.
+
+![SLA-Statistik: Kennzahlen zu Tickets, offen, geschlossen und überschritten, ein
+Balkendiagramm zur SLA-Erfüllung, das monatliche Ticketvolumen, Durchschnittszeiten im
+Zeitverlauf sowie Stoßzeiten nach Stunden und
+Wochentagen](docs/screenshots/de/01-sla-dashboard.png)
+
+Derselbe SLA-Status steht als Spalte in der Ticketliste zur Verfügung und lässt sich
+sortieren und filtern.
+
+![Ticketliste mit den zusätzlichen Spalten Kunde, SLA Reaktion und SLA Lösung, wobei die
+SLA-Zellen als grüne, rote und blaue Status-Chips dargestellt
+sind](docs/screenshots/de/09-issue-list.png)
+
+### KI-Nutzungsstatistik
+
+Bei aktiven KI-Zusammenfassungen oder aktiver Wissensbasis wird jede Anfrage protokolliert
+und ausgewertet.
+
+![KI-Statistik: Anzahl Anfragen, Token-Verbrauch, Erfolgsquote und Antwortzeit sowie
+Diagramme zu Anfragevolumen, Token-Verbrauch im Zeitverlauf, Erfolg gegen Fehler,
+Anfragetyp, Anbieter-Modell und Stoßzeiten](docs/screenshots/de/02-ai-dashboard.png)
+
+### Konfiguration
+
+Postfächer, SLA-Ziele, KI- und Wissensbasis-Optionen werden je Projekt eingestellt.
+
+![Helpdesk-Reiter in den Projekteinstellungen mit Abschnitten für Antwort-Einstellungen,
+SLA-Ziele inklusive Übersteuerung je Priorität, KI-Zusammenfassung, Wissensbasis und der
+Postfachliste](docs/screenshots/de/07-project-settings.png)
+
+Jedes Postfach hat eigene Ordner, Standardwerte für neue Tickets, Absenderfilter,
+Autoresponder und Antwortvorlagen.
+
+![Formular zur Postfachkonfiguration mit Postfachadresse und Ordnern, Standardwerten für
+neue Tickets, Wiedereröffnungsregeln, Absenderfilter, Auto-Reply-Filter, Autoresponder-Text
+und Antwortvorlagen samt Signaturvorschau](docs/screenshots/de/08-mailbox-form.png)
+
 ## E-Mail-Verarbeitung
 
 ### Ablauf pro Postfachabruf
@@ -188,6 +265,10 @@ gespeichert und dem Projekt zugeordnet.
   *Administration → Plugins → Anzeigeeinstellungen → Max. Tickets im Kundenprofil*
   konfigurierbar (Standard: 10). Bei mehr Tickets erscheint ein Hinweis
   „Zeigt die N neuesten von insgesamt X Tickets".
+
+![Kundenprofil: bearbeitbare Felder für Name, Firma, Telefon und Notizen, darunter eine
+Tabelle der bisherigen Tickets des Kunden mit Nummer, Thema, Status und letzter
+Aktualisierung](docs/screenshots/de/10-contact-profile.png)
 
 ### Kontaktanzeige auf der Ticketseite
 
