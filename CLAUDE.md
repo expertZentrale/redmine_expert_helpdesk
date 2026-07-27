@@ -64,6 +64,29 @@ bundle exec ruby -Itest plugins/redmine_expert_helpdesk/test/unit/sla_test.rb -n
 The plugin also ships a rake task for the phishing mirror:
 `bundle exec rake redmine_expert_helpdesk:phishtank_sync`.
 
+## Git workflow (feature branches)
+
+`main` is the protected integration branch — **release tags are cut only from merged `main`**, so
+do **not** develop features directly on it.
+
+- **Branch per unit of work**, named `type/short-desc` where `type` matches the Conventional-Commit
+  style used in the CHANGELOG: `feat/…`, `fix/…`, `chore/…`, `docs/…`, `refactor/…`, `test/…`
+  (e.g. `feat/sla-priority-overrides`, `fix/graph-token-refresh`). Branch off the latest `main`.
+- **Commit messages** use the same Conventional-Commit prefixes; keep commits focused and include
+  the CHANGELOG/README updates the change requires (EN authoritative + DE mirror, per the language
+  policy above).
+- **Open a PR** into `main`. CI (`ci.yml`, `docker-image.yml`) runs on `main`/PRs and **must pass**
+  before merge; describe the change and link it to its CHANGELOG entry.
+- **Squash-merge** the PR — one commit per feature keeps `main` history linear. Delete the branch
+  after merge.
+- **Exception — trivial fixes may commit straight to `main`**: docs/typo/CHANGELOG-only tweaks that
+  touch no code and no schema. Anything touching Ruby/JS, migrations, i18n or behavior needs a
+  branch + PR.
+- **Never rewrite published history** (`main`, or any branch someone else has pulled); rebase only
+  your own un-pushed local commits.
+- After a feature merges to `main` and is ready to ship, bump `init.rb` + CHANGELOG and cut the tag
+  (see *Releases* below).
+
 ## Releases (tag-driven)
 
 GitHub Releases are produced only by pushing a semver tag — never on normal pushes/PRs. The plugin

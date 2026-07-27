@@ -31,6 +31,8 @@ Redmine is supplied by a Docker image; the app only exists inside the running co
 - **Never edit a shipped migration.** When changing schema, add the next sequential number in
   `db/migrate/` (`001_...` onward).
 - Don't hard-code secrets/API keys. Local dev credentials live in `.dev.env` (git-ignored).
+- **Don't develop features on `main`.** Every feature, bugfix or schema change goes on a
+  `type/short-desc` branch and reaches `main` via a squash-merged PR (see *Git workflow* below).
 
 ## Development workflow (Docker)
 
@@ -61,6 +63,26 @@ bundle exec ruby -Itest plugins/redmine_expert_helpdesk/test/unit/sla_test.rb
 The REST API (see `API.md`) can be smoke-tested live against the local stack over HTTP from the
 host — source `.dev.env` for `REDMINE_URL` + `REDMINE_API_KEY`, then `curl` with an
 `X-Redmine-API-Key` header. Use a `project_id` with the Helpdesk module enabled.
+
+## Git workflow (feature branches)
+
+`main` is the protected integration branch — **release tags are cut only from merged `main`**.
+Do not build features directly on it.
+
+- **Branch per unit of work**, named `type/short-desc` where `type` matches the Conventional-Commit
+  style used in the CHANGELOG: `feat/…`, `fix/…`, `chore/…`, `docs/…`, `refactor/…`, `test/…`
+  (e.g. `feat/sla-priority-overrides`, `fix/graph-token-refresh`). Branch off the latest `main`.
+- **Commit messages** follow the same Conventional-Commit prefixes; keep commits focused and
+  include the CHANGELOG/README updates the change requires (see the CHANGELOG hard rule above).
+- **Open a PR** into `main`. CI (`ci.yml`, `docker-image.yml`) runs on PRs and **must pass** before
+  merge. Prefer a short self-review / description linking the change to its CHANGELOG entry.
+- **Squash-merge** the PR — one commit per feature keeps `main` history linear and readable. Delete
+  the branch after merge.
+- **Exception — trivial fixes may commit straight to `main`**: docs/typo/CHANGELOG-only tweaks that
+  touch no code and no schema. Anything touching Ruby/JS, migrations, i18n or behavior needs a
+  branch + PR.
+- **Never rewrite published history** (`main`, or any branch someone else has pulled). Rebase only
+  your own un-pushed local commits.
 
 ## Releases (tag-driven)
 
