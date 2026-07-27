@@ -21,6 +21,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/business_hours', __FILE
 require File.expand_path('../lib/redmine_expert_helpdesk/sla', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/sla_breach_check', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/sla_statistics', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/ai_usage_statistics', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/api_serializers', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/projects_helper_patch', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/project_patch', __FILE__)
@@ -32,7 +33,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
   name 'Redmine expert Helpdesk'
   author 'Dennis Buehring'
   description 'Helpdesk plugin: email-to-ticket via Microsoft Graph (O365 OAuth), autoresponder, customer replies, and rules engine'
-  version '0.1.4'
+  version '0.1.5'
   requires_redmine :version_or_higher => '5.0'
   url 'https://github.com/expertZentrale/redmine_expert_helpdesk'
 
@@ -99,6 +100,14 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
     }, :read => true
   end
 
+  # Globale Berechtigung fuer die KI-Statistik (Kostenrisiko der KI-Funktionen).
+  # Ausserhalb des project_module deklariert (:global => true), damit sie einmalig
+  # einer Rolle (z. B. "ai-admin") gewaehrt werden kann und dann projektuebergreifend
+  # gilt – ohne Projektmitgliedschaft.
+  permission :view_helpdesk_ai_statistics, {
+    :helpdesk_ai_statistics => [:index]
+  }, :global => true
+
   menu :project_menu, :helpdesk_contacts,
        { :controller => 'helpdesk_contacts', :action => 'index' },
        :caption  => :label_helpdesk_customers,
@@ -115,6 +124,18 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
        :if       => Proc.new { |p|
          p.module_enabled?(:helpdesk) &&
            HelpdeskProjectSetting.for_project(p).sla_enabled?
+       }
+
+  # KI-Statistik-Reiter: sichtbar bei aktivem Helpdesk-Modul und globaler
+  # Berechtigung view_helpdesk_ai_statistics (Rolle "ai-admin").
+  menu :project_menu, :helpdesk_ai_statistics,
+       { :controller => 'helpdesk_ai_statistics', :action => 'index' },
+       :caption  => :label_helpdesk_ai_statistics,
+       :after    => :helpdesk_sla_statistics,
+       :param    => :project_id,
+       :if       => Proc.new { |p|
+         p.module_enabled?(:helpdesk) &&
+           User.current.allowed_to?(:view_helpdesk_ai_statistics, nil, :global => true)
        }
 
   # Direkter Eintrag im Administrationsmenue (Sidebar + Admin-Uebersicht),

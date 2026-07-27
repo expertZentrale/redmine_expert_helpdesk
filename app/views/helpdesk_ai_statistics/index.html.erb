@@ -1,0 +1,156 @@
+<%# KI-Statistik des Projekts (Diagramme via Chart.js, lokal gebundelt) %>
+<% html_title l(:label_helpdesk_ai_statistics) %>
+<% content_for :header_tags do %>
+  <%= javascript_include_tag 'chart.umd.min', 'chartjs-plugin-datalabels.min', 'helpdesk_ai_stats', :plugin => 'redmine_expert_helpdesk' %>
+<% end %>
+
+<h2><%= l(:label_helpdesk_ai_statistics) %></h2>
+
+<%= form_tag helpdesk_ai_statistics_path(:project_id => @project), :method => :get,
+             :class => 'hd-stats-filter' do %>
+  <label><%= l(:label_helpdesk_stats_group_by) %>:
+    <%= select_tag :period,
+          options_for_select(
+            RedmineExpertHelpdesk::AiUsageStatistics::PERIODS.map { |p| [l("label_helpdesk_stats_#{p}"), p] },
+            @period), :id => 'hd-stats-period' %>
+  </label>
+  <label><%= l(:label_helpdesk_stats_range) %>:
+    <%= select_tag :range,
+          options_for_select(
+            HelpdeskAiStatisticsController::RANGES.map { |r| [l("label_helpdesk_stats_range_#{r}"), r] },
+            @range), :id => 'hd-stats-range' %>
+  </label>
+  <span id="hd-stats-custom-dates"<%= @range == 'custom' ? '' : raw(' style="display:none;"') %>>
+    <label><%= l(:label_helpdesk_stats_from) %>:
+      <%= date_field_tag :date_from, @date_from.iso8601 %></label>
+    <label><%= l(:label_helpdesk_stats_to) %>:
+      <%= date_field_tag :date_to, @date_to.iso8601 %></label>
+  </span>
+  <%= submit_tag l(:button_apply), :name => nil %>
+<% end %>
+
+<% totals = @stats[:totals] %>
+<% if totals[:requests] == 0 %>
+  <p class="nodata"><%= l(:label_helpdesk_ai_stats_no_data) %></p>
+<% else %>
+  <%# --- Kennzahlen auf einen Blick --- %>
+  <div class="hd-stats-tiles">
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= hd_ai_number(totals[:requests]) %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_ai_stats_requests) %></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= hd_ai_number(totals[:total_tokens]) %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_ai_stats_total_tokens) %>
+        <em>(<%= l(:label_helpdesk_ai_stats_input) %> <%= hd_ai_number(totals[:input_tokens]) %> /
+          <%= l(:label_helpdesk_ai_stats_output) %> <%= hd_ai_number(totals[:output_tokens]) %>)</em></span>
+    </div>
+    <div class="hd-stats-tile<%= totals[:failed] > 0 ? ' hd-stats-tile-alert' : '' %>">
+      <span class="hd-stats-num"><%= hd_ai_ratio(totals[:success_ratio]) %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_ai_stats_success_rate) %>
+        <em>(<%= l(:label_helpdesk_ai_stats_failed) %> <%= totals[:failed] %>)</em></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= hd_ai_latency(totals[:avg_latency_ms]) %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_ai_stats_avg_latency) %>
+        <em>(P95 <%= hd_ai_latency(totals[:p95_latency_ms]) %>)</em></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= hd_ai_number(totals[:summaries]) %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_ai_stats_type_summary) %></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= hd_ai_number(totals[:kb_requests]) %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_ai_stats_kb_requests) %></span>
+    </div>
+  </div>
+
+  <%# --- Anfragevolumen --- %>
+  <h3><%= l(:label_helpdesk_ai_stats_volume) %></h3>
+  <div class="hd-chart-box"><canvas id="hd-chart-ai-volume"></canvas></div>
+
+  <%# --- Token-Verbrauch --- %>
+  <h3><%= l(:label_helpdesk_ai_stats_tokens_over_time) %></h3>
+  <div class="hd-chart-box"><canvas id="hd-chart-ai-tokens"></canvas></div>
+
+  <%# --- Erfolg/Fehler im Zeitverlauf --- %>
+  <h3><%= l(:label_helpdesk_ai_stats_success_over_time) %></h3>
+  <div class="hd-chart-box"><canvas id="hd-chart-ai-success"></canvas></div>
+  <% if @stats[:errors].any? %>
+    <p class="hd-stats-muted">
+      <%= l(:label_helpdesk_ai_stats_errors) %>:
+      <%= safe_join(@stats[:errors].map { |e| "#{e[:error_class]} (#{e[:count]})" }, ' · ') %>
+    </p>
+  <% end %>
+
+  <%# --- Aufteilung nach Typ / Modell --- %>
+  <div class="hd-stats-busy">
+    <div class="hd-stats-busy-col">
+      <h3><%= l(:label_helpdesk_ai_stats_by_type) %></h3>
+      <div class="hd-chart-box"><canvas id="hd-chart-ai-types"></canvas></div>
+    </div>
+    <div class="hd-stats-busy-col">
+      <h3><%= l(:label_helpdesk_ai_stats_by_model) %></h3>
+      <div class="hd-chart-box"><canvas id="hd-chart-ai-models"></canvas></div>
+    </div>
+  </div>
+
+  <%# --- Stosszeiten --- %>
+  <div class="hd-stats-busy">
+    <div class="hd-stats-busy-col">
+      <h3><%= l(:label_helpdesk_stats_busiest_hours) %></h3>
+      <div class="hd-chart-box"><canvas id="hd-chart-ai-hours"></canvas></div>
+    </div>
+    <div class="hd-stats-busy-col">
+      <h3><%= l(:label_helpdesk_stats_busiest_weekdays) %></h3>
+      <div class="hd-chart-box"><canvas id="hd-chart-ai-weekdays"></canvas></div>
+    </div>
+  </div>
+
+  <%# --- Wissensbasis-Status --- %>
+  <h3><%= l(:label_helpdesk_ai_stats_kb_status) %></h3>
+  <p class="hd-stats-muted">
+    <%= l(:label_helpdesk_ai_stats_kb_approved) %> <strong><%= @stats[:kb][:approved] %></strong> ·
+    <%= l(:label_helpdesk_ai_stats_kb_pending) %> <strong><%= @stats[:kb][:pending] %></strong> ·
+    <%= l(:label_helpdesk_ai_stats_kb_skipped) %> <strong><%= @stats[:kb][:skipped] %></strong>
+  </p>
+
+  <%
+    chart_data = {
+      :labels => {
+        :requests => l(:label_helpdesk_ai_stats_requests),
+        :input    => l(:label_helpdesk_ai_stats_input),
+        :output   => l(:label_helpdesk_ai_stats_output),
+        :success  => l(:label_helpdesk_ai_stats_success),
+        :failed   => l(:label_helpdesk_ai_stats_failed),
+        :hours    => l(:label_helpdesk_stats_busiest_hours),
+        :weekdays => l(:label_helpdesk_stats_busiest_weekdays)
+      },
+      :volume => {
+        :labels   => @stats[:volume].map { |b| b[:label] },
+        :requests => @stats[:volume].map { |b| b[:requests] }
+      },
+      :tokens => {
+        :labels => @stats[:volume].map { |b| b[:label] },
+        :input  => @stats[:volume].map { |b| b[:input_tokens] },
+        :output => @stats[:volume].map { |b| b[:output_tokens] }
+      },
+      :success => {
+        :labels  => @stats[:volume].map { |b| b[:label] },
+        :success => @stats[:volume].map { |b| b[:requests] - b[:failed] },
+        :failed  => @stats[:volume].map { |b| b[:failed] }
+      },
+      :byType => {
+        :labels => @stats[:by_type].map { |t| hd_ai_type_label(t[:type]) },
+        :data   => @stats[:by_type].map { |t| t[:requests] }
+      },
+      :byModel => {
+        :labels => @stats[:by_model].map { |m| m[:label] },
+        :data   => @stats[:by_model].map { |m| m[:requests] }
+      },
+      :busiestHours    => { :labels => (0..23).map { |h| format('%02d', h) }, :data => @stats[:busiest_hours] },
+      :busiestWeekdays => { :labels => (1..7).map { |i| hd_ai_weekday_name(i) }, :data => @stats[:busiest_weekdays] }
+    }
+  %>
+  <script type="application/json" id="hd-ai-stats-data"><%= raw chart_data.to_json %></script>
+<% end %>

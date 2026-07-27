@@ -63,7 +63,9 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
   private
 
   def index!(store, client, entry)
-    vec = client.embed(entry.problem.to_s)
+    vec = client.embed(entry.problem.to_s,
+                       :log_context => { :request_type => 'kb_embed',
+                                         :project_id => entry.project_id, :issue_id => entry.issue_id })
     store.ensure_ready!(entry.project_id, vec.size)
     payload = { 'issue_id' => entry.issue_id, 'problem' => entry.problem, 'solution' => entry.solution }
     store.upsert(entry.project_id, entry.id, vec, payload)

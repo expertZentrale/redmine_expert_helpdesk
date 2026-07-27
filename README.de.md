@@ -656,6 +656,15 @@ Zusammenfassung als **private (interne) Journal-Notiz** ans Ticket hängen – h
 schwer verständlichen Mails oder weitergeleiteten Verläufen mit verstreuten Informationen.
 Standardmäßig deaktiviert, Opt-in pro Projekt.
 
+> **KI-Nutzungsstatistik.** Da die KI-Funktionen externe APIs aufrufen und ein Kostenrisiko
+> bergen, wird jeder KI-Aufruf (Zusammenfassungen, KB-Extraktion, Embeddings, RAG-Retrieval) in
+> `helpdesk_ai_requests` protokolliert – inkl. Fehlversuchen und Antwortzeit. Ein projektbezogener
+> Reiter **„KI-Statistik"** (gleiche Zeitraumauswahl und Kennzahlen-Übersicht wie die SLA-Statistik)
+> schlüsselt die Nutzung nach Volumen, Token, Anfragetyp, Provider/Modell, Erfolgsquote und
+> Stoßzeiten auf. Der Reiter ist über die **globale** Berechtigung `view_helpdesk_ai_statistics`
+> geschützt: einer Rolle (z. B. *ai-admin*) gewähren, dann sehen diese Benutzer den Reiter in jedem
+> Helpdesk-Projekt. Nur Token – es werden noch keine Geldkosten berechnet.
+
 **Zentrale Konfiguration** (*Administration → Plugins → Redmine expert Helpdesk*):
 - **Anbieter** – OpenAI (Chat Completions), Anthropic (Messages) oder **Eigener Endpunkt**
   (beliebige OpenAI-kompatible Basis-URL, z. B. self-hosted Ollama / vLLM / LocalAI / LM Studio).

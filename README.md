@@ -287,6 +287,15 @@ post it as a **private (internal) journal note** — useful for hard-to-parse ma
 forwarded threads where the relevant information is scattered. Disabled by default, opt-in
 per project.
 
+> **AI usage statistics.** Because AI features call external APIs and carry a cost/usage risk,
+> every AI call (summaries, KB extraction, embeddings, RAG retrieval) is logged to
+> `helpdesk_ai_requests` — including failures and latency. A per-project **"AI statistics"** tab
+> (same time-frame selector and totals-at-a-glance layout as the SLA dashboard) breaks usage down
+> by volume, tokens, request type, provider/model, success rate and busiest times. The tab is
+> restricted to the **global** permission `view_helpdesk_ai_statistics`: grant it to a role (e.g.
+> one you name *ai-admin*) and those users see the tab on every helpdesk project. Tokens only — no
+> monetary cost is computed yet.
+
 **Central configuration** (*Administration → Plugins → Redmine expert Helpdesk*):
 - **Provider** — OpenAI (Chat Completions), Anthropic (Messages), or **Custom** (any
   OpenAI-compatible base URL, e.g. self-hosted Ollama / vLLM / LocalAI / LM Studio).

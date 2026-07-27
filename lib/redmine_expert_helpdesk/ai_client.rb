@@ -110,13 +110,18 @@ module RedmineExpertHelpdesk
     #   user_text     : Mailinhalt (ggf. inkl. Verlauf und Anhang-Text)
     #   image_parts   : [{ :content_type => 'image/png', :data => '<base64>' }] (Vision)
     # Liefert den Zusammenfassungstext (String) oder wirft AiError.
-    def summarize(system_prompt, user_text, image_parts = [])
+    #   log_context : optional { :request_type, :project_id, :issue_id } – ist es
+    #                 gesetzt, wird der Aufruf (Erfolg wie Fehler) in
+    #                 HelpdeskAiRequest protokolliert.
+    def summarize(system_prompt, user_text, image_parts = [], log_context: nil)
       raise ConfigurationError, 'KI ist nicht konfiguriert (API-Key, Modell oder Endpunkt fehlt)' unless configured?
 
-      if provider == 'anthropic'
-        summarize_anthropic(system_prompt, user_text, image_parts)
-      else # openai + custom (OpenAI-kompatibel)
-        summarize_openai(system_prompt, user_text, image_parts)
+      with_request_log(log_context, :provider => provider, :model => model, :default_type => 'summary') do
+        if provider == 'anthropic'
+          summarize_anthropic(system_prompt, user_text, image_parts)
+        else # openai + custom (OpenAI-kompatibel)
+          summarize_openai(system_prompt, user_text, image_parts)
+        end
       end
     end
 
@@ -156,16 +161,22 @@ module RedmineExpertHelpdesk
     end
 
     # Liefert den Embedding-Vektor (Array<Float>) fuer text oder wirft AiError.
-    def embed(text)
+    #   log_context : optional { :request_type, :project_id, :issue_id } – wie bei summarize.
+    def embed(text, log_context: nil)
       raise ConfigurationError, 'Embeddings sind nicht konfiguriert (Key/Modell/Endpunkt fehlt)' unless embed_configured?
 
-      body = post_json("#{embed_endpoint}/embeddings",
-                       { 'model' => embed_model, 'input' => text.to_s },
-                       'Authorization' => "Bearer #{embed_api_key}")
-      vec = body.dig('data', 0, 'embedding')
-      raise AiError.new('Leere Embedding-Antwort vom Provider', nil, body.to_s) if vec.blank?
+      with_request_log(log_context, :provider => embed_provider, :model => embed_model, :default_type => 'kb_embed') do
+        body = post_json("#{embed_endpoint}/embeddings",
+                         { 'model' => embed_model, 'input' => text.to_s },
+                         'Authorization' => "Bearer #{embed_api_key}")
+        vec = body.dig('data', 0, 'embedding')
+        raise AiError.new('Leere Embedding-Antwort vom Provider', nil, body.to_s) if vec.blank?
 
-      vec
+        # Embedding-Verbrauch (bislang verworfen) mitschreiben: nur Input-Tokens.
+        usage = body['usage'] || {}
+        @last_usage = { :input => usage['prompt_tokens'] || usage['total_tokens'], :output => nil }
+        vec
+      end
     end
 
     private
@@ -259,6 +270,56 @@ module RedmineExpertHelpdesk
       JSON.parse(response.body)
     rescue JSON::ParserError => e
       raise AiError.new("KI-Antwort nicht lesbar: #{e.message}")
+    end
+
+    # Fuehrt den KI-Aufruf aus und protokolliert ihn (Erfolg wie Fehler) in
+    # HelpdeskAiRequest, sofern ein log_context uebergeben wurde. Der Block setzt
+    # @last_usage; die Token werden nach erfolgreichem yield ausgelesen. Ohne
+    # Kontext (nil) wird nur ausgefuehrt, nicht protokolliert (rueckwaertskompatibel).
+    def with_request_log(context, provider:, model:, default_type:)
+      return yield if context.nil?
+
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      begin
+        result = yield
+        log_ai_request(context, :provider => provider, :model => model, :default_type => default_type,
+                       :duration_ms => elapsed_ms(started), :success => true,
+                       :input => @last_usage[:input], :output => @last_usage[:output])
+        result
+      rescue AiError => e
+        log_ai_request(context, :provider => provider, :model => model, :default_type => default_type,
+                       :duration_ms => elapsed_ms(started), :success => false,
+                       :error_class => e.class.name, :http_status => e.status)
+        raise
+      rescue => e
+        log_ai_request(context, :provider => provider, :model => model, :default_type => default_type,
+                       :duration_ms => elapsed_ms(started), :success => false, :error_class => e.class.name)
+        raise
+      end
+    end
+
+    def elapsed_ms(started)
+      ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
+    end
+
+    # Schreibt eine Protokollzeile. Fehler hier duerfen den KI-Flow nie brechen.
+    def log_ai_request(context, provider:, model:, default_type:, duration_ms:, success:,
+                       input: nil, output: nil, error_class: nil, http_status: nil)
+      HelpdeskAiRequest.create!(
+        :request_type  => (context[:request_type].presence || default_type).to_s,
+        :provider      => provider,
+        :model         => model,
+        :project_id    => context[:project_id],
+        :issue_id      => context[:issue_id],
+        :input_tokens  => input,
+        :output_tokens => output,
+        :duration_ms   => duration_ms,
+        :success       => success,
+        :error_class   => error_class,
+        :http_status   => http_status
+      )
+    rescue => e
+      Rails.logger.warn("[helpdesk][ai] Nutzungs-Protokoll konnte nicht gespeichert werden: #{e.class}: #{e.message}")
     end
   end
 end

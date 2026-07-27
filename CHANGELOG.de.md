@@ -8,6 +8,15 @@
 ## [Unreleased] 2026-07-24 (85)
 
 ### Added
+- **KI-Nutzungsstatistik**: ein projektbezogener Reiter **„KI-Statistik"** (analog zur SLA-Statistik
+  – Zeitraumauswahl, Kennzahlen auf einen Blick, Chart.js-Diagramme) mit Anfragevolumen, Token-
+  Verbrauch, Aufteilung nach Anfragetyp/Provider-Modell, Erfolg/Fehler, Antwortzeit und Stoßzeiten.
+  Grundlage ist ein neues, einheitliches **KI-Nutzungsprotokoll** (`helpdesk_ai_requests`, Migration
+  033), das **jeden** KI-Aufruf erfasst – Zusammenfassungen, KB-Extraktion, Embeddings und RAG-
+  Retrieval – inkl. Fehlversuchen (bislang nur geloggt) und Embedding-Token (bislang verworfen).
+  Der Zugriff ist über eine neue **globale** Berechtigung `view_helpdesk_ai_statistics` geschützt
+  (einer Rolle, z. B. „ai-admin", gewähren, um den Reiter in allen Helpdesk-Projekten zu sehen).
+  Nur Token – noch keine Kosten/Preise.
 - **Administrationsmenü**-Eintrag („expert Helpdesk", mit Headset-Icon), der direkt auf die
   Plugin-Einstellungen verlinkt – die Konfiguration ist so mit einem Klick über die
   Administrations-Sidebar und die Administrations-Übersicht erreichbar, statt über den Umweg

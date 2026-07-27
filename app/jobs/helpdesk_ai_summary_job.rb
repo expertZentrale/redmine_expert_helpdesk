@@ -68,7 +68,9 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
       system += kb_context_block(proposals) if ps.kb_show_in_summary?
     end
 
-    summary = client.summarize(system, user_text, image_parts)
+    summary = client.summarize(system, user_text, image_parts,
+                               :log_context => { :request_type => 'summary',
+                                                 :project_id => issue.project_id, :issue_id => issue.id })
 
     journal = create_note(issue, summary)
     record_summary(issue, journal, client)
@@ -229,7 +231,9 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
     min_results = settings['kb_min_results'].to_i
     min_results = 1 unless min_results.positive?
 
-    vec  = client.embed(query_text.to_s[0, 8000])
+    vec  = client.embed(query_text.to_s[0, 8000],
+                        :log_context => { :request_type => 'kb_retrieve',
+                                          :project_id => issue.project_id, :issue_id => issue.id })
     hits = store.search(issue.project_id, vec, top_k)
     hits = hits.select { |h| h[:score].to_f >= min_score }
     hits = hits.reject { |h| (h[:payload] || {})['issue_id'].to_i == issue.id }

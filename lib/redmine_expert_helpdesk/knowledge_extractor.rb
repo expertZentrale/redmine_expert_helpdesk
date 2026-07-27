@@ -37,7 +37,9 @@ module RedmineExpertHelpdesk
       return nil unless client.configured?
 
       prompt = @settings['kb_extract_prompt'].presence || DEFAULT_PROMPT
-      raw    = client.summarize(prompt, text)
+      raw    = client.summarize(prompt, text,
+                                :log_context => { :request_type => 'kb_extract',
+                                                  :project_id => issue.project_id, :issue_id => issue.id })
       data   = parse_json(raw)
       return nil unless data
 
