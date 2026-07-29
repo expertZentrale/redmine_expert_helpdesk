@@ -9,6 +9,11 @@
 ## [Unreleased] 2026-07-24 (85)
 
 ### Added
+- **`LICENSE` file (GPL-2.0-or-later)** — the plugin is now explicitly licensed under the GNU
+  General Public License v2 or later, matching Redmine itself. Adds a copyright/license header to
+  `init.rb` and a **License** plus **Third-party components** section to `README.md` /
+  `README.de.md` (documenting the bundled MIT-licensed Chart.js 4.4.6 and
+  chartjs-plugin-datalabels 2.2.0, both served locally — no CDN request at runtime).
 - **AI usage statistics** dashboard: a per-project **"AI statistics"** tab (mirroring the SLA
   dashboard — time-frame selector, at-a-glance totals, Chart.js visualisations) covering request
   volume, token usage, request-type/provider-model breakdown, success/failure, latency and busiest

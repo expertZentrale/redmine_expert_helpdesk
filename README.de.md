@@ -924,3 +924,35 @@ services:
 ```bash
 docker compose -f docker-compose.test.yml run --rm redmine-test
 ```
+
+---
+
+## Lizenz
+
+Copyright (C) 2026 Dennis Buehring
+
+Dieses Programm ist freie Software; Sie können es unter den Bedingungen der
+**GNU General Public License, Version 2 oder (nach Ihrer Wahl) jeder späteren Version**
+weitergeben und/oder verändern — also unter derselben Lizenz, die auch Redmine selbst nutzt.
+Den vollständigen Text finden Sie in [`LICENSE`](LICENSE).
+
+Das Plugin wird in den Redmine-Prozess geladen und patcht Redmine-Kernklassen; es ist damit ein
+abgeleitetes Werk von Redmine und wird entsprechend unter GPL-kompatiblen Bedingungen verteilt.
+
+Die Veröffentlichung erfolgt in der Hoffnung, dass es nützlich ist, jedoch **OHNE JEDE GEWÄHRLEISTUNG**
+— sogar ohne die implizite Gewährleistung der MARKTREIFE oder der EIGNUNG FÜR EINEN BESTIMMTEN ZWECK.
+
+## Komponenten von Drittanbietern
+
+Das Plugin bringt die folgenden Komponenten unter deren eigenen Lizenzen mit. Die Lizenz-Header
+bleiben in den ausgelieferten Dateien erhalten.
+
+| Komponente | Version | Lizenz | Pfad |
+|------------|---------|--------|------|
+| [Chart.js](https://www.chartjs.org) | 4.4.6 | MIT | `assets/javascripts/chart.umd.min.js` |
+| [chartjs-plugin-datalabels](https://chartjs-plugin-datalabels.netlify.app) | 2.2.0 | MIT | `assets/javascripts/chartjs-plugin-datalabels.min.js` |
+
+Beide werden lokal aus den Plugin-Assets ausgeliefert — zur Laufzeit erfolgt **kein** CDN-Aufruf.
+Geladen werden sie nur auf den Seiten der SLA- und der KI-Statistik.
+
+Zusätzliche Ruby-Gems werden nicht benötigt (nur die Ruby-Standardbibliothek).
