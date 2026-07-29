@@ -144,33 +144,81 @@ including a signature preview](docs/screenshots/en/08-mailbox-form.png)
 Graph API (source folder)
         │
         ▼
-  Black-/whitelist check ──── rejected ──▶ move to target folder
+  Black-/whitelist check ──── rejected ─────▶ skipped folder
         │
         ▼
-  Ignore rules ──────────── matches ────▶ move to target folder
+  Ignore rules ───────────── matches ───────▶ skipped folder
         │
         ▼
-  Download MIME
+  Download MIME (Graph)
         │
         ▼
-  Redmine MailHandler ──── rejected ───▶ move to target folder
+  Auto-reply filter ──────── out-of-office ─▶ skipped folder
+        │                    (optional per mailbox; a sender on the
+        │                     whitelist is processed anyway)
+        ▼
+  Phishing scan ─────────── hit + "quarantine" ─▶ skipped folder (no ticket)
+        │                   (optional per project; on "neutralize" the links
+        │                    are rewritten in the body and processing continues)
+        ▼
+  MIME preprocessing
+    ├─ strip thread headers if the referenced ticket is closed and older than
+    │  the mailbox's reopen_max_age_days  →  forces a NEW ticket
+    ├─ strip the Auto-Submitted header on NDR/bounce mails
+    │  (MailHandler would otherwise reject them as auto-replies)
+    └─ ensure In-Reply-To/References point at the ticket thread, so replies
+       match even when the subject carries no [#id] tag
+        │
+        ▼
+  Redmine MailHandler ────── rejected ───────▶ skipped folder
     (create ticket or         (e.g. own address)
      append journal)
         │
-        ├─ new ticket:  apply rules, link contact, autoresponder
-        └─ reply:       link contact, add EML link to journal comment
+        ├─ new ticket:  apply rules
+        └─ reply:       reopen the ticket if closed (per-mailbox reopen status)
         │
         ▼
-  Create HelpdeskMessage (direction=in, EML attachment)
+  Link contact + HelpdeskTicketInfo (contact, origin mailbox, SLA clocks)
         │
         ▼
-  Move to target folder, mark as read
+  Create HelpdeskMessage (direction=in) + attach original mail as .eml
+        │
+        ▼
+  Autoresponder (new tickets only, if enabled on the mailbox)
+        │
+        ▼
+  Phishing note (only if hits or suspicions were found)
+        │
+        ▼
+  Enqueue AI summary job (optional, async — never blocks ingestion)
+        │
+        ▼
+  Move to processed folder, mark as read
+
+
+  Any exception during processing ──▶ failed folder,
+  recorded in the mailbox's last_error / last_error_at
 ```
+
+**Target folders**: the flow uses three separate destinations — `processed_folder` for
+successfully ingested mail, `skipped_folder` for everything rejected before a ticket exists, and
+`failed_folder` for mails that raised an exception. Skipped and failed fall back to
+`processed_folder` when left blank; if that is blank too, the mail stays put and is only marked as
+read. Rejected mail is moved rather than left in place so it is not re-evaluated on every fetch.
+
+**Failure isolation**: each message is processed in its own `begin`/`rescue`, so a single broken
+mail never aborts the run — it lands in the failed folder, is counted in the result, and the fetch
+continues with the next message. Optional steps (phishing, autoresponder, AI) are likewise
+non-fatal: they log and move on rather than breaking ingestion.
 
 ### Matching email replies to existing tickets
 
-Matching is handled entirely by **Redmine's own `MailHandler`** — the plugin
-only provides the raw MIME data and evaluates the result.
+The matching decision itself is made by **Redmine's own `MailHandler`** — the plugin supplies the
+MIME data and evaluates the result. It does, however, influence the outcome in the preprocessing
+step described above: it injects `In-Reply-To`/`References` so replies match even without an
+`[#id]` tag in the subject, and it strips those same headers when the referenced ticket is closed
+and older than the mailbox's reopen age limit, deliberately forcing a new ticket instead of
+reviving a long-dead thread.
 
 The `MailHandler` checks in this order:
 

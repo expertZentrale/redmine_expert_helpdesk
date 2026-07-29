@@ -9,6 +9,14 @@
 ## [Unreleased] 2026-07-24 (85)
 
 ### Added
+- **Documentation: "Flow per mailbox fetch" brought back in sync with `MailProcessor`.** The
+  diagram had drifted and was missing the auto-reply filter, the phishing scan
+  (quarantine vs. neutralize), the MIME preprocessing stage (thread-header stripping for the
+  reopen-age limit, `Auto-Submitted` stripping on NDRs, `In-Reply-To`/`References` injection),
+  ticket reopening on replies, the `HelpdeskTicketInfo` link and the async AI-summary enqueue. It
+  also showed a single "target folder" where the code actually uses three
+  (`processed_folder` / `skipped_folder` / `failed_folder`, with fallbacks). Adds notes on target
+  folders and per-message failure isolation. Mirrored in `README.de.md`.
 - **`LICENSE` file (GPL-2.0-or-later)** — the plugin is now explicitly licensed under the GNU
   General Public License v2 or later, matching Redmine itself. Adds a copyright/license header to
   `init.rb` and a **License** plus **Third-party components** section to `README.md` /

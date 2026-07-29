@@ -8,6 +8,15 @@
 ## [Unreleased] 2026-07-24 (85)
 
 ### Added
+- **Dokumentation: „Ablauf pro Postfachabruf" wieder mit `MailProcessor` synchronisiert.** Das
+  Diagramm war veraltet: Es fehlten der Auto-Reply-Filter, die Phishing-Prüfung
+  (quarantine vs. neutralize), die MIME-Vorverarbeitung (Thread-Header-Entfernung für das
+  Wiedereröffnungs-Alterslimit, `Auto-Submitted`-Entfernung bei NDRs, Setzen von
+  `In-Reply-To`/`References`), die Wiedereröffnung bei Antworten, die `HelpdeskTicketInfo`-
+  Verknüpfung sowie das asynchrone Einreihen der KI-Zusammenfassung. Außerdem war von einem
+  einzigen „Zielordner" die Rede, während der Code drei verwendet
+  (`processed_folder` / `skipped_folder` / `failed_folder`, mit Fallbacks). Ergänzt Hinweise zu
+  Zielordnern und zur Fehlerisolierung pro Nachricht. In `README.md` gespiegelt.
 - **`LICENSE`-Datei (GPL-2.0-or-later)** – das Plugin steht nun ausdrücklich unter der GNU General
   Public License v2 oder später, also unter derselben Lizenz wie Redmine selbst. Ergänzt einen
   Copyright-/Lizenz-Header in `init.rb` sowie die Abschnitte **Lizenz** und **Komponenten von

@@ -148,33 +148,84 @@ und Antwortvorlagen samt Signaturvorschau](docs/screenshots/de/08-mailbox-form.p
 Graph API (Quellordner)
         │
         ▼
-  Black-/Whitelist-Prüfung ──── abgelehnt ──▶ Zielordner verschieben
+  Black-/Whitelist-Prüfung ──── abgelehnt ─────▶ Skipped-Ordner
         │
         ▼
-  Ignorieren-Regeln ─────────── trifft zu ──▶ Zielordner verschieben
+  Ignorieren-Regeln ─────────── trifft zu ─────▶ Skipped-Ordner
         │
         ▼
-  MIME herunterladen
+  MIME herunterladen (Graph)
         │
         ▼
-  Redmine MailHandler ─────── abgelehnt ────▶ Zielordner verschieben
-    (Ticket anlegen oder         (z. B. eigene Adresse)
+  Auto-Reply-Filter ────────── Abwesenheit ────▶ Skipped-Ordner
+        │                      (optional pro Postfach; Absender auf der
+        │                       Whitelist werden trotzdem verarbeitet)
+        ▼
+  Phishing-Prüfung ─────── Treffer + „quarantine" ─▶ Skipped-Ordner (kein Ticket)
+        │                  (optional pro Projekt; bei „neutralize" werden die
+        │                   Links im Body ersetzt, die Verarbeitung läuft weiter)
+        ▼
+  MIME-Vorverarbeitung
+    ├─ Thread-Header entfernen, wenn das referenzierte Ticket geschlossen und
+    │  älter als reopen_max_age_days des Postfachs ist → erzwingt ein NEUES Ticket
+    ├─ Auto-Submitted-Header bei NDR-/Bounce-Mails entfernen
+    │  (MailHandler würde sie sonst als Auto-Reply ablehnen)
+    └─ In-Reply-To/References auf den Ticket-Thread setzen, damit Antworten auch
+       ohne [#id] im Betreff zugeordnet werden
+        │
+        ▼
+  Redmine MailHandler ──────── abgelehnt ──────▶ Skipped-Ordner
+    (Ticket anlegen oder        (z. B. eigene Adresse)
      Journal ergänzen)
         │
-        ├─ neues Ticket: Regeln anwenden, Kontakt verknüpfen, Autoresponder
-        └─ Antwort:      Kontakt verknüpfen, EML-Link in Journalkommentar
+        ├─ neues Ticket: Regeln anwenden
+        └─ Antwort:      Ticket wiedereröffnen, falls geschlossen
+                         (Wiedereröffnungsstatus pro Postfach)
         │
         ▼
-  HelpdeskMessage erstellen (direction=in, EML-Anhang)
+  Kontakt verknüpfen + HelpdeskTicketInfo (Kontakt, Herkunftspostfach, SLA-Uhren)
         │
         ▼
-  Zielordner verschieben, als gelesen markieren
+  HelpdeskMessage erstellen (direction=in) + Originalmail als .eml anhängen
+        │
+        ▼
+  Autoresponder (nur bei neuen Tickets, wenn am Postfach aktiviert)
+        │
+        ▼
+  Phishing-Hinweis (nur wenn Treffer oder Verdachtsfälle gefunden wurden)
+        │
+        ▼
+  KI-Zusammenfassung einreihen (optional, asynchron – blockiert nie den Abruf)
+        │
+        ▼
+  In den Processed-Ordner verschieben, als gelesen markieren
+
+
+  Jede Exception während der Verarbeitung ──▶ Failed-Ordner,
+  festgehalten in last_error / last_error_at des Postfachs
 ```
+
+**Zielordner**: Der Ablauf nutzt drei getrennte Ziele – `processed_folder` für erfolgreich
+verarbeitete Mails, `skipped_folder` für alles, was vor der Ticketerstellung abgelehnt wurde, und
+`failed_folder` für Mails, bei denen eine Exception aufgetreten ist. Skipped und Failed fallen auf
+`processed_folder` zurück, wenn sie leer sind; ist auch dieser leer, bleibt die Mail liegen und wird
+lediglich als gelesen markiert. Abgelehnte Mails werden verschoben statt liegen gelassen, damit sie
+nicht bei jedem Abruf erneut geprüft werden.
+
+**Fehlerisolierung**: Jede Nachricht wird in einem eigenen `begin`/`rescue` verarbeitet – eine
+einzelne fehlerhafte Mail bricht den Lauf also nie ab, sondern landet im Failed-Ordner, wird im
+Ergebnis gezählt, und der Abruf setzt mit der nächsten Nachricht fort. Auch die optionalen Schritte
+(Phishing, Autoresponder, KI) sind nicht fatal: Sie protokollieren den Fehler und laufen weiter,
+statt die Verarbeitung abzubrechen.
 
 ### Zuordnung von E-Mail-Antworten zu bestehenden Tickets
 
-Die Zuordnung übernimmt vollständig **Redmines eigener `MailHandler`** – das
-Plugin stellt nur die MIME-Rohdaten bereit und wertet das Ergebnis aus.
+Die Zuordnungsentscheidung selbst trifft **Redmines eigener `MailHandler`** – das Plugin stellt die
+MIME-Daten bereit und wertet das Ergebnis aus. Es nimmt allerdings über die oben beschriebene
+Vorverarbeitung Einfluss: Es setzt `In-Reply-To`/`References`, damit Antworten auch ohne `[#id]` im
+Betreff zugeordnet werden, und entfernt genau diese Header wieder, wenn das referenzierte Ticket
+geschlossen und älter als das Wiedereröffnungslimit des Postfachs ist – dann wird bewusst ein neues
+Ticket erzeugt, statt einen längst abgeschlossenen Thread wiederzubeleben.
 
 Der `MailHandler` prüft in dieser Reihenfolge:
 
