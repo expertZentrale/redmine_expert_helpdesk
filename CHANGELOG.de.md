@@ -81,6 +81,16 @@
   erreicht. Der Provider wird nun aus dem übermittelten Formularzustand im Kontext des aktuellen
   Projekts oder aus dem gespeicherten Datensatz aufgebaut — dessen Geheimnisse nie an den Browser
   zurückwandern.
+- **Startabbruch und ein wirkungsloser OAuth-Controller, beide durch das Autoloading verursacht.**
+  `oauth_token_provider.rb` definierte `OAuthTokenProvider`, während Zeitwerk aus diesem Dateinamen
+  `OauthTokenProvider` erwartet — Redmine brach beim Start mit einem `Zeitwerk::NameError` ab.
+  Unabhängig davon hieß der neue Controller `HelpdeskOauthController`, genau wie der bereits in
+  RedmineUPs `redmine_contacts_helpdesk` enthaltene; da sich alle Plugins einen Autoload-Pfad
+  teilen, wurde ausschließlich deren Klasse geladen und das Postfach-Formular scheiterte an
+  `undefined method 'callback_url'`. Unserer heißt jetzt `ExpertHelpdeskOauthController` mit den
+  Route-Helfern `expert_helpdesk_oauth_*`. Der öffentliche Callback-Pfad
+  `/helpdesk/oauth/callback` bleibt unverändert, beim Identity Provider muss also nichts neu
+  hinterlegt werden.
 
 ### Migration
 - `034_add_provider_to_helpdesk_mailboxes.rb` — `provider`, `credentials_source`, `imap_host`,

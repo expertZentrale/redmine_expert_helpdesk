@@ -5,7 +5,7 @@
 #   client_credentials - app-only. Microsoft needs the tenant to grant
 #                        IMAP.AccessAsApp / SMTP.SendAsApp; the SASL user is
 #                        the mailbox address, not the app.
-#   authorization_code - refresh token obtained once via HelpdeskOauthController
+#   authorization_code - refresh token obtained once via ExpertHelpdeskOauthController
 #                        and stored encrypted on the mailbox.
 #   jwt_bearer         - signed assertion for a Google service account with
 #                        domain-wide delegation. Signed with OpenSSL, so no
@@ -18,7 +18,7 @@ require 'digest'
 require 'openssl'
 
 module RedmineExpertHelpdesk
-  class OAuthTokenProvider
+  class OauthTokenProvider
     CACHE_PREFIX = 'redmine_expert_helpdesk/oauth_token'.freeze
     OPEN_TIMEOUT = 15
     READ_TIMEOUT = 60

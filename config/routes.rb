@@ -20,8 +20,8 @@ RedmineApp::Application.routes.draw do
   # OAuth2-Consent (authorization_code) fuer IMAP/SMTP-Postfaecher.
   # Die Callback-URL ist fest, weil Identity Provider nur exakt registrierte
   # Redirect-URIs akzeptieren; das Postfach steckt im signierten state-Parameter.
-  get 'helpdesk/oauth/authorize', :to => 'helpdesk_oauth#authorize', :as => 'helpdesk_oauth_authorize'
-  get 'helpdesk/oauth/callback',  :to => 'helpdesk_oauth#callback',  :as => 'helpdesk_oauth_callback'
+  get 'helpdesk/oauth/authorize', :to => 'expert_helpdesk_oauth#authorize', :as => 'expert_helpdesk_oauth_authorize'
+  get 'helpdesk/oauth/callback',  :to => 'expert_helpdesk_oauth#callback',  :as => 'expert_helpdesk_oauth_callback'
 
   # Postfach-Konfiguration je Projekt
   scope 'projects/:project_id' do

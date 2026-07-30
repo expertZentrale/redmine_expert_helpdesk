@@ -16,7 +16,7 @@ module RedmineExpertHelpdesk
     def initialize(mailbox, credentials = nil, token_provider = nil)
       @mailbox = mailbox
       @credentials = credentials || MailboxCredentials.for(mailbox)
-      @token_provider = token_provider || OAuthTokenProvider.new(mailbox, @credentials)
+      @token_provider = token_provider || OauthTokenProvider.new(mailbox, @credentials)
     end
 
     def configured?

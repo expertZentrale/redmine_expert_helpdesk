@@ -1,7 +1,7 @@
 require File.expand_path('../../test_helper', __FILE__)
 
 class OauthTokenProviderTest < ActiveSupport::TestCase
-  Provider = RedmineExpertHelpdesk::OAuthTokenProvider
+  Provider = RedmineExpertHelpdesk::OauthTokenProvider
 
   # Overrides the single network seam; everything else is the real code.
   class StubbedProvider < Provider

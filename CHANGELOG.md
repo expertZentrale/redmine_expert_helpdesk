@@ -75,6 +75,15 @@
   enumerate or create folders in **any** mailbox the central Azure app registration could reach.
   They now build the provider from the submitted form state scoped to the current project, or from
   the persisted record — whose secrets never travel back to the browser.
+- **Boot failure and a dead OAuth controller, both caused by autoloading.** `oauth_token_provider.rb`
+  defined `OAuthTokenProvider`, while Zeitwerk's default inflector expects `OauthTokenProvider` from
+  that filename — Redmine aborted at startup with a `Zeitwerk::NameError`. Separately, the new
+  controller was named `HelpdeskOauthController`, the same name RedmineUP's
+  `redmine_contacts_helpdesk` already ships; since all plugins share one autoload path, only their
+  class was ever loaded and the mailbox form died with `undefined method 'callback_url'`. Ours is
+  now `ExpertHelpdeskOauthController` with `expert_helpdesk_oauth_*` route helpers. The public
+  callback path `/helpdesk/oauth/callback` is unchanged, so nothing has to be re-registered with an
+  identity provider.
 
 ### Migration
 - `034_add_provider_to_helpdesk_mailboxes.rb` — `provider`, `credentials_source`, `imap_host`,

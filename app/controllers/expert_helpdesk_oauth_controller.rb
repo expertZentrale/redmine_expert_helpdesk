@@ -7,7 +7,7 @@ require 'net/http'
 require 'uri'
 require 'json'
 
-class HelpdeskOauthController < ApplicationController
+class ExpertHelpdeskOauthController < ApplicationController
   # The identity provider redirects here with a plain GET and no Redmine CSRF
   # token; the signed state parameter takes its place.
   skip_before_action :verify_authenticity_token, :only => [:callback]
@@ -15,7 +15,7 @@ class HelpdeskOauthController < ApplicationController
   before_action :find_mailbox, :only => [:authorize]
   before_action :authorize_mailbox_management, :only => [:authorize]
 
-  STATE_PURPOSE = 'helpdesk_oauth'.freeze
+  STATE_PURPOSE = 'expert_helpdesk_oauth'.freeze
   STATE_TTL = 10.minutes
 
   def authorize

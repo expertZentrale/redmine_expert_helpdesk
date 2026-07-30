@@ -77,7 +77,7 @@ class HelpdeskMailboxesController < ApplicationController
 
   # Startet den OAuth-Consent (authorization_code) fuer ein gespeichertes Postfach.
   def oauth_authorize
-    redirect_to helpdesk_oauth_authorize_path(:mailbox_id => @mailbox.id)
+    redirect_to expert_helpdesk_oauth_authorize_path(:mailbox_id => @mailbox.id)
   end
 
   private

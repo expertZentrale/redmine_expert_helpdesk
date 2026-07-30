@@ -166,6 +166,13 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
   `alias_method_chain` plugins (RedmineUP `redmine_contacts_helpdesk`) — prepend/super collides
   there (`super: no superclass method`). Our settings tab is named `expert_helpdesk` (not
   `helpdesk`, which RedmineUP also uses); internal `:tab => 'expert_helpdesk'` redirects match.
+  **File basenames under `app/` must not collide with `redmine_contacts_helpdesk` either** — every
+  plugin shares one Zeitwerk autoload path, so a duplicate `app/controllers/x_controller.rb` means
+  only the first on the path loads and the other silently never exists (`NoMethodError`, not a
+  missing-constant error). Hence `ExpertHelpdeskOauthController` /
+  `expert_helpdesk_oauth_controller.rb` / route helpers `expert_helpdesk_oauth_*`; the public path
+  `/helpdesk/oauth/callback` is unchanged. Zeitwerk also derives constants with its default
+  inflector — `oauth_token_provider.rb` must define `OauthTokenProvider`, not `OAuthTokenProvider`.
 - **`app/`** — standard Rails MVC. Controllers map to permissions in `init.rb`'s
   `project_module :helpdesk` block. Key: `helpdesk_fetch`, `helpdesk_replies` (largest —
   MIME / CID inline images / transport choice), `helpdesk_mailboxes`, `helpdesk_contacts`,

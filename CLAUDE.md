@@ -240,6 +240,17 @@ calls the captured original explicitly), **not** prepend/super, so they coexist 
 same coexistence, our project-settings tab is named **`expert_helpdesk`** (not `helpdesk`, which
 RedmineUP also registers); the internal `:tab => 'expert_helpdesk'` redirects match.
 
+**Controller and constant names must not collide with `redmine_contacts_helpdesk`.** Every
+plugin's `app/` is on the same Zeitwerk autoload path, so two plugins shipping
+`app/controllers/helpdesk_oauth_controller.rb` means only the first one on the path is ever
+loaded — the second silently never exists, and calls against it fail with `NoMethodError`, not
+with a missing-constant error. Ours is therefore **`ExpertHelpdeskOauthController`**
+(`expert_helpdesk_oauth_controller.rb`, route helpers `expert_helpdesk_oauth_*`); the public
+path `/helpdesk/oauth/callback` is unaffected. Before adding a file under `app/`, check
+`ls ../redmine_contacts_helpdesk/app/<dir>` for the same basename. Note also that Zeitwerk
+derives the constant from the filename with its default inflector, so an acronym-cased class
+(`OAuthTokenProvider`) in `oauth_token_provider.rb` aborts boot — spell it `Oauth…`.
+
 ### Web layer (`app/`)
 Standard Rails MVC under the plugin. Controllers map to permissions declared in `init.rb`'s
 `project_module :helpdesk` block (`manage_helpdesk`, `fetch_helpdesk_mail`,
