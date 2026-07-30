@@ -116,6 +116,14 @@
   response, and `MOVE` and `UIDPLUS` are commonly advertised only once authenticated — so the
   client could take the destructive plain-`EXPUNGE` path against a server that supports neither.
 
+- **The autoresponder ignored the `smtp` reply transport too.** The previous fix moved it off its
+  hard-coded Graph call onto the mailbox's provider, which is right for the `provider` and `graph`
+  transports but still bypassed *SMTP (Redmine default)* — a mailbox set to send through Redmine's
+  own ActionMailer configuration had its automatic acknowledgements go out through the Graph API
+  or its own SMTP server instead. `MailProcessor#deliver_autoresponder` now follows the same
+  three-way rule as replies and initial mails, and `graph` correctly means the central
+  registration even when the mail arrived over IMAP.
+
 ### Changed (configuration UI)
 - **The settings page now shows only the fields the selected provider type actually needs.** The
   preset select comes first and governs the rest: the tenant ID appears for Microsoft only, the

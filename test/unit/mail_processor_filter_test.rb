@@ -169,4 +169,43 @@ class MailProcessorFilterTest < ActiveSupport::TestCase
     RedmineExpertHelpdesk::MailProcessor.new(mailbox, provider).process_all(5)
     assert_equal 1, provider.calls.count { |c| c.first == :with_session }
   end
+
+  # --- Autoresponder transport ----------------------------------------------
+  # The autoresponder follows the mailbox's reply transport like every other
+  # outgoing mail; sending it through the fetch backend regardless was a bug.
+
+  def test_autoresponder_uses_the_mailbox_own_smtp_for_the_provider_transport
+    provider = FakeProvider.new
+    mailbox = HelpdeskMailbox.new(:provider => 'imap', :reply_transport => 'provider')
+    processor = RedmineExpertHelpdesk::MailProcessor.new(mailbox, provider)
+
+    assert_same provider, processor.send(:autoresponder_provider)
+  end
+
+  # 'graph' means the central registration even when the mail arrived over IMAP,
+  # so the fetch provider must not be reused.
+  def test_autoresponder_uses_graph_when_the_transport_says_so
+    provider = FakeProvider.new
+    mailbox = HelpdeskMailbox.new(:provider => 'imap', :reply_transport => 'graph')
+    processor = RedmineExpertHelpdesk::MailProcessor.new(mailbox, provider)
+
+    assert_kind_of RedmineExpertHelpdesk::GraphProvider, processor.send(:autoresponder_provider)
+  end
+
+  def test_autoresponder_goes_through_redmine_smtp_and_never_touches_the_provider
+    provider = FakeProvider.new
+    mailbox = HelpdeskMailbox.new(:reply_transport => 'smtp')
+    processor = RedmineExpertHelpdesk::MailProcessor.new(mailbox, provider)
+
+    mail = Mail.new(:from => 'hd@example.com', :to => 'kunde@example.com', :subject => 'Hi')
+    mail.delivery_method(:test)
+    delivered = []
+    mail.define_singleton_method(:deliver!) { delivered << self }
+    mail.define_singleton_method(:delivery_method) { |*_args| nil }
+
+    processor.send(:deliver_autoresponder, mail)
+
+    assert_equal 1, delivered.size
+    assert provider.calls.none? { |c| c.first == :send_mail_mime }
+  end
 end

@@ -552,7 +552,7 @@ module RedmineExpertHelpdesk
         mail['References']  = ref_id
       end
 
-      @provider.send_mail_mime(mail.to_s)
+      deliver_autoresponder(mail)
 
       HelpdeskMessage.create!(
         :issue => issue, :helpdesk_contact => contact, :helpdesk_mailbox => @mailbox,
@@ -568,6 +568,27 @@ module RedmineExpertHelpdesk
       )
     rescue MailProvider::ProviderError => e
       Rails.logger.error "Helpdesk: Autoresponder fuer Ticket ##{issue.id} fehlgeschlagen: #{e.message}"
+    end
+
+    # The autoresponder honours the mailbox's reply transport like every other
+    # outgoing mail: 'smtp' hands the message to Redmine's own ActionMailer
+    # configuration, everything else goes through the mailbox's backend.
+    def deliver_autoresponder(mail)
+      if @mailbox.effective_reply_transport == 'smtp'
+        mail.delivery_method(ActionMailer::Base.delivery_method,
+                             ActionMailer::Base.smtp_settings || {})
+        mail.deliver!
+      else
+        autoresponder_provider.send_mail_mime(mail.to_s)
+      end
+    end
+
+    # 'graph' means the central Graph registration even for an IMAP mailbox, so
+    # the fetch provider is not automatically the right sender.
+    def autoresponder_provider
+      return @provider if @mailbox.effective_reply_transport == 'mailbox_smtp'
+
+      @mailbox.graph? ? @provider : GraphProvider.new(@mailbox)
     end
 
     def move_processed(message_id)

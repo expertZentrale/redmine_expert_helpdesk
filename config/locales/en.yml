@@ -361,7 +361,7 @@ en:
   field_helpdesk_reply_transport: "Send via"
   label_helpdesk_transport_graph: "Microsoft Graph API (Exchange)"
   label_helpdesk_transport_smtp: "SMTP (Redmine default)"
-  text_helpdesk_reply_transport_info: "Mailbox backend uses whatever the mailbox itself is configured for. Graph API requires a configured Azure app registration. SMTP uses the SMTP settings from the Redmine configuration."
+  text_helpdesk_reply_transport_info: "Mailbox backend uses whatever the mailbox itself is configured for. Graph API requires a configured Azure app registration. SMTP uses the SMTP settings from the Redmine configuration and needs no mail credentials on the mailbox at all - note that inline images are embedded as data URIs there instead of CID attachments. Replies, initial mails and the autoresponder all follow this setting."
   button_helpdesk_send_reply: Send reply
   label_helpdesk_reply_placeholder: Enter reply text here …
   notice_helpdesk_reply_sent: "Reply sent to %{email}."

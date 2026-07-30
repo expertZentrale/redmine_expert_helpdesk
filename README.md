@@ -408,6 +408,11 @@ not as attachments).
 | `graph` | Microsoft Graph, using the central app registration | CID |
 | `smtp` | Redmine's global SMTP settings from `configuration.yml` | Base64 data URIs |
 
+`smtp` is the option that needs **no mail credentials on the mailbox at all** — useful when
+Redmine already has a working relay and the mailbox only has to *receive*. An IMAP mailbox on
+this transport does not need an SMTP host either. The trade-off is inline images: this path
+embeds them as data URIs rather than CID attachments, which some clients refuse to display.
+
 The autoresponder uses the same transport as replies.
 
 Stored recipient addresses are shown as badges in the journal headers after

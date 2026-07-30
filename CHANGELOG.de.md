@@ -127,6 +127,14 @@
   konnte deshalb den destruktiven Weg über ein einfaches `EXPUNGE` gehen, obwohl der Server beides
   beherrscht.
 
+- **Der Autoresponder ignorierte auch den Versandweg `smtp`.** Die vorige Korrektur löste ihn von
+  seinem fest verdrahteten Graph-Aufruf und stellte ihn auf das Backend des Postfachs um — richtig
+  für die Wege `provider` und `graph`, aber weiterhin an *SMTP (Redmine-Standard)* vorbei: Ein
+  Postfach, das über Redmines eigene ActionMailer-Konfiguration versendet, schickte seine
+  automatischen Eingangsbestätigungen trotzdem über die Graph-API oder den eigenen SMTP-Server.
+  `MailProcessor#deliver_autoresponder` folgt jetzt derselben Dreiteilung wie Antworten und
+  Erstmails, und `graph` meint auch dann die zentrale Registrierung, wenn die Mail über IMAP kam.
+
 ### Changed (Konfigurationsoberfläche)
 - **Die Einstellungsseite zeigt nur noch die Felder, die der gewählte Anbietertyp wirklich
   braucht.** Die Vorlage steht an erster Stelle und steuert den Rest: die Tenant-ID erscheint nur

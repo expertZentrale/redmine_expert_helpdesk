@@ -361,7 +361,7 @@ de:
   field_helpdesk_reply_transport: "Versandweg"
   label_helpdesk_transport_graph: "Microsoft Graph API (Exchange)"
   label_helpdesk_transport_smtp: "SMTP (Redmine-Standard)"
-  text_helpdesk_reply_transport_info: "Backend des Postfachs nutzt das, was für das Postfach selbst konfiguriert ist. Graph API benötigt eine konfigurierte Azure-App-Registrierung. SMTP verwendet die in der Redmine-Konfiguration hinterlegten SMTP-Einstellungen."
+  text_helpdesk_reply_transport_info: "Backend des Postfachs nutzt das, was für das Postfach selbst konfiguriert ist. Graph API benötigt eine konfigurierte Azure-App-Registrierung. SMTP verwendet die in der Redmine-Konfiguration hinterlegten SMTP-Einstellungen und benötigt am Postfach überhaupt keine Mail-Zugangsdaten — dort werden Inline-Bilder allerdings als data-URI eingebettet statt als CID-Anhang. Antworten, Erstmails und Autoresponder folgen alle dieser Einstellung."
   button_helpdesk_send_reply: Antwort senden
   label_helpdesk_reply_placeholder: Antworttext hier eingeben …
   notice_helpdesk_reply_sent: "Antwort an %{email} gesendet."

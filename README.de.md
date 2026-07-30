@@ -423,6 +423,11 @@ Inline-Bilder (CID-Methode, nicht als Anhang).
 | `graph` | Microsoft Graph über die zentrale App-Registrierung | CID |
 | `smtp` | globale SMTP-Einstellungen von Redmine aus der `configuration.yml` | Base64-Data-URI |
 
+`smtp` ist der Weg, der **am Postfach überhaupt keine Mail-Zugangsdaten** braucht — praktisch,
+wenn Redmine bereits ein funktionierendes Relay hat und das Postfach nur *empfangen* soll. Ein
+IMAP-Postfach auf diesem Weg benötigt auch keinen SMTP-Host. Der Preis sind die Inline-Bilder:
+Hier werden sie als data-URI eingebettet statt als CID-Anhang, was manche Clients nicht anzeigen.
+
 Der Autoresponder nutzt denselben Transport wie Antworten.
 
 Die gespeicherten Empfängeradressen werden nach dem Seitenaufruf in den
