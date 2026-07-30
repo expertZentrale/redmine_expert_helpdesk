@@ -103,6 +103,15 @@
   mit einem einzigen Mailserver diesen einmal zentral statt an jedem Postfach einträgt. Eine
   benannte Vorlage (Microsoft, Google) hat weiterhin Vorrang, ein ausdrücklicher Wert am Postfach
   vor beidem.
+- **„Netzwerkfehler“ statt Ordnerliste bei jedem gespeicherten Postfach.** Der gehärtete
+  Ordner-Endpunkt schickt das gesamte Formular per `new FormData(form)` — auf einer
+  Bearbeiten-Seite also samt Rails' verstecktem Feld `_method=put`. Rails wertete es aus, machte
+  aus dem POST ein PUT auf die Member-Route und führte `#update` mit `id="folders"` aus: ein 404,
+  an dessen HTML-Rumpf anschließend der JSON-Parser scheiterte, weshalb das Formular einen
+  Netzwerkfehler meldete. Das Feld wird jetzt aus der Anfrage entfernt, und eine Antwort ohne JSON
+  nennt ihren tatsächlichen HTTP-Status statt pauschal „Netzwerkfehler“. Betroffen waren „Ordner
+  laden“, „Ordner anlegen“ und „Verbindung testen“ bestehender Postfächer; neue Postfächer
+  funktionierten, weil ihr Formular kein `_method` enthält.
 
 ### Changed (Konfigurationsoberfläche)
 - **Die Einstellungsseite zeigt nur noch die Felder, die der gewählte Anbietertyp wirklich

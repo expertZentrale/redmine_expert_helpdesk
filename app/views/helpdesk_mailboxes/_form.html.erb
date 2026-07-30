@@ -482,6 +482,10 @@
   function formPayload() {
     var form = box.closest('form');
     var body = form ? new FormData(form) : new FormData();
+    // Beim Bearbeiten enthaelt das Formular Rails' verstecktes _method=put.
+    // Mitgeschickt wuerde daraus ein PUT auf die Member-Route und damit
+    // #update mit id="folders" - also ein 404 statt einer Ordnerliste.
+    body.delete('_method');
     if (mailboxId) body.append('id', mailboxId);
     return body;
   }
@@ -492,7 +496,11 @@
       headers: { 'X-CSRF-Token': csrfToken, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
       body: body
     }).then(function (r) {
-      return r.json().then(function (data) { return { ok: r.ok, data: data, statusText: r.statusText }; });
+      // Ein Fehler-Status liefert oft HTML statt JSON. Den Status durchreichen,
+      // statt am Parser zu scheitern - sonst steht ueberall nur "Netzwerkfehler".
+      return r.json()
+        .catch(function () { return { error: 'HTTP ' + r.status + ' ' + r.statusText }; })
+        .then(function (data) { return { ok: r.ok, data: data, statusText: r.statusText }; });
     });
   }
 

@@ -95,6 +95,14 @@
   preset uses, so an operator with one mail server can configure it once instead of on every
   mailbox. A named preset (Microsoft, Google) still wins, and an explicit value on the mailbox
   wins over both.
+- **"Netzwerkfehler" instead of a folder list on every saved mailbox.** The hardened folder
+  endpoint sends the whole form via `new FormData(form)`, which on an edit page also picks up
+  Rails' hidden `_method=put` field. Rails honoured it, turned the POST into a PUT against the
+  member route and ran `#update` with `id="folders"` — a 404 whose HTML body then broke the
+  JSON parser, so the form reported a network error. The field is now stripped from the payload,
+  and a non-JSON response reports its actual HTTP status instead of a blanket "Netzwerkfehler".
+  Affected "Ordner laden", "Ordner anlegen" and "Verbindung testen" on existing mailboxes; new
+  mailboxes were fine, since their form carries no `_method`.
 
 ### Changed (configuration UI)
 - **The settings page now shows only the fields the selected provider type actually needs.** The
