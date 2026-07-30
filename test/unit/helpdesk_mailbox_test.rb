@@ -101,6 +101,39 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
     assert_not_empty mailbox.errors[:imap_host]
   end
 
+  # The global host/port settings only earn their place if the self-hosted case
+  # can actually be configured centrally.
+  def test_generic_preset_falls_back_to_the_global_connection_defaults
+    with_settings_hash('default_imap_host' => 'mail.example.com', 'default_imap_port' => '143',
+                       'default_imap_security' => 'starttls', 'default_smtp_host' => 'mail.example.com') do
+      mailbox = HelpdeskMailbox.new(:provider => 'imap', :oauth_preset => 'generic')
+      mailbox.valid?
+      assert_equal 'mail.example.com', mailbox.imap_host
+      assert_equal 143, mailbox.imap_port.to_i
+      assert_equal 'starttls', mailbox.imap_security
+      assert_equal 'mail.example.com', mailbox.smtp_host
+    end
+  end
+
+  # A named preset states facts, so it must not be overridden by a global default
+  # left over from some other server.
+  def test_named_preset_outranks_the_global_connection_defaults
+    with_settings_hash('default_imap_host' => 'mail.example.com') do
+      mailbox = HelpdeskMailbox.new(:provider => 'imap', :oauth_preset => 'microsoft')
+      mailbox.valid?
+      assert_equal 'outlook.office365.com', mailbox.imap_host
+    end
+  end
+
+  def test_explicit_host_beats_every_default
+    with_settings_hash('default_imap_host' => 'mail.example.com') do
+      mailbox = HelpdeskMailbox.new(:provider => 'imap', :oauth_preset => 'generic',
+                                    :imap_host => 'own.example.org')
+      mailbox.valid?
+      assert_equal 'own.example.org', mailbox.imap_host
+    end
+  end
+
   def test_effective_reply_transport
     assert_equal 'graph', HelpdeskMailbox.new(:reply_transport => 'provider').effective_reply_transport
     assert_equal 'mailbox_smtp',
@@ -154,5 +187,13 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
   def set_global_footer(value)
     Setting.plugin_redmine_expert_helpdesk =
       (Setting.plugin_redmine_expert_helpdesk || {}).merge('global_footer' => value)
+  end
+
+  def with_settings_hash(overrides)
+    previous = Setting.plugin_redmine_expert_helpdesk
+    Setting.plugin_redmine_expert_helpdesk = (previous || {}).merge(overrides)
+    yield
+  ensure
+    Setting.plugin_redmine_expert_helpdesk = previous
   end
 end

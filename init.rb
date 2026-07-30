@@ -62,12 +62,11 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'client_secret'            => '',
              'fetch_api_key'            => '',
              'sla_api_key'              => '',
-             # Defaults for IMAP/SMTP mailboxes with credentials_source = 'global'
+             # Defaults for mailboxes with credentials_source = 'global'. The
+             # application registration itself is tenant_id/client_id/client_secret
+             # above - it is shared with the Graph provider, never duplicated here.
              'default_oauth_preset'        => 'microsoft',
              'default_oauth_grant'         => 'client_credentials',
-             'default_oauth_tenant_id'     => '',
-             'default_oauth_client_id'     => '',
-             'default_oauth_client_secret' => '',
              'default_oauth_authorize_url' => '',
              'default_oauth_token_url'     => '',
              'default_oauth_scope'         => '',

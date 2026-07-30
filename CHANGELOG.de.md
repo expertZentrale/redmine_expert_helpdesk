@@ -92,6 +92,31 @@
   `/helpdesk/oauth/callback` bleibt unverändert, beim Identity Provider muss also nichts neu
   hinterlegt werden.
 
+- **Redundante und wirkungslose globale Einstellungen.** Die Plugin-Einstellungen boten *zwei*
+  App-Registrierungen an — die seit jeher vorhandene `tenant_id`/`client_id`/`client_secret` und
+  ein zweites Tripel `default_oauth_tenant_id`/`_client_id`/`_client_secret` — im Microsoft-Fall
+  also dieselbe Entra-App, mit einer Vorrangregel, die auf dem Bildschirm nirgends erklärt war.
+  Das zweite Tripel entfällt; es gibt jetzt genau eine zentrale Registrierung, die sich Graph und
+  OAuth2-IMAP/SMTP teilen. Umgekehrt wurden `default_imap_host`/`_port`/`_security` und
+  `default_smtp_host`/`_port`/`_security` zwar gespeichert, aber von keiner Codestelle gelesen —
+  sie dienen jetzt als Rückfallwert der Vorlage „Andere / selbst gehostet“, sodass ein Betreiber
+  mit einem einzigen Mailserver diesen einmal zentral statt an jedem Postfach einträgt. Eine
+  benannte Vorlage (Microsoft, Google) hat weiterhin Vorrang, ein ausdrücklicher Wert am Postfach
+  vor beidem.
+
+### Changed (Konfigurationsoberfläche)
+- **Die Einstellungsseite zeigt nur noch die Felder, die der gewählte Anbietertyp wirklich
+  braucht.** Die Vorlage steht an erster Stelle und steuert den Rest: die Tenant-ID erscheint nur
+  bei Microsoft, die Authorize-/Token-URLs, der Scope und die IMAP/SMTP-Hosts nur bei „Andere /
+  selbst gehostet“, die Callback-URL nur beim Verfahren „Einmalige Zustimmung“ und die
+  Azure-Hinweise nur bei Microsoft. Die API-Keys der Cron-Endpunkte stehen jetzt in einem eigenen
+  Abschnitt, denn mit Mail-Zugangsdaten haben sie nichts zu tun.
+- **Das Postfach-Formular blendet seine eigenen Zugangsdaten-Felder aus, wenn das Postfach die
+  Plugin-Einstellungen nutzt.** In diesem Modus werden sie vollständig ignoriert; sie stehen zu
+  lassen, zeigte einen zweiten Satz Werte ohne jede Wirkung. Für die Tenant-ID und das Trio aus
+  URLs und Scope gelten dieselben Vorlagenregeln wie oben. Der Knopf „Verbinden“ bleibt in beiden
+  Fällen sichtbar — das Refresh-Token gehört zum Postfach, nicht zur App-Registrierung.
+
 ### Migration
 - `034_add_provider_to_helpdesk_mailboxes.rb` — `provider`, `credentials_source`, `imap_host`,
   `imap_port`, `imap_security`, `imap_username`, `imap_verify_ssl`, `imap_unseen_only`,

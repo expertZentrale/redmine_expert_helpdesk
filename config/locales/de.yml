@@ -96,7 +96,12 @@ de:
   label_helpdesk_oauth_callback_url: Callback-URL
   text_helpdesk_oauth_callback_url_info: "Genau diese URL beim Identity Provider als Redirect-URI hinterlegen."
   label_helpdesk_test_connection: Verbindung testen
-  label_helpdesk_default_mail_credentials: "Standard-Zugangsdaten für IMAP/SMTP-Postfächer"
+  label_helpdesk_default_mail_credentials: "Zentraler Mail-Zugang (App-Registrierung)"
+  label_helpdesk_api_keys: "API-Keys für Cron-Endpunkte"
+  text_helpdesk_default_preset_info: "Bestimmt, welche Felder darunter überhaupt nötig sind. Postfächer mit \"Aus den Plugin-Einstellungen\" erben diese Vorlage."
+  text_helpdesk_global_app_registration_info: "Eine Registrierung für alles: Graph-Postfächer und IMAP/SMTP-Postfächer mit OAuth2 nutzen sie gemeinsam."
+  text_helpdesk_default_host_info: "Wird verwendet, wenn ein Postfach den Host leer lässt. Eine benannte Vorlage hat immer Vorrang."
+  text_helpdesk_default_oauth_urls_info: "Nur für selbst gehostete Server nötig - Microsoft und Google liefern diese Werte über ihre Vorlage."
   label_helpdesk_transport_provider: "Backend des Postfachs (Graph bzw. eigener SMTP-Server)"
   notice_helpdesk_connection_ok: Verbindung erfolgreich.
   notice_helpdesk_oauth_connected: Postfach erfolgreich verbunden.

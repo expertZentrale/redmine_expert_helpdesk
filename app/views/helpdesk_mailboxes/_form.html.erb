@@ -177,7 +177,7 @@
           :id => 'hd_oauth_grant' %>
     </p>
     <div id="hd_oauth_credentials">
-      <p>
+      <p id="hd_oauth_tenant_row">
         <label><%= l(:field_helpdesk_oauth_tenant_id) %></label>
         <%= text_field_tag 'helpdesk_mailbox[oauth_tenant_id]', @mailbox.oauth_tenant_id, :id => 'hd_oauth_tenant_id', :size => 40 %>
       </p>
@@ -190,18 +190,23 @@
         <%= password_field_tag 'helpdesk_mailbox[oauth_client_secret]', '', :size => 40, :autocomplete => 'new-password' %>
         <em class="info"><%= l(:text_helpdesk_secret_blank_info) %></em>
       </p>
-      <p>
-        <label><%= l(:field_helpdesk_oauth_authorize_url) %></label>
-        <%= text_field_tag 'helpdesk_mailbox[oauth_authorize_url]', @mailbox.oauth_authorize_url, :id => 'hd_oauth_authorize_url', :size => 60 %>
-      </p>
-      <p>
-        <label><%= l(:field_helpdesk_oauth_token_url) %></label>
-        <%= text_field_tag 'helpdesk_mailbox[oauth_token_url]', @mailbox.oauth_token_url, :id => 'hd_oauth_token_url', :size => 60 %>
-      </p>
-      <p>
-        <label><%= l(:field_helpdesk_oauth_scope) %></label>
-        <%= text_field_tag 'helpdesk_mailbox[oauth_scope]', @mailbox.oauth_scope, :id => 'hd_oauth_scope', :size => 60 %>
-      </p>
+      <%# Microsoft und Google liefern diese drei Werte ueber die Vorlage; nur
+          "Andere / selbst gehostet" braucht sie von Hand. %>
+      <div id="hd_oauth_urls">
+        <p>
+          <label><%= l(:field_helpdesk_oauth_authorize_url) %></label>
+          <%= text_field_tag 'helpdesk_mailbox[oauth_authorize_url]', @mailbox.oauth_authorize_url, :id => 'hd_oauth_authorize_url', :size => 60 %>
+        </p>
+        <p>
+          <label><%= l(:field_helpdesk_oauth_token_url) %></label>
+          <%= text_field_tag 'helpdesk_mailbox[oauth_token_url]', @mailbox.oauth_token_url, :id => 'hd_oauth_token_url', :size => 60 %>
+        </p>
+        <p>
+          <label><%= l(:field_helpdesk_oauth_scope) %></label>
+          <%= text_field_tag 'helpdesk_mailbox[oauth_scope]', @mailbox.oauth_scope, :id => 'hd_oauth_scope', :size => 60 %>
+          <em class="info"><%= l(:text_helpdesk_default_oauth_urls_info) %></em>
+        </p>
+      </div>
     </div>
     <div id="hd_oauth_sa_block">
       <p>
@@ -448,6 +453,10 @@
   var oauthBlock   = document.getElementById('hd_oauth_block');
   var saBlock      = document.getElementById('hd_oauth_sa_block');
   var consentBlock = document.getElementById('hd_oauth_consent_block');
+  var sourceSel    = document.getElementById('hd_credentials_source');
+  var credentialsBlock = document.getElementById('hd_oauth_credentials');
+  var tenantRow    = document.getElementById('hd_oauth_tenant_row');
+  var urlsBlock    = document.getElementById('hd_oauth_urls');
   var testBtn      = document.getElementById('hd_test_connection');
   var connStatus   = document.getElementById('hd_conn_status');
   var knownFolders = [];
@@ -525,7 +534,18 @@
 
     var grant = grantSel ? grantSel.value : 'client_credentials';
     if (saBlock) saBlock.style.display = grant === 'jwt_bearer' ? '' : 'none';
+    // Der Consent-Block bleibt auch bei globalen Zugangsdaten sichtbar: das
+    // Refresh-Token gehört zum Postfach, nicht zur App-Registrierung.
     if (consentBlock) consentBlock.style.display = grant === 'authorization_code' ? '' : 'none';
+
+    // Bei "aus den Plugin-Einstellungen" werden die eigenen Felder komplett
+    // ignoriert - sie stehen zu lassen, hieße zwei Wahrheiten anzuzeigen.
+    var ownCredentials = !sourceSel || sourceSel.value === 'mailbox';
+    if (credentialsBlock) credentialsBlock.style.display = ownCredentials ? '' : 'none';
+
+    var preset = presetSel ? presetSel.value : 'microsoft';
+    if (tenantRow) tenantRow.style.display = preset === 'microsoft' ? '' : 'none';
+    if (urlsBlock) urlsBlock.style.display = preset === 'generic' ? '' : 'none';
   }
 
   // Vorlage füllt ausschließlich leere Felder - eingetragene Werte bleiben stehen.
@@ -555,7 +575,7 @@
   }
 
   syncVisibility();
-  [providerSel, authMethodSel, grantSel].forEach(function (el) {
+  [providerSel, authMethodSel, grantSel, sourceSel, presetSel].forEach(function (el) {
     if (el) el.addEventListener('change', syncVisibility);
   });
   if (presetSel) presetSel.addEventListener('change', applyPreset);

@@ -85,6 +85,29 @@
   callback path `/helpdesk/oauth/callback` is unchanged, so nothing has to be re-registered with an
   identity provider.
 
+- **Redundant and dead global settings.** The plugin settings offered *two* application
+  registrations — the long-standing `tenant_id`/`client_id`/`client_secret` and a second
+  `default_oauth_tenant_id`/`_client_id`/`_client_secret` triple — for what is, in the Microsoft
+  case, the same Entra app, with a precedence rule nothing on screen explained. The second triple
+  is gone; there is now exactly one central registration, shared by Graph and OAuth2 IMAP/SMTP.
+  Conversely `default_imap_host`/`_port`/`_security` and `default_smtp_host`/`_port`/`_security`
+  were stored but read by nothing at all — they now serve as the fallback the "Other / self-hosted"
+  preset uses, so an operator with one mail server can configure it once instead of on every
+  mailbox. A named preset (Microsoft, Google) still wins, and an explicit value on the mailbox
+  wins over both.
+
+### Changed (configuration UI)
+- **The settings page now shows only the fields the selected provider type actually needs.** The
+  preset select comes first and governs the rest: the tenant ID appears for Microsoft only, the
+  authorize/token URLs, scope and IMAP/SMTP hosts for "Other / self-hosted" only, the callback URL
+  only for the one-time-consent flow, and the Azure hints only for Microsoft. The API keys for the
+  cron endpoints moved into their own section, since they have nothing to do with mail credentials.
+- **The mailbox form hides its own credential fields when the mailbox is set to use the plugin
+  settings.** Those fields are ignored entirely in that mode, and leaving them on screen displayed
+  a second set of values that had no effect. The same preset-driven rules as above apply to the
+  tenant ID and the URL/scope trio. The "Connect" button stays visible either way — the refresh
+  token belongs to the mailbox, not to the application registration.
+
 ### Migration
 - `034_add_provider_to_helpdesk_mailboxes.rb` — `provider`, `credentials_source`, `imap_host`,
   `imap_port`, `imap_security`, `imap_username`, `imap_verify_ssl`, `imap_unseen_only`,

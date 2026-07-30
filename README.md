@@ -158,14 +158,22 @@ Existing mailboxes keep `graph` and need **no configuration change**.
 
 `Credentials` on the mailbox form is an explicit switch, not a fallback chain:
 
-- **From plugin settings** (`global`) — the mailbox uses the credentials under
-  *Administration → Plugins → Redmine expert Helpdesk*. For `graph` mailboxes this is the
-  Tenant ID / Client ID / Client Secret that has always been there.
-- **Individual for this mailbox** (`mailbox`) — the mailbox uses only its own fields.
+- **From plugin settings** (`global`) — the mailbox uses the central application registration
+  under *Administration → Plugins → Redmine expert Helpdesk*. There is exactly **one**: the
+  Tenant ID / Client ID / Client Secret that Graph has always used. IMAP/SMTP mailboxes on OAuth2
+  share it rather than holding a second copy. The preset and flow selected there decide which of
+  the remaining fields are needed at all, and the page hides the rest.
+- **Individual for this mailbox** (`mailbox`) — the mailbox uses only its own fields. The mailbox
+  form hides them while the switch is on *From plugin settings*, because they have no effect there.
 
 A mailbox uses **one source entirely**. Blank fields are deliberately *not* filled in from the
 other source: a half-configured mailbox that silently authenticates against the wrong tenant is
 exactly the failure this avoids.
+
+The one thing the plugin settings do supply on top of the registration is a **default host** for
+the *Other / self-hosted* preset (IMAP/SMTP host, port and encryption) — useful when every mailbox
+lives on the same server. Microsoft and Google mailboxes ignore it, since their preset already
+knows the hosts, and an explicit value on the mailbox always wins.
 
 Per-mailbox secrets (passwords, client secrets, refresh tokens, service account keys) are
 encrypted at rest with Rails' `secret_key_base`. Leaving a secret field empty keeps the stored

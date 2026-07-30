@@ -163,12 +163,36 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
   # Fills blank connection fields from the selected preset. Never overwrites a
   # value the operator entered.
   def apply_preset!
-    defaults = RedmineExpertHelpdesk::ProviderPresets.defaults_for(
+    preset_defaults = RedmineExpertHelpdesk::ProviderPresets.defaults_for(
       oauth_preset, oauth_grant, oauth_tenant_id
     )
+    # A named preset states facts (outlook.office365.com is not a guess), so it
+    # outranks the global defaults. The 'generic' preset only guesses ports and
+    # has no host at all - there the operator's global defaults are the better
+    # answer, which is what makes those settings worth having.
+    defaults = if oauth_preset.to_s == 'generic'
+                 preset_defaults.merge(global_connection_defaults)
+               else
+                 global_connection_defaults.merge(preset_defaults)
+               end
+
     defaults.each do |attr, value|
       send("#{attr}=", value) if self[attr].blank?
     end
+  end
+
+  # Host/port/encryption an operator running one mail server centrally can set
+  # once instead of repeating on every mailbox.
+  def global_connection_defaults
+    settings = Setting.plugin_redmine_expert_helpdesk
+    {
+      :imap_host     => settings['default_imap_host'],
+      :imap_port     => settings['default_imap_port'],
+      :imap_security => settings['default_imap_security'],
+      :smtp_host     => settings['default_smtp_host'],
+      :smtp_port     => settings['default_smtp_port'],
+      :smtp_security => settings['default_smtp_security']
+    }.reject { |_k, v| v.blank? }
   end
 
   # Effektive Fusszeilen-Vorlage (unrendered, Makros noch enthalten):

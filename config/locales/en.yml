@@ -96,7 +96,12 @@ en:
   label_helpdesk_oauth_callback_url: Callback URL
   text_helpdesk_oauth_callback_url_info: "Register exactly this URL as the redirect URI with your identity provider."
   label_helpdesk_test_connection: Test connection
-  label_helpdesk_default_mail_credentials: "Default credentials for IMAP/SMTP mailboxes"
+  label_helpdesk_default_mail_credentials: "Central mail access (application registration)"
+  label_helpdesk_api_keys: "API keys for cron endpoints"
+  text_helpdesk_default_preset_info: "Governs which fields below are needed. Mailboxes set to \"From plugin settings\" inherit this."
+  text_helpdesk_global_app_registration_info: "One registration for everything: Graph mailboxes and IMAP/SMTP mailboxes on OAuth2 both use it."
+  text_helpdesk_default_host_info: "Used when a mailbox leaves the host empty. A named preset always wins over this."
+  text_helpdesk_default_oauth_urls_info: "Only needed for self-hosted servers - Microsoft and Google supply these through their preset."
   label_helpdesk_transport_provider: "Mailbox backend (Graph resp. its own SMTP server)"
   notice_helpdesk_connection_ok: Connection successful.
   notice_helpdesk_oauth_connected: Mailbox connected successfully.

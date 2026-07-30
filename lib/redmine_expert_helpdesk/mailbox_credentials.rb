@@ -46,17 +46,21 @@ module RedmineExpertHelpdesk
         )
       end
 
+      # There is exactly ONE central application registration - the same
+      # tenant_id/client_id/client_secret the Graph provider has always used.
+      # Holding a second copy under default_oauth_* only ever produced two
+      # sources of truth with an invisible precedence rule.
       def from_global(mailbox, settings)
         preset = settings['default_oauth_preset'].presence || 'microsoft'
         grant  = settings['default_oauth_grant'].presence || 'client_credentials'
-        tenant = settings['default_oauth_tenant_id'].presence || settings['tenant_id']
+        tenant = settings['tenant_id']
 
         Credentials.new(
           :preset        => preset,
           :grant         => grant,
           :auth_method   => mailbox.auth_method,
-          :client_id     => settings['default_oauth_client_id'].presence || settings['client_id'],
-          :client_secret => settings['default_oauth_client_secret'].presence || settings['client_secret'],
+          :client_id     => settings['client_id'],
+          :client_secret => settings['client_secret'],
           :tenant_id     => tenant,
           :authorize_url => settings['default_oauth_authorize_url'].presence ||
                             ProviderPresets.url(preset, :authorize_url, tenant),

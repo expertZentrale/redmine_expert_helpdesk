@@ -162,15 +162,24 @@ Bestehende Postfächer behalten `graph` und benötigen **keine Änderung an der 
 
 *Zugangsdaten* im Postfach-Formular ist ein expliziter Schalter, keine Fallback-Kette:
 
-- **Aus den Plugin-Einstellungen** (`global`) — das Postfach nutzt die Zugangsdaten unter
-  *Administration → Plugins → Redmine expert Helpdesk*. Für `graph`-Postfächer sind das die
-  bisherigen Werte Tenant-ID / Client-ID / Client-Secret.
+- **Aus den Plugin-Einstellungen** (`global`) — das Postfach nutzt die zentrale App-Registrierung
+  unter *Administration → Plugins → Redmine expert Helpdesk*. Es gibt genau **eine**: die
+  bisherigen Werte Tenant-ID / Client-ID / Client-Secret, die Graph seit jeher verwendet.
+  IMAP/SMTP-Postfächer mit OAuth2 teilen sie sich, statt eine zweite Kopie vorzuhalten. Die dort
+  gewählte Vorlage und das Verfahren entscheiden, welche der übrigen Felder überhaupt nötig sind;
+  den Rest blendet die Seite aus.
 - **Individuell für dieses Postfach** (`mailbox`) — das Postfach nutzt ausschließlich seine
-  eigenen Felder.
+  eigenen Felder. Das Postfach-Formular blendet sie aus, solange der Schalter auf *Aus den
+  Plugin-Einstellungen* steht, denn dort haben sie keinerlei Wirkung.
 
 Ein Postfach nutzt **genau eine Quelle**. Leere Felder werden bewusst *nicht* aus der jeweils
 anderen Quelle ergänzt: Ein halb konfiguriertes Postfach, das sich stillschweigend gegen den
 falschen Tenant anmeldet, ist genau der Fehlerfall, den das verhindert.
+
+Zusätzlich zur Registrierung liefern die Plugin-Einstellungen einen **Standard-Host** für die
+Vorlage *Andere / selbst gehostet* (IMAP/SMTP-Host, Port und Verschlüsselung) — praktisch, wenn
+alle Postfächer auf demselben Server liegen. Microsoft- und Google-Postfächer ignorieren ihn, weil
+ihre Vorlage die Hosts bereits kennt, und ein ausdrücklicher Wert am Postfach hat immer Vorrang.
 
 Postfachbezogene Geheimnisse (Passwörter, Client-Secrets, Refresh-Tokens, Dienstkonto-Schlüssel)
 werden mit dem `secret_key_base` von Rails verschlüsselt gespeichert. Ein leeres Geheimnisfeld
