@@ -141,7 +141,8 @@
 
 <fieldset class="box tabular" id="hd_auth_fieldset">
   <legend><%= l(:label_helpdesk_oauth_settings) %></legend>
-  <p>
+  <%# Nur bei OAuth2 relevant: ein Passwort gehoert immer zum einzelnen Postfach. %>
+  <p id="hd_credentials_source_row">
     <label><%= l(:field_helpdesk_credentials_source) %></label>
     <%= select_tag 'helpdesk_mailbox[credentials_source]',
         options_for_select([[l(:label_helpdesk_credentials_global),  'global'],
@@ -454,6 +455,7 @@
   var saBlock      = document.getElementById('hd_oauth_sa_block');
   var consentBlock = document.getElementById('hd_oauth_consent_block');
   var sourceSel    = document.getElementById('hd_credentials_source');
+  var sourceRow    = document.getElementById('hd_credentials_source_row');
   var credentialsBlock = document.getElementById('hd_oauth_credentials');
   var tenantRow    = document.getElementById('hd_oauth_tenant_row');
   var urlsBlock    = document.getElementById('hd_oauth_urls');
@@ -545,6 +547,10 @@
     // Der Consent-Block bleibt auch bei globalen Zugangsdaten sichtbar: das
     // Refresh-Token gehört zum Postfach, nicht zur App-Registrierung.
     if (consentBlock) consentBlock.style.display = grant === 'authorization_code' ? '' : 'none';
+
+    // Die Herkunft der Zugangsdaten betrifft nur die App-Registrierung; ein
+    // Passwort gehört immer zum einzelnen Postfach.
+    if (sourceRow) sourceRow.style.display = oauth ? '' : 'none';
 
     // Bei "aus den Plugin-Einstellungen" werden die eigenen Felder komplett
     // ignoriert - sie stehen zu lassen, hieße zwei Wahrheiten anzuzeigen.

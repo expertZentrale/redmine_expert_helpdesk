@@ -252,7 +252,11 @@ Dienstkontos und dessen privaten PEM-Schlüssel eintragen, eine interaktive Zust
 2. IMAP- und SMTP-Host, Port und Verschlüsselung eintragen (`SSL/TLS` auf 993/465, `STARTTLS`
    auf 143/587).
 3. Anmeldung **Benutzername und Passwort**, dann Postfachbenutzer und Passwort (bzw. ein
-   App-Passwort, sofern der Anbieter eines anbietet).
+   App-Passwort, sofern der Anbieter eines anbietet). Das SASL-Verfahren wird ausgehandelt: IMAP
+   nutzt das Kommando `LOGIN`, sofern der Server nicht `LOGINDISABLED` anzeigt — dann meldet es
+   sich mit `PLAIN` oder `LOGIN` an; SMTP nimmt das erste von `PLAIN`, `LOGIN`, `CRAM-MD5`, das
+   der Server anbietet. Die meisten Server akzeptieren ein Passwort nur über TLS, deshalb
+   `SSL/TLS` oder `STARTTLS` beibehalten.
 4. *Zertifikat prüfen* nur bei einem selbst signierten Zertifikat in einem vertrauenswürdigen
    Netz deaktivieren — jede Nutzung wird als Warnung protokolliert.
 

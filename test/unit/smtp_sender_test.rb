@@ -84,7 +84,48 @@ class SmtpSenderTest < ActiveSupport::TestCase
     assert_not StubbedSender.new(@mailbox, credentials).configured?
   end
 
+  # Pinning one SASL mechanism made every server that lacked it fail with what
+  # looked like wrong credentials.
+  class FakeAuthSession
+    attr_reader :used
+
+    def initialize(offered)
+      @offered = offered
+    end
+
+    def auth_capable?(type)
+      @offered.include?(type)
+    end
+
+    def authenticate(_user, _password, mechanism)
+      @used = mechanism
+    end
+  end
+
+  def test_password_auth_prefers_plain_when_offered
+    assert_equal :plain, mechanism_for(%w[PLAIN LOGIN])
+  end
+
+  def test_password_auth_falls_back_to_login
+    assert_equal :login, mechanism_for(%w[LOGIN])
+  end
+
+  def test_password_auth_uses_cram_md5_when_it_is_all_there_is
+    assert_equal :cram_md5, mechanism_for(%w[CRAM-MD5])
+  end
+
+  # Nothing advertised is not a reason to give up without an attempt.
+  def test_password_auth_tries_plain_when_nothing_is_advertised
+    assert_equal :plain, mechanism_for([])
+  end
+
   private
+
+  def mechanism_for(offered)
+    session = FakeAuthSession.new(offered)
+    StubbedSender.new(@mailbox, credentials).send(:authenticate, session)
+    session.used
+  end
 
   def credentials
     RedmineExpertHelpdesk::Credentials.new(

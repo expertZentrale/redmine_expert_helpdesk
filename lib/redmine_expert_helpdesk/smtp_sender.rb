@@ -81,10 +81,38 @@ module RedmineExpertHelpdesk
 
     def authenticate(smtp)
       if @credentials.auth_method == 'password'
-        smtp.authenticate(username, @credentials.password, :login)
+        authenticate_password(smtp)
       else
         authenticate_xoauth2(smtp)
       end
+    end
+
+    # Simple servers disagree about which SASL mechanism they offer: Dovecot and
+    # Postfix advertise PLAIN, some hosters only LOGIN, older setups only
+    # CRAM-MD5. Pinning one mechanism made every server that lacked it fail with
+    # an authentication error that looked like wrong credentials, so ask the
+    # server what it takes and use the first one both sides know.
+    PASSWORD_MECHANISMS = [:plain, :login, :cram_md5].freeze
+
+    def authenticate_password(smtp)
+      mechanism = supported_mechanism(smtp)
+      raise MailProvider::AuthenticationError, I18n.t(:error_helpdesk_smtp_no_auth_mechanism) unless mechanism
+
+      smtp.authenticate(username, @credentials.password, mechanism)
+    end
+
+    def supported_mechanism(smtp)
+      # An unauthenticated EHLO already told us; if the server advertised
+      # nothing, try PLAIN rather than give up without an attempt.
+      # auth_capable? wants the SASL name ('PLAIN', 'CRAM-MD5') and returns nil
+      # while the capabilities are unknown - then the select yields nothing and
+      # the caller falls back to PLAIN.
+      offered = PASSWORD_MECHANISMS.select do |m|
+        smtp.respond_to?(:auth_capable?) ? smtp.auth_capable?(m.to_s.tr('_', '-').upcase) : true
+      end
+      offered.first || :plain
+    rescue StandardError
+      :plain
     end
 
     # A cached token can have been revoked; drop it and retry once.

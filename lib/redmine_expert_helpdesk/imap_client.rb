@@ -29,6 +29,7 @@ module RedmineExpertHelpdesk
       @token_provider = token_provider || OauthTokenProvider.new(mailbox, @credentials)
       @imap = nil
       @selected = nil
+      @capabilities = nil
     end
 
     def configured?
@@ -59,6 +60,10 @@ module RedmineExpertHelpdesk
     def open
       @imap = connect
       authenticate!
+      # Servers may advertise a different capability set once authenticated
+      # (MOVE and UIDPLUS are commonly post-auth only), so drop what was cached
+      # while deciding how to log in.
+      @capabilities = nil
       @imap
     end
 
@@ -79,6 +84,7 @@ module RedmineExpertHelpdesk
       end
       @imap = nil
       @selected = nil
+      @capabilities = nil
     end
 
     # --- Messages --------------------------------------------------------------
@@ -205,12 +211,31 @@ module RedmineExpertHelpdesk
 
     def authenticate!
       if @credentials.auth_method == 'password'
-        wrap(MailProvider::AuthenticationError) do
-          @imap.login(@credentials.username, @credentials.password)
-        end
+        authenticate_password!
       else
         authenticate_xoauth2!
       end
+    end
+
+    # The plain LOGIN command is what most servers want, but a server may
+    # advertise LOGINDISABLED (RFC 3501 wants that whenever the connection is
+    # not protected, and Dovecot sets it on plaintext ports) - then the same
+    # credentials have to go through AUTHENTICATE instead.
+    def authenticate_password!
+      wrap(MailProvider::AuthenticationError) do
+        if capability?('LOGINDISABLED')
+          @imap.authenticate(sasl_mechanism, @credentials.username, @credentials.password)
+        else
+          @imap.login(@credentials.username, @credentials.password)
+        end
+      end
+    end
+
+    def sasl_mechanism
+      return 'PLAIN' if capability?('AUTH=PLAIN')
+      return 'LOGIN' if capability?('AUTH=LOGIN')
+
+      raise MailProvider::AuthenticationError, I18n.t(:error_helpdesk_imap_no_auth_mechanism)
     end
 
     # A cached token can have been revoked server-side; drop it and retry once

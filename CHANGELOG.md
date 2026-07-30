@@ -104,6 +104,18 @@
   Affected "Ordner laden", "Ordner anlegen" and "Verbindung testen" on existing mailboxes; new
   mailboxes were fine, since their form carries no `_method`.
 
+- **Password login for simple IMAP/SMTP servers now negotiates its mechanism.** Both protocols
+  pinned exactly one: IMAP always sent the `LOGIN` command, SMTP always asked for `AUTH LOGIN`.
+  A server that advertises `LOGINDISABLED` (RFC 3501 requires it on unprotected connections, and
+  Dovecot sets it) or that offers only `PLAIN` or `CRAM-MD5` therefore rejected perfectly correct
+  credentials with what looked like an authentication failure. `ImapClient` now falls back to
+  `AUTHENTICATE PLAIN`/`LOGIN` when the plain command is refused, and `SmtpSender` picks the first
+  of `PLAIN`, `LOGIN`, `CRAM-MD5` the server actually advertises. If none is usable the error says
+  so and points at the encryption setting, instead of claiming bad credentials.
+- **The IMAP capability list is re-read after logging in.** It was cached from the pre-auth
+  response, and `MOVE` and `UIDPLUS` are commonly advertised only once authenticated — so the
+  client could take the destructive plain-`EXPUNGE` path against a server that supports neither.
+
 ### Changed (configuration UI)
 - **The settings page now shows only the fields the selected provider type actually needs.** The
   preset select comes first and governs the rest: the tenant ID appears for Microsoft only, the

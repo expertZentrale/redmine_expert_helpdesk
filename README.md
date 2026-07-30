@@ -243,7 +243,10 @@ its PEM private key; no interactive consent is needed.
 2. Enter the IMAP and SMTP host, port and encryption (`SSL/TLS` on 993/465, `STARTTLS` on
    143/587).
 3. Authentication **Username and password**, then the mailbox user and its password (an
-   app password where the provider offers one).
+   app password where the provider offers one). The SASL mechanism is negotiated: IMAP uses the
+   `LOGIN` command unless the server advertises `LOGINDISABLED`, in which case it authenticates
+   with `PLAIN` or `LOGIN`; SMTP takes the first of `PLAIN`, `LOGIN`, `CRAM-MD5` the server
+   offers. Most servers only accept a password over TLS, so keep `SSL/TLS` or `STARTTLS`.
 4. Only disable *Verify certificate* for a self-signed certificate on a trusted network — it is
    logged as a warning whenever it is used.
 

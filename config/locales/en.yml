@@ -108,6 +108,8 @@ en:
   error_helpdesk_connection_failed: "Connection failed: %{message}"
   error_helpdesk_imap_auth_failed: IMAP login failed
   error_helpdesk_smtp_auth_failed: SMTP login failed
+  error_helpdesk_imap_no_auth_mechanism: "The server refuses LOGIN and offers no PLAIN or LOGIN mechanism either. Check the encryption setting - many servers only allow a password over TLS."
+  error_helpdesk_smtp_no_auth_mechanism: "The server offers no usable password mechanism (PLAIN, LOGIN, CRAM-MD5). Check the encryption setting."
   error_helpdesk_oauth_state_invalid: Invalid or expired authorization request.
   error_helpdesk_oauth_reauth_required: Access was revoked - please connect the mailbox again.
   error_helpdesk_oauth_token_failed: OAuth2 token could not be obtained

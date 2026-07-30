@@ -108,6 +108,8 @@ de:
   error_helpdesk_connection_failed: "Verbindung fehlgeschlagen: %{message}"
   error_helpdesk_imap_auth_failed: IMAP-Anmeldung fehlgeschlagen
   error_helpdesk_smtp_auth_failed: SMTP-Anmeldung fehlgeschlagen
+  error_helpdesk_imap_no_auth_mechanism: "Der Server lehnt LOGIN ab und bietet auch kein PLAIN oder LOGIN an. Verschlüsselung prüfen — viele Server erlauben ein Passwort nur über TLS."
+  error_helpdesk_smtp_no_auth_mechanism: "Der Server bietet kein nutzbares Passwort-Verfahren an (PLAIN, LOGIN, CRAM-MD5). Verschlüsselung prüfen."
   error_helpdesk_oauth_state_invalid: Ungültige oder abgelaufene Autorisierungsanfrage.
   error_helpdesk_oauth_reauth_required: Der Zugriff wurde entzogen – bitte das Postfach erneut verbinden.
   error_helpdesk_oauth_token_failed: OAuth2-Token konnte nicht abgerufen werden

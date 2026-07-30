@@ -113,6 +113,20 @@
   laden“, „Ordner anlegen“ und „Verbindung testen“ bestehender Postfächer; neue Postfächer
   funktionierten, weil ihr Formular kein `_method` enthält.
 
+- **Die Passwort-Anmeldung für einfache IMAP/SMTP-Server handelt ihr Verfahren jetzt aus.** Beide
+  Protokolle waren auf genau eines festgelegt: IMAP schickte immer das Kommando `LOGIN`, SMTP
+  verlangte immer `AUTH LOGIN`. Ein Server, der `LOGINDISABLED` anzeigt (RFC 3501 verlangt das auf
+  ungeschützten Verbindungen, Dovecot setzt es entsprechend) oder nur `PLAIN` bzw. `CRAM-MD5`
+  anbietet, wies damit völlig korrekte Zugangsdaten wie einen Anmeldefehler ab. `ImapClient`
+  weicht jetzt auf `AUTHENTICATE PLAIN`/`LOGIN` aus, wenn das einfache Kommando abgelehnt wird,
+  und `SmtpSender` wählt das erste von `PLAIN`, `LOGIN`, `CRAM-MD5`, das der Server tatsächlich
+  anbietet. Ist keines nutzbar, sagt die Fehlermeldung das und verweist auf die Verschlüsselung,
+  statt falsche Zugangsdaten zu behaupten.
+- **Die IMAP-Capability-Liste wird nach der Anmeldung neu gelesen.** Sie stammte aus der Antwort
+  vor der Anmeldung, und `MOVE` sowie `UIDPLUS` werden häufig erst danach angezeigt — der Client
+  konnte deshalb den destruktiven Weg über ein einfaches `EXPUNGE` gehen, obwohl der Server beides
+  beherrscht.
+
 ### Changed (Konfigurationsoberfläche)
 - **Die Einstellungsseite zeigt nur noch die Felder, die der gewählte Anbietertyp wirklich
   braucht.** Die Vorlage steht an erster Stelle und steuert den Rest: die Tenant-ID erscheint nur
