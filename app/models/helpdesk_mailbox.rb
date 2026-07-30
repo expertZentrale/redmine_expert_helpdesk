@@ -1,6 +1,7 @@
-# Postfach-Konfiguration eines Projekts.
-# Jedes Projekt kann ein oder mehrere O365-Postfaecher haben, deren Mails
-# als Tickets in diesem Projekt verarbeitet werden.
+# Mailbox configuration of a project.
+# A project can have one or more mailboxes whose mail is turned into tickets in
+# that project. The backend is selected per mailbox via #provider: Microsoft 365
+# (Graph API) or generic IMAP/SMTP.
 class HelpdeskMailbox < HelpdeskApplicationRecord
   include Redmine::SafeAttributes
 
@@ -20,13 +21,52 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
   #   override - nur die Postfach-Fusszeile
   FOOTER_MODES = %w[inherit prepend override].freeze
 
+  # Mail backend of this mailbox.
+  PROVIDERS = %w[graph imap].freeze
+
+  # Where credentials come from. A mailbox uses one source entirely - blank
+  # fields are never backfilled from the other source, because a half-filled
+  # mailbox silently authenticating against the wrong tenant is the failure
+  # mode that makes two sources of truth unsupportable.
+  CREDENTIAL_SOURCES = %w[global mailbox].freeze
+
+  AUTH_METHODS = %w[oauth2 password].freeze
+
+  #   client_credentials - app-only, no user interaction (Microsoft IMAP)
+  #   authorization_code - one interactive consent, refresh token stored
+  #   jwt_bearer         - signed assertion (Google service account with DWD)
+  OAUTH_GRANTS = %w[client_credentials authorization_code jwt_bearer].freeze
+
+  SECURITY_MODES = %w[ssl starttls plain].freeze
+
+  #   provider - use this mailbox's own backend (Graph API resp. its SMTP server)
+  #   graph    - always Microsoft Graph, using the global credentials
+  #   smtp     - Redmine's global ActionMailer SMTP configuration
+  REPLY_TRANSPORTS = %w[provider graph smtp].freeze
+
+  # Submitting this marker in a secret field clears the stored value; a blank
+  # field keeps it (see #assign_secret).
+  CLEAR_SECRET = '-'.freeze
+
   validates :mailbox_address, :presence => true, :uniqueness => true,
             :format => { :with => /\A[^@\s]+@[^@\s]+\z/, :message => :invalid }
   validates :project, :presence => true
   validates :unknown_user_mode, :inclusion => { :in => UNKNOWN_USER_MODES }, :allow_blank => true
   validates :footer_mode, :inclusion => { :in => FOOTER_MODES }, :allow_blank => true
+  validates :provider, :inclusion => { :in => PROVIDERS }, :allow_blank => true
+  validates :credentials_source, :inclusion => { :in => CREDENTIAL_SOURCES }, :allow_blank => true
+  validates :auth_method, :inclusion => { :in => AUTH_METHODS }, :allow_blank => true
+  validates :oauth_grant, :inclusion => { :in => OAUTH_GRANTS }, :allow_blank => true
+  validates :oauth_preset, :inclusion => { :in => RedmineExpertHelpdesk::ProviderPresets::NAMES }, :allow_blank => true
+  validates :imap_security, :inclusion => { :in => SECURITY_MODES }, :allow_blank => true
+  validates :smtp_security, :inclusion => { :in => SECURITY_MODES }, :allow_blank => true
+  validates :reply_transport, :inclusion => { :in => REPLY_TRANSPORTS }, :allow_blank => true
+  validates :imap_host, :presence => true, :if => :imap?
+  validates :smtp_host, :presence => true, :if => -> { imap? && effective_reply_transport == 'mailbox_smtp' }
 
   scope :enabled, -> { where(:enabled => true) }
+
+  before_validation :apply_preset!, :if => :imap?
 
   after_initialize :set_defaults, :if => :new_record?
 
@@ -39,7 +79,97 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
                   'auto_reply_filter_enabled', 'auto_reply_sender_whitelist',
                   'auto_reply_header_whitelist',
                   'skipped_folder', 'failed_folder',
-                  'reopen_status_id', 'reopen_max_age_days'
+                  'reopen_status_id', 'reopen_max_age_days',
+                  'provider', 'credentials_source', 'auth_method',
+                  'imap_host', 'imap_port', 'imap_security', 'imap_username',
+                  'imap_verify_ssl', 'imap_unseen_only', 'imap_timeout',
+                  'smtp_host', 'smtp_port', 'smtp_security', 'smtp_username',
+                  'smtp_verify_ssl',
+                  'oauth_preset', 'oauth_grant', 'oauth_tenant_id', 'oauth_client_id',
+                  'oauth_authorize_url', 'oauth_token_url', 'oauth_scope', 'oauth_sa_email',
+                  # virtual writers below; the *_enc columns are never safe attributes
+                  'mail_password', 'oauth_client_secret', 'oauth_sa_key'
+
+  def provider
+    super.presence || 'graph'
+  end
+
+  def imap?
+    provider == 'imap'
+  end
+
+  def graph?
+    provider == 'graph'
+  end
+
+  # --- Encrypted secrets -----------------------------------------------------
+  # A blank submission keeps the stored value, so the masked password fields in
+  # the form don't wipe secrets on every save.
+
+  def mail_password
+    RedmineExpertHelpdesk::SecretBox.decrypt_safe(mail_password_enc)
+  end
+
+  def mail_password=(value)
+    assign_secret(:mail_password_enc, value)
+  end
+
+  def oauth_client_secret
+    RedmineExpertHelpdesk::SecretBox.decrypt_safe(oauth_client_secret_enc)
+  end
+
+  def oauth_client_secret=(value)
+    assign_secret(:oauth_client_secret_enc, value)
+  end
+
+  def oauth_sa_key
+    RedmineExpertHelpdesk::SecretBox.decrypt_safe(oauth_sa_key_enc)
+  end
+
+  def oauth_sa_key=(value)
+    assign_secret(:oauth_sa_key_enc, value)
+  end
+
+  def oauth_refresh_token
+    RedmineExpertHelpdesk::SecretBox.decrypt_safe(oauth_refresh_token_enc)
+  end
+
+  def oauth_refresh_token=(value)
+    self.oauth_refresh_token_enc =
+      value.blank? ? nil : RedmineExpertHelpdesk::SecretBox.encrypt(value)
+  end
+
+  # --- Transport -------------------------------------------------------------
+
+  # Resolves the abstract 'provider' transport into a concrete one:
+  #   graph        - Microsoft Graph sendMail
+  #   mailbox_smtp - this mailbox's own SMTP server
+  #   smtp         - Redmine's global ActionMailer SMTP settings
+  def effective_reply_transport
+    t = reply_transport.presence || 'graph'
+    return t unless t == 'provider'
+
+    imap? ? 'mailbox_smtp' : 'graph'
+  end
+
+  # True unless an interactive OAuth consent is still outstanding.
+  def oauth_connected?
+    return true unless imap? && auth_method == 'oauth2'
+    return true unless oauth_grant == 'authorization_code'
+
+    oauth_refresh_token_enc.present?
+  end
+
+  # Fills blank connection fields from the selected preset. Never overwrites a
+  # value the operator entered.
+  def apply_preset!
+    defaults = RedmineExpertHelpdesk::ProviderPresets.defaults_for(
+      oauth_preset, oauth_grant, oauth_tenant_id
+    )
+    defaults.each do |attr, value|
+      send("#{attr}=", value) if self[attr].blank?
+    end
+  end
 
   # Effektive Fusszeilen-Vorlage (unrendered, Makros noch enthalten):
   # kombiniert Postfach-Fusszeile und zentrale Signatur gemaess footer_mode.
@@ -69,5 +199,22 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
                                    "Mit freundlichen Gruessen\n" \
                                    "{{project_name}}"
     self.reply_footer          ||= "--\n{{project_name}}"
+
+    # New mailboxes default to their own backend for outgoing mail. Existing
+    # rows are untouched (after_initialize runs for new records only).
+    self.provider           ||= 'graph'
+    self.reply_transport    ||= 'provider'
+    self.credentials_source ||= 'global'
+  end
+
+  # Blank means "keep what is stored" so the masked form fields don't wipe
+  # secrets. Pass an explicit empty marker to clear a secret.
+  def assign_secret(column, value)
+    return if value.nil?
+
+    str = value.to_s
+    return if str.empty?
+
+    self[column] = (str == CLEAR_SECRET ? nil : RedmineExpertHelpdesk::SecretBox.encrypt(str))
   end
 end

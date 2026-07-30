@@ -11,7 +11,17 @@
 # Pro Projekt koennen Postfaecher konfiguriert werden, deren Mails als Tickets
 # bzw. Ticket-Antworten verarbeitet werden.
 
+require File.expand_path('../lib/redmine_expert_helpdesk/secret_box', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/provider_presets', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/xoauth2', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/mail_provider', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/mailbox_credentials', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/oauth_token_provider', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/graph_client', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/graph_provider', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/imap_client', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/smtp_sender', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/imap_provider', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_client', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_store', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_extractor', __FILE__)
@@ -52,6 +62,21 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'client_secret'            => '',
              'fetch_api_key'            => '',
              'sla_api_key'              => '',
+             # Defaults for IMAP/SMTP mailboxes with credentials_source = 'global'
+             'default_oauth_preset'        => 'microsoft',
+             'default_oauth_grant'         => 'client_credentials',
+             'default_oauth_tenant_id'     => '',
+             'default_oauth_client_id'     => '',
+             'default_oauth_client_secret' => '',
+             'default_oauth_authorize_url' => '',
+             'default_oauth_token_url'     => '',
+             'default_oauth_scope'         => '',
+             'default_imap_host'     => '',
+             'default_imap_port'     => '993',
+             'default_imap_security' => 'ssl',
+             'default_smtp_host'     => '',
+             'default_smtp_port'     => '587',
+             'default_smtp_security' => 'starttls',
              'contacts_per_page'        => '25',
              'contact_ticket_limit'     => '10',
              'phishtank_enabled'        => '0',
@@ -87,7 +112,9 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
 
   project_module :helpdesk do
     permission :manage_helpdesk, {
-      :helpdesk_mailboxes => [:new, :create, :edit, :update, :destroy],
+      :helpdesk_mailboxes => [:new, :create, :edit, :update, :destroy,
+                              :folders, :create_folder, :test_connection, :oauth_authorize],
+      :helpdesk_oauth => [:authorize, :callback],
       :helpdesk_rules     => [:create, :destroy]
     }, :require => :member
     permission :fetch_helpdesk_mail, {

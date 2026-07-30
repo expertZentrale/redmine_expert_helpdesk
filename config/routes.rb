@@ -17,12 +17,25 @@ RedmineApp::Application.routes.draw do
   post 'helpdesk/legacy_import', :to => 'helpdesk_legacy_import#import', :as => 'helpdesk_legacy_import'
   post 'helpdesk/legacy_fix_attachments', :to => 'helpdesk_legacy_import#fix_attachments', :as => 'helpdesk_legacy_fix_attachments'
 
+  # OAuth2-Consent (authorization_code) fuer IMAP/SMTP-Postfaecher.
+  # Die Callback-URL ist fest, weil Identity Provider nur exakt registrierte
+  # Redirect-URIs akzeptieren; das Postfach steckt im signierten state-Parameter.
+  get 'helpdesk/oauth/authorize', :to => 'helpdesk_oauth#authorize', :as => 'helpdesk_oauth_authorize'
+  get 'helpdesk/oauth/callback',  :to => 'helpdesk_oauth#callback',  :as => 'helpdesk_oauth_callback'
+
   # Postfach-Konfiguration je Projekt
   scope 'projects/:project_id' do
     resources :helpdesk_mailboxes, :except => [:index, :show] do
       collection do
+        # POST, weil der Formularzustand (inkl. Provider-Auswahl) mitgeschickt wird;
+        # GET bleibt aus Kompatibilitaetsgruenden erhalten.
         get  :folders
+        post :folders
         post :create_folder
+        post :test_connection
+      end
+      member do
+        get :oauth_authorize
       end
     end
 

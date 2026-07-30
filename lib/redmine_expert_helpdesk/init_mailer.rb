@@ -33,10 +33,10 @@ module RedmineExpertHelpdesk
         body_html  = rendered_body(contact)
 
         sent_filenames =
-          if @mailbox.reply_transport == 'smtp'
+          if @mailbox.effective_reply_transport == 'smtp'
             send_smtp(subject, body_html, message_id)
           else
-            send_graph(subject, body_html, message_id)
+            send_provider_mime(subject, body_html, message_id)
           end
 
         HelpdeskMessage.create!(
@@ -166,18 +166,28 @@ module RedmineExpertHelpdesk
       regular_atts.map(&:filename) + inline_atts.map(&:filename)
     end
 
-    # Graph-API: CID-Inline-Bilder + regulaere Anhaenge in vollstaendiger MIME-Nachricht.
-    def send_graph(subject, body_html, message_id)
+    # Roher MIME-Versand ueber das Backend des Postfachs (Graph-API oder eigener
+    # SMTP-Server): CID-Inline-Bilder + regulaere Anhaenge in einer vollstaendigen
+    # MIME-Nachricht.
+    def send_provider_mime(subject, body_html, message_id)
       inline_atts            = find_inline_attachments(body_html)
       regular_atts           = regular_attachments(inline_atts)
       cid_map, html_with_cid = build_cid_map(body_html, inline_atts)
       mime_msg = build_cid_mime(@mailbox.mailbox_address, @to_list.join(', '),
                                 subject, html_with_cid, regular_atts, cid_map, message_id)
-      GraphClient.new.send_mail_mime(@mailbox.mailbox_address, mime_msg)
+      reply_provider.send_mail_mime(mime_msg)
 
       # Versendete Dateien (regulaere Anhaenge + inline eingebettete Bilder) fuer die
       # Anzeige im Kundenbereich zurueckgeben.
       regular_atts.map(&:filename) + cid_map.keys.map(&:filename)
+    end
+
+    def reply_provider
+      if @mailbox.effective_reply_transport == 'mailbox_smtp'
+        MailProvider.for(@mailbox)
+      else
+        GraphProvider.new(@mailbox)
+      end
     end
 
     # Ersetzt src="filename" durch data:-URI fuer SMTP-Transport.

@@ -38,6 +38,75 @@
   </tr>
 </table>
 
+<%# Vorgaben fuer IMAP/SMTP-Postfaecher mit credentials_source = 'global' %>
+<fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_default_mail_credentials) %></legend>
+  <p>
+    <label><%= l(:field_helpdesk_oauth_preset) %></label>
+    <%= select_tag 'settings[default_oauth_preset]',
+        options_for_select([[l(:label_helpdesk_preset_microsoft), 'microsoft'],
+                            [l(:label_helpdesk_preset_google),    'google'],
+                            [l(:label_helpdesk_preset_generic),   'generic']],
+                           @settings['default_oauth_preset']) %>
+    <%= l(:field_helpdesk_oauth_grant) %>
+    <%= select_tag 'settings[default_oauth_grant]',
+        options_for_select([[l(:label_helpdesk_grant_client_credentials), 'client_credentials'],
+                            [l(:label_helpdesk_grant_authorization_code), 'authorization_code'],
+                            [l(:label_helpdesk_grant_jwt_bearer),         'jwt_bearer']],
+                           @settings['default_oauth_grant']) %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_oauth_tenant_id) %></label>
+    <%= text_field_tag 'settings[default_oauth_tenant_id]', @settings['default_oauth_tenant_id'], :size => 50 %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_oauth_client_id) %></label>
+    <%= text_field_tag 'settings[default_oauth_client_id]', @settings['default_oauth_client_id'], :size => 50 %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_oauth_client_secret) %></label>
+    <%= password_field_tag 'settings[default_oauth_client_secret]', @settings['default_oauth_client_secret'], :size => 50 %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_oauth_authorize_url) %></label>
+    <%= text_field_tag 'settings[default_oauth_authorize_url]', @settings['default_oauth_authorize_url'], :size => 70 %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_oauth_token_url) %></label>
+    <%= text_field_tag 'settings[default_oauth_token_url]', @settings['default_oauth_token_url'], :size => 70 %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_oauth_scope) %></label>
+    <%= text_field_tag 'settings[default_oauth_scope]', @settings['default_oauth_scope'], :size => 70 %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_imap_host) %></label>
+    <%= text_field_tag 'settings[default_imap_host]', @settings['default_imap_host'], :size => 40 %>
+    <%= text_field_tag 'settings[default_imap_port]', @settings['default_imap_port'], :size => 5 %>
+    <%= select_tag 'settings[default_imap_security]',
+        options_for_select([[l(:label_helpdesk_security_ssl), 'ssl'],
+                            [l(:label_helpdesk_security_starttls), 'starttls'],
+                            [l(:label_helpdesk_security_plain), 'plain']],
+                           @settings['default_imap_security']) %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_smtp_host) %></label>
+    <%= text_field_tag 'settings[default_smtp_host]', @settings['default_smtp_host'], :size => 40 %>
+    <%= text_field_tag 'settings[default_smtp_port]', @settings['default_smtp_port'], :size => 5 %>
+    <%= select_tag 'settings[default_smtp_security]',
+        options_for_select([[l(:label_helpdesk_security_ssl), 'ssl'],
+                            [l(:label_helpdesk_security_starttls), 'starttls'],
+                            [l(:label_helpdesk_security_plain), 'plain']],
+                           @settings['default_smtp_security']) %>
+  </p>
+  <p>
+    <label><%= l(:label_helpdesk_oauth_callback_url) %></label>
+    <code><%= HelpdeskOauthController.callback_url %></code>
+    <em class="info"><%= l(:text_helpdesk_oauth_callback_url_info) %></em>
+  </p>
+  <p><em class="info"><%= l(:text_helpdesk_credentials_source_info) %></em></p>
+</fieldset>
+
 <hr />
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_display_settings) %></h3>
 <p>

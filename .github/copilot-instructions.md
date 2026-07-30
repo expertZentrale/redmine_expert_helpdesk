@@ -5,7 +5,7 @@ companion doc — read it for deeper architecture notes); keep the two in sync w
 
 ## What this is
 
-A **Redmine plugin** (`redmine_expert_helpdesk`) that turns Microsoft 365 mailboxes into a
+A **Redmine plugin** (`redmine_expert_helpdesk`) that turns Microsoft 365 **or IMAP** mailboxes into a
 helpdesk: incoming mail becomes tickets (or journal replies), agents reply to customers from
 the ticket page, and contacts/SLA/phishing detection layer on top. Requires Redmine 5.0+.
 
@@ -108,6 +108,24 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
   **Patches are prepended directly in `init.rb`** (guarded by `unless ...include?`), *not* via
   `to_prepare` (the comment there explains why).
 - **`lib/redmine_expert_helpdesk/`** — core:
+  - `mail_provider.rb` / `graph_provider.rb` / `imap_provider.rb` — mail backend abstraction.
+    `MailProvider.for(mailbox)` picks the backend from `HelpdeskMailbox#provider` (`graph` |
+    `imap`); `list_messages` returns normalized `MailProvider::MessageMeta` structs, so
+    `MailProcessor` never sees provider-specific payloads. All provider errors derive from
+    `MailProvider::ProviderError` — including `GraphClient::GraphError`.
+  - `imap_client.rb` / `smtp_sender.rb` — IMAP/SMTP backend on stdlib `net/imap` + `net/smtp`
+    (no extra gem; they ship with the `mail` gem Redmine bundles). UIDs throughout, `BODY.PEEK`
+    only, modified UTF-7 + server delimiter for folder names, `MOVE` with a
+    `COPY`+`\Deleted`+`UID EXPUNGE` fallback. `SmtpSender` moves `Bcc` into the envelope, which
+    Graph/Exchange used to do for us. `net/smtp` has **no stable public XOAUTH2 API** across the
+    supported Ruby range — `SmtpXoauth2` dispatches over three shapes.
+  - `oauth_token_provider.rb` / `xoauth2.rb` / `mailbox_credentials.rb` / `provider_presets.rb` /
+    `secret_box.rb` — OAuth2 for IMAP/SMTP: grants `client_credentials`, `authorization_code`,
+    `jwt_bearer` (own OpenSSL-signed assertion, no `jwt` gem); tokens cached in `Rails.cache`
+    under a credential-fingerprinted key. `credentials_source` (`global` | `mailbox`) selects
+    **one source entirely, never a field-level mix**. `SecretBox` encrypts per-mailbox secrets
+    with `ActiveSupport::MessageEncryptor` (not `ActiveRecord::Encryption` — Rails 7+, and we
+    still support Redmine 5.1); values without the `enc:v1:` prefix are legacy plaintext.
   - `graph_client.rb` — Microsoft Graph REST client (OAuth2 client-credentials, token cached).
   - `mail_processor.rb` — the heart: per mailbox, hands raw MIME to Redmine's own `MailHandler`
     (which does ticket creation / reply matching via `In-Reply-To`/`[#id]` / attachments /
@@ -158,9 +176,12 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
 
 ## Key behaviors worth knowing
 
-- **Reply transport is per-mailbox**: `graph` (default — sends full Base64 MIME to preserve CID
-  inline images, because Exchange rewrites HTML in the JSON send path) or `smtp` (Redmine SMTP;
-  inline images become Base64 data URIs).
+- **Reply transport is per-mailbox**: `provider` (default for new mailboxes — the mailbox's own
+  backend: Graph, or its own SMTP server), `graph` (Graph via the central app registration), or
+  `smtp` (Redmine SMTP; inline images become Base64 data URIs). The MIME paths send full Base64
+  MIME to preserve CID inline images, because Exchange rewrites HTML in the JSON send path.
+  `HelpdeskMailbox#effective_reply_transport` resolves `provider` to `graph`/`mailbox_smtp`;
+  the autoresponder honours the same setting.
 - **Redmine version DOM differs**: RM5 journals use `#journal-<id>-notes` / `h4.note-header`;
   RM6/7 use `#change-<id>` / `h4.journal-header` (with `span.journal-info` + `span.journal-meta`).
   View-hook JS that touches journals must handle both.
@@ -168,4 +189,9 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
 - `unknown_user_mode` on the mailbox (`accept`/`create`/`ignore`) controls senders with no
   Redmine user, enforced by `MailHandler`.
 - Azure app registration is a one-time external setup; central credentials live under
-  *Administration → Plugins → Redmine expert Helpdesk*.
+  *Administration → Plugins → Redmine expert Helpdesk*, which also holds the default IMAP/SMTP
+  + OAuth2 credentials. The README's *Mail providers* section has setup recipes for Microsoft
+  app-only IMAP, Gmail consent, and self-hosted servers.
+- **OAuth consent uses one fixed callback URL** (`/helpdesk/oauth/callback`) because identity
+  providers only accept exactly registered redirect URIs; the mailbox id rides in a signed
+  `state` (`Rails.application.message_verifier`), never in the path.

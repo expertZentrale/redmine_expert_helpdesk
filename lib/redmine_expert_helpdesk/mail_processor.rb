@@ -1,7 +1,10 @@
 # Kernstueck des Helpdesk-Plugins: Verarbeitung eingehender Mails.
 #
+# Der Mail-Backend wird pro Postfach ueber MailProvider aufgeloest (Microsoft
+# Graph oder generisches IMAP/SMTP); dieser Ablauf ist providerneutral.
+#
 # Ablauf pro Postfach:
-#   1. Nachrichten via Microsoft Graph aus dem Quellordner laden
+#   1. Nachrichten ueber den Provider aus dem Quellordner laden
 #   2. Absender gegen Black-/Whitelist pruefen
 #   3. "Ignorieren"-Regeln anwenden
 #   4. MIME an den Redmine-Standard MailHandler uebergeben
@@ -20,19 +23,29 @@ module RedmineExpertHelpdesk
       end
     end
 
-    def initialize(mailbox, graph_client = nil)
+    # The second argument stays positional for backwards compatibility - tests
+    # inject a fake provider through it.
+    def initialize(mailbox, provider = nil)
       @mailbox = mailbox
-      @graph = graph_client || GraphClient.new
+      @provider = provider || MailProvider.for(mailbox)
     end
 
     # Verarbeitet alle Nachrichten des Postfachs. Liefert ein Result-Objekt.
     def process_all(limit = 25)
+      # One session for the whole cycle: IMAP opens a single connection here
+      # instead of one per message. Graph ignores it.
+      @provider.with_session { run_cycle(limit) }
+    end
+
+    private
+
+    def run_cycle(limit)
       result = Result.new(0, [], [], 0, [])
 
       begin
-        messages = @graph.list_messages(@mailbox.mailbox_address, @mailbox.source_folder, limit)
+        messages = Array(@provider.list_messages(limit))
       rescue StandardError => e
-        msg = "Graph-Abruf fehlgeschlagen: #{e.message}"
+        msg = I18n.t(:error_helpdesk_fetch_failed, :message => e.message)
         Rails.logger.error "Helpdesk (#{@mailbox.mailbox_address}): #{msg}"
         @mailbox.update_columns(:last_error => msg, :last_error_at => Time.current)
         result.errors << { :subject => nil, :error => msg }
@@ -43,12 +56,12 @@ module RedmineExpertHelpdesk
         begin
           process_message(meta, result)
         rescue StandardError => e
-          Rails.logger.error "Helpdesk: Fehler bei Nachricht #{meta['id']} (#{@mailbox.mailbox_address}): #{e.message}"
-          result.errors << { :subject => meta['subject'], :error => e.message }
+          Rails.logger.error "Helpdesk: Fehler bei Nachricht #{meta.id} (#{@mailbox.mailbox_address}): #{e.message}"
+          result.errors << { :subject => meta.subject, :error => e.message }
           begin
-            move_failed(meta['id'])
+            move_failed(meta.id)
           rescue StandardError => move_err
-            Rails.logger.warn "Helpdesk: Nachricht #{meta['id']} konnte nicht in Fehlerordner verschoben werden: #{move_err.message}"
+            Rails.logger.warn "Helpdesk: Nachricht #{meta.id} konnte nicht in Fehlerordner verschoben werden: #{move_err.message}"
           end
         end
       end
@@ -68,27 +81,25 @@ module RedmineExpertHelpdesk
       result
     end
 
-    private
-
     def process_message(meta, result)
-      sender = meta.dig('from', 'emailAddress', 'address').to_s.downcase
-      sender_name = meta.dig('from', 'emailAddress', 'name').to_s
-      subject = meta['subject'].to_s
+      sender = meta.from_address.to_s.downcase
+      sender_name = meta.from_name.to_s
+      subject = meta.subject.to_s
 
       # Black-/Whitelist und Ignorieren-Regeln: Nachricht bleibt unangetastet liegen?
       # Nein – abgelehnte Mails werden ebenfalls verschoben, damit sie nicht
       # bei jedem Abruf erneut geprueft werden.
       if sender_rejected?(sender) || ignore_rule_matches?(subject, sender)
-        move_skipped(meta['id'])
+        move_skipped(meta.id)
         result.skipped += 1
         return
       end
 
-      mime = @graph.message_mime(@mailbox.mailbox_address, meta['id'])
+      mime = @provider.message_mime(meta.id)
 
       if auto_reply_filtered?(mime, sender)
         Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): Auto-Reply ignoriert – #{subject.inspect} von #{sender}"
-        move_skipped(meta['id'])
+        move_skipped(meta.id)
         result.skipped += 1
         return
       end
@@ -105,7 +116,7 @@ module RedmineExpertHelpdesk
         if scan[:hits].any? && phishing_action == 'quarantine'
           Rails.logger.warn "Helpdesk (#{@mailbox.mailbox_address}): Phishing-Mail in Quarantaene – " \
                             "#{subject.inspect} von #{sender} (#{scan[:hits].size} URL(s))"
-          move_skipped(meta['id'])
+          move_skipped(meta.id)
           result.skipped += 1
           return
         end
@@ -135,7 +146,7 @@ module RedmineExpertHelpdesk
 
       unless object
         # MailHandler hat die Mail abgelehnt (z. B. eigene Adresse, ungueltig)
-        move_skipped(meta['id'])
+        move_skipped(meta.id)
         result.skipped += 1
         return
       end
@@ -156,9 +167,9 @@ module RedmineExpertHelpdesk
           :helpdesk_contact  => contact,
           :helpdesk_mailbox  => @mailbox,
           :direction         => 'in',
-          :message_id        => meta['internetMessageId'].to_s.delete('<>').strip,
+          :message_id        => meta.internet_message_id,
           :subject           => subject,
-          :sent_at           => meta['receivedDateTime'],
+          :sent_at           => meta.received_at,
           :recipient_to      => parsed_mail&.to&.join(', '),
           :recipient_cc      => parsed_mail&.cc&.join(', '),
           :journal_id        => (object.is_a?(Journal) ? object.id : nil)
@@ -173,7 +184,7 @@ module RedmineExpertHelpdesk
           # Badge im h4.note-header per Timestamp-Matching).
         end
 
-        send_autoresponder(issue, contact, meta['internetMessageId']) if new_issue && @mailbox.autoresponder_enabled?
+        send_autoresponder(issue, contact, meta.internet_message_id) if new_issue && @mailbox.autoresponder_enabled?
         if phishing_hits.any? || phishing_suspicions.any?
           add_phishing_note(issue, phishing_hits, phishing_suspicions)
         end
@@ -181,7 +192,7 @@ module RedmineExpertHelpdesk
         (new_issue ? result.created_issues : result.updated_issues) << issue.id
       end
 
-      move_processed(meta['id'])
+      move_processed(meta.id)
       result.processed += 1
     end
 
@@ -541,7 +552,7 @@ module RedmineExpertHelpdesk
         mail['References']  = ref_id
       end
 
-      @graph.send_mail_mime(@mailbox.mailbox_address, mail.to_s)
+      @provider.send_mail_mime(mail.to_s)
 
       HelpdeskMessage.create!(
         :issue => issue, :helpdesk_contact => contact, :helpdesk_mailbox => @mailbox,
@@ -555,35 +566,35 @@ module RedmineExpertHelpdesk
         :notes         => I18n.t(:note_helpdesk_autoresponder_sent, :email => contact.email),
         :private_notes => false
       )
-    rescue GraphClient::GraphError => e
+    rescue MailProvider::ProviderError => e
       Rails.logger.error "Helpdesk: Autoresponder fuer Ticket ##{issue.id} fehlgeschlagen: #{e.message}"
     end
 
     def move_processed(message_id)
-      @graph.mark_as_read(@mailbox.mailbox_address, message_id)
+      @provider.mark_as_read(message_id)
       return if @mailbox.processed_folder.blank?
 
-      @graph.move_message(@mailbox.mailbox_address, message_id, @mailbox.processed_folder)
+      @provider.move_message(message_id, @mailbox.processed_folder)
     end
 
     # Uebersprungene Mails (Blacklist, Ignorier-Regel, Auto-Reply) in den
     # konfigurierten Ordner verschieben. Fallback: processed_folder.
     def move_skipped(message_id)
-      @graph.mark_as_read(@mailbox.mailbox_address, message_id)
+      @provider.mark_as_read(message_id)
       target = @mailbox.skipped_folder.presence || @mailbox.processed_folder.presence
       return if target.blank?
 
-      @graph.move_message(@mailbox.mailbox_address, message_id, target)
+      @provider.move_message(message_id, target)
     end
 
     # Fehlgeschlagene Mails (Exception waehrend der Verarbeitung) in den
     # konfigurierten Ordner verschieben. Fallback: processed_folder.
     def move_failed(message_id)
-      @graph.mark_as_read(@mailbox.mailbox_address, message_id)
+      @provider.mark_as_read(message_id)
       target = @mailbox.failed_folder.presence || @mailbox.processed_folder.presence
       return if target.blank?
 
-      @graph.move_message(@mailbox.mailbox_address, message_id, target)
+      @provider.move_message(message_id, target)
     end
 
     # Haengt die originale Mail als .eml-Datei an das Ticket an.

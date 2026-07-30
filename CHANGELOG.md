@@ -6,6 +6,101 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased] 2026-07-30 (86)
+
+### Added
+- **Generic IMAP/SMTP mailboxes with modern authentication.** Until now the plugin could only
+  ingest mail from Microsoft 365 via the Graph API — Google Workspace, Exchange on-premises,
+  self-hosted Dovecot/Zimbra and ordinary hosters were out of reach. A mailbox now selects its
+  backend with the new `provider` column (`graph` — unchanged default — or `imap`). Incoming mail
+  arrives over IMAP (`lib/redmine_expert_helpdesk/imap_client.rb`), outgoing mail leaves over the
+  mailbox's own SMTP server (`smtp_sender.rb`), and both are wrapped by `imap_provider.rb`.
+  Migrations `034` and `035`.
+- **OAuth2 (XOAUTH2) as the default authentication, with three grants.** `client_credentials`
+  (app-only; Microsoft IMAP needs `IMAP.AccessAsApp` / `SMTP.SendAsApp` granted in the tenant),
+  `authorization_code` (one interactive consent, refresh token stored encrypted — for Gmail and
+  arbitrary identity providers) and `jwt_bearer` (Google service account with domain-wide
+  delegation, the assertion signed with `OpenSSL::PKey::RSA` so no `jwt`/`googleauth` gem is
+  needed). Implemented in `oauth_token_provider.rb`; the shared SASL string lives in `xoauth2.rb`.
+  Username/password over TLS remains available as a secondary `auth_method` for servers without
+  OAuth2. **No new gems** — `net/imap` and `net/smtp` already ship as runtime dependencies of the
+  `mail` gem Redmine bundles.
+- **OAuth consent flow.** New `HelpdeskOauthController` with a *single fixed* callback URL
+  (`/helpdesk/oauth/callback`), because identity providers only accept exactly registered redirect
+  URIs; the mailbox id travels in a signed, ten-minute `state`
+  (`Rails.application.message_verifier`) rather than in the path. The mailbox form shows the URL
+  read-only next to a Connect/Reconnect button and the connection date.
+- **Connection presets** for Microsoft 365, Google Workspace and generic servers
+  (`provider_presets.rb`) prefill hosts, ports, endpoints and scopes. They are applied both in the
+  form and server-side in `HelpdeskMailbox#apply_preset!`, so API-created mailboxes get them too,
+  and they **never overwrite a value that was entered manually**.
+- **"Test connection" button** in the mailbox form (`HelpdeskMailboxesController#test_connection`)
+  reports the authentication result and lists the folders it can see, for both providers.
+- **Encrypted secrets at rest.** Per-mailbox passwords, client secrets, refresh tokens and service
+  account keys are stored through `secret_box.rb` (`ActiveSupport::MessageEncryptor` keyed off
+  `secret_key_base` — `ActiveRecord::Encryption` is Rails 7+ and this plugin still supports
+  Redmine 5.1). Values carry an `enc:v1:` prefix; anything without it is returned unchanged, so
+  legacy plaintext stays readable and no data migration is forced. Note that rotating
+  `secret_key_base` makes stored secrets unrecoverable — they then have to be re-entered.
+
+### Changed
+- **`MailProcessor` is now provider-neutral.** It talks to a `MailProvider` instead of `GraphClient`
+  and consumes a normalized `MailProvider::MessageMeta` struct instead of reading raw Graph JSON
+  keys (`meta['subject']`, `meta.dig('from','emailAddress','address')`, …). A whole fetch cycle runs
+  inside one `provider.with_session` block, so IMAP opens a single connection per fetch rather than
+  one per message. `GraphProvider` adapts the **unchanged** `GraphClient`; `GraphClient::GraphError`
+  now inherits from `MailProvider::ProviderError`, which widens the existing rescues in
+  `HelpdeskFetchController` and `HelpdeskRepliesController` without further churn.
+- **Reply transport gained a `provider` option** (`REPLY_TRANSPORTS`), the new default for new
+  mailboxes: replies go out over whatever the mailbox itself is configured for — Graph, or its own
+  SMTP server. The legacy `graph` and `smtp` (Redmine's global ActionMailer settings) values behave
+  exactly as before. Wired through `HelpdeskRepliesController` and `InitMailer#send_provider_mime`.
+- **Credential precedence is now explicit.** `credentials_source` (`global` | `mailbox`) decides
+  where a mailbox reads its credentials from; blank fields are deliberately **not** backfilled from
+  the other source, because a half-filled mailbox silently authenticating against the wrong tenant
+  is the failure mode that makes two sources of truth unsupportable. `graph` + `global` is
+  byte-identical to the previous behaviour. Global defaults for IMAP/SMTP mailboxes were added to
+  the plugin settings partial and `init.rb`.
+- **The Graph access-token cache key now includes a credential fingerprint.** Rotating the client
+  secret used to leave a stale token in the cache for up to an hour.
+
+### Fixed
+- **The autoresponder ignored the mailbox's reply transport.** `MailProcessor#send_autoresponder`
+  called `GraphClient#send_mail_mime` unconditionally, so a mailbox configured for SMTP still sent
+  its automatic acknowledgements through the Graph API — and an IMAP mailbox could not have sent
+  them at all. It now uses the mailbox's provider like every other outgoing path.
+- **Hardening: the folder AJAX endpoints trusted an arbitrary `mailbox_address` parameter.**
+  `HelpdeskMailboxesController#folders` / `#create_folder` / `#ensure_mailbox_folders` built a
+  `GraphClient` straight from that parameter, so anyone with `manage_helpdesk` on any project could
+  enumerate or create folders in **any** mailbox the central Azure app registration could reach.
+  They now build the provider from the submitted form state scoped to the current project, or from
+  the persisted record — whose secrets never travel back to the browser.
+
+### Migration
+- `034_add_provider_to_helpdesk_mailboxes.rb` — `provider`, `credentials_source`, `imap_host`,
+  `imap_port`, `imap_security`, `imap_username`, `imap_verify_ssl`, `imap_unseen_only`,
+  `imap_timeout`, `smtp_host`, `smtp_port`, `smtp_security`, `smtp_username`, `smtp_verify_ssl`,
+  `auth_method`, `mail_password_enc`.
+- `035_add_oauth_tokens_to_helpdesk_mailboxes.rb` — `oauth_preset`, `oauth_grant`,
+  `oauth_tenant_id`, `oauth_client_id`, `oauth_client_secret_enc`, `oauth_authorize_url`,
+  `oauth_token_url`, `oauth_scope`, `oauth_refresh_token_enc`, `oauth_token_expires_at`,
+  `oauth_connected_at`, `oauth_sa_email`, `oauth_sa_key_enc`.
+- Both are idempotent (`unless column_exists?`). Existing mailboxes default to `provider = 'graph'`
+  and `credentials_source = 'global'`, so **no configuration change is required** for current
+  installations.
+
+### Notes on IMAP behaviour
+- UIDs are used throughout (`UID SEARCH`/`FETCH`/`STORE`/`MOVE`); sequence numbers shift under
+  concurrent mailbox activity.
+- Fetches use `BODY.PEEK[...]`, never `BODY[...]`, which would silently set `\Seen`.
+- Folder names are stored as human-readable UTF-8 with `/` and translated to modified UTF-7 plus
+  the server's own hierarchy delimiter on the wire — German folder names such as
+  `Gelöschte Elemente` depend on this.
+- Moving uses `MOVE` (RFC 6851) when advertised, otherwise `COPY` + `\Deleted` + `UID EXPUNGE`
+  (UIDPLUS). Servers offering neither fall back to a plain `EXPUNGE`, which also removes **other**
+  messages already flagged `\Deleted` in the source folder; this is logged as a warning and stated
+  in the UI.
+
 ## [Unreleased] 2026-07-24 (85)
 
 ### Added

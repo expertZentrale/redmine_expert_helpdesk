@@ -17,14 +17,21 @@ see [Tests](#tests).
 
 ## Features
 
-- **Email to ticket**: Mails from O365 mailboxes are created as tickets;
+- **Email to ticket**: Mails from Microsoft 365 or any IMAP mailbox are created as tickets;
   replies are matched to existing tickets via `In-Reply-To` / `[#id]` subject
   patterns (uses Redmine's standard `MailHandler`, including attachments).
 - **Per-project mailboxes**: Each project configures its mailboxes under the
   *Helpdesk* tab in project settings (source/target folder, defaults for
   tracker/priority/status, handling of unknown senders).
+- **Any mail provider**: Each mailbox chooses its backend — Microsoft 365 via the
+  Graph API, or generic **IMAP/SMTP** for Google Workspace, Exchange on-premises,
+  self-hosted servers (Dovecot, Zimbra) and any hoster. Authentication is
+  **OAuth2/XOAUTH2** by default (application-only, one-time consent, or a service
+  account), with username/password over TLS available for servers without OAuth2.
+  See [Mail providers](#mail-providers).
 - **Central app registration**: Tenant ID, Client ID and Client Secret are
-  configured once under *Administration → Plugins → Redmine expert Helpdesk*.
+  configured once under *Administration → Plugins → Redmine expert Helpdesk*;
+  individual mailboxes may override them with their own credentials.
 - **Autoresponder**: Configurable confirmation email for new tickets.
 - **Customer replies**: Reply to the customer directly from the ticket page,
   with header/footer templates; sent via MIME-based Graph API endpoint from
@@ -136,12 +143,121 @@ autoresponder and reply templates.
 reopening rules, sender filter, auto-reply filter, autoresponder text and reply templates
 including a signature preview](docs/screenshots/en/08-mailbox-form.png)
 
+## Mail providers
+
+Every mailbox picks its own backend in *Helpdesk → Mailbox → Mail provider*:
+
+| Provider | Incoming | Outgoing | Typical use |
+|----------|----------|----------|-------------|
+| `graph` (default) | Microsoft Graph API | Graph `sendMail` | Microsoft 365 / Exchange Online |
+| `imap` | IMAP | SMTP | Google Workspace, Exchange on-premises, Dovecot, Zimbra, any hoster |
+
+Existing mailboxes keep `graph` and need **no configuration change**.
+
+### Where credentials come from
+
+`Credentials` on the mailbox form is an explicit switch, not a fallback chain:
+
+- **From plugin settings** (`global`) — the mailbox uses the credentials under
+  *Administration → Plugins → Redmine expert Helpdesk*. For `graph` mailboxes this is the
+  Tenant ID / Client ID / Client Secret that has always been there.
+- **Individual for this mailbox** (`mailbox`) — the mailbox uses only its own fields.
+
+A mailbox uses **one source entirely**. Blank fields are deliberately *not* filled in from the
+other source: a half-configured mailbox that silently authenticates against the wrong tenant is
+exactly the failure this avoids.
+
+Per-mailbox secrets (passwords, client secrets, refresh tokens, service account keys) are
+encrypted at rest with Rails' `secret_key_base`. Leaving a secret field empty keeps the stored
+value; entering a single `-` deletes it. **Rotating `secret_key_base` makes stored secrets
+unrecoverable** — they then have to be re-entered and the OAuth consent re-run.
+
+### Authentication
+
+OAuth2 (XOAUTH2) is the default. Three flows are supported:
+
+| Flow | Consent | Use for |
+|------|---------|---------|
+| Application only (`client_credentials`) | none | Microsoft 365 IMAP with `IMAP.AccessAsApp` / `SMTP.SendAsApp` |
+| One-time consent (`authorization_code`) | once per mailbox, refresh token stored | Gmail, and any other identity provider |
+| Service account (`jwt_bearer`) | none | Google Workspace with domain-wide delegation |
+
+Username/password over TLS remains selectable for servers that have no OAuth2 at all
+(Dovecot, Zimbra, small hosters). Microsoft 365 no longer accepts basic authentication.
+
+The **Callback URL** shown on the form must be registered verbatim as the redirect URI with the
+identity provider — it is a single fixed path (`/helpdesk/oauth/callback`) because providers only
+accept exactly registered URIs. Which mailbox is being connected travels in a signed, ten-minute
+`state` parameter.
+
+Use **Test connection** on the mailbox form to verify host, TLS and login before saving; it also
+lists the folders it can see.
+
+### Recipe: Microsoft 365 over IMAP (application only)
+
+Use this when you want IMAP/SMTP instead of the Graph API, e.g. to keep one code path for several
+providers.
+
+1. Register an app in Entra ID and grant the **application** permissions `IMAP.AccessAsApp` and
+   `SMTP.SendAsApp` (admin consent required).
+2. Register the service principal in Exchange Online and scope it to the mailbox:
+
+   ```powershell
+   New-ServicePrincipal -AppId <client-id> -ObjectId <object-id>
+   Add-MailboxPermission -Identity "helpdesk@example.com" -User <object-id> -AccessRights FullAccess
+   ```
+
+3. In the mailbox form: provider `IMAP / SMTP`, preset **Microsoft 365**, flow
+   **Application only**, and enter Tenant ID, Client ID and Client Secret (or leave
+   *Credentials* on *From plugin settings* to reuse the central registration).
+   Host and port fields are prefilled: `outlook.office365.com:993` and `smtp.office365.com:587`.
+
+### Recipe: Google Workspace / Gmail (one-time consent)
+
+1. In the Google Cloud console create an **OAuth client ID** of type *Web application* and add the
+   plugin's callback URL as an authorized redirect URI.
+2. Enable the scope `https://mail.google.com/` and **publish** the OAuth consent screen — refresh
+   tokens issued while the screen is in *Testing* expire after 7 days.
+3. In the mailbox form: provider `IMAP / SMTP`, preset **Google Workspace / Gmail**, flow
+   **One-time consent**, enter Client ID and Client Secret, save, then press **Connect** and
+   complete the Google consent.
+
+Gmail maps folders to labels — moving a mail relabels it. Use `[Gmail]/…` paths for the special
+folders.
+
+For a Workspace domain you can instead use a **service account** with domain-wide delegation
+(flow *Service account*, scope `https://mail.google.com/`): paste the service account address and
+its PEM private key; no interactive consent is needed.
+
+### Recipe: self-hosted server (Dovecot, Zimbra, hoster)
+
+1. Provider `IMAP / SMTP`, preset **Other / self-hosted**.
+2. Enter the IMAP and SMTP host, port and encryption (`SSL/TLS` on 993/465, `STARTTLS` on
+   143/587).
+3. Authentication **Username and password**, then the mailbox user and its password (an
+   app password where the provider offers one).
+4. Only disable *Verify certificate* for a self-signed certificate on a trusted network — it is
+   logged as a warning whenever it is used.
+
+### IMAP behaviour worth knowing
+
+- Mails are addressed by **UID** throughout, so concurrent access to the mailbox cannot mix up
+  messages.
+- Fetching never marks a mail as read on its own (`BODY.PEEK`); `\Seen` is set explicitly when the
+  mail is moved to the processed folder. *Only fetch unread mails* is available for setups where
+  moving is not possible.
+- Folder names are entered as readable text with `/` as separator and translated to modified UTF-7
+  and the server's own delimiter on the wire, so names like `Gelöschte Elemente` work.
+- Moving uses `MOVE` (RFC 6851) when the server offers it, otherwise `COPY` + `\Deleted` +
+  `UID EXPUNGE`. **A server with neither `MOVE` nor `UIDPLUS` falls back to a plain `EXPUNGE`,
+  which also permanently removes other mails already flagged as deleted in the source folder.**
+
 ## Email Processing
 
 ### Flow per mailbox fetch
 
 ```
-Graph API (source folder)
+Provider (source folder) — Graph API or IMAP
         │
         ▼
   Black-/whitelist check ──── rejected ─────▶ skipped folder
@@ -150,7 +266,7 @@ Graph API (source folder)
   Ignore rules ───────────── matches ───────▶ skipped folder
         │
         ▼
-  Download MIME (Graph)
+  Download raw MIME (Graph / IMAP BODY.PEEK)
         │
         ▼
   Auto-reply filter ──────── out-of-office ─▶ skipped folder
@@ -253,7 +369,8 @@ history.
 ### Customer replies from Redmine
 
 When an agent replies via the ticket form ("Send as e-mail to customer"), the
-reply is sent as a complete MIME message via the Graph API endpoint
+reply is sent as a complete MIME message — through the mailbox's own backend.
+For a Microsoft 365 mailbox that is the Graph API endpoint
 `/users/{mailbox}/sendMail` (with `Content-Type: text/plain` + Base64-encoded
 MIME body). This preserves the full MIME structure — especially for CID inline
 images — because Exchange Online rewrites the HTML body when using the JSON
@@ -272,9 +389,15 @@ The subject is generated from the project setting *Subject template*
 field appear in the recipient's mailbox as embedded inline images (CID method,
 not as attachments).
 
-**Transport choice**: Each mailbox can be configured to use `graph`
-(Graph API, default) or `smtp` (Redmine SMTP). With SMTP, inline images are
-embedded as Base64 data URIs in the HTML body.
+**Transport choice**: Each mailbox picks one of three reply transports:
+
+| Value | Sends through | Inline images |
+|-------|---------------|---------------|
+| `provider` (default for new mailboxes) | the mailbox's own backend — Graph API, or its own SMTP server | CID |
+| `graph` | Microsoft Graph, using the central app registration | CID |
+| `smtp` | Redmine's global SMTP settings from `configuration.yml` | Base64 data URIs |
+
+The autoresponder uses the same transport as replies.
 
 Stored recipient addresses are shown as badges in the journal headers after
 page load (client-side, by comparing `HelpdeskMessage.sent_at` with
@@ -368,9 +491,10 @@ Under *Administration → Plugins → Redmine expert Helpdesk* — or, as a shor
 
 | Setting | Description |
 |---------|-------------|
-| Tenant ID | Azure directory ID (GUID) |
-| Client ID | App registration ID (GUID) |
-| Client Secret | App registration secret |
+| Tenant ID | Azure directory ID (GUID) — Graph mailboxes |
+| Client ID | App registration ID (GUID) — Graph mailboxes |
+| Client Secret | App registration secret — Graph mailboxes |
+| Default credentials for IMAP/SMTP mailboxes | Preset, flow, tenant/client/secret, authorization and token URL, scope, and default IMAP/SMTP hosts, ports and encryption. Used by every mailbox whose *Credentials* is set to *From plugin settings* — see [Mail providers](#mail-providers). |
 | API Key (mail fetch) | Secures the global fetch endpoint |
 | API Key (SLA check) | Secures the `helpdesk/sla_check` endpoint |
 | Entries per page | Default page size of the customer list (default: 25) |

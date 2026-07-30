@@ -35,6 +35,83 @@ de:
   text_helpdesk_failed_folder_info: Mails, bei deren Verarbeitung ein Fehler aufgetreten ist, werden hier abgelegt. Leer = gleicher Ordner wie "Verarbeitet".
   text_helpdesk_suppress_notifications_info: Verhindert doppelte Mails an Kunden, wenn der Autoresponder aktiv ist.
 
+  # --- Mail-Provider (IMAP/SMTP) --------------------------------------------
+  field_helpdesk_provider: Mail-Anbieter
+  label_helpdesk_provider_graph: "Microsoft 365 (Graph-API)"
+  label_helpdesk_provider_imap: "IMAP / SMTP"
+  text_helpdesk_provider_info: "Graph nutzt die zentrale Azure-App-Registrierung. IMAP/SMTP funktioniert mit Google Workspace, Exchange On-Premises, selbst gehosteten Servern (Dovecot, Zimbra) und beliebigen Hostern."
+  field_helpdesk_credentials_source: Zugangsdaten
+  label_helpdesk_credentials_global: Aus den Plugin-Einstellungen
+  label_helpdesk_credentials_mailbox: Individuell für dieses Postfach
+  text_helpdesk_credentials_source_info: "Ein Postfach nutzt entweder die globalen Zugangsdaten oder seine eigenen – leere Felder werden nie aus der jeweils anderen Quelle ergänzt."
+  field_helpdesk_auth_method: Anmeldung
+  label_helpdesk_auth_oauth2: "OAuth2 (empfohlen)"
+  label_helpdesk_auth_password: Benutzername und Passwort
+  text_helpdesk_auth_password_info: "Nur für Server ohne OAuth2. Microsoft 365 akzeptiert keine Basisauthentifizierung mehr."
+  field_helpdesk_oauth_grant: OAuth2-Verfahren
+  label_helpdesk_grant_client_credentials: "Nur Anwendung (ohne Zustimmung)"
+  label_helpdesk_grant_authorization_code: "Einmalige Zustimmung (Refresh-Token)"
+  label_helpdesk_grant_jwt_bearer: "Dienstkonto (signierte Assertion)"
+  field_helpdesk_oauth_preset: Vorlage
+  label_helpdesk_preset_microsoft: Microsoft 365
+  label_helpdesk_preset_google: Google Workspace / Gmail
+  label_helpdesk_preset_generic: Andere / selbst gehostet
+  field_helpdesk_oauth_tenant_id: Tenant-ID
+  field_helpdesk_oauth_client_id: Client-ID
+  field_helpdesk_oauth_client_secret: Client-Secret
+  field_helpdesk_oauth_authorize_url: Autorisierungs-URL
+  field_helpdesk_oauth_token_url: Token-URL
+  field_helpdesk_oauth_scope: Scope
+  field_helpdesk_oauth_sa_email: Dienstkonto-Adresse
+  field_helpdesk_oauth_sa_key: Dienstkonto-Schlüssel (PEM)
+  label_helpdesk_imap_settings: "Posteingang (IMAP)"
+  label_helpdesk_smtp_settings: "Postausgang (SMTP)"
+  label_helpdesk_oauth_settings: Anmeldung
+  field_helpdesk_imap_host: IMAP-Server
+  field_helpdesk_imap_port: IMAP-Port
+  field_helpdesk_imap_security: IMAP-Verschlüsselung
+  field_helpdesk_imap_username: IMAP-Benutzer
+  field_helpdesk_imap_verify_ssl: IMAP-Zertifikat prüfen
+  field_helpdesk_imap_unseen_only: Nur ungelesene Mails abrufen
+  field_helpdesk_imap_timeout: Zeitlimit (Sekunden)
+  field_helpdesk_smtp_host: SMTP-Server
+  field_helpdesk_smtp_port: SMTP-Port
+  field_helpdesk_smtp_security: SMTP-Verschlüsselung
+  field_helpdesk_smtp_username: SMTP-Benutzer
+  field_helpdesk_smtp_verify_ssl: SMTP-Zertifikat prüfen
+  field_helpdesk_mail_password: Passwort
+  label_helpdesk_security_ssl: "SSL/TLS"
+  label_helpdesk_security_starttls: STARTTLS
+  label_helpdesk_security_plain: "Unverschlüsselt (nicht empfohlen)"
+  text_helpdesk_imap_username_info: "Leer = es wird die Postfach-Adresse verwendet."
+  text_helpdesk_imap_unseen_only_info: "Für Umgebungen, in denen verarbeitete Mails nicht in einen anderen Ordner verschoben werden können."
+  text_helpdesk_verify_ssl_info: "Nur bei selbst signierten Zertifikaten in einem vertrauenswürdigen Netz deaktivieren."
+  text_helpdesk_secret_blank_info: "Leer lassen, um den gespeicherten Wert zu behalten; \"-\" eingeben, um ihn zu löschen."
+  text_helpdesk_gmail_labels_info: "Gmail bildet Ordner als Labels ab; das Verschieben einer Mail ändert ihr Label."
+  text_helpdesk_expunge_fallback_warning: "Server ohne MOVE- und UIDPLUS-Unterstützung leeren beim Verschieben den gesamten Quellordner und entfernen dabei auch andere bereits als gelöscht markierte Mails."
+  label_helpdesk_oauth_connect: Verbinden
+  label_helpdesk_oauth_reconnect: Neu verbinden
+  label_helpdesk_oauth_connected_since: "Verbunden seit %{date}"
+  label_helpdesk_oauth_not_connected: Noch nicht verbunden
+  label_helpdesk_oauth_callback_url: Callback-URL
+  text_helpdesk_oauth_callback_url_info: "Genau diese URL beim Identity Provider als Redirect-URI hinterlegen."
+  label_helpdesk_test_connection: Verbindung testen
+  label_helpdesk_default_mail_credentials: "Standard-Zugangsdaten für IMAP/SMTP-Postfächer"
+  label_helpdesk_transport_provider: "Backend des Postfachs (Graph bzw. eigener SMTP-Server)"
+  notice_helpdesk_connection_ok: Verbindung erfolgreich.
+  notice_helpdesk_oauth_connected: Postfach erfolgreich verbunden.
+  error_helpdesk_connection_failed: "Verbindung fehlgeschlagen: %{message}"
+  error_helpdesk_imap_auth_failed: IMAP-Anmeldung fehlgeschlagen
+  error_helpdesk_smtp_auth_failed: SMTP-Anmeldung fehlgeschlagen
+  error_helpdesk_oauth_state_invalid: Ungültige oder abgelaufene Autorisierungsanfrage.
+  error_helpdesk_oauth_reauth_required: Der Zugriff wurde entzogen – bitte das Postfach erneut verbinden.
+  error_helpdesk_oauth_token_failed: OAuth2-Token konnte nicht abgerufen werden
+  error_helpdesk_oauth_no_refresh_token: "Der Identity Provider hat kein Refresh-Token geliefert. Scope prüfen (Google benötigt access_type=offline)."
+  error_helpdesk_secret_undecryptable: "Gespeichertes Geheimnis kann nicht entschlüsselt werden – vermutlich hat sich secret_key_base geändert. Bitte neu eingeben."
+  error_helpdesk_provider_not_configured: Der Mail-Anbieter ist nicht vollständig konfiguriert.
+  error_helpdesk_missing_parameters: Parameter fehlen.
+  error_helpdesk_access_denied: Zugriff verweigert.
+
   label_helpdesk_reopen: Ticket-Wiedereroeffnung
   field_helpdesk_reopen_status: Wiedereroeffnungs-Status
   text_helpdesk_reopen_status_info: Status, auf den ein geschlossenes Ticket gesetzt wird, wenn eine neue Kundenantwort eingeht. Leer = Ticket bleibt geschlossen.
@@ -277,7 +354,7 @@ de:
   field_helpdesk_reply_transport: "Versandweg"
   label_helpdesk_transport_graph: "Microsoft Graph API (Exchange)"
   label_helpdesk_transport_smtp: "SMTP (Redmine-Standard)"
-  text_helpdesk_reply_transport_info: "Graph API benötigt eine konfigurierte Azure-App-Registrierung. SMTP verwendet die in der Redmine-Konfiguration hinterlegten SMTP-Einstellungen."
+  text_helpdesk_reply_transport_info: "Backend des Postfachs nutzt das, was für das Postfach selbst konfiguriert ist. Graph API benötigt eine konfigurierte Azure-App-Registrierung. SMTP verwendet die in der Redmine-Konfiguration hinterlegten SMTP-Einstellungen."
   button_helpdesk_send_reply: Antwort senden
   label_helpdesk_reply_placeholder: Antworttext hier eingeben …
   notice_helpdesk_reply_sent: "Antwort an %{email} gesendet."
