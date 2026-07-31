@@ -43,6 +43,15 @@
   Präfix wird unverändert zurückgegeben, sodass bestehender Klartext lesbar bleibt und keine
   Datenmigration nötig ist. Achtung: Ein Wechsel von `secret_key_base` macht gespeicherte
   Geheimnisse unwiederbringlich — sie müssen dann neu eingegeben werden.
+- **Ausgehende Mails werden als Kopie im Gesendet-Ordner des Postfachs abgelegt.** Graphs
+  `sendMail` erledigt das von selbst, reines SMTP nicht — ein IMAP-Helpdesk-Postfach zeigte
+  deshalb nur die eingehende Hälfte jeder Unterhaltung. `ImapClient#append_sent` legt die
+  Nachricht jetzt als gelesen ab, unabhängig vom Versandweg — auch beim globalen Redmine-Relay,
+  das nirgends etwas ablegt. Der Ordner stammt aus dem `\Sent`-Kennzeichen des Servers nach
+  RFC 6154, dann aus der neuen Spalte `sent_folder`, dann aus der Vorlage (`Sent Items` /
+  `[Gmail]/Sent Mail` / `Sent`); „Verbindung testen“ nennt den erkannten Ordner. **Ein
+  fehlgeschlagenes APPEND wird protokolliert und verschluckt** — der Kunde hat die Mail zu diesem
+  Zeitpunkt bereits, und ein Ablageproblem darf nie wie ein Versandfehler aussehen.
 
 ### Changed
 - **`MailProcessor` ist jetzt providerneutral.** Er spricht mit einem `MailProvider` statt mit dem
@@ -135,6 +144,20 @@
   `MailProcessor#deliver_autoresponder` folgt jetzt derselben Dreiteilung wie Antworten und
   Erstmails, und `graph` meint auch dann die zentrale Registrierung, wenn die Mail über IMAP kam.
 
+- **Ein IMAP-Postfach ließ sich auf den Versand über Microsoft Graph stellen.** Die Auswahl bot
+  jedem Postfach alle drei Werte an, sodass ein Gmail- oder Dovecot-Postfach auf
+  `POST /users/{adresse}/sendMail` gegen die zentrale Azure-Registrierung zeigen konnte — ein 404,
+  der erst beim Versand auffiel, während die Antwort an den Kunden verloren war. `graph` wird
+  jetzt nur noch für ein Postfach angeboten und akzeptiert, das Microsoft auch hostet: ein
+  `graph`-Postfach oder ein `imap`-Postfach mit der Microsoft-Vorlage (das legitime Szenario
+  „Microsoft 365 über IMAP“). Das Formular blendet die Option aus, und `HelpdeskMailbox` prüft
+  dieselbe Regel, sodass auch die API sie nicht speichern kann.
+- **Jeder Ausgangsweg entschied für sich, welcher Provider versendet.** Der Replies-Controller,
+  `InitMailer` und `MailProcessor` hielten je eine eigene Kopie dieser Verzweigung, und jede war
+  mindestens einmal falsch — zuletzt der Autoresponder. Es gibt jetzt genau ein
+  `MailProvider.outgoing_for(mailbox)`, und `effective_reply_transport` heißt `outgoing_route`,
+  denn es steuert Antworten, Erstmails und den Autoresponder gleichermaßen, nicht nur Antworten.
+
 ### Changed (Konfigurationsoberfläche)
 - **Die Einstellungsseite zeigt nur noch die Felder, die der gewählte Anbietertyp wirklich
   braucht.** Die Vorlage steht an erster Stelle und steuert den Rest: die Tenant-ID erscheint nur
@@ -148,7 +171,13 @@
   URLs und Scope gelten dieselben Vorlagenregeln wie oben. Der Knopf „Verbinden“ bleibt in beiden
   Fällen sichtbar — das Refresh-Token gehört zum Postfach, nicht zur App-Registrierung.
 
+- **„Verbindung testen“ prüft den Weg, über den das Postfach tatsächlich versendet**, statt immer
+  SMTP zu prüfen: SMTP beim eigenen Server, Graph beim Graph-Weg und nichts beim Redmine-Relay,
+  dessen Zustand Redmines eigene Sache ist.
+
 ### Migration
+- `036_add_sent_folder_to_helpdesk_mailboxes.rb` — `sent_folder`. Leer bedeutet „den Server
+  fragen“, es ist also keine Konfiguration nötig.
 - `034_add_provider_to_helpdesk_mailboxes.rb` — `provider`, `credentials_source`, `imap_host`,
   `imap_port`, `imap_security`, `imap_username`, `imap_verify_ssl`, `imap_unseen_only`,
   `imap_timeout`, `smtp_host`, `smtp_port`, `smtp_security`, `smtp_username`, `smtp_verify_ssl`,

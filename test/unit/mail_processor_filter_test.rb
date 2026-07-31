@@ -31,6 +31,10 @@ class MailProcessorFilterTest < ActiveSupport::TestCase
     def send_mail_mime(mime)
       @calls << [:send_mail_mime, mime]
     end
+
+    def archive_sent(mime)
+      @calls << [:archive_sent, mime]
+    end
   end
 
   AUTO_REPLY_MIME = <<~MIME.freeze
@@ -183,10 +187,12 @@ class MailProcessorFilterTest < ActiveSupport::TestCase
   end
 
   # 'graph' means the central registration even when the mail arrived over IMAP,
-  # so the fetch provider must not be reused.
+  # so the fetch provider must not be reused. Only legal for a Microsoft-hosted
+  # mailbox, which is the configuration this asserts.
   def test_autoresponder_uses_graph_when_the_transport_says_so
     provider = FakeProvider.new
-    mailbox = HelpdeskMailbox.new(:provider => 'imap', :reply_transport => 'graph')
+    mailbox = HelpdeskMailbox.new(:provider => 'imap', :oauth_preset => 'microsoft',
+                                  :reply_transport => 'graph')
     processor = RedmineExpertHelpdesk::MailProcessor.new(mailbox, provider)
 
     assert_kind_of RedmineExpertHelpdesk::GraphProvider, processor.send(:autoresponder_provider)
@@ -207,5 +213,7 @@ class MailProcessorFilterTest < ActiveSupport::TestCase
 
     assert_equal 1, delivered.size
     assert provider.calls.none? { |c| c.first == :send_mail_mime }
+    # Redmine's relay files nothing in the mailbox, so we archive it ourselves.
+    assert provider.calls.any? { |c| c.first == :archive_sent }
   end
 end

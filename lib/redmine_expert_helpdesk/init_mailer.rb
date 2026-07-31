@@ -33,7 +33,7 @@ module RedmineExpertHelpdesk
         body_html  = rendered_body(contact)
 
         sent_filenames =
-          if @mailbox.effective_reply_transport == 'smtp'
+          if @mailbox.outgoing_route == 'smtp'
             send_smtp(subject, body_html, message_id)
           else
             send_provider_mime(subject, body_html, message_id)
@@ -160,6 +160,8 @@ module RedmineExpertHelpdesk
       mail_obj.delivery_method(ActionMailer::Base.delivery_method,
                                ActionMailer::Base.smtp_settings || {})
       mail_obj.deliver!
+      # Redmine's relay files nothing in the mailbox itself. No-op for Graph.
+      MailProvider.for(@mailbox).archive_sent(mail_obj.to_s)
 
       # Versendete Dateien (regulaere Anhaenge + inline eingebettete Bilder) fuer die
       # Anzeige im Kundenbereich zurueckgeben.
@@ -175,19 +177,11 @@ module RedmineExpertHelpdesk
       cid_map, html_with_cid = build_cid_map(body_html, inline_atts)
       mime_msg = build_cid_mime(@mailbox.mailbox_address, @to_list.join(', '),
                                 subject, html_with_cid, regular_atts, cid_map, message_id)
-      reply_provider.send_mail_mime(mime_msg)
+      MailProvider.outgoing_for(@mailbox).send_mail_mime(mime_msg)
 
       # Versendete Dateien (regulaere Anhaenge + inline eingebettete Bilder) fuer die
       # Anzeige im Kundenbereich zurueckgeben.
       regular_atts.map(&:filename) + cid_map.keys.map(&:filename)
-    end
-
-    def reply_provider
-      if @mailbox.effective_reply_transport == 'mailbox_smtp'
-        MailProvider.for(@mailbox)
-      else
-        GraphProvider.new(@mailbox)
-      end
     end
 
     # Ersetzt src="filename" durch data:-URI fuer SMTP-Transport.

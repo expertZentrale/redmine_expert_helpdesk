@@ -402,11 +402,21 @@ not as attachments).
 
 **Transport choice**: Each mailbox picks one of three reply transports:
 
-| Value | Sends through | Inline images |
-|-------|---------------|---------------|
-| `provider` (default for new mailboxes) | the mailbox's own backend — Graph API, or its own SMTP server | CID |
-| `graph` | Microsoft Graph, using the central app registration | CID |
-| `smtp` | Redmine's global SMTP settings from `configuration.yml` | Base64 data URIs |
+| Value | Sends through | Inline images | Files a Sent copy |
+|-------|---------------|---------------|-------------------|
+| `provider` (default for new mailboxes) | the mailbox's own backend — Graph API, or its own SMTP server | CID | yes |
+| `graph` | Microsoft Graph, using the central app registration | CID | yes |
+| `smtp` | Redmine's global SMTP settings from `configuration.yml` | Base64 data URIs | IMAP mailboxes only |
+
+`graph` is offered **only for a mailbox Microsoft actually hosts** — a Graph mailbox, or an IMAP
+mailbox on the Microsoft preset ("Microsoft 365 over IMAP"). Pointing a Gmail or Dovecot mailbox
+at Graph would send `sendMail` for an address that does not exist in the tenant, so the form
+hides the option and the model refuses it.
+
+Outgoing mail is filed in the mailbox's **Sent folder** so the mailbox holds both halves of the
+conversation. Graph does that itself; for IMAP the plugin appends the message, taking the folder
+from the server's RFC 6154 `\Sent` flag, then the mailbox's *Sent folder* field, then the preset.
+If the copy cannot be filed the mail is still sent — only a warning is logged.
 
 `smtp` is the option that needs **no mail credentials on the mailbox at all** — useful when
 Redmine already has a working relay and the mailbox only has to *receive*. An IMAP mailbox on

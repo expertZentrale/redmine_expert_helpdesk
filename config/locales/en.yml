@@ -25,6 +25,7 @@ en:
   field_helpdesk_processed_folder: Processed folder
   field_helpdesk_skipped_folder: Skipped folder
   field_helpdesk_failed_folder: Failed folder
+  field_helpdesk_sent_folder: Sent folder
   field_helpdesk_enabled: Enabled
   field_helpdesk_last_fetched_at: Last fetch
   field_helpdesk_last_error: Last error
@@ -361,6 +362,11 @@ en:
   field_helpdesk_reply_transport: "Send via"
   label_helpdesk_transport_graph: "Microsoft Graph API (Exchange)"
   label_helpdesk_transport_smtp: "SMTP (Redmine default)"
+  label_helpdesk_transport_mailbox_smtp: "The mailbox itself (its own SMTP server)"
+  label_helpdesk_transport_mailbox_graph: "The mailbox itself (Graph API)"
+  text_helpdesk_sent_folder_info: "Where a copy of outgoing mail is filed, so the mailbox shows both halves of the conversation. Leave empty to let the server name its own Sent folder."
+  error_helpdesk_transport_not_available: "is not available for this mailbox - Graph can only send for a mailbox hosted in Microsoft 365"
+  warning_helpdesk_sent_append_failed: "The mail was sent, but no copy could be filed in the Sent folder: %{message}"
   text_helpdesk_reply_transport_info: "Mailbox backend uses whatever the mailbox itself is configured for. Graph API requires a configured Azure app registration. SMTP uses the SMTP settings from the Redmine configuration and needs no mail credentials on the mailbox at all - note that inline images are embedded as data URIs there instead of CID attachments. Replies, initial mails and the autoresponder all follow this setting."
   button_helpdesk_send_reply: Send reply
   label_helpdesk_reply_placeholder: Enter reply text here …

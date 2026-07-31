@@ -16,6 +16,7 @@
 #   create_folder(name)          -> String
 #   find_or_create_folder(name)  -> String (Graph: folder id, IMAP: encoded name)
 #   send_mail_mime(mime)         -> nil
+#   archive_sent(mime)           -> nil   (file a copy in the Sent folder)
 #   test_connection              -> {:ok, :message, :folders}, never raises
 #   with_session { |p| ... }     -> block value; opens one connection for IMAP
 #   close                        -> nil
@@ -54,6 +55,18 @@ module RedmineExpertHelpdesk
         case mailbox.provider
         when 'imap' then ImapProvider.new(mailbox)
         else             GraphProvider.new(mailbox)
+        end
+      end
+
+      # The receiving backend is not automatically the sender: a mailbox can send
+      # through its own server, through the central Graph registration, or (route
+      # 'smtp') through no provider at all. Anything that sends must ask for this
+      # one rather than #for - three call sites each grew their own copy of this
+      # branch, and each of them was wrong at least once.
+      def outgoing_for(mailbox)
+        case mailbox.outgoing_route
+        when 'mailbox_smtp' then self.for(mailbox)
+        else                     GraphProvider.new(mailbox)
         end
       end
 

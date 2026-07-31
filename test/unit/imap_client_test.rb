@@ -67,11 +67,18 @@ class ImapClientTest < ActiveSupport::TestCase
       @folders << name
     end
 
+    # Folders whose name maps to a list of RFC 6154 special-use attributes.
+    attr_accessor :special_use
+
     def list(refname, pattern)
       record(:list, refname, pattern)
       return [MailboxList.new([], @delim, '')] if pattern.empty?
 
-      @folders.map { |name| MailboxList.new([], @delim, name) }
+      @folders.map { |name| MailboxList.new(Array((@special_use || {})[name]), @delim, name) }
+    end
+
+    def append(name, message, flags = nil, date = nil)
+      record(:append, name, message, flags, date)
     end
 
     def logout; end
@@ -200,6 +207,50 @@ class ImapClientTest < ActiveSupport::TestCase
     @client.select('INBOX')
     @client.select('INBOX')
     assert_equal 1, @fake.commands.count { |c| c.first == :select }
+  end
+
+  # --- Sent copy -------------------------------------------------------------
+  # Graph files the sent copy itself; SMTP does not, so an IMAP mailbox would
+  # show only the inbound half of every conversation.
+
+  # Asking the server beats guessing a name that differs per provider and per
+  # UI language.
+  def test_sent_folder_prefers_the_special_use_flag
+    @mailbox.sent_folder = 'Konfiguriert'
+    @fake.folders << 'Gesendete Elemente'
+    @fake.special_use = { 'Gesendete Elemente' => [:Sent] }
+
+    assert_equal 'Gesendete Elemente', @client.sent_folder_name
+  end
+
+  def test_sent_folder_falls_back_to_the_configured_name
+    @mailbox.sent_folder = 'Konfiguriert'
+    assert_equal 'Konfiguriert', @client.sent_folder_name
+  end
+
+  def test_sent_folder_falls_back_to_the_preset
+    @mailbox.oauth_preset = 'google'
+    assert_equal '[Gmail]/Sent Mail', @client.sent_folder_name
+  end
+
+  def test_append_sent_files_the_message_as_read
+    @mailbox.sent_folder = 'Gesendet'
+    @fake.folders << 'Gesendet'
+    @client.append_sent('RAW-MIME')
+
+    appended = @fake.commands.find { |c| c.first == :append }
+    assert appended, 'expected an APPEND'
+    assert_equal 'Gesendet', appended[1]
+    assert_equal 'RAW-MIME', appended[2]
+    assert_equal [:Seen], appended[3]
+  end
+
+  def test_append_sent_encodes_the_folder_name
+    @mailbox.sent_folder = 'Gelöschte Elemente'
+    @fake.folders << 'Gel&APY-schte Elemente'
+    @client.append_sent('RAW-MIME')
+
+    assert_equal 'Gel&APY-schte Elemente', @fake.commands.find { |c| c.first == :append }[1]
   end
 
   private

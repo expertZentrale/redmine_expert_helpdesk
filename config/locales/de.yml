@@ -25,6 +25,7 @@ de:
   field_helpdesk_processed_folder: Zielordner (verarbeitet)
   field_helpdesk_skipped_folder: Zielordner (übersprungen)
   field_helpdesk_failed_folder: Zielordner (Fehler)
+  field_helpdesk_sent_folder: Ordner für gesendete Mails
   field_helpdesk_enabled: Aktiv
   field_helpdesk_last_fetched_at: Letzter Abruf
   field_helpdesk_last_error: Letzter Fehler
@@ -361,6 +362,11 @@ de:
   field_helpdesk_reply_transport: "Versandweg"
   label_helpdesk_transport_graph: "Microsoft Graph API (Exchange)"
   label_helpdesk_transport_smtp: "SMTP (Redmine-Standard)"
+  label_helpdesk_transport_mailbox_smtp: "Das Postfach selbst (eigener SMTP-Server)"
+  label_helpdesk_transport_mailbox_graph: "Das Postfach selbst (Graph-API)"
+  text_helpdesk_sent_folder_info: "Hier wird eine Kopie ausgehender Mails abgelegt, damit das Postfach beide Hälften der Unterhaltung zeigt. Leer lassen, damit der Server seinen eigenen Gesendet-Ordner benennt."
+  error_helpdesk_transport_not_available: "ist für dieses Postfach nicht verfügbar — Graph kann nur für ein in Microsoft 365 gehostetes Postfach versenden"
+  warning_helpdesk_sent_append_failed: "Die Mail wurde versendet, es konnte aber keine Kopie im Gesendet-Ordner abgelegt werden: %{message}"
   text_helpdesk_reply_transport_info: "Backend des Postfachs nutzt das, was für das Postfach selbst konfiguriert ist. Graph API benötigt eine konfigurierte Azure-App-Registrierung. SMTP verwendet die in der Redmine-Konfiguration hinterlegten SMTP-Einstellungen und benötigt am Postfach überhaupt keine Mail-Zugangsdaten — dort werden Inline-Bilder allerdings als data-URI eingebettet statt als CID-Anhang. Antworten, Erstmails und Autoresponder folgen alle dieser Einstellung."
   button_helpdesk_send_reply: Antwort senden
   label_helpdesk_reply_placeholder: Antworttext hier eingeben …

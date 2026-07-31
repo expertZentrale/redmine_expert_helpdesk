@@ -42,6 +42,14 @@
   Redmine 5.1). Values carry an `enc:v1:` prefix; anything without it is returned unchanged, so
   legacy plaintext stays readable and no data migration is forced. Note that rotating
   `secret_key_base` makes stored secrets unrecoverable — they then have to be re-entered.
+- **A copy of outgoing mail is filed in the mailbox's Sent folder.** Graph's `sendMail` does this
+  by itself; plain SMTP does not, so an IMAP helpdesk mailbox showed the inbound half of every
+  conversation and nothing else. `ImapClient#append_sent` now files the message as read, whichever
+  route sent it — including Redmine's global relay, which files nothing anywhere. The folder is
+  taken from the server's own RFC 6154 `\Sent` flag, then the new `sent_folder` column, then the
+  preset (`Sent Items` / `[Gmail]/Sent Mail` / `Sent`); "Test connection" reports which one it
+  resolved. **A failed APPEND is logged and swallowed** — by that point the customer already has
+  the mail, and an archiving problem must never look like a send failure.
 
 ### Changed
 - **`MailProcessor` is now provider-neutral.** It talks to a `MailProvider` instead of `GraphClient`
@@ -124,6 +132,20 @@
   three-way rule as replies and initial mails, and `graph` correctly means the central
   registration even when the mail arrived over IMAP.
 
+- **An IMAP mailbox could be configured to send through Microsoft Graph.** The transport select
+  offered all three values to every mailbox, so a Gmail or Dovecot mailbox could be pointed at
+  `POST /users/{address}/sendMail` against the central Azure registration — a 404 discovered at
+  send time, with the customer's reply lost. `graph` is now offered and accepted only for a
+  mailbox Microsoft actually hosts: a `graph` mailbox, or an `imap` mailbox on the Microsoft
+  preset (the legitimate "Microsoft 365 over IMAP" setup). The form hides the option and
+  `HelpdeskMailbox` validates the same rule, so the API cannot store it either.
+- **Every outgoing path decided for itself which provider sends.** The replies controller,
+  `InitMailer` and `MailProcessor` each carried their own copy of that branch, and each was wrong
+  at least once — most recently the autoresponder. There is now one
+  `MailProvider.outgoing_for(mailbox)`, and `effective_reply_transport` is renamed to
+  `outgoing_route`, since it governs replies, initial mails and the autoresponder alike rather
+  than replies only.
+
 ### Changed (configuration UI)
 - **The settings page now shows only the fields the selected provider type actually needs.** The
   preset select comes first and governs the rest: the tenant ID appears for Microsoft only, the
@@ -136,7 +158,13 @@
   tenant ID and the URL/scope trio. The "Connect" button stays visible either way — the refresh
   token belongs to the mailbox, not to the application registration.
 
+- **"Test connection" probes the route the mailbox actually sends over** instead of always
+  probing SMTP: SMTP for its own server, Graph for the Graph route, and nothing for the Redmine
+  relay, whose health is Redmine's own business.
+
 ### Migration
+- `036_add_sent_folder_to_helpdesk_mailboxes.rb` — `sent_folder`. Blank means "ask the server",
+  so no configuration is required.
 - `034_add_provider_to_helpdesk_mailboxes.rb` — `provider`, `credentials_source`, `imap_host`,
   `imap_port`, `imap_security`, `imap_username`, `imap_verify_ssl`, `imap_unseen_only`,
   `imap_timeout`, `smtp_host`, `smtp_port`, `smtp_security`, `smtp_username`, `smtp_verify_ssl`,

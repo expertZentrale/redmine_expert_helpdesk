@@ -52,6 +52,14 @@ module RedmineExpertHelpdesk
       nil
     end
 
+    # Graph's sendMail already saves to Sent Items, so there is nothing to file.
+    # (A Graph mailbox routed over Redmine's relay does end up without a copy -
+    # filing one would need a second Graph write path for a combination that
+    # exists precisely to avoid Graph.)
+    def archive_sent(_mime_string)
+      nil
+    end
+
     def test_connection
       unless configured?
         return { :ok => false, :message => l(:error_helpdesk_provider_not_configured), :folders => [] }

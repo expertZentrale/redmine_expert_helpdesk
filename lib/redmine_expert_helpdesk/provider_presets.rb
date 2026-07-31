@@ -14,6 +14,7 @@ module RedmineExpertHelpdesk
         :smtp_host     => 'smtp.office365.com',
         :smtp_port     => 587,
         :smtp_security => 'starttls',
+        :sent_folder   => 'Sent Items',
         :authorize_url => 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize',
         :token_url     => 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token',
         :scopes        => {
@@ -31,6 +32,7 @@ module RedmineExpertHelpdesk
         :smtp_host     => 'smtp.gmail.com',
         :smtp_port     => 587,
         :smtp_security => 'starttls',
+        :sent_folder   => '[Gmail]/Sent Mail',
         :authorize_url => 'https://accounts.google.com/o/oauth2/v2/auth',
         :token_url     => 'https://oauth2.googleapis.com/token',
         :scopes        => {
@@ -45,6 +47,7 @@ module RedmineExpertHelpdesk
         :imap_security => 'ssl',
         :smtp_port     => 587,
         :smtp_security => 'starttls',
+        :sent_folder   => 'Sent',
         :scopes        => {}
       }
     }.freeze
@@ -66,6 +69,12 @@ module RedmineExpertHelpdesk
         return nil if raw.blank?
 
         raw.sub('{tenant}', tenant_id.presence || 'common')
+      end
+
+      # Last-resort name for the Sent folder; only used when the server does not
+      # flag its own via RFC 6154 SPECIAL-USE and the mailbox names none.
+      def sent_folder(preset_name)
+        self[preset_name][:sent_folder]
       end
 
       def scope(preset_name, grant)

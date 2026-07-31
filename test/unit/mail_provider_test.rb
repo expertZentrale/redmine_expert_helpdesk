@@ -13,6 +13,22 @@ class MailProviderTest < ActiveSupport::TestCase
     assert_kind_of RedmineExpertHelpdesk::ImapProvider, MailProvider.for(mailbox)
   end
 
+  # --- Outgoing factory ------------------------------------------------------
+  # The backend a mailbox receives on is not automatically the one it sends on.
+
+  def test_outgoing_factory_follows_the_route_not_the_provider
+    imap_attrs = { :provider => 'imap', :imap_host => 'imap.example.com',
+                   :smtp_host => 'smtp.example.com' }
+
+    own_smtp = HelpdeskMailbox.new(imap_attrs.merge(:reply_transport => 'provider'))
+    assert_kind_of RedmineExpertHelpdesk::ImapProvider, MailProvider.outgoing_for(own_smtp)
+
+    # Microsoft-hosted mailbox fetched over IMAP but sending through Graph.
+    via_graph = HelpdeskMailbox.new(imap_attrs.merge(:oauth_preset    => 'microsoft',
+                                                     :reply_transport => 'graph'))
+    assert_kind_of RedmineExpertHelpdesk::GraphProvider, MailProvider.outgoing_for(via_graph)
+  end
+
   # Callers rescue ProviderError; Graph failures have to be caught by it.
   def test_graph_error_is_a_provider_error
     assert RedmineExpertHelpdesk::GraphClient::GraphError < MailProvider::ProviderError

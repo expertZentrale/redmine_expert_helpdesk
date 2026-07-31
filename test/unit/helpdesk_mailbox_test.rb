@@ -134,12 +134,53 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
     end
   end
 
-  def test_effective_reply_transport
-    assert_equal 'graph', HelpdeskMailbox.new(:reply_transport => 'provider').effective_reply_transport
+  # --- Outgoing route --------------------------------------------------------
+  # Outgoing mail has to leave through the account that owns mailbox_address,
+  # otherwise the thread with the customer comes apart.
+
+  def test_outgoing_route_for_every_provider_and_transport
+    assert_equal 'graph', HelpdeskMailbox.new(:reply_transport => 'provider').outgoing_route
     assert_equal 'mailbox_smtp',
-                 HelpdeskMailbox.new(:provider => 'imap', :reply_transport => 'provider').effective_reply_transport
-    assert_equal 'smtp', HelpdeskMailbox.new(:reply_transport => 'smtp').effective_reply_transport
-    assert_equal 'graph', HelpdeskMailbox.new(:reply_transport => 'graph').effective_reply_transport
+                 HelpdeskMailbox.new(:provider => 'imap', :reply_transport => 'provider').outgoing_route
+    assert_equal 'smtp', HelpdeskMailbox.new(:reply_transport => 'smtp').outgoing_route
+    assert_equal 'smtp',
+                 HelpdeskMailbox.new(:provider => 'imap', :reply_transport => 'smtp').outgoing_route
+    assert_equal 'graph', HelpdeskMailbox.new(:reply_transport => 'graph').outgoing_route
+    assert_equal 'graph',
+                 HelpdeskMailbox.new(:provider => 'imap', :reply_transport => 'graph').outgoing_route
+  end
+
+  def test_graph_transport_is_unavailable_for_a_non_microsoft_mailbox
+    mailbox = imap_mailbox(:oauth_preset => 'google', :reply_transport => 'graph')
+
+    assert_not mailbox.valid?
+    assert_includes mailbox.errors.attribute_names, :reply_transport
+    assert_not_includes mailbox.available_reply_transports, 'graph'
+  end
+
+  # "Microsoft 365 over IMAP" is a real setup, and there Graph is a legitimate
+  # sender for a mailbox fetched over IMAP.
+  def test_graph_transport_is_available_for_microsoft_over_imap
+    mailbox = imap_mailbox(:oauth_preset => 'microsoft', :reply_transport => 'graph')
+
+    assert_includes mailbox.available_reply_transports, 'graph'
+    assert mailbox.valid?, mailbox.errors.full_messages.join(', ')
+  end
+
+  # Rows written before this rule existed store 'graph' on a Graph mailbox.
+  def test_existing_graph_mailboxes_keep_validating
+    mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com', :reply_transport => 'graph')
+
+    assert mailbox.microsoft_hosted?
+    assert_equal %w[provider graph smtp], mailbox.available_reply_transports
+    assert mailbox.valid?, mailbox.errors.full_messages.join(', ')
+  end
+
+  # An IMAP mailbox on the Redmine relay needs no SMTP server of its own.
+  def test_relay_transport_does_not_require_an_smtp_host
+    mailbox = imap_mailbox(:oauth_preset => 'generic', :reply_transport => 'smtp', :smtp_host => nil)
+
+    assert mailbox.valid?, mailbox.errors.full_messages.join(', ')
   end
 
   # --- Secrets ---------------------------------------------------------------
@@ -187,6 +228,13 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
   def set_global_footer(value)
     Setting.plugin_redmine_expert_helpdesk =
       (Setting.plugin_redmine_expert_helpdesk || {}).merge('global_footer' => value)
+  end
+
+  def imap_mailbox(attrs = {})
+    HelpdeskMailbox.new({ :mailbox_address => 'hd@example.com',
+                          :provider        => 'imap',
+                          :imap_host       => 'imap.example.com',
+                          :smtp_host       => 'smtp.example.com' }.merge(attrs))
   end
 
   def with_settings_hash(overrides)

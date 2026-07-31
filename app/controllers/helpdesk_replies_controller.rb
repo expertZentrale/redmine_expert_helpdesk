@@ -62,7 +62,7 @@ class HelpdeskRepliesController < ApplicationController
 
     message_id = nil
 
-    if mailbox.effective_reply_transport == 'smtp'
+    if mailbox.outgoing_route == 'smtp'
       processed_html, embedded_atts = embed_inline_images(body_html, inline_atts)
       message_id = send_reply_smtp(mailbox, reply_to, reply_cc, reply_bcc, subject, processed_html,
                                    valid_att_ids, embedded_atts, sent_filenames)
@@ -77,7 +77,7 @@ class HelpdeskRepliesController < ApplicationController
       cid_map, html_with_cid = build_cid_map(body_html, inline_atts)
       mime_msg = build_cid_mime(mailbox.mailbox_address, reply_to, reply_cc, reply_bcc,
                                 subject, html_with_cid, cid_map, regular_atts, message_id)
-      reply_provider(mailbox).send_mail_mime(mime_msg)
+      RedmineExpertHelpdesk::MailProvider.outgoing_for(mailbox).send_mail_mime(mime_msg)
       sent_filenames.concat(regular_atts.map(&:filename))
       sent_filenames.concat(cid_map.keys.map(&:filename))
     end
@@ -109,17 +109,6 @@ class HelpdeskRepliesController < ApplicationController
   end
 
   private
-
-  # 'mailbox_smtp' sends through the mailbox's own SMTP server, 'graph' through
-  # the Graph API. Both take the same raw MIME, so the CID handling above is
-  # shared.
-  def reply_provider(mailbox)
-    if mailbox.effective_reply_transport == 'mailbox_smtp'
-      RedmineExpertHelpdesk::MailProvider.for(mailbox)
-    else
-      RedmineExpertHelpdesk::GraphProvider.new(mailbox)
-    end
-  end
 
   def build_recipients(addresses_str)
     addresses_str.to_s.split(/[,;]+/).map(&:strip).reject(&:blank?).map do |addr|
@@ -166,6 +155,9 @@ class HelpdeskRepliesController < ApplicationController
     smtp_settings   = ActionMailer::Base.smtp_settings || {}
     mail_obj.delivery_method(delivery_method, smtp_settings)
     mail_obj.deliver!
+    # Redmine's relay files nothing in the mailbox itself; for an IMAP mailbox we
+    # can still put the copy where the agents look. No-op for Graph mailboxes.
+    RedmineExpertHelpdesk::MailProvider.for(mailbox).archive_sent(mail_obj.to_s)
     mail_obj.message_id
   end
 

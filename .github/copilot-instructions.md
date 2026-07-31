@@ -183,12 +183,22 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
 
 ## Key behaviors worth knowing
 
-- **Reply transport is per-mailbox**: `provider` (default for new mailboxes — the mailbox's own
-  backend: Graph, or its own SMTP server), `graph` (Graph via the central app registration), or
-  `smtp` (Redmine SMTP; inline images become Base64 data URIs). The MIME paths send full Base64
-  MIME to preserve CID inline images, because Exchange rewrites HTML in the JSON send path.
-  `HelpdeskMailbox#effective_reply_transport` resolves `provider` to `graph`/`mailbox_smtp`;
-  the autoresponder honours the same setting.
+- **Outgoing mail is per-mailbox and validated against the provider**: `provider` (default for
+  new mailboxes — the mailbox's own backend: Graph, or its own SMTP server), `graph` (Graph via
+  the central app registration), or `smtp` (Redmine's global SMTP, inline images become Base64
+  data URIs). Both MIME paths send full Base64 MIME to preserve CID inline images — Exchange
+  rewrites HTML in the JSON send path. `HelpdeskMailbox#outgoing_route` resolves `provider` to
+  `graph`/`mailbox_smtp`; it is named for the route, not for replies, because replies, initial
+  mails **and** the autoresponder all follow it. **Anything that sends must ask
+  `MailProvider.outgoing_for(mailbox)`** — never `MailProvider.for`, which is the *receiving*
+  factory; three call sites once kept their own copy of that branch and each was wrong at least
+  once. `graph` is only available when `microsoft_hosted?` (a Graph mailbox, or an IMAP mailbox
+  on the Microsoft preset); the model validates it, so a Gmail mailbox cannot be pointed at
+  `sendMail` for an address that does not exist in the tenant.
+- **A Sent copy is filed for IMAP mailboxes** (`ImapClient#append_sent`), because SMTP files
+  nothing and Graph's `sendMail` does. Folder resolution: RFC 6154 `\Sent` special-use flag →
+  `sent_folder` column → preset. A failed APPEND is logged and swallowed — the customer already
+  has the mail by then.
 - **Redmine version DOM differs**: RM5 journals use `#journal-<id>-notes` / `h4.note-header`;
   RM6/7 use `#change-<id>` / `h4.journal-header` (with `span.journal-info` + `span.journal-meta`).
   View-hook JS that touches journals must handle both.

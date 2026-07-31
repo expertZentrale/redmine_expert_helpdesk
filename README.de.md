@@ -417,11 +417,22 @@ Inline-Bilder (CID-Methode, nicht als Anhang).
 
 **Transportwahl**: Jedes Postfach wählt einen von drei Antwort-Transporten:
 
-| Wert | Versand über | Inline-Bilder |
-|------|--------------|---------------|
-| `provider` (Vorgabe für neue Postfächer) | das Backend des Postfachs — Graph-API oder eigener SMTP-Server | CID |
-| `graph` | Microsoft Graph über die zentrale App-Registrierung | CID |
-| `smtp` | globale SMTP-Einstellungen von Redmine aus der `configuration.yml` | Base64-Data-URI |
+| Wert | Versand über | Inline-Bilder | Kopie im Gesendet-Ordner |
+|------|--------------|---------------|--------------------------|
+| `provider` (Vorgabe für neue Postfächer) | das Backend des Postfachs — Graph-API oder eigener SMTP-Server | CID | ja |
+| `graph` | Microsoft Graph über die zentrale App-Registrierung | CID | ja |
+| `smtp` | globale SMTP-Einstellungen von Redmine aus der `configuration.yml` | Base64-Data-URI | nur IMAP-Postfächer |
+
+`graph` wird **nur für ein Postfach angeboten, das Microsoft auch hostet** — ein Graph-Postfach
+oder ein IMAP-Postfach mit der Microsoft-Vorlage („Microsoft 365 über IMAP“). Ein Gmail- oder
+Dovecot-Postfach auf Graph zu stellen hieße, `sendMail` für eine Adresse aufzurufen, die es im
+Tenant nicht gibt; das Formular blendet die Option deshalb aus und das Modell lehnt sie ab.
+
+Ausgehende Mails werden im **Gesendet-Ordner** des Postfachs abgelegt, damit das Postfach beide
+Hälften der Unterhaltung enthält. Graph erledigt das selbst; bei IMAP legt das Plugin die Kopie
+ab und nimmt den Ordner aus dem `\Sent`-Kennzeichen des Servers (RFC 6154), dann aus dem Feld
+*Ordner für gesendete Mails*, dann aus der Vorlage. Lässt sich die Kopie nicht ablegen, wird die
+Mail trotzdem versendet — protokolliert wird nur eine Warnung.
 
 `smtp` ist der Weg, der **am Postfach überhaupt keine Mail-Zugangsdaten** braucht — praktisch,
 wenn Redmine bereits ein funktionierendes Relay hat und das Postfach nur *empfangen* soll. Ein

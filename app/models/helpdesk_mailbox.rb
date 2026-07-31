@@ -39,8 +39,12 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
 
   SECURITY_MODES = %w[ssl starttls plain].freeze
 
-  #   provider - use this mailbox's own backend (Graph API resp. its SMTP server)
-  #   graph    - always Microsoft Graph, using the global credentials
+  # How this mailbox sends. Outgoing mail has to come from the account that owns
+  # mailbox_address, otherwise the conversation with the customer falls apart, so
+  # not every value is available to every mailbox - see #available_reply_transports.
+  #   provider - the mailbox's own backend (Graph API resp. its SMTP server)
+  #   graph    - Microsoft Graph via the central registration; only meaningful
+  #              for a mailbox that actually lives in Microsoft 365
   #   smtp     - Redmine's global ActionMailer SMTP configuration
   REPLY_TRANSPORTS = %w[provider graph smtp].freeze
 
@@ -60,9 +64,18 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
   validates :oauth_preset, :inclusion => { :in => RedmineExpertHelpdesk::ProviderPresets::NAMES }, :allow_blank => true
   validates :imap_security, :inclusion => { :in => SECURITY_MODES }, :allow_blank => true
   validates :smtp_security, :inclusion => { :in => SECURITY_MODES }, :allow_blank => true
-  validates :reply_transport, :inclusion => { :in => REPLY_TRANSPORTS }, :allow_blank => true
+  # Validated against what this mailbox can actually do, not just the full list:
+  # pointing a Gmail or Dovecot mailbox at Graph produced a 404 at send time.
+  # A Proc, not a symbol: a symbol would be looked up under the ActiveRecord
+  # error scope, and not resolved at class-definition time when no locale is set.
+  validates :reply_transport,
+            :inclusion => { :in => ->(mailbox) { mailbox.available_reply_transports },
+                            :message => ->(_object, _data) {
+                              I18n.t(:error_helpdesk_transport_not_available)
+                            } },
+            :allow_blank => true
   validates :imap_host, :presence => true, :if => :imap?
-  validates :smtp_host, :presence => true, :if => -> { imap? && effective_reply_transport == 'mailbox_smtp' }
+  validates :smtp_host, :presence => true, :if => -> { imap? && outgoing_route == 'mailbox_smtp' }
 
   scope :enabled, -> { where(:enabled => true) }
 
@@ -78,7 +91,7 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
                   'reply_header', 'reply_footer', 'reply_transport', 'footer_mode',
                   'auto_reply_filter_enabled', 'auto_reply_sender_whitelist',
                   'auto_reply_header_whitelist',
-                  'skipped_folder', 'failed_folder',
+                  'skipped_folder', 'failed_folder', 'sent_folder',
                   'reopen_status_id', 'reopen_max_age_days',
                   'provider', 'credentials_source', 'auth_method',
                   'imap_host', 'imap_port', 'imap_security', 'imap_username',
@@ -141,15 +154,31 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
 
   # --- Transport -------------------------------------------------------------
 
-  # Resolves the abstract 'provider' transport into a concrete one:
+  # Resolves the stored transport into the concrete route every outgoing mail
+  # takes - replies, initial mails and the autoresponder alike, which is why
+  # this is not called "reply" anything:
   #   graph        - Microsoft Graph sendMail
   #   mailbox_smtp - this mailbox's own SMTP server
   #   smtp         - Redmine's global ActionMailer SMTP settings
-  def effective_reply_transport
+  def outgoing_route
     t = reply_transport.presence || 'graph'
     return t unless t == 'provider'
 
     imap? ? 'mailbox_smtp' : 'graph'
+  end
+
+  # Graph can only send for a mailbox that Microsoft actually hosts. That is
+  # every 'graph' mailbox, plus an IMAP mailbox on the Microsoft preset - the
+  # "Microsoft 365 over IMAP" setup, where Graph is a legitimate outgoing route
+  # and files the Sent copy for free.
+  def microsoft_hosted?
+    graph? || (imap? && oauth_preset.to_s == 'microsoft')
+  end
+
+  # The transports this mailbox may actually use. Drives the form select and the
+  # validation, so an unusable combination cannot be stored in the first place.
+  def available_reply_transports
+    REPLY_TRANSPORTS.reject { |t| t == 'graph' && !microsoft_hosted? }
   end
 
   # True unless an interactive OAuth consent is still outstanding.

@@ -147,6 +147,34 @@ module RedmineExpertHelpdesk
                                   .sort
     end
 
+    # Where outgoing mail belongs. Asking the server beats guessing: RFC 6154
+    # lets it flag its own Sent folder, and the name differs per provider and
+    # per UI language ('Sent Items', '[Gmail]/Sent Mail', 'Gesendete Elemente').
+    # Only when the server stays silent do we fall back to the configured value
+    # and then to the preset's guess.
+    def sent_folder_name
+      return @sent_folder_name if defined?(@sent_folder_name)
+
+      @sent_folder_name =
+        special_use_folder(:Sent) ||
+        @mailbox.sent_folder.presence ||
+        RedmineExpertHelpdesk::ProviderPresets.sent_folder(@mailbox.oauth_preset)
+    end
+
+    # Files a copy of an outgoing message, already read, the way a mail client
+    # would. The folder is created if it does not exist yet.
+    def append_sent(mime_string)
+      # sent_folder_name asks the server, so it has to run inside the session.
+      with_session do
+        folder = sent_folder_name
+        next if folder.blank?
+
+        wire = find_or_create_folder(folder)
+        wrap { @imap.append(wire, mime_string.to_s, [:Seen], Time.now) }
+      end
+      nil
+    end
+
     def create_folder(name)
       wrap { @imap.create(to_wire(name)) }
       bust_folder_cache
@@ -368,6 +396,17 @@ module RedmineExpertHelpdesk
 
     def bust_folder_cache
       Rails.cache.delete(folder_cache_key)
+    end
+
+    # RFC 6154 SPECIAL-USE: the server tags its own Sent/Drafts/Trash folders, so
+    # we never have to know what they are called. Servers without the extension
+    # return no such attribute and the caller falls back.
+    def special_use_folder(attribute)
+      list = wrap { @imap.list('', '*') }.to_a
+      match = list.find { |m| Array(m.attr).include?(attribute) }
+      match && to_display(match.name)
+    rescue StandardError
+      nil
     end
 
     def folder_cache_key

@@ -54,6 +54,24 @@ module RedmineExpertHelpdesk
 
     def send_mail_mime(mime_string)
       @smtp.send_mime(mime_string)
+      archive_sent(mime_string)
+      nil
+    end
+
+    # SMTP only hands the message to the next hop; nothing files it in the
+    # mailbox the way Graph's sendMail does. Without this a shared helpdesk
+    # mailbox shows the inbound half of every conversation and nothing else.
+    #
+    # Archiving must never cost us the mail itself: the customer has already
+    # received it by the time we get here, so a failure is logged and swallowed.
+    def archive_sent(mime_string)
+      @imap.append_sent(mime_string)
+      nil
+    rescue StandardError => e
+      Rails.logger.warn(
+        "[helpdesk] #{I18n.t(:warning_helpdesk_sent_append_failed, :message => e.message)} " \
+        "(#{@mailbox.mailbox_address})"
+      )
       nil
     end
 
@@ -63,12 +81,18 @@ module RedmineExpertHelpdesk
       end
 
       folders = list_folders
-      smtp = @smtp.configured? ? @smtp.test_connection : { :ok => true, :message => nil }
-      unless smtp[:ok]
-        return { :ok => false, :message => smtp[:message], :folders => folders }
-      end
 
-      { :ok => true, :message => I18n.t(:notice_helpdesk_connection_ok), :folders => folders }
+      # Only probe the route this mailbox actually sends over. Reporting an SMTP
+      # failure for a mailbox that sends via Redmine's relay, or staying silent
+      # about Graph for one that sends via Graph, told the operator nothing about
+      # whether replies will work.
+      outgoing = test_outgoing
+      return { :ok => false, :message => outgoing[:message], :folders => folders } unless outgoing[:ok]
+
+      { :ok      => true,
+        :message => I18n.t(:notice_helpdesk_connection_ok),
+        :folders => folders,
+        :sent_folder => sent_folder_for_report }
     rescue StandardError => e
       { :ok => false, :message => e.message, :folders => [] }
     end
@@ -84,6 +108,26 @@ module RedmineExpertHelpdesk
     end
 
     private
+
+    def test_outgoing
+      case @mailbox.outgoing_route
+      when 'mailbox_smtp'
+        @smtp.configured? ? @smtp.test_connection : { :ok => true, :message => nil }
+      when 'graph'
+        GraphProvider.new(@mailbox).test_connection
+      else
+        # Redmine's own relay - its health is Redmine's business, not ours.
+        { :ok => true, :message => nil }
+      end
+    end
+
+    # Naming the folder here makes a wrong guess visible before the first reply
+    # rather than in a log line afterwards.
+    def sent_folder_for_report
+      @imap.with_session { @imap.sent_folder_name }
+    rescue StandardError
+      nil
+    end
 
     def to_meta(data)
       uid = data.attr['UID']

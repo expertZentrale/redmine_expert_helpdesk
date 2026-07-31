@@ -57,6 +57,14 @@
            list="hd_folder_datalist" autocomplete="off">
     <em class="info"><%= l(:text_helpdesk_failed_folder_info) %></em>
   </p>
+  <%# Nur fuer IMAP-Postfaecher: Graph legt die gesendete Kopie selbst ab. %>
+  <p id="hd_sent_folder_row">
+    <label><%= l(:field_helpdesk_sent_folder) %></label>
+    <input type="text" id="hd_sent_folder" name="helpdesk_mailbox[sent_folder]"
+           value="<%= h(@mailbox.sent_folder) %>" size="30"
+           list="hd_folder_datalist" autocomplete="off">
+    <em class="info"><%= l(:text_helpdesk_sent_folder_info) %></em>
+  </p>
   <datalist id="hd_folder_datalist"></datalist>
   <p>
     <label><%= l(:field_helpdesk_enabled) %></label>
@@ -356,13 +364,19 @@
   <legend><%= l(:label_helpdesk_reply_templates) %></legend>
   <p>
     <label><%= l(:field_helpdesk_reply_transport) %></label>
+    <%# Sending through Graph only works for a mailbox Microsoft actually hosts;
+        the JS below removes that option for anything else, and the model
+        validates the same rule so the API cannot store it either. %>
     <%= select_tag 'helpdesk_mailbox[reply_transport]',
         options_for_select(
           [[l(:label_helpdesk_transport_provider), 'provider'],
            [l(:label_helpdesk_transport_graph),    'graph'],
            [l(:label_helpdesk_transport_smtp),     'smtp']],
           @mailbox.reply_transport.presence || 'graph'
-        ) %>
+        ),
+        :id => 'hd_reply_transport',
+        :data => { :label_smtp  => l(:label_helpdesk_transport_mailbox_smtp),
+                   :label_graph => l(:label_helpdesk_transport_mailbox_graph) } %>
     <em class="info"><%= l(:text_helpdesk_reply_transport_info) %></em>
   </p>
   <p>
@@ -456,6 +470,8 @@
   var consentBlock = document.getElementById('hd_oauth_consent_block');
   var sourceSel    = document.getElementById('hd_credentials_source');
   var sourceRow    = document.getElementById('hd_credentials_source_row');
+  var transportSel = document.getElementById('hd_reply_transport');
+  var sentFolderRow = document.getElementById('hd_sent_folder_row');
   var credentialsBlock = document.getElementById('hd_oauth_credentials');
   var tenantRow    = document.getElementById('hd_oauth_tenant_row');
   var urlsBlock    = document.getElementById('hd_oauth_urls');
@@ -560,6 +576,31 @@
     var preset = presetSel ? presetSel.value : 'microsoft';
     if (tenantRow) tenantRow.style.display = preset === 'microsoft' ? '' : 'none';
     if (urlsBlock) urlsBlock.style.display = preset === 'generic' ? '' : 'none';
+
+    // Graph nur als Preis fuer ein Postfach, das Microsoft auch hostet - sonst
+    // schickt der Versand ein sendMail an ein Postfach, das dort nicht existiert.
+    syncTransport(isImap, preset);
+    if (sentFolderRow) sentFolderRow.style.display = isImap ? '' : 'none';
+  }
+
+  function syncTransport(isImap, preset) {
+    if (!transportSel) return;
+
+    var microsoftHosted = !isImap || preset === 'microsoft';
+    var graphOption = transportSel.querySelector('option[value="graph"]');
+    if (graphOption) {
+      graphOption.hidden   = !microsoftHosted;
+      graphOption.disabled = !microsoftHosted;
+      // Eine unerlaubte Auswahl still stehen zu lassen, hiesse den Fehler bis
+      // zum Speichern zu verstecken.
+      if (!microsoftHosted && transportSel.value === 'graph') transportSel.value = 'provider';
+    }
+
+    // Das eigene Backend heisst je nach Anbieter anders; "Provider" sagt niemandem etwas.
+    var own = transportSel.querySelector('option[value="provider"]');
+    if (own) {
+      own.textContent = isImap ? transportSel.dataset.labelSmtp : transportSel.dataset.labelGraph;
+    }
   }
 
   // Vorlage füllt ausschließlich leere Felder - eingetragene Werte bleiben stehen.
@@ -606,7 +647,13 @@
       connStatus.style.color = '#888';
       postJson(testUrl, formPayload())
         .then(function (res) {
-          connStatus.textContent = res.data.message || (res.data.ok ? 'OK' : '');
+          var text = res.data.message || (res.data.ok ? 'OK' : '');
+          // Den erkannten Gesendet-Ordner mitzeigen: ein falscher Treffer faellt
+          // sonst erst nach der ersten Antwort im Log auf.
+          if (res.data.ok && res.data.sent_folder) {
+            text += ' – ' + res.data.sent_folder;
+          }
+          connStatus.textContent = text;
           connStatus.style.color = res.data.ok ? 'green' : 'red';
           if (res.data.ok && Array.isArray(res.data.folders)) populateDatalist(res.data.folders);
         })
