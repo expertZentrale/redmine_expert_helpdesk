@@ -23,9 +23,19 @@ class OauthTokenProviderTest < ActiveSupport::TestCase
     end
   end
 
+  # Redmine's test environment runs a null cache store, which drops everything
+  # written to it. The provider caches its tokens in Rails.cache, so without a
+  # store that actually stores, every caching assertion in this class passes or
+  # fails for the wrong reason.
   def setup
+    @previous_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
     Rails.cache.clear
     @mailbox = HelpdeskMailbox.new(:id => 4711, :mailbox_address => 'hd@example.com')
+  end
+
+  def teardown
+    Rails.cache = @previous_cache
   end
 
   def test_client_credentials_request

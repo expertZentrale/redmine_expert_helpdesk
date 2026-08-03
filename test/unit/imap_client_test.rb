@@ -140,7 +140,7 @@ class ImapClientTest < ActiveSupport::TestCase
     fetches.each do |cmd|
       items = Array(cmd[2]).join(' ')
       assert_includes items, 'BODY.PEEK['
-      assert_not_match(/(?<!\.PEEK)\bBODY\[/, items)
+      assert_no_match(/(?<!\.PEEK)\bBODY\[/, items)
     end
   end
 

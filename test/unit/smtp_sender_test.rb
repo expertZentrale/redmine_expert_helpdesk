@@ -57,7 +57,7 @@ class SmtpSenderTest < ActiveSupport::TestCase
 
     assert_equal %w[kunde@example.de kollege@example.de archiv@example.com].sort,
                  sent[:to].sort
-    assert_not_match(/^Bcc:/i, sent[:body])
+    assert_no_match(/^Bcc:/i, sent[:body])
     assert_match(/^Cc: kollege@example\.de/i, sent[:body])
   end
 

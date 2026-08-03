@@ -83,6 +83,24 @@
   veraltetes Token im Cache.
 
 ### Fixed
+- **Presets und globale Verbindungsvorgaben konnten weder Port noch Verschlüsselung setzen.**
+  `HelpdeskMailbox#apply_preset!` weist nur dort zu, wo `self[attr].blank?` gilt. Migration `034`
+  hatte `imap_port` / `imap_security` / `smtp_port` / `smtp_security` aber Spaltenvorgaben
+  mitgegeben (993 / `ssl` / 587 / `starttls`), und eine Spaltenvorgabe ist nie leer — die Zuweisung
+  wurde also jedes Mal übersprungen. Nur `imap_host` und `smtp_host`, die keine Spaltenvorgabe
+  haben, funktionierten überhaupt. Die in `apply_preset!` dokumentierte Rangfolge (ein benanntes
+  Preset schlägt die globalen Vorgaben, das Preset `generic` weicht ihnen) war damit für vier von
+  sechs Feldern toter Code. Aufgefallen ist das nie, weil die Presets `microsoft` und `google`
+  selbst 993/587 verwenden. Migration `037` entfernt die vier Vorgaben und gibt die Entscheidung an
+  `apply_preset!` zurück; `ImapClient#port` und `SmtpSender#port` greifen bei leerer Spalte ohnehin
+  je nach Sicherheitsmodus auf sinnvolle Werte zurück. Gespeicherte Werte bleiben unangetastet.
+- **Ein neues IMAP-Postfach startete auf einem Antwort-Transport, den die eigene Validierung
+  ablehnt.** `reply_transport` hatte die Vorgabe `graph` (Migration `014`, als Graph das einzige
+  Backend war), während `#available_reply_transports` `graph` ausschließlich
+  `microsoft_hosted?`-Postfächern anbietet — ein reines IMAP-Postfach musste den Wert also erst
+  vom Formular überschreiben lassen, bevor es speicherbar war. Migration `037` ändert die Vorgabe
+  auf `provider` („das eigene Backend dieses Postfachs“), das für jedes Postfach gültig ist; bei
+  einem Graph-Postfach löst `#outgoing_route` es unmittelbar wieder nach `graph` auf.
 - **Der Autoresponder ignorierte den Antwort-Transport des Postfachs.**
   `MailProcessor#send_autoresponder` rief bedingungslos `GraphClient#send_mail_mime` auf; ein auf
   SMTP eingestelltes Postfach verschickte seine automatischen Eingangsbestätigungen also trotzdem

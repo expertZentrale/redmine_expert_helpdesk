@@ -78,6 +78,23 @@
   secret used to leave a stale token in the cache for up to an hour.
 
 ### Fixed
+- **Presets and global connection defaults could never set a port or an encryption mode.**
+  `HelpdeskMailbox#apply_preset!` assigns only where `self[attr].blank?`, but migration `034` gave
+  `imap_port` / `imap_security` / `smtp_port` / `smtp_security` column defaults (993 / `ssl` /
+  587 / `starttls`), and a column default is never blank — so the assignment was skipped every
+  time. Only `imap_host` and `smtp_host`, which have no column default, ever worked. The
+  precedence rule documented in `apply_preset!` (a named preset outranks the global defaults, the
+  `generic` preset yields to them) was therefore dead code for four of its six attributes. It went
+  unnoticed because the `microsoft` and `google` presets use 993/587 themselves. Migration `037`
+  drops the four defaults and hands the decision back to `apply_preset!`; `ImapClient#port` and
+  `SmtpSender#port` already fall back per security mode on an empty column. Stored values are
+  untouched.
+- **A new IMAP mailbox defaulted to a reply transport its own validation rejects.**
+  `reply_transport` defaulted to `graph` (migration `014`, back when Graph was the only backend),
+  while `#available_reply_transports` offers `graph` only to `microsoft_hosted?` mailboxes — so a
+  plain IMAP mailbox had to have the value overwritten by the form before it could save. Migration
+  `037` changes the default to `provider` ("this mailbox's own backend"), which is valid for every
+  mailbox; for a Graph mailbox `#outgoing_route` resolves it straight back to `graph`.
 - **The autoresponder ignored the mailbox's reply transport.** `MailProcessor#send_autoresponder`
   called `GraphClient#send_mail_mime` unconditionally, so a mailbox configured for SMTP still sent
   its automatic acknowledgements through the Graph API — and an IMAP mailbox could not have sent

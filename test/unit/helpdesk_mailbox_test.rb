@@ -230,8 +230,12 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
       (Setting.plugin_redmine_expert_helpdesk || {}).merge('global_footer' => value)
   end
 
+  # The project is only here to satisfy the presence validation - these tests
+  # assert on transports and connection defaults, never on persistence, so an
+  # in-memory project keeps the class free of fixtures.
   def imap_mailbox(attrs = {})
-    HelpdeskMailbox.new({ :mailbox_address => 'hd@example.com',
+    HelpdeskMailbox.new({ :project         => Project.new,
+                          :mailbox_address => 'hd@example.com',
                           :provider        => 'imap',
                           :imap_host       => 'imap.example.com',
                           :smtp_host       => 'smtp.example.com' }.merge(attrs))
