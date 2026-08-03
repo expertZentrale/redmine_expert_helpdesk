@@ -9,6 +9,11 @@
 ## [Unreleased] 2026-07-30 (86)
 
 ### Added
+- **GitHub issue templates.** Bug reports and feature requests are now filed through YAML issue
+  forms in `.github/ISSUE_TEMPLATE/`, so the details that were previously missing from most
+  reports — plugin version, the Administration → Information table, and the affected area — are
+  required up front. Free-form issues are disabled; `config.yml` points at the README and `API.md`
+  instead.
 - **Generic IMAP/SMTP mailboxes with modern authentication.** Until now the plugin could only
   ingest mail from Microsoft 365 via the Graph API — Google Workspace, Exchange on-premises,
   self-hosted Dovecot/Zimbra and ordinary hosters were out of reach. A mailbox now selects its

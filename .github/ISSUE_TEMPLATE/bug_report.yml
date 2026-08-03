@@ -1,0 +1,79 @@
+name: Bug report
+description: Something in the plugin does not work as expected
+labels: ["bug"]
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before reporting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What went wrong, and what did you expect instead?
+      placeholder: |
+        Fetching mail fails with "IMAP greenmail:993: connection refused".
+        Expected: the messages are turned into tickets.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Project -> Helpdesk settings
+        2. Press "Fetch mail"
+        3. See the error in the flash message
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Mail fetching (IMAP / Graph)
+        - Sending replies (SMTP / Graph)
+        - Mailbox configuration
+        - SLA
+        - AI / knowledge base
+        - Contacts
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: Administration -> Plugins, or the `version` line in `init.rb`.
+      placeholder: "0.1.5"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: >-
+        Paste the table from Administration -> Information. It covers the Redmine,
+        Ruby, Rails and database versions in one go.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: >-
+        From `log/production.log`. Please remove passwords, tokens and customer
+        data before pasting.
+      render: text
+    validations:
+      required: false

@@ -1,0 +1,34 @@
+name: Feature request
+description: Suggest an improvement or a new capability
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do today, and where does it fall short?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Alternatives you considered are welcome here too.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Mail fetching (IMAP / Graph)
+        - Sending replies (SMTP / Graph)
+        - Mailbox configuration
+        - SLA
+        - AI / knowledge base
+        - Contacts
+        - Other / not sure
+    validations:
+      required: true

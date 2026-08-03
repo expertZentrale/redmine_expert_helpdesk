@@ -8,6 +8,11 @@
 ## [Unreleased] 2026-07-30 (86)
 
 ### Added
+- **Issue-Vorlagen für GitHub.** Fehlermeldungen und Feature-Wünsche werden jetzt über
+  YAML-Formulare in `.github/ISSUE_TEMPLATE/` erfasst. Damit sind die Angaben, die bisher in den
+  meisten Meldungen fehlten — Plugin-Version, die Tabelle aus Administration → Information und der
+  betroffene Bereich — von vornherein Pflicht. Freie Issues sind deaktiviert; `config.yml`
+  verweist stattdessen auf die README und `API.md`.
 - **Generische IMAP/SMTP-Postfächer mit moderner Authentifizierung.** Bisher konnte das Plugin
   Mails ausschließlich über die Graph-API aus Microsoft 365 abholen — Google Workspace, Exchange
   On-Premises, selbst gehostete Dovecot-/Zimbra-Server und gewöhnliche Hoster waren damit außen

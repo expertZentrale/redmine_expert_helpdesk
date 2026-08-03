@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/expertZentrale/redmine_expert_helpdesk/blob/main/README.md
+    about: Setup, mailbox configuration and troubleshooting are covered in the README.
+  - name: REST API reference
+    url: https://github.com/expertZentrale/redmine_expert_helpdesk/blob/main/API.md
+    about: Endpoints, parameters and authentication for the helpdesk API.
