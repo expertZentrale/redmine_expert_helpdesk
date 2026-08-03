@@ -79,11 +79,17 @@ module RedmineExpertHelpdesk
     end
 
     # Changing any credential changes the key, so a rotated secret takes effect
-    # immediately instead of after the cached token expires.
+    # immediately instead of after the cached token expires. The secrets have to
+    # be part of the fingerprint for that to hold: rotating only the client
+    # secret leaves client_id/tenant/scope untouched, so without them the key
+    # would not move and the token issued for the old secret would stay in use.
+    # Everything is hashed, so no secret reaches the cache key itself.
     def cache_key
       fingerprint = Digest::SHA256.hexdigest(
         [@credentials.client_id, @credentials.tenant_id, @credentials.token_url,
-         @credentials.scope, grant].join('|')
+         @credentials.scope, grant,
+         @credentials.client_secret, @credentials.refresh_token,
+         @credentials.sa_email, @credentials.sa_key].join('|')
       )[0, 12]
       "#{CACHE_PREFIX}/#{@mailbox.id}/#{fingerprint}"
     end

@@ -169,7 +169,8 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
 
   # Rows written before this rule existed store 'graph' on a Graph mailbox.
   def test_existing_graph_mailboxes_keep_validating
-    mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com', :reply_transport => 'graph')
+    mailbox = HelpdeskMailbox.new(:project => Project.new, :mailbox_address => 'hd@example.com',
+                                  :reply_transport => 'graph')
 
     assert mailbox.microsoft_hosted?
     assert_equal %w[provider graph smtp], mailbox.available_reply_transports

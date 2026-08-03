@@ -78,6 +78,15 @@
   secret used to leave a stale token in the cache for up to an hour.
 
 ### Fixed
+- **Rotating an OAuth2 client secret did not invalidate the cached access token.** The comment on
+  `OauthTokenProvider#cache_key` promised that "changing any credential changes the key", but the
+  fingerprint covered only `client_id`, `tenant_id`, `token_url`, `scope` and the grant — none of
+  which move when just the secret is rotated. The token issued for the superseded secret therefore
+  stayed in use until it expired (up to `expires_in - 120` seconds). The secrets are now part of
+  the fingerprint, which is a SHA-256 digest, so nothing sensitive reaches the cache key itself.
+  The existing test for this could never have caught it: Redmine's test environment uses a null
+  cache store, so the "cached" token was silently discarded and every lookup looked like a fresh
+  request.
 - **Presets and global connection defaults could never set a port or an encryption mode.**
   `HelpdeskMailbox#apply_preset!` assigns only where `self[attr].blank?`, but migration `034` gave
   `imap_port` / `imap_security` / `smtp_port` / `smtp_security` column defaults (993 / `ssl` /

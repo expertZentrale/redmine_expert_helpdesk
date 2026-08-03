@@ -83,6 +83,16 @@
   veraltetes Token im Cache.
 
 ### Fixed
+- **Das Wechseln eines OAuth2-Client-Secrets verwarf das zwischengespeicherte Access-Token nicht.**
+  Der Kommentar an `OauthTokenProvider#cache_key` versprach, dass „jede Änderung an den
+  Zugangsdaten den Schlüssel ändert“ — der Fingerabdruck enthielt aber nur `client_id`,
+  `tenant_id`, `token_url`, `scope` und das Grant, und keines davon ändert sich, wenn allein das
+  Secret rotiert wird. Das zum abgelösten Secret ausgestellte Token blieb dadurch bis zu seinem
+  Ablauf in Gebrauch (bis zu `expires_in - 120` Sekunden). Die Secrets sind jetzt Teil des
+  Fingerabdrucks, der ein SHA-256-Digest ist — in den Cache-Schlüssel selbst gelangt also nichts
+  Sensibles. Der vorhandene Test konnte das nie aufdecken: Redmines Testumgebung verwendet einen
+  Null-Cache, das „zwischengespeicherte“ Token wurde stillschweigend verworfen und jeder Zugriff
+  sah aus wie eine frische Anfrage.
 - **Presets und globale Verbindungsvorgaben konnten weder Port noch Verschlüsselung setzen.**
   `HelpdeskMailbox#apply_preset!` weist nur dort zu, wo `self[attr].blank?` gilt. Migration `034`
   hatte `imap_port` / `imap_security` / `smtp_port` / `smtp_security` aber Spaltenvorgaben
