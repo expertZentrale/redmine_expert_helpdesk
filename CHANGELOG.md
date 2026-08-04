@@ -115,6 +115,11 @@
   (`assets/stylesheets/helpdesk_mailbox_form.css`).
 
 ### Fixed
+- **The redmine.org sources did not mention the REST API.** `description.textile` listed every
+  other feature but left the API to a bare link at the bottom, and `installation.textile`
+  documented only the two key-secured cron endpoints — so nothing told a reader that the REST
+  web service has to be enabled in *Administration → Settings → API*, or that mailbox endpoints
+  need `manage_helpdesk` to read. Both now cover it.
 - **The README still introduced the plugin as Microsoft-365-only.** Its opening sentence —
   "Email-to-ticket plugin for Redmine with Microsoft 365 integration via the Microsoft Graph API"
   — predated the generic IMAP/SMTP backend, so the one paragraph most readers see contradicted

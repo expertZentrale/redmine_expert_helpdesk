@@ -26,6 +26,7 @@ h3. Features
 * *AI summaries and knowledge base* (optional) — per-project mail summaries via OpenAI, Anthropic or an OpenAI-compatible endpoint, and a RAG knowledge base built from resolved tickets (Qdrant or pgvector). Off by default.
 * *Rules* — automation by subject or sender: set priority, tracker, category, assignee, or ignore the mail.
 * *Initial mail* — assign a customer contact to any ticket and optionally send the first outbound mail.
+* *REST API* (JSON and XML) following Redmine's own conventions, authenticated with @X-Redmine-API-Key@ and scoped by the existing permissions: contacts, tickets, per-project settings and mailboxes. Mailboxes are fully configurable over the API — backend, IMAP/SMTP hosts, OAuth2 credentials, folders — with a @test_connection@ call to verify one. Secrets can be written but are never returned.
 
 h3. Requirements
 

@@ -92,6 +92,10 @@ curl "https://redmine.example.com/helpdesk/sla_check?key=SLA-API-KEY"
 
 Both keys come from the central configuration. Endpoints without a key configured refuse the request rather than running unauthenticated.
 
+h3. REST API
+
+The plugin's own REST API (contacts, tickets, project settings, mailboxes) is separate from the two cron endpoints above and uses Redmine's normal API authentication. Enable *Administration → Settings → API → Enable REST web service*; requests then authenticate with an @X-Redmine-API-Key@ header and are authorized by the same permissions as the UI. Mailbox endpoints require @manage_helpdesk@ for reading as well as writing, because the configuration exposes mail hosts, usernames and OAuth client ids. Full reference: "API.md":https://github.com/expertZentrale/redmine_expert_helpdesk/blob/main/API.md
+
 h3. Upgrading
 
 Replace the plugin directory with the new version, then run the migration command from step 2 again and restart. Migrations are additive and existing mailboxes keep their configuration; if a release needs anything beyond that it is called out in that version's notes.

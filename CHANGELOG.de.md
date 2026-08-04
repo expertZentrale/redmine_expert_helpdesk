@@ -125,6 +125,12 @@
   (`assets/stylesheets/helpdesk_mailbox_form.css`).
 
 ### Fixed
+- **Die redmine.org-Quellen erwähnten die REST-API nicht.** `description.textile` führte jede
+  andere Funktion auf, ließ die API aber bei einem blanken Link am Ende, und
+  `installation.textile` dokumentierte nur die beiden per Schlüssel gesicherten
+  Cron-Endpunkte — nirgends stand also, dass der REST-Webservice unter *Administration →
+  Konfiguration → API* aktiviert sein muss oder dass die Postfach-Endpunkte auch zum Lesen
+  `manage_helpdesk` verlangen. Beides ist jetzt beschrieben.
 - **Die README hat das Plugin weiterhin als reine Microsoft-365-Lösung vorgestellt.** Der
   Einleitungssatz — „E-Mail-zu-Ticket-Plugin für Redmine mit Microsoft-365-Anbindung über die
   Microsoft Graph API" — stammte aus der Zeit vor dem generischen IMAP/SMTP-Backend; der
