@@ -82,6 +82,19 @@
   Zugangsdaten.** Ein gewechseltes Client-Secret hinterließ bisher bis zu eine Stunde lang ein
   veraltetes Token im Cache.
 
+### Changed
+- **Die Ordnerfelder im Postfach-Formular sind jetzt echte Auswahlfelder.** Alle fünf (Quelle,
+  verarbeitet, übersprungen, fehlerhaft, gesendet) waren `<input list="…">` an einer gemeinsamen
+  `<datalist>`. Browser zeichnen dieses Popup genau wie ihren eigenen Ausfüllverlauf — kein
+  erkennbares Aufklapp-Element, nicht gestaltbar und in mehreren Browsern nur Präfix-Treffer —, ein
+  wirklich aus dem Postfach gelesener Ordner war also nicht von einem früher eingetippten Wert zu
+  unterscheiden. Jedes Feld hat nun einen `▾`-Schalter, der die vollständige Liste öffnet, beim
+  Tippen nach Teilzeichenfolge filtert (`arbeit` findet also `Verarbeitet`) und Pfeiltasten, Enter,
+  Escape sowie Mausauswahl unterstützt. Freitext bleibt gültig: ein noch nicht vorhandener Ordner
+  wird als `+ "…" anlegen` angeboten und weiterhin beim Speichern erzeugt, der bestehende Ablauf
+  bleibt also unverändert. Reines JavaScript, keine neue Abhängigkeit
+  (`assets/stylesheets/helpdesk_mailbox_form.css`).
+
 ### Fixed
 - **Das Wechseln eines OAuth2-Client-Secrets verwarf das zwischengespeicherte Access-Token nicht.**
   Der Kommentar an `OauthTokenProvider#cache_key` versprach, dass „jede Änderung an den

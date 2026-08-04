@@ -77,6 +77,18 @@
 - **The Graph access-token cache key now includes a credential fingerprint.** Rotating the client
   secret used to leave a stale token in the cache for up to an hour.
 
+### Changed
+- **The folder fields on the mailbox form are real comboboxes now.** All five (source, processed,
+  skipped, failed, sent) were `<input list="…">` bound to a shared `<datalist>`. Browsers draw that
+  popup exactly like their own autofill history — no dropdown affordance, no way to style it, and
+  prefix-only matching in several of them — so a folder actually read from the mailbox was
+  indistinguishable from a value typed there once before. Each field now has a `▾` toggle that
+  opens the full list, filters by substring as you type (so `arbeit` finds `Verarbeitet`), and
+  supports arrow keys, Enter, Escape and mouse selection. Free text is still valid: a folder that
+  does not exist yet is offered as `+ "…" anlegen` and is still created on submit, so the existing
+  create-on-save flow is untouched. Vanilla JS, no new dependency
+  (`assets/stylesheets/helpdesk_mailbox_form.css`).
+
 ### Fixed
 - **Rotating an OAuth2 client secret did not invalidate the cached access token.** The comment on
   `OauthTokenProvider#cache_key` promised that "changing any credential changes the key", but the
