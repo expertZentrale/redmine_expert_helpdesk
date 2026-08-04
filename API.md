@@ -15,6 +15,7 @@ and example requests/responses for each case.
 - [Contacts](#contacts)
 - [Tickets](#tickets)
 - [Project settings](#project-settings)
+- [Mailboxes](#mailboxes)
 - [Data reference](#data-reference)
 
 ---
@@ -69,9 +70,16 @@ alongside the array.
 |----------|-------------------|------------------------------|
 | Contacts | `view_helpdesk_info` | `manage_helpdesk_contacts` |
 | Tickets | `view_issues` | `add_issues` / `edit_issues` / `delete_issues` |
+| Project settings | `view_helpdesk_info` or `manage_helpdesk` | `manage_helpdesk` |
+| Mailboxes | `manage_helpdesk` | `manage_helpdesk` |
 
-Tickets additionally require the **Helpdesk module** to be enabled on the project
-(otherwise **403**). Contacts addressed globally by id (`/helpdesk/contacts/:id`)
+**Mailboxes require `manage_helpdesk` for reading, too** — the configuration exposes
+mail hosts, usernames, OAuth client/tenant ids and the last connection error, which
+`view_helpdesk_info` (granted to everyone who may see customer data) has no business
+seeing.
+
+Tickets, project settings and mailboxes additionally require the **Helpdesk module**
+to be enabled on the project (otherwise **403**). Contacts addressed globally by id (`/helpdesk/contacts/:id`)
 without a project resolve their project from the contact record; a contact with no
 project requires an admin.
 
@@ -104,17 +112,17 @@ Validation errors (422) use Redmine's standard envelope:
 
 ## Not yet available via REST
 
-Only **contacts**, **tickets** and **project settings** are exposed via this REST API
-(see the sections below). The following helpdesk resources are **not** yet available —
-they can currently only be managed through the Redmine UI. Plan automations
+Only **contacts**, **tickets**, **project settings** and **mailboxes** are exposed via
+this REST API (see the sections below). The following helpdesk resources are **not** yet
+available — they can currently only be managed through the Redmine UI. Plan automations
 accordingly; these may be added later.
 
 | Resource | Model / area | Today | Notes |
 |----------|--------------|-------|-------|
-| **Mailboxes** | `HelpdeskMailbox` | UI only | Per-project O365 mailbox config (folders, filters, autoresponder, reply transport). No REST create/read/update/delete. |
 | **Rules** | `HelpdeskRule` | UI only | Per-mailbox automation rules (subject/sender → set field / ignore). |
+| **OAuth consent** | `/helpdesk/oauth/authorize` | UI only | The interactive `authorization_code` consent (and the refresh token it produces) cannot be driven through the API — an identity provider needs a browser. Mailboxes using that grant must be connected once in the UI. |
 | **Messages** (standalone) | `HelpdeskMessage` | Embedded only | The message log is available **inside a ticket** via `GET /helpdesk/tickets/:id.json?include=messages`. There is **no** standalone messages collection, single-message endpoint, or `.eml` download. |
-| **Agent replies** | `helpdesk_replies` | UI only | Sending a reply e-mail to the customer (MIME / Graph / SMTP) is not exposed. |
+| **Agent replies** | `helpdesk_replies` | UI only | Sending a reply e-mail to the customer (via the mailbox's own backend, Graph, or Redmine's global SMTP) is not exposed. |
 | **Initial outbound mail** | `helpdesk_init` | Partial | Assigning a customer to a ticket **is** possible via the ticket API (`contact_email` / `contact_id`), but **sending** the initial e-mail to the customer is not. |
 | **SLA statistics** | `helpdesk_sla_statistics` | UI only | The per-project statistics/aggregations have no REST endpoint. |
 | **SLA priority overrides** (standalone) | `HelpdeskSlaPriority` | Via settings | Read/written **within** [Project settings](#project-settings) (`sla_priorities`); there is no dedicated `/helpdesk/sla_priorities` resource. |
@@ -320,7 +328,7 @@ Response `200`:
         "id": 7, "email": "jane@acme.example", "name": "Jane Doe",
         "company": "Acme", "phone": "+49 30 1234567"
       },
-      "mailbox": { "id": 5, "address": "support@example.com" },
+      "mailbox": { "id": 5, "address": "support@example.com", "provider": "imap" },
       "sla": {
         "reaction": { "status": "warning", "minutes": 48, "target": 60,
                       "due_at": "2026-07-08T10:26:00Z" },
@@ -521,6 +529,17 @@ Response `200`:
     "sla_notify_enabled": true,
     "sla_notify_email": "sla@example.com",
     "sla_notify_user_id": null,
+    "ai_summary_enabled": false,
+    "ai_summary_scope": "initial",
+    "ai_prompt_mode": "inherit",
+    "ai_prompt": null,
+    "ai_attach_metadata": true,
+    "ai_attach_text": false,
+    "ai_attach_images": false,
+    "ai_include_journal": false,
+    "ai_include_private_notes": false,
+    "kb_ingest_mode": "off",
+    "kb_proposal_display": "off",
     "sla_priorities": [
       { "priority_id": 5, "priority_name": "Urgent", "reaction_minutes": 15, "solution_minutes": 120 }
     ]
@@ -551,6 +570,15 @@ A **partial** update — only the keys you send are changed. Body key
 | `sla_notify_enabled` | boolean | |
 | `sla_notify_email` | string \| null | |
 | `sla_notify_user_id` | integer \| null | |
+| `ai_summary_enabled` | boolean | Opt-in AI summary of incoming mail (off by default). |
+| `ai_summary_scope` | string | `initial` or `initial_and_replies`. |
+| `ai_prompt_mode` | string | `inherit`, `extend` or `override` — how the project prompt combines with the central default prompt. |
+| `ai_prompt` | string \| null | Project prompt. |
+| `ai_attach_metadata` / `ai_attach_text` / `ai_attach_images` | boolean | Which parts of the attachments are fed to the model. |
+| `ai_include_journal` | boolean | Send the whole ticket history instead of just the mail body. |
+| `ai_include_private_notes` | boolean | Include private journal notes. |
+| `kb_ingest_mode` | string | `off`, `auto` or `manual` — whether resolved tickets feed the knowledge base. |
+| `kb_proposal_display` | string | `off`, `summary`, `sidebar` or `both`. |
 
 Per-priority SLA overrides — top-level `sla_priorities` array of
 `{ priority_id, reaction_minutes, solution_minutes }`. An entry with **both**
@@ -581,6 +609,164 @@ successful update the open tickets' SLA deadlines are recomputed.
 
 ---
 
+## Mailboxes
+
+A **mailbox** is the per-project mail backend: which server the helpdesk fetches from,
+how it authenticates, which folders it uses, and how replies leave the system. Each
+mailbox picks its backend with `provider`:
+
+| `provider` | Backend |
+|------------|---------|
+| `graph` | Microsoft 365 via the Graph API and the central app registration (plugin settings). |
+| `imap` | Generic IMAP for receiving and SMTP for sending — any provider, with password or OAuth2 auth. |
+
+Reading **and** writing require `manage_helpdesk` plus the Helpdesk module on the project
+(see [Permissions](#permissions)).
+
+### Secrets are write-only
+
+`mail_password`, `oauth_client_secret` and `oauth_sa_key` can be **set** but are **never
+returned**. Responses carry `mail_password_set`, `oauth_client_secret_set`,
+`oauth_sa_key_set` and `oauth_refresh_token_set` booleans instead. Write semantics:
+
+| You send | Effect |
+|----------|--------|
+| the key omitted, or an empty string | the stored secret is **kept** |
+| any other value | the secret is **replaced** |
+| `"-"` | the secret is **cleared** |
+
+`oauth_refresh_token` cannot be set through the API at all — it is produced by the
+interactive OAuth consent in the UI (`authorization_code` grant). Use
+`oauth_connected` to check whether that consent is still outstanding.
+
+### Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/projects/:project_id/helpdesk/mailboxes.:format` | List the project's mailboxes |
+| `POST` | `/projects/:project_id/helpdesk/mailboxes.:format` | Create a mailbox |
+| `GET` | `/helpdesk/mailboxes/:id.:format` | Show one mailbox |
+| `PUT` | `/helpdesk/mailboxes/:id.:format` | Update a mailbox (partial) |
+| `DELETE` | `/helpdesk/mailboxes/:id.:format` | Delete a mailbox |
+| `POST` | `/helpdesk/mailboxes/:id/test_connection.:format` | Probe the configured backend |
+
+### List mailboxes
+
+`GET /projects/:project_id/helpdesk/mailboxes.:format`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `enabled` | boolean | Only enabled (`1`) or only disabled (`0`) mailboxes. |
+| `provider` | string | `graph` or `imap`. |
+| `offset`, `limit` | integer | [Pagination](#pagination). |
+
+```bash
+curl -H "X-Redmine-API-Key: $KEY" \
+     "$URL/projects/1/helpdesk/mailboxes.json?provider=imap"
+```
+
+```json
+{
+  "helpdesk_mailboxes": [ { "id": 5, "mailbox_address": "support@example.com", "provider": "imap" } ],
+  "total_count": 1,
+  "offset": 0,
+  "limit": 25
+}
+```
+
+(Each entry is a full [mailbox object](#mailbox-object); shortened here.)
+
+### Show a mailbox
+
+`GET /helpdesk/mailboxes/:id.:format` → **200** with a `helpdesk_mailbox` object,
+**404** if it does not exist, **403** without `manage_helpdesk`.
+
+### Create a mailbox
+
+`POST /projects/:project_id/helpdesk/mailboxes.:format` → **201** with the created
+object, **422** on validation errors.
+
+`project_id` comes from the route and is ignored in the payload — a mailbox cannot be
+created in a different project than the one addressed.
+
+```bash
+# Generic IMAP/SMTP mailbox with password auth
+curl -H "X-Redmine-API-Key: $KEY" -H "Content-Type: application/json" \
+     -d '{"helpdesk_mailbox":{
+           "mailbox_address":"support@example.com",
+           "provider":"imap",
+           "credentials_source":"mailbox",
+           "auth_method":"password",
+           "imap_host":"imap.example.com","imap_port":993,"imap_security":"ssl",
+           "smtp_host":"smtp.example.com","smtp_port":587,"smtp_security":"starttls",
+           "mail_password":"s3cret"}}' \
+     "$URL/projects/1/helpdesk/mailboxes.json"
+
+# Microsoft 365 mailbox using the central app registration
+curl -H "X-Redmine-API-Key: $KEY" -H "Content-Type: application/json" \
+     -d '{"helpdesk_mailbox":{"mailbox_address":"support@example.com","provider":"graph"}}' \
+     "$URL/projects/1/helpdesk/mailboxes.json"
+```
+
+Validation worth knowing: `imap_host` is required when `provider` is `imap`;
+`smtp_host` is required when the mailbox sends through its own SMTP server; and
+`reply_transport: "graph"` is rejected unless the mailbox is actually Microsoft-hosted
+(`provider: "graph"`, or `provider: "imap"` with `oauth_preset: "microsoft"`).
+
+Blank connection fields are filled from the selected `oauth_preset` and the plugin's
+global defaults on save, so a minimal payload is usually enough.
+
+### Update a mailbox
+
+`PUT /helpdesk/mailboxes/:id.:format` → **204 No Content**, **422** on validation
+errors. Partial: only the keys you send are changed.
+
+```bash
+curl -X PUT -H "X-Redmine-API-Key: $KEY" -H "Content-Type: application/json" \
+     -d '{"helpdesk_mailbox":{"enabled":false,"processed_folder":"Verarbeitet"}}' \
+     "$URL/helpdesk/mailboxes/5.json"
+
+# Clear the stored password
+curl -X PUT -H "X-Redmine-API-Key: $KEY" -H "Content-Type: application/json" \
+     -d '{"helpdesk_mailbox":{"mail_password":"-"}}' \
+     "$URL/helpdesk/mailboxes/5.json"
+```
+
+After create and update the plugin tries to create the mailbox's target folders
+(`processed_folder`, `skipped_folder`, `failed_folder`) on the server, exactly as the
+UI does. A failure there is logged and does not fail the request — the mailbox is saved
+either way.
+
+### Delete a mailbox
+
+`DELETE /helpdesk/mailboxes/:id.:format` → **204 No Content**. Its rules are deleted
+with it; logged messages are kept and simply lose their mailbox link.
+
+### Test the connection
+
+`POST /helpdesk/mailboxes/:id/test_connection.:format` probes the stored configuration
+(IMAP login or Graph access) and lists the folders it found. It always works on the
+**persisted** record — unlike the UI it does not accept draft form state.
+
+```bash
+curl -X POST -H "X-Redmine-API-Key: $KEY" \
+     "$URL/helpdesk/mailboxes/5/test_connection.json"
+```
+
+```json
+{
+  "connection_test": {
+    "ok": true,
+    "message": "Verbindung erfolgreich",
+    "folders": ["INBOX", "Verarbeitet", "Fehlgeschlagen"],
+    "sent_folder": "Gesendete Elemente"
+  }
+}
+```
+
+Returns **422** with `"ok": false` and a `message` when the mailbox is not configured
+or the backend rejected the connection. `sent_folder` is only present for IMAP mailboxes.
+
 ## Data reference
 
 ### Contact object
@@ -605,8 +791,31 @@ Issue fields: `id`, `project {id,name}`, `tracker {id,name}`, `status {id,name}`
 `priority {id,name}`, `subject`, `description` (show only), `author {id,name}`,
 `assigned_to {id,name}` (if any), `done_ratio`, `created_on`, `updated_on`,
 `closed_on`. Helpdesk fields: `contact` (compact contact, if any),
-`mailbox {id,address}` (if any), `sla` (if applicable), `messages` (show +
+`mailbox {id,address,provider}` (if any), `sla` (if applicable), `messages` (show +
 `include=messages`).
+
+### Mailbox object
+
+Returned by the [mailbox endpoints](#mailboxes) under the root key `helpdesk_mailbox`.
+Embedded ticket/message references are the compact form (`id`, `address`, `provider`)
+only.
+
+| Group | Fields |
+|-------|--------|
+| Identity | `id`, `project {id,name}`, `mailbox_address`, `enabled` |
+| Backend | `provider` (`graph`\|`imap`), `reply_transport` (`provider`\|`graph`\|`smtp`), `outgoing_route` (resolved: `graph`\|`mailbox_smtp`\|`smtp`), `available_reply_transports` (array), `microsoft_hosted` |
+| Folders | `source_folder`, `processed_folder`, `skipped_folder`, `failed_folder`, `sent_folder` |
+| Ticket defaults | `default_tracker_id`, `default_priority_id`, `default_status_id`, `unknown_user_mode` (`accept`\|`create`\|`ignore`), `suppress_notifications`, `reopen_status_id`, `reopen_max_age_days` |
+| Filters & replies | `allow_list`, `deny_list`, `auto_reply_filter_enabled`, `auto_reply_sender_whitelist`, `auto_reply_header_whitelist`, `autoresponder_enabled`, `autoresponder_subject`, `autoresponder_body`, `reply_header`, `reply_footer`, `footer_mode` (`inherit`\|`prepend`\|`override`) |
+| Connection | `credentials_source` (`global`\|`mailbox`), `auth_method` (`oauth2`\|`password`), `imap_host`, `imap_port`, `imap_security` (`ssl`\|`starttls`\|`plain`), `imap_username`, `imap_verify_ssl`, `imap_unseen_only`, `imap_timeout`, `smtp_host`, `smtp_port`, `smtp_security`, `smtp_username`, `smtp_verify_ssl` |
+| OAuth2 | `oauth_preset` (`microsoft`\|`google`\|`generic`), `oauth_grant` (`client_credentials`\|`authorization_code`\|`jwt_bearer`), `oauth_tenant_id`, `oauth_client_id`, `oauth_authorize_url`, `oauth_token_url`, `oauth_scope`, `oauth_sa_email`, `oauth_connected`, `oauth_connected_at`, `oauth_token_expires_at` |
+| Secret presence | `mail_password_set`, `oauth_client_secret_set`, `oauth_sa_key_set`, `oauth_refresh_token_set` — booleans; the values themselves are never returned |
+| Status | `last_fetched_at`, `last_error`, `last_error_at`, `created_on`, `updated_on` |
+
+`outgoing_route`, `available_reply_transports`, `microsoft_hosted`, `oauth_connected`
+and the `*_set` booleans are derived and read-only. Everything else in the first seven
+groups is writable, plus the write-only `mail_password`, `oauth_client_secret` and
+`oauth_sa_key`.
 
 ### SLA object
 

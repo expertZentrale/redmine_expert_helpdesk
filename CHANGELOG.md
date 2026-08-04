@@ -9,6 +9,24 @@
 ## [Unreleased] 2026-07-30 (86)
 
 ### Added
+- **Mailboxes in the REST API.** The mail backend gained a large configuration surface with the
+  generic IMAP/SMTP support (provider choice, IMAP/SMTP hosts, OAuth2 grants and presets, sent
+  folder), but none of it was reachable from the API — mailboxes were UI-only, and the embedded
+  mailbox reference on a ticket did not even say which backend the mail had arrived through.
+  There is now a full CRUD resource: `GET`/`POST /projects/:id/helpdesk/mailboxes` and
+  `GET`/`PUT`/`DELETE /helpdesk/mailboxes/:id`, plus
+  `POST /helpdesk/mailboxes/:id/test_connection` to probe the stored configuration and list its
+  folders. Reading requires `manage_helpdesk` just like writing, because the configuration
+  exposes hosts, usernames and OAuth client/tenant ids. **Secrets are write-only**:
+  `mail_password`, `oauth_client_secret` and `oauth_sa_key` can be set but are never returned —
+  responses carry `mail_password_set`-style booleans instead — and sending `"-"` clears a stored
+  secret, matching the UI's masked-field behaviour. The interactive OAuth consent stays in the
+  UI; `oauth_connected` tells an API client when it is still outstanding. The embedded mailbox
+  reference on tickets and messages now carries `provider`. See `API.md`.
+- **AI and knowledge-base settings in the project settings API.** `GET`/`PUT
+  /projects/:id/helpdesk/settings` silently omitted every `ai_*` and `kb_*` field, so the AI
+  summary and RAG knowledge base could only be configured through the UI. Both are now read and
+  written like the SLA and phishing settings.
 - **GitHub issue templates.** Bug reports and feature requests are now filed through YAML issue
   forms in `.github/ISSUE_TEMPLATE/`, so the details that were previously missing from most
   reports — plugin version, the Administration → Information table, and the affected area — are

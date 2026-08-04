@@ -23,6 +23,12 @@ class HelpdeskProjectSettingsApiController < ApplicationController
     apply_boolean(:phishing_check_enabled, hp)
     apply_boolean(:sla_enabled, hp)
     apply_boolean(:sla_notify_enabled, hp)
+    apply_boolean(:ai_summary_enabled, hp)
+    apply_boolean(:ai_attach_metadata, hp)
+    apply_boolean(:ai_attach_text, hp)
+    apply_boolean(:ai_attach_images, hp)
+    apply_boolean(:ai_include_journal, hp)
+    apply_boolean(:ai_include_private_notes, hp)
 
     @setting.reply_subject_template = hp[:reply_subject_template].to_s if hp.key?(:reply_subject_template)
     @setting.reply_status_id        = hp[:reply_status_id].presence   if hp.key?(:reply_status_id)
@@ -33,6 +39,13 @@ class HelpdeskProjectSettingsApiController < ApplicationController
     @setting.sla_work_end           = hp[:sla_work_end]              if hp.key?(:sla_work_end)
     @setting.sla_notify_email       = hp[:sla_notify_email].presence  if hp.key?(:sla_notify_email)
     @setting.sla_notify_user_id     = hp[:sla_notify_user_id].presence if hp.key?(:sla_notify_user_id)
+    # KI-Zusammenfassung / Wissensbasis: Werte werden im Modell gegen die
+    # jeweiligen Enum-Listen validiert (AI_SCOPES, AI_PROMPT_MODES, KB_*).
+    @setting.ai_summary_scope       = hp[:ai_summary_scope]           if hp.key?(:ai_summary_scope)
+    @setting.ai_prompt_mode         = hp[:ai_prompt_mode]             if hp.key?(:ai_prompt_mode)
+    @setting.ai_prompt              = hp[:ai_prompt].to_s             if hp.key?(:ai_prompt)
+    @setting.kb_ingest_mode         = hp[:kb_ingest_mode]             if hp.key?(:kb_ingest_mode)
+    @setting.kb_proposal_display    = hp[:kb_proposal_display]        if hp.key?(:kb_proposal_display)
     if hp.key?(:sla_work_days)
       days = Array(hp[:sla_work_days]).flat_map { |d| d.to_s.split(',') }
                                       .map(&:to_i).select { |d| (1..7).cover?(d) }

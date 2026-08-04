@@ -60,6 +60,8 @@ RedmineApp::Application.routes.draw do
               :controller => 'helpdesk_contacts_api', :only => [:index, :create]
     resources :helpdesk_tickets_api, :path => 'helpdesk/tickets',
               :controller => 'helpdesk_tickets_api', :only => [:index, :create]
+    resources :helpdesk_mailboxes_api, :path => 'helpdesk/mailboxes',
+              :controller => 'helpdesk_mailboxes_api', :only => [:index, :create]
     # Projekt-Helpdesk-Einstellungen (Singleton je Projekt)
     resource :helpdesk_project_setting_api, :path => 'helpdesk/settings',
              :controller => 'helpdesk_project_settings_api', :only => [:show, :update]
@@ -70,6 +72,12 @@ RedmineApp::Application.routes.draw do
             :controller => 'helpdesk_contacts_api', :only => [:show, :update, :destroy]
   resources :helpdesk_tickets_api, :path => 'helpdesk/tickets',
             :controller => 'helpdesk_tickets_api', :only => [:show, :update, :destroy]
+  resources :helpdesk_mailboxes_api, :path => 'helpdesk/mailboxes',
+            :controller => 'helpdesk_mailboxes_api', :only => [:show, :update, :destroy] do
+    member do
+      post :test_connection
+    end
+  end
 
   # Regeln je Postfach
   resources :helpdesk_mailboxes, :only => [] do

@@ -112,21 +112,8 @@ class HelpdeskMailboxesController < ApplicationController
   # Stellt sicher, dass alle konfigurierten Zielordner im Postfach existieren.
   # Fehlende Ordner werden automatisch angelegt. Fehler werden als Warnung gemeldet.
   def ensure_mailbox_folders(mailbox)
-    return if mailbox.mailbox_address.blank?
-
-    provider = RedmineExpertHelpdesk::MailProvider.for(mailbox)
-    return unless provider.configured?
-
-    folders = [mailbox.processed_folder, mailbox.skipped_folder, mailbox.failed_folder].compact.uniq
-    provider.with_session do
-      folders.each do |folder|
-        next if folder.blank?
-
-        provider.find_or_create_folder(folder)
-      end
-    end
-  rescue RedmineExpertHelpdesk::MailProvider::ProviderError => e
-    flash[:warning] = l(:warning_helpdesk_folder_create_failed, :message => e.message)
+    error = RedmineExpertHelpdesk::MailboxFolders.ensure!(mailbox)
+    flash[:warning] = l(:warning_helpdesk_folder_create_failed, :message => error) if error
   end
 
   def require_manage_mailboxes

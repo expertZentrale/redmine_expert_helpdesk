@@ -36,10 +36,124 @@ module RedmineExpertHelpdesk
     end
 
     # Ursprungspostfach-Referenz.
+    # `provider` is part of the reference so a consumer can tell a Graph mailbox
+    # from an IMAP one without fetching the full mailbox.
     def mailbox_ref(api, mailbox)
       return if mailbox.nil?
 
-      api.mailbox(:id => mailbox.id, :address => mailbox.mailbox_address)
+      api.mailbox(:id => mailbox.id, :address => mailbox.mailbox_address,
+                  :provider => mailbox.provider)
+    end
+
+    # Full mailbox configuration.
+    #
+    # Secrets are NEVER serialized: the encrypted columns (mail_password_enc,
+    # oauth_client_secret_enc, oauth_sa_key_enc, oauth_refresh_token_enc) and their
+    # plaintext readers stay out of the API entirely. Clients get `*_set` booleans
+    # instead, which is enough to render "configured / not configured".
+    def mailbox(api, m)
+      return if m.nil?
+
+      api.helpdesk_mailbox do
+        api.id      m.id
+        api.project(:id => m.project_id, :name => m.project&.name)
+        api.mailbox_address m.mailbox_address
+        api.enabled m.enabled
+
+        # --- Backend and outgoing route ---
+        api.provider                   m.provider
+        api.reply_transport            m.reply_transport
+        api.outgoing_route             m.outgoing_route
+        api.microsoft_hosted           m.microsoft_hosted?
+        api.array :available_reply_transports do
+          m.available_reply_transports.each { |t| api.transport t }
+        end
+
+        # --- Folders ---
+        api.source_folder    m.source_folder
+        api.processed_folder m.processed_folder
+        api.skipped_folder   m.skipped_folder
+        api.failed_folder    m.failed_folder
+        api.sent_folder      m.sent_folder
+
+        # --- Ticket defaults ---
+        api.default_tracker_id   m.default_tracker_id
+        api.default_priority_id  m.default_priority_id
+        api.default_status_id    m.default_status_id
+        api.unknown_user_mode    m.unknown_user_mode
+        api.suppress_notifications m.suppress_notifications
+        api.reopen_status_id     m.reopen_status_id
+        api.reopen_max_age_days  m.reopen_max_age_days
+
+        # --- Filters and replies ---
+        api.allow_list m.allow_list
+        api.deny_list  m.deny_list
+        api.auto_reply_filter_enabled    m.auto_reply_filter_enabled
+        api.auto_reply_sender_whitelist  m.auto_reply_sender_whitelist
+        api.auto_reply_header_whitelist  m.auto_reply_header_whitelist
+        api.autoresponder_enabled m.autoresponder_enabled
+        api.autoresponder_subject m.autoresponder_subject
+        api.autoresponder_body    m.autoresponder_body
+        api.reply_header m.reply_header
+        api.reply_footer m.reply_footer
+        api.footer_mode  m.footer_mode
+
+        # --- Connection (IMAP/SMTP) ---
+        api.credentials_source m.credentials_source
+        api.auth_method   m.auth_method
+        api.imap_host     m.imap_host
+        api.imap_port     m.imap_port
+        api.imap_security m.imap_security
+        api.imap_username m.imap_username
+        api.imap_verify_ssl  m.imap_verify_ssl
+        api.imap_unseen_only m.imap_unseen_only
+        api.imap_timeout  m.imap_timeout
+        api.smtp_host     m.smtp_host
+        api.smtp_port     m.smtp_port
+        api.smtp_security m.smtp_security
+        api.smtp_username m.smtp_username
+        api.smtp_verify_ssl m.smtp_verify_ssl
+
+        # --- OAuth2 (non-secret parts only) ---
+        api.oauth_preset    m.oauth_preset
+        api.oauth_grant     m.oauth_grant
+        api.oauth_tenant_id m.oauth_tenant_id
+        api.oauth_client_id m.oauth_client_id
+        api.oauth_authorize_url m.oauth_authorize_url
+        api.oauth_token_url m.oauth_token_url
+        api.oauth_scope     m.oauth_scope
+        api.oauth_sa_email  m.oauth_sa_email
+        api.oauth_connected m.oauth_connected?
+        api.oauth_connected_at    m.oauth_connected_at
+        api.oauth_token_expires_at m.oauth_token_expires_at
+
+        # --- Secret presence (never the value itself) ---
+        api.mail_password_set        m.mail_password_enc.present?
+        api.oauth_client_secret_set  m.oauth_client_secret_enc.present?
+        api.oauth_sa_key_set         m.oauth_sa_key_enc.present?
+        api.oauth_refresh_token_set  m.oauth_refresh_token_enc.present?
+
+        # --- Status ---
+        api.last_fetched_at m.last_fetched_at
+        api.last_error      m.last_error
+        api.last_error_at   m.last_error_at
+        api.created_on      m.created_at
+        api.updated_on      m.updated_at
+      end
+    end
+
+    # Ergebnis von MailProvider#test_connection.
+    def connection_test(api, result)
+      api.connection_test do
+        api.ok      result[:ok] ? true : false
+        api.message result[:message]
+        if result[:folders]
+          api.array :folders do
+            result[:folders].each { |f| api.folder f.to_s }
+          end
+        end
+        api.sent_folder result[:sent_folder] if result.key?(:sent_folder)
+      end
     end
 
     # SLA-Zustand aus Sla.state_for ({ :reaction => clock|nil, :solution => clock|nil } | nil).
@@ -114,6 +228,19 @@ module RedmineExpertHelpdesk
         api.sla_notify_enabled      s.sla_notify_enabled
         api.sla_notify_email        s.sla_notify_email
         api.sla_notify_user_id      s.sla_notify_user_id
+        # KI-Zusammenfassung (opt-in je Projekt).
+        api.ai_summary_enabled      s.ai_summary_enabled
+        api.ai_summary_scope        s.ai_summary_scope
+        api.ai_prompt_mode          s.ai_prompt_mode
+        api.ai_prompt               s.ai_prompt
+        api.ai_attach_metadata      s.ai_attach_metadata
+        api.ai_attach_text          s.ai_attach_text
+        api.ai_attach_images        s.ai_attach_images
+        api.ai_include_journal      s.ai_include_journal
+        api.ai_include_private_notes s.ai_include_private_notes
+        # Wissensbasis (RAG).
+        api.kb_ingest_mode          s.kb_ingest_mode
+        api.kb_proposal_display     s.kb_proposal_display
         api.array :sla_priorities do
           priorities.each do |p|
             api.sla_priority do

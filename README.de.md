@@ -546,6 +546,15 @@ Parametern und Beispielen: [API.md](API.md).**
 | GET / POST | `/projects/:id/helpdesk/tickets.{json,xml}` |
 | GET / PUT / DELETE | `/helpdesk/tickets/:id.{json,xml}` |
 | GET / PUT | `/projects/:id/helpdesk/settings.{json,xml}` |
+| GET / POST | `/projects/:id/helpdesk/mailboxes.{json,xml}` |
+| GET / PUT / DELETE | `/helpdesk/mailboxes/:id.{json,xml}` |
+| POST | `/helpdesk/mailboxes/:id/test_connection.{json,xml}` |
+
+Postfächer erfordern zum Lesen wie zum Schreiben `manage_helpdesk`, denn ihre
+Konfiguration legt Mail-Hosts, Benutzernamen und OAuth-Client-/Tenant-IDs offen. Ihre
+Secrets (`mail_password`, `oauth_client_secret`, `oauth_sa_key`) sind **nur
+schreibbar** — die Antworten melden lediglich, ob eines hinterlegt ist, und ein `"-"`
+löscht es.
 
 ```bash
 # Helpdesk-Tickets des Projekts 42 auflisten

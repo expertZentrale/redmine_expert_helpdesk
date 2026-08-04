@@ -1,0 +1,5 @@
+api.array :helpdesk_mailboxes, api_meta(:total_count => @mailbox_count, :offset => @offset, :limit => @limit) do
+  @mailboxes.each do |mailbox|
+    RedmineExpertHelpdesk::ApiSerializers.mailbox(api, mailbox)
+  end
+end

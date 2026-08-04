@@ -22,6 +22,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/graph_provider', __FILE
 require File.expand_path('../lib/redmine_expert_helpdesk/imap_client', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/smtp_sender', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/imap_provider', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/mailbox_folders', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_client', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_store', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_extractor', __FILE__)

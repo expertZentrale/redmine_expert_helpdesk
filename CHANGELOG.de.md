@@ -8,6 +8,27 @@
 ## [Unreleased] 2026-07-30 (86)
 
 ### Added
+- **Postfächer in der REST-API.** Mit der generischen IMAP/SMTP-Unterstützung ist die
+  Konfiguration eines Postfachs deutlich gewachsen (Backend-Auswahl, IMAP-/SMTP-Hosts,
+  OAuth2-Grants und -Presets, Gesendet-Ordner) — erreichbar war davon über die API nichts:
+  Postfächer waren reine UI-Angelegenheit, und die eingebettete Postfach-Referenz an einem Ticket
+  verriet nicht einmal, über welches Backend die Mail hereingekommen war. Es gibt jetzt eine
+  vollständige CRUD-Ressource: `GET`/`POST /projects/:id/helpdesk/mailboxes` und
+  `GET`/`PUT`/`DELETE /helpdesk/mailboxes/:id`, dazu
+  `POST /helpdesk/mailboxes/:id/test_connection`, um die gespeicherte Konfiguration zu prüfen und
+  die Ordner aufzulisten. Lesen erfordert wie Schreiben `manage_helpdesk`, denn die Konfiguration
+  legt Hosts, Benutzernamen und OAuth-Client-/Tenant-IDs offen. **Secrets sind
+  schreibgeschützt-einseitig**: `mail_password`, `oauth_client_secret` und `oauth_sa_key` lassen
+  sich setzen, werden aber nie zurückgeliefert — stattdessen enthalten die Antworten Booleans wie
+  `mail_password_set` —, und ein `"-"` löscht ein gespeichertes Secret, genau wie das maskierte
+  Feld in der Oberfläche. Der interaktive OAuth-Consent bleibt in der UI; `oauth_connected` zeigt
+  einem API-Client, wenn er noch aussteht. Die eingebettete Postfach-Referenz an Tickets und
+  Nachrichten führt jetzt `provider` mit. Siehe `API.md`.
+- **KI- und Wissensbasis-Einstellungen in der Projekteinstellungs-API.** `GET`/`PUT
+  /projects/:id/helpdesk/settings` hat sämtliche `ai_*`- und `kb_*`-Felder stillschweigend
+  ausgelassen, KI-Zusammenfassung und RAG-Wissensbasis waren also nur über die Oberfläche
+  konfigurierbar. Beide werden jetzt wie die SLA- und Phishing-Einstellungen gelesen und
+  geschrieben.
 - **Issue-Vorlagen für GitHub.** Fehlermeldungen und Feature-Wünsche werden jetzt über
   YAML-Formulare in `.github/ISSUE_TEMPLATE/` erfasst. Damit sind die Angaben, die bisher in den
   meisten Meldungen fehlten — Plugin-Version, die Tabelle aus Administration → Information und der

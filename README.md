@@ -540,6 +540,14 @@ and append `.json`/`.xml`. **Full reference with all parameters and examples:
 | GET / POST | `/projects/:id/helpdesk/tickets.{json,xml}` |
 | GET / PUT / DELETE | `/helpdesk/tickets/:id.{json,xml}` |
 | GET / PUT | `/projects/:id/helpdesk/settings.{json,xml}` |
+| GET / POST | `/projects/:id/helpdesk/mailboxes.{json,xml}` |
+| GET / PUT / DELETE | `/helpdesk/mailboxes/:id.{json,xml}` |
+| POST | `/helpdesk/mailboxes/:id/test_connection.{json,xml}` |
+
+Mailboxes require `manage_helpdesk` for reading as well as writing, since their
+configuration exposes mail hosts, usernames and OAuth client/tenant ids. Their secrets
+(`mail_password`, `oauth_client_secret`, `oauth_sa_key`) are **write-only** — responses
+report only whether one is stored, and sending `"-"` clears it.
 
 ```bash
 # List helpdesk tickets of project 42
