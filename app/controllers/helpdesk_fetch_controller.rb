@@ -21,7 +21,7 @@ class HelpdeskFetchController < ApplicationController
       end
       format.json { render :json => results }
     end
-  rescue RedmineExpertHelpdesk::GraphClient::GraphError => e
+  rescue RedmineExpertHelpdesk::MailProvider::ProviderError => e
     respond_to do |format|
       format.html do
         flash[:error] = l(:error_helpdesk_fetch_failed, :message => e.message)

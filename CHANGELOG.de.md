@@ -5,6 +5,236 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased] 2026-07-30 (86)
+
+### Added
+- **Issue-Vorlagen für GitHub.** Fehlermeldungen und Feature-Wünsche werden jetzt über
+  YAML-Formulare in `.github/ISSUE_TEMPLATE/` erfasst. Damit sind die Angaben, die bisher in den
+  meisten Meldungen fehlten — Plugin-Version, die Tabelle aus Administration → Information und der
+  betroffene Bereich — von vornherein Pflicht. Freie Issues sind deaktiviert; `config.yml`
+  verweist stattdessen auf die README und `API.md`.
+- **Generische IMAP/SMTP-Postfächer mit moderner Authentifizierung.** Bisher konnte das Plugin
+  Mails ausschließlich über die Graph-API aus Microsoft 365 abholen — Google Workspace, Exchange
+  On-Premises, selbst gehostete Dovecot-/Zimbra-Server und gewöhnliche Hoster waren damit außen
+  vor. Ein Postfach wählt sein Backend jetzt über die neue Spalte `provider` (`graph` —
+  unveränderte Vorgabe — oder `imap`). Eingehende Mails kommen über IMAP
+  (`lib/redmine_expert_helpdesk/imap_client.rb`), ausgehende gehen über den eigenen SMTP-Server des
+  Postfachs (`smtp_sender.rb`); beides kapselt `imap_provider.rb`. Migrationen `034` und `035`.
+- **OAuth2 (XOAUTH2) als Standard-Anmeldung mit drei Verfahren.** `client_credentials`
+  (nur Anwendung; Microsoft-IMAP benötigt `IMAP.AccessAsApp` / `SMTP.SendAsApp` im Tenant),
+  `authorization_code` (einmalige interaktive Zustimmung, Refresh-Token verschlüsselt gespeichert —
+  für Gmail und beliebige Identity Provider) und `jwt_bearer` (Google-Dienstkonto mit domainweiter
+  Delegierung; die Assertion wird mit `OpenSSL::PKey::RSA` signiert, ein `jwt`-/`googleauth`-Gem
+  ist also nicht nötig). Umgesetzt in `oauth_token_provider.rb`, der gemeinsame SASL-String liegt
+  in `xoauth2.rb`. Benutzername/Passwort über TLS bleibt als zweite `auth_method` für Server ohne
+  OAuth2 erhalten. **Keine neuen Gems** — `net/imap` und `net/smtp` sind bereits
+  Laufzeitabhängigkeiten des von Redmine mitgelieferten `mail`-Gems.
+- **OAuth-Zustimmungsablauf.** Neuer `HelpdeskOauthController` mit *einer festen* Callback-URL
+  (`/helpdesk/oauth/callback`), weil Identity Provider nur exakt registrierte Redirect-URIs
+  akzeptieren; die Postfach-ID steckt in einem signierten, zehn Minuten gültigen `state`
+  (`Rails.application.message_verifier`) statt im Pfad. Das Postfach-Formular zeigt die URL
+  schreibgeschützt neben einer Schaltfläche „Verbinden“/„Neu verbinden“ und dem Verbindungsdatum.
+- **Verbindungsvorlagen** für Microsoft 365, Google Workspace und generische Server
+  (`provider_presets.rb`) füllen Hosts, Ports, Endpunkte und Scopes vor. Sie greifen sowohl im
+  Formular als auch serverseitig in `HelpdeskMailbox#apply_preset!`, damit auch über die API
+  angelegte Postfächer sie erhalten, und **überschreiben nie einen manuell eingetragenen Wert**.
+- **Schaltfläche „Verbindung testen“** im Postfach-Formular
+  (`HelpdeskMailboxesController#test_connection`) meldet das Ergebnis der Anmeldung und listet die
+  sichtbaren Ordner — für beide Provider.
+- **Verschlüsselte Geheimnisse.** Postfach-Passwörter, Client-Secrets, Refresh-Tokens und
+  Dienstkonto-Schlüssel werden über `secret_box.rb` gespeichert (`ActiveSupport::MessageEncryptor`
+  auf Basis von `secret_key_base` — `ActiveRecord::Encryption` gibt es erst ab Rails 7, dieses
+  Plugin unterstützt weiterhin Redmine 5.1). Werte tragen das Präfix `enc:v1:`; alles ohne dieses
+  Präfix wird unverändert zurückgegeben, sodass bestehender Klartext lesbar bleibt und keine
+  Datenmigration nötig ist. Achtung: Ein Wechsel von `secret_key_base` macht gespeicherte
+  Geheimnisse unwiederbringlich — sie müssen dann neu eingegeben werden.
+- **Ausgehende Mails werden als Kopie im Gesendet-Ordner des Postfachs abgelegt.** Graphs
+  `sendMail` erledigt das von selbst, reines SMTP nicht — ein IMAP-Helpdesk-Postfach zeigte
+  deshalb nur die eingehende Hälfte jeder Unterhaltung. `ImapClient#append_sent` legt die
+  Nachricht jetzt als gelesen ab, unabhängig vom Versandweg — auch beim globalen Redmine-Relay,
+  das nirgends etwas ablegt. Der Ordner stammt aus dem `\Sent`-Kennzeichen des Servers nach
+  RFC 6154, dann aus der neuen Spalte `sent_folder`, dann aus der Vorlage (`Sent Items` /
+  `[Gmail]/Sent Mail` / `Sent`); „Verbindung testen“ nennt den erkannten Ordner. **Ein
+  fehlgeschlagenes APPEND wird protokolliert und verschluckt** — der Kunde hat die Mail zu diesem
+  Zeitpunkt bereits, und ein Ablageproblem darf nie wie ein Versandfehler aussehen.
+
+### Changed
+- **`MailProcessor` ist jetzt providerneutral.** Er spricht mit einem `MailProvider` statt mit dem
+  `GraphClient` und verarbeitet ein normalisiertes `MailProvider::MessageMeta`-Struct statt roher
+  Graph-JSON-Schlüssel (`meta['subject']`, `meta.dig('from','emailAddress','address')`, …). Ein
+  kompletter Abrufzyklus läuft in einem einzigen `provider.with_session`-Block, IMAP öffnet also
+  eine Verbindung pro Abruf statt einer pro Nachricht. `GraphProvider` kapselt den **unveränderten**
+  `GraphClient`; `GraphClient::GraphError` erbt nun von `MailProvider::ProviderError`, wodurch die
+  bestehenden `rescue`-Stellen in `HelpdeskFetchController` und `HelpdeskRepliesController` ohne
+  weiteren Umbau mitziehen.
+- **Der Antwort-Transport kennt jetzt die Option `provider`** (`REPLY_TRANSPORTS`) und nutzt sie als
+  Vorgabe für neue Postfächer: Antworten gehen über das, wofür das Postfach selbst konfiguriert ist
+  — Graph oder eigener SMTP-Server. Die bisherigen Werte `graph` und `smtp` (globale
+  ActionMailer-Einstellungen von Redmine) verhalten sich unverändert. Verdrahtet in
+  `HelpdeskRepliesController` und `InitMailer#send_provider_mime`.
+- **Die Herkunft der Zugangsdaten ist jetzt explizit.** `credentials_source` (`global` | `mailbox`)
+  entscheidet, woher ein Postfach seine Zugangsdaten liest; leere Felder werden bewusst **nicht**
+  aus der jeweils anderen Quelle ergänzt, weil ein halb gefülltes Postfach, das sich stillschweigend
+  gegen den falschen Tenant anmeldet, genau der Fehlerfall ist, der zwei Wahrheitsquellen unhaltbar
+  macht. `graph` + `global` verhält sich identisch zu vorher. Globale Vorgaben für
+  IMAP/SMTP-Postfächer wurden in die Einstellungs-Partial und `init.rb` aufgenommen.
+- **Der Cache-Schlüssel des Graph-Access-Tokens enthält jetzt einen Fingerabdruck der
+  Zugangsdaten.** Ein gewechseltes Client-Secret hinterließ bisher bis zu eine Stunde lang ein
+  veraltetes Token im Cache.
+
+### Fixed
+- **Das Wechseln eines OAuth2-Client-Secrets verwarf das zwischengespeicherte Access-Token nicht.**
+  Der Kommentar an `OauthTokenProvider#cache_key` versprach, dass „jede Änderung an den
+  Zugangsdaten den Schlüssel ändert“ — der Fingerabdruck enthielt aber nur `client_id`,
+  `tenant_id`, `token_url`, `scope` und das Grant, und keines davon ändert sich, wenn allein das
+  Secret rotiert wird. Das zum abgelösten Secret ausgestellte Token blieb dadurch bis zu seinem
+  Ablauf in Gebrauch (bis zu `expires_in - 120` Sekunden). Die Secrets sind jetzt Teil des
+  Fingerabdrucks, der ein SHA-256-Digest ist — in den Cache-Schlüssel selbst gelangt also nichts
+  Sensibles. Der vorhandene Test konnte das nie aufdecken: Redmines Testumgebung verwendet einen
+  Null-Cache, das „zwischengespeicherte“ Token wurde stillschweigend verworfen und jeder Zugriff
+  sah aus wie eine frische Anfrage.
+- **Presets und globale Verbindungsvorgaben konnten weder Port noch Verschlüsselung setzen.**
+  `HelpdeskMailbox#apply_preset!` weist nur dort zu, wo `self[attr].blank?` gilt. Migration `034`
+  hatte `imap_port` / `imap_security` / `smtp_port` / `smtp_security` aber Spaltenvorgaben
+  mitgegeben (993 / `ssl` / 587 / `starttls`), und eine Spaltenvorgabe ist nie leer — die Zuweisung
+  wurde also jedes Mal übersprungen. Nur `imap_host` und `smtp_host`, die keine Spaltenvorgabe
+  haben, funktionierten überhaupt. Die in `apply_preset!` dokumentierte Rangfolge (ein benanntes
+  Preset schlägt die globalen Vorgaben, das Preset `generic` weicht ihnen) war damit für vier von
+  sechs Feldern toter Code. Aufgefallen ist das nie, weil die Presets `microsoft` und `google`
+  selbst 993/587 verwenden. Migration `037` entfernt die vier Vorgaben und gibt die Entscheidung an
+  `apply_preset!` zurück; `ImapClient#port` und `SmtpSender#port` greifen bei leerer Spalte ohnehin
+  je nach Sicherheitsmodus auf sinnvolle Werte zurück. Gespeicherte Werte bleiben unangetastet.
+- **Ein neues IMAP-Postfach startete auf einem Antwort-Transport, den die eigene Validierung
+  ablehnt.** `reply_transport` hatte die Vorgabe `graph` (Migration `014`, als Graph das einzige
+  Backend war), während `#available_reply_transports` `graph` ausschließlich
+  `microsoft_hosted?`-Postfächern anbietet — ein reines IMAP-Postfach musste den Wert also erst
+  vom Formular überschreiben lassen, bevor es speicherbar war. Migration `037` ändert die Vorgabe
+  auf `provider` („das eigene Backend dieses Postfachs“), das für jedes Postfach gültig ist; bei
+  einem Graph-Postfach löst `#outgoing_route` es unmittelbar wieder nach `graph` auf.
+- **Der Autoresponder ignorierte den Antwort-Transport des Postfachs.**
+  `MailProcessor#send_autoresponder` rief bedingungslos `GraphClient#send_mail_mime` auf; ein auf
+  SMTP eingestelltes Postfach verschickte seine automatischen Eingangsbestätigungen also trotzdem
+  über die Graph-API — und ein IMAP-Postfach hätte sie überhaupt nicht versenden können. Jetzt wird
+  wie bei allen anderen ausgehenden Pfaden der Provider des Postfachs verwendet.
+- **Härtung: Die Ordner-AJAX-Endpunkte vertrauten einem beliebigen Parameter `mailbox_address`.**
+  `HelpdeskMailboxesController#folders` / `#create_folder` / `#ensure_mailbox_folders` bauten daraus
+  direkt einen `GraphClient`, sodass jede Person mit `manage_helpdesk` in irgendeinem Projekt die
+  Ordner **jedes** Postfachs auflisten oder anlegen konnte, das die zentrale Azure-App-Registrierung
+  erreicht. Der Provider wird nun aus dem übermittelten Formularzustand im Kontext des aktuellen
+  Projekts oder aus dem gespeicherten Datensatz aufgebaut — dessen Geheimnisse nie an den Browser
+  zurückwandern.
+- **Startabbruch und ein wirkungsloser OAuth-Controller, beide durch das Autoloading verursacht.**
+  `oauth_token_provider.rb` definierte `OAuthTokenProvider`, während Zeitwerk aus diesem Dateinamen
+  `OauthTokenProvider` erwartet — Redmine brach beim Start mit einem `Zeitwerk::NameError` ab.
+  Unabhängig davon hieß der neue Controller `HelpdeskOauthController`, genau wie der bereits in
+  RedmineUPs `redmine_contacts_helpdesk` enthaltene; da sich alle Plugins einen Autoload-Pfad
+  teilen, wurde ausschließlich deren Klasse geladen und das Postfach-Formular scheiterte an
+  `undefined method 'callback_url'`. Unserer heißt jetzt `ExpertHelpdeskOauthController` mit den
+  Route-Helfern `expert_helpdesk_oauth_*`. Der öffentliche Callback-Pfad
+  `/helpdesk/oauth/callback` bleibt unverändert, beim Identity Provider muss also nichts neu
+  hinterlegt werden.
+
+- **Redundante und wirkungslose globale Einstellungen.** Die Plugin-Einstellungen boten *zwei*
+  App-Registrierungen an — die seit jeher vorhandene `tenant_id`/`client_id`/`client_secret` und
+  ein zweites Tripel `default_oauth_tenant_id`/`_client_id`/`_client_secret` — im Microsoft-Fall
+  also dieselbe Entra-App, mit einer Vorrangregel, die auf dem Bildschirm nirgends erklärt war.
+  Das zweite Tripel entfällt; es gibt jetzt genau eine zentrale Registrierung, die sich Graph und
+  OAuth2-IMAP/SMTP teilen. Umgekehrt wurden `default_imap_host`/`_port`/`_security` und
+  `default_smtp_host`/`_port`/`_security` zwar gespeichert, aber von keiner Codestelle gelesen —
+  sie dienen jetzt als Rückfallwert der Vorlage „Andere / selbst gehostet“, sodass ein Betreiber
+  mit einem einzigen Mailserver diesen einmal zentral statt an jedem Postfach einträgt. Eine
+  benannte Vorlage (Microsoft, Google) hat weiterhin Vorrang, ein ausdrücklicher Wert am Postfach
+  vor beidem.
+- **„Netzwerkfehler“ statt Ordnerliste bei jedem gespeicherten Postfach.** Der gehärtete
+  Ordner-Endpunkt schickt das gesamte Formular per `new FormData(form)` — auf einer
+  Bearbeiten-Seite also samt Rails' verstecktem Feld `_method=put`. Rails wertete es aus, machte
+  aus dem POST ein PUT auf die Member-Route und führte `#update` mit `id="folders"` aus: ein 404,
+  an dessen HTML-Rumpf anschließend der JSON-Parser scheiterte, weshalb das Formular einen
+  Netzwerkfehler meldete. Das Feld wird jetzt aus der Anfrage entfernt, und eine Antwort ohne JSON
+  nennt ihren tatsächlichen HTTP-Status statt pauschal „Netzwerkfehler“. Betroffen waren „Ordner
+  laden“, „Ordner anlegen“ und „Verbindung testen“ bestehender Postfächer; neue Postfächer
+  funktionierten, weil ihr Formular kein `_method` enthält.
+
+- **Die Passwort-Anmeldung für einfache IMAP/SMTP-Server handelt ihr Verfahren jetzt aus.** Beide
+  Protokolle waren auf genau eines festgelegt: IMAP schickte immer das Kommando `LOGIN`, SMTP
+  verlangte immer `AUTH LOGIN`. Ein Server, der `LOGINDISABLED` anzeigt (RFC 3501 verlangt das auf
+  ungeschützten Verbindungen, Dovecot setzt es entsprechend) oder nur `PLAIN` bzw. `CRAM-MD5`
+  anbietet, wies damit völlig korrekte Zugangsdaten wie einen Anmeldefehler ab. `ImapClient`
+  weicht jetzt auf `AUTHENTICATE PLAIN`/`LOGIN` aus, wenn das einfache Kommando abgelehnt wird,
+  und `SmtpSender` wählt das erste von `PLAIN`, `LOGIN`, `CRAM-MD5`, das der Server tatsächlich
+  anbietet. Ist keines nutzbar, sagt die Fehlermeldung das und verweist auf die Verschlüsselung,
+  statt falsche Zugangsdaten zu behaupten.
+- **Die IMAP-Capability-Liste wird nach der Anmeldung neu gelesen.** Sie stammte aus der Antwort
+  vor der Anmeldung, und `MOVE` sowie `UIDPLUS` werden häufig erst danach angezeigt — der Client
+  konnte deshalb den destruktiven Weg über ein einfaches `EXPUNGE` gehen, obwohl der Server beides
+  beherrscht.
+
+- **Der Autoresponder ignorierte auch den Versandweg `smtp`.** Die vorige Korrektur löste ihn von
+  seinem fest verdrahteten Graph-Aufruf und stellte ihn auf das Backend des Postfachs um — richtig
+  für die Wege `provider` und `graph`, aber weiterhin an *SMTP (Redmine-Standard)* vorbei: Ein
+  Postfach, das über Redmines eigene ActionMailer-Konfiguration versendet, schickte seine
+  automatischen Eingangsbestätigungen trotzdem über die Graph-API oder den eigenen SMTP-Server.
+  `MailProcessor#deliver_autoresponder` folgt jetzt derselben Dreiteilung wie Antworten und
+  Erstmails, und `graph` meint auch dann die zentrale Registrierung, wenn die Mail über IMAP kam.
+
+- **Ein IMAP-Postfach ließ sich auf den Versand über Microsoft Graph stellen.** Die Auswahl bot
+  jedem Postfach alle drei Werte an, sodass ein Gmail- oder Dovecot-Postfach auf
+  `POST /users/{adresse}/sendMail` gegen die zentrale Azure-Registrierung zeigen konnte — ein 404,
+  der erst beim Versand auffiel, während die Antwort an den Kunden verloren war. `graph` wird
+  jetzt nur noch für ein Postfach angeboten und akzeptiert, das Microsoft auch hostet: ein
+  `graph`-Postfach oder ein `imap`-Postfach mit der Microsoft-Vorlage (das legitime Szenario
+  „Microsoft 365 über IMAP“). Das Formular blendet die Option aus, und `HelpdeskMailbox` prüft
+  dieselbe Regel, sodass auch die API sie nicht speichern kann.
+- **Jeder Ausgangsweg entschied für sich, welcher Provider versendet.** Der Replies-Controller,
+  `InitMailer` und `MailProcessor` hielten je eine eigene Kopie dieser Verzweigung, und jede war
+  mindestens einmal falsch — zuletzt der Autoresponder. Es gibt jetzt genau ein
+  `MailProvider.outgoing_for(mailbox)`, und `effective_reply_transport` heißt `outgoing_route`,
+  denn es steuert Antworten, Erstmails und den Autoresponder gleichermaßen, nicht nur Antworten.
+
+### Changed (Konfigurationsoberfläche)
+- **Die Einstellungsseite zeigt nur noch die Felder, die der gewählte Anbietertyp wirklich
+  braucht.** Die Vorlage steht an erster Stelle und steuert den Rest: die Tenant-ID erscheint nur
+  bei Microsoft, die Authorize-/Token-URLs, der Scope und die IMAP/SMTP-Hosts nur bei „Andere /
+  selbst gehostet“, die Callback-URL nur beim Verfahren „Einmalige Zustimmung“ und die
+  Azure-Hinweise nur bei Microsoft. Die API-Keys der Cron-Endpunkte stehen jetzt in einem eigenen
+  Abschnitt, denn mit Mail-Zugangsdaten haben sie nichts zu tun.
+- **Das Postfach-Formular blendet seine eigenen Zugangsdaten-Felder aus, wenn das Postfach die
+  Plugin-Einstellungen nutzt.** In diesem Modus werden sie vollständig ignoriert; sie stehen zu
+  lassen, zeigte einen zweiten Satz Werte ohne jede Wirkung. Für die Tenant-ID und das Trio aus
+  URLs und Scope gelten dieselben Vorlagenregeln wie oben. Der Knopf „Verbinden“ bleibt in beiden
+  Fällen sichtbar — das Refresh-Token gehört zum Postfach, nicht zur App-Registrierung.
+
+- **„Verbindung testen“ prüft den Weg, über den das Postfach tatsächlich versendet**, statt immer
+  SMTP zu prüfen: SMTP beim eigenen Server, Graph beim Graph-Weg und nichts beim Redmine-Relay,
+  dessen Zustand Redmines eigene Sache ist.
+
+### Migration
+- `036_add_sent_folder_to_helpdesk_mailboxes.rb` — `sent_folder`. Leer bedeutet „den Server
+  fragen“, es ist also keine Konfiguration nötig.
+- `034_add_provider_to_helpdesk_mailboxes.rb` — `provider`, `credentials_source`, `imap_host`,
+  `imap_port`, `imap_security`, `imap_username`, `imap_verify_ssl`, `imap_unseen_only`,
+  `imap_timeout`, `smtp_host`, `smtp_port`, `smtp_security`, `smtp_username`, `smtp_verify_ssl`,
+  `auth_method`, `mail_password_enc`.
+- `035_add_oauth_tokens_to_helpdesk_mailboxes.rb` — `oauth_preset`, `oauth_grant`,
+  `oauth_tenant_id`, `oauth_client_id`, `oauth_client_secret_enc`, `oauth_authorize_url`,
+  `oauth_token_url`, `oauth_scope`, `oauth_refresh_token_enc`, `oauth_token_expires_at`,
+  `oauth_connected_at`, `oauth_sa_email`, `oauth_sa_key_enc`.
+- Beide sind idempotent (`unless column_exists?`). Bestehende Postfächer erhalten
+  `provider = 'graph'` und `credentials_source = 'global'`, es ist also **keine Änderung an der
+  Konfiguration** bestehender Installationen nötig.
+
+### Hinweise zum IMAP-Verhalten
+- Durchgängig werden UIDs verwendet (`UID SEARCH`/`FETCH`/`STORE`/`MOVE`); Sequenznummern
+  verschieben sich, sobald parallel auf das Postfach zugegriffen wird.
+- Abrufe nutzen `BODY.PEEK[...]`, nie `BODY[...]` — letzteres würde stillschweigend `\Seen` setzen.
+- Ordnernamen werden als lesbares UTF-8 mit `/` gespeichert und auf dem Transportweg in
+  modifiziertes UTF-7 sowie das Trennzeichen des Servers übersetzt — deutsche Ordnernamen wie
+  `Gelöschte Elemente` hängen davon ab.
+- Verschoben wird mit `MOVE` (RFC 6851), sofern der Server es anbietet, sonst mit `COPY` +
+  `\Deleted` + `UID EXPUNGE` (UIDPLUS). Server, die keines von beidem können, fallen auf ein
+  einfaches `EXPUNGE` zurück, das auch **andere** bereits als `\Deleted` markierte Nachrichten im
+  Quellordner entfernt; das wird als Warnung protokolliert und in der Oberfläche benannt.
+
 ## [Unreleased] 2026-07-24 (85)
 
 ### Added

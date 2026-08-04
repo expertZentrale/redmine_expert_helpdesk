@@ -1,9 +1,11 @@
 # CRUD fuer die Postfach-Konfiguration (Reiter "Helpdesk" in den Projekteinstellungen)
 class HelpdeskMailboxesController < ApplicationController
+  AJAX_ACTIONS = [:folders, :create_folder, :test_connection].freeze
+
   before_action :find_project_by_project_id
-  before_action :authorize, :except => [:folders, :create_folder]
-  before_action :require_manage_mailboxes, :only => [:folders, :create_folder]
-  before_action :find_mailbox, :only => [:edit, :update, :destroy]
+  before_action :authorize, :except => AJAX_ACTIONS
+  before_action :require_manage_mailboxes, :only => AJAX_ACTIONS
+  before_action :find_mailbox, :only => [:edit, :update, :destroy, :oauth_authorize]
 
   def new
     @mailbox = @project.helpdesk_mailboxes.build
@@ -43,62 +45,93 @@ class HelpdeskMailboxesController < ApplicationController
 
   # Liefert JSON-Array aller Ordnernamen fuer das angegebene Postfach (AJAX).
   def folders
-    mailbox_address = params[:mailbox_address].to_s.strip
-    return render :json => [] if mailbox_address.blank?
+    provider = draft_provider
+    return render :json => { :error => l(:error_helpdesk_provider_not_configured) }, :status => 422 unless provider
 
-    client = RedmineExpertHelpdesk::GraphClient.new
-    unless client.configured?
-      return render :json => { :error => 'Helpdesk-Plugin nicht konfiguriert' }, :status => 422
-    end
-
-    render :json => client.list_folders(mailbox_address)
-  rescue RedmineExpertHelpdesk::GraphClient::GraphError => e
+    render :json => provider.list_folders
+  rescue RedmineExpertHelpdesk::MailProvider::ProviderError => e
     render :json => { :error => e.message }, :status => 422
   end
 
   # Legt einen neuen Ordner im Postfach an (AJAX, POST).
   def create_folder
-    mailbox_address = params[:mailbox_address].to_s.strip
-    folder_name     = params[:folder_name].to_s.strip
+    folder_name = params[:folder_name].to_s.strip
+    return render :json => { :error => l(:error_helpdesk_missing_parameters) }, :status => 422 if folder_name.blank?
 
-    if mailbox_address.blank? || folder_name.blank?
-      return render :json => { :error => 'Parameter fehlen' }, :status => 422
-    end
+    provider = draft_provider
+    return render :json => { :error => l(:error_helpdesk_provider_not_configured) }, :status => 422 unless provider
 
-    client = RedmineExpertHelpdesk::GraphClient.new
-    unless client.configured?
-      return render :json => { :error => 'Helpdesk-Plugin nicht konfiguriert' }, :status => 422
-    end
-
-    client.create_folder(mailbox_address, folder_name)
+    provider.create_folder(folder_name)
     render :json => { :success => true, :name => folder_name }
-  rescue RedmineExpertHelpdesk::GraphClient::GraphError => e
+  rescue RedmineExpertHelpdesk::MailProvider::ProviderError => e
     render :json => { :error => e.message }, :status => 422
+  end
+
+  # Prueft Verbindung und Anmeldung des (noch ungespeicherten) Postfachs (AJAX, POST).
+  def test_connection
+    provider = draft_provider
+    return render :json => { :ok => false, :message => l(:error_helpdesk_provider_not_configured) }, :status => 422 unless provider
+
+    render :json => provider.test_connection
+  end
+
+  # Startet den OAuth-Consent (authorization_code) fuer ein gespeichertes Postfach.
+  def oauth_authorize
+    redirect_to expert_helpdesk_oauth_authorize_path(:mailbox_id => @mailbox.id)
   end
 
   private
 
+  # Builds a provider from the submitted form state, falling back to the
+  # persisted record. Secrets of a saved mailbox are read from the database, so
+  # they never have to travel back to the browser.
+  #
+  # This deliberately replaces the previous behaviour of trusting an arbitrary
+  # mailbox_address parameter, which allowed listing the folders of any mailbox
+  # the global app registration could reach.
+  def draft_provider
+    mailbox = persisted_mailbox || @project.helpdesk_mailboxes.build
+    attrs = params[:helpdesk_mailbox]
+    mailbox.safe_attributes = attrs if attrs.present?
+    return nil if mailbox.mailbox_address.blank?
+
+    provider = RedmineExpertHelpdesk::MailProvider.for(mailbox)
+    provider.configured? ? provider : nil
+  end
+
+  def persisted_mailbox
+    id = params[:id].presence || params[:mailbox_id].presence
+    return @project.helpdesk_mailboxes.find_by(:id => id) if id.present?
+
+    # Legacy GET callers still pass only the address. Resolving it against this
+    # project's own mailboxes keeps that working without trusting the value.
+    address = params[:mailbox_address].presence
+    address ? @project.helpdesk_mailboxes.find_by(:mailbox_address => address) : nil
+  end
+
   # Stellt sicher, dass alle konfigurierten Zielordner im Postfach existieren.
   # Fehlende Ordner werden automatisch angelegt. Fehler werden als Warnung gemeldet.
   def ensure_mailbox_folders(mailbox)
-    return unless mailbox.mailbox_address.present?
+    return if mailbox.mailbox_address.blank?
 
-    client = RedmineExpertHelpdesk::GraphClient.new
-    return unless client.configured?
+    provider = RedmineExpertHelpdesk::MailProvider.for(mailbox)
+    return unless provider.configured?
 
     folders = [mailbox.processed_folder, mailbox.skipped_folder, mailbox.failed_folder].compact.uniq
-    folders.each do |folder|
-      next if folder.blank?
-      client.find_or_create_folder(mailbox.mailbox_address, folder)
+    provider.with_session do
+      folders.each do |folder|
+        next if folder.blank?
+
+        provider.find_or_create_folder(folder)
+      end
     end
-  rescue RedmineExpertHelpdesk::GraphClient::GraphError,
-         RedmineExpertHelpdesk::GraphClient::ConfigurationError => e
+  rescue RedmineExpertHelpdesk::MailProvider::ProviderError => e
     flash[:warning] = l(:warning_helpdesk_folder_create_failed, :message => e.message)
   end
 
   def require_manage_mailboxes
     unless User.current.allowed_to?(:manage_helpdesk, @project)
-      render :json => { :error => 'Zugriff verweigert' }, :status => 403
+      render :json => { :error => l(:error_helpdesk_access_denied) }, :status => 403
     end
   end
 

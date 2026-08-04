@@ -62,12 +62,13 @@ class HelpdeskRepliesController < ApplicationController
 
     message_id = nil
 
-    if mailbox.reply_transport == 'smtp'
+    if mailbox.outgoing_route == 'smtp'
       processed_html, embedded_atts = embed_inline_images(body_html, inline_atts)
       message_id = send_reply_smtp(mailbox, reply_to, reply_cc, reply_bcc, subject, processed_html,
                                    valid_att_ids, embedded_atts, sent_filenames)
     else
-      # Graph-API: roher MIME-Versand fuer zuverlaessige CID-Inline-Bilder.
+      # Roher MIME-Versand fuer zuverlaessige CID-Inline-Bilder – sowohl ueber
+      # die Graph-API als auch ueber den eigenen SMTP-Server des Postfachs.
       # Der JSON-Ansatz funktioniert nicht, weil Exchange das HTML vor Zustellung
       # umschreibt und dabei cid:-Referenzen und isInline-Anhaenge entkoppelt.
       # Mit Content-Type: text/plain + base64-MIME bleibt die MIME-Struktur erhalten.
@@ -76,7 +77,7 @@ class HelpdeskRepliesController < ApplicationController
       cid_map, html_with_cid = build_cid_map(body_html, inline_atts)
       mime_msg = build_cid_mime(mailbox.mailbox_address, reply_to, reply_cc, reply_bcc,
                                 subject, html_with_cid, cid_map, regular_atts, message_id)
-      RedmineExpertHelpdesk::GraphClient.new.send_mail_mime(mailbox.mailbox_address, mime_msg)
+      RedmineExpertHelpdesk::MailProvider.outgoing_for(mailbox).send_mail_mime(mime_msg)
       sent_filenames.concat(regular_atts.map(&:filename))
       sent_filenames.concat(cid_map.keys.map(&:filename))
     end
@@ -101,7 +102,7 @@ class HelpdeskRepliesController < ApplicationController
     RedmineExpertHelpdesk::Sla.record_first_response!(@issue, Time.current)
 
     render :json => { :success => true, :helpdesk_message_id => hd_msg.id }
-  rescue RedmineExpertHelpdesk::GraphClient::GraphError => e
+  rescue RedmineExpertHelpdesk::MailProvider::ProviderError => e
     render :json => { :success => false, :error => e.message }, :status => :unprocessable_entity
   rescue StandardError => e
     render :json => { :success => false, :error => e.message }, :status => :unprocessable_entity
@@ -154,6 +155,9 @@ class HelpdeskRepliesController < ApplicationController
     smtp_settings   = ActionMailer::Base.smtp_settings || {}
     mail_obj.delivery_method(delivery_method, smtp_settings)
     mail_obj.deliver!
+    # Redmine's relay files nothing in the mailbox itself; for an IMAP mailbox we
+    # can still put the copy where the agents look. No-op for Graph mailboxes.
+    RedmineExpertHelpdesk::MailProvider.for(mailbox).archive_sent(mail_obj.to_s)
     mail_obj.message_id
   end
 

@@ -11,7 +11,17 @@
 # Pro Projekt koennen Postfaecher konfiguriert werden, deren Mails als Tickets
 # bzw. Ticket-Antworten verarbeitet werden.
 
+require File.expand_path('../lib/redmine_expert_helpdesk/secret_box', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/provider_presets', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/xoauth2', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/mail_provider', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/mailbox_credentials', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/oauth_token_provider', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/graph_client', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/graph_provider', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/imap_client', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/smtp_sender', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/imap_provider', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_client', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_store', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_extractor', __FILE__)
@@ -40,7 +50,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
   name 'Redmine expert Helpdesk'
   author 'Dennis Buehring'
   description 'Helpdesk plugin: email-to-ticket via Microsoft Graph (O365 OAuth), autoresponder, customer replies, and rules engine'
-  version '0.1.6'
+  version '0.2.0'
   requires_redmine :version_or_higher => '5.0'
   url 'https://github.com/expertZentrale/redmine_expert_helpdesk'
 
@@ -52,6 +62,20 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'client_secret'            => '',
              'fetch_api_key'            => '',
              'sla_api_key'              => '',
+             # Defaults for mailboxes with credentials_source = 'global'. The
+             # application registration itself is tenant_id/client_id/client_secret
+             # above - it is shared with the Graph provider, never duplicated here.
+             'default_oauth_preset'        => 'microsoft',
+             'default_oauth_grant'         => 'client_credentials',
+             'default_oauth_authorize_url' => '',
+             'default_oauth_token_url'     => '',
+             'default_oauth_scope'         => '',
+             'default_imap_host'     => '',
+             'default_imap_port'     => '993',
+             'default_imap_security' => 'ssl',
+             'default_smtp_host'     => '',
+             'default_smtp_port'     => '587',
+             'default_smtp_security' => 'starttls',
              'contacts_per_page'        => '25',
              'contact_ticket_limit'     => '10',
              'phishtank_enabled'        => '0',
@@ -87,7 +111,9 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
 
   project_module :helpdesk do
     permission :manage_helpdesk, {
-      :helpdesk_mailboxes => [:new, :create, :edit, :update, :destroy],
+      :helpdesk_mailboxes => [:new, :create, :edit, :update, :destroy,
+                              :folders, :create_folder, :test_connection, :oauth_authorize],
+      :helpdesk_oauth => [:authorize, :callback],
       :helpdesk_rules     => [:create, :destroy]
     }, :require => :member
     permission :fetch_helpdesk_mail, {

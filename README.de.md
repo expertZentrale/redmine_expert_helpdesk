@@ -17,14 +17,21 @@ siehe [Tests ausführen](#tests-ausführen).
 
 ## Funktionen
 
-- **E-Mail zu Ticket**: Mails aus O365-Postfächern werden als Tickets angelegt;
+- **E-Mail zu Ticket**: Mails aus Microsoft 365 oder beliebigen IMAP-Postfächern werden als Tickets angelegt;
   Antworten werden über `In-Reply-To` / `[#id]`-Betreff dem bestehenden Ticket
   zugeordnet (nutzt den Redmine-Standard-`MailHandler`, inkl. Anhänge).
 - **Postfach pro Projekt**: Jedes Projekt konfiguriert seine Postfächer im
   Reiter *Helpdesk* der Projekteinstellungen (Quell-/Zielordner, Standardwerte
   für Tracker/Priorität/Status, Umgang mit unbekannten Absendern).
+- **Beliebiger Mail-Anbieter**: Jedes Postfach wählt sein Backend — Microsoft 365
+  über die Graph-API oder generisches **IMAP/SMTP** für Google Workspace, Exchange
+  On-Premises, selbst gehostete Server (Dovecot, Zimbra) und beliebige Hoster. Die
+  Anmeldung erfolgt standardmäßig über **OAuth2/XOAUTH2** (nur Anwendung, einmalige
+  Zustimmung oder Dienstkonto); für Server ohne OAuth2 steht Benutzername/Passwort
+  über TLS zur Verfügung. Siehe [Mail-Anbieter](#mail-anbieter).
 - **Zentrale App-Registrierung**: Tenant-ID, Client-ID und Client-Secret werden
-  einmalig unter *Administration → Plugins → Redmine expert Helpdesk* gepflegt.
+  einmalig unter *Administration → Plugins → Redmine expert Helpdesk* gepflegt;
+  einzelne Postfächer können sie durch eigene Zugangsdaten ersetzen.
 - **Autoresponder**: Konfigurierbare Bestätigungsmail bei neuen Tickets.
 - **Kundenantworten**: Antwort an den Kunden direkt von der Ticketseite, mit
   Header-/Footer-Vorlagen; Versand per MIME-basiertem Graph-API-Endpunkt aus
@@ -140,6 +147,134 @@ Autoresponder und Antwortvorlagen.
 neue Tickets, Wiedereröffnungsregeln, Absenderfilter, Auto-Reply-Filter, Autoresponder-Text
 und Antwortvorlagen samt Signaturvorschau](docs/screenshots/de/08-mailbox-form.png)
 
+## Mail-Anbieter
+
+Jedes Postfach wählt sein Backend unter *Helpdesk → Postfach → Mail-Anbieter*:
+
+| Anbieter | Eingang | Ausgang | Typischer Einsatz |
+|----------|---------|---------|-------------------|
+| `graph` (Vorgabe) | Microsoft Graph-API | Graph `sendMail` | Microsoft 365 / Exchange Online |
+| `imap` | IMAP | SMTP | Google Workspace, Exchange On-Premises, Dovecot, Zimbra, beliebige Hoster |
+
+Bestehende Postfächer behalten `graph` und benötigen **keine Änderung an der Konfiguration**.
+
+### Woher die Zugangsdaten stammen
+
+*Zugangsdaten* im Postfach-Formular ist ein expliziter Schalter, keine Fallback-Kette:
+
+- **Aus den Plugin-Einstellungen** (`global`) — das Postfach nutzt die zentrale App-Registrierung
+  unter *Administration → Plugins → Redmine expert Helpdesk*. Es gibt genau **eine**: die
+  bisherigen Werte Tenant-ID / Client-ID / Client-Secret, die Graph seit jeher verwendet.
+  IMAP/SMTP-Postfächer mit OAuth2 teilen sie sich, statt eine zweite Kopie vorzuhalten. Die dort
+  gewählte Vorlage und das Verfahren entscheiden, welche der übrigen Felder überhaupt nötig sind;
+  den Rest blendet die Seite aus.
+- **Individuell für dieses Postfach** (`mailbox`) — das Postfach nutzt ausschließlich seine
+  eigenen Felder. Das Postfach-Formular blendet sie aus, solange der Schalter auf *Aus den
+  Plugin-Einstellungen* steht, denn dort haben sie keinerlei Wirkung.
+
+Ein Postfach nutzt **genau eine Quelle**. Leere Felder werden bewusst *nicht* aus der jeweils
+anderen Quelle ergänzt: Ein halb konfiguriertes Postfach, das sich stillschweigend gegen den
+falschen Tenant anmeldet, ist genau der Fehlerfall, den das verhindert.
+
+Zusätzlich zur Registrierung liefern die Plugin-Einstellungen einen **Standard-Host** für die
+Vorlage *Andere / selbst gehostet* (IMAP/SMTP-Host, Port und Verschlüsselung) — praktisch, wenn
+alle Postfächer auf demselben Server liegen. Microsoft- und Google-Postfächer ignorieren ihn, weil
+ihre Vorlage die Hosts bereits kennt, und ein ausdrücklicher Wert am Postfach hat immer Vorrang.
+
+Postfachbezogene Geheimnisse (Passwörter, Client-Secrets, Refresh-Tokens, Dienstkonto-Schlüssel)
+werden mit dem `secret_key_base` von Rails verschlüsselt gespeichert. Ein leeres Geheimnisfeld
+behält den gespeicherten Wert; ein einzelner `-` löscht ihn. **Ein Wechsel von `secret_key_base`
+macht gespeicherte Geheimnisse unwiederbringlich** — sie müssen dann neu eingegeben und die
+OAuth-Zustimmung erneut erteilt werden.
+
+### Anmeldung
+
+OAuth2 (XOAUTH2) ist die Vorgabe. Drei Verfahren stehen zur Verfügung:
+
+| Verfahren | Zustimmung | Geeignet für |
+|-----------|------------|--------------|
+| Nur Anwendung (`client_credentials`) | keine | Microsoft 365 mit `IMAP.AccessAsApp` / `SMTP.SendAsApp` |
+| Einmalige Zustimmung (`authorization_code`) | einmal je Postfach, Refresh-Token wird gespeichert | Gmail und beliebige andere Identity Provider |
+| Dienstkonto (`jwt_bearer`) | keine | Google Workspace mit domainweiter Delegierung |
+
+Benutzername/Passwort über TLS bleibt für Server wählbar, die überhaupt kein OAuth2 anbieten
+(Dovecot, Zimbra, kleine Hoster). Microsoft 365 akzeptiert keine Basisauthentifizierung mehr.
+
+Die im Formular angezeigte **Callback-URL** muss wortgleich als Redirect-URI beim Identity
+Provider hinterlegt werden — es ist ein einziger fester Pfad (`/helpdesk/oauth/callback`), weil
+Provider nur exakt registrierte URIs akzeptieren. Welches Postfach gerade verbunden wird, steckt
+in einem signierten, zehn Minuten gültigen `state`-Parameter.
+
+Mit **Verbindung testen** lassen sich Host, TLS und Anmeldung vor dem Speichern prüfen; die
+sichtbaren Ordner werden dabei gleich mit aufgelistet.
+
+### Rezept: Microsoft 365 über IMAP (nur Anwendung)
+
+Sinnvoll, wenn statt der Graph-API IMAP/SMTP genutzt werden soll, z. B. um für mehrere Anbieter
+denselben Weg zu verwenden.
+
+1. In Entra ID eine App registrieren und die **Anwendungsberechtigungen** `IMAP.AccessAsApp` und
+   `SMTP.SendAsApp` erteilen (Administratorzustimmung erforderlich).
+2. Den Dienstprinzipal in Exchange Online registrieren und auf das Postfach beschränken:
+
+   ```powershell
+   New-ServicePrincipal -AppId <client-id> -ObjectId <object-id>
+   Add-MailboxPermission -Identity "helpdesk@example.com" -User <object-id> -AccessRights FullAccess
+   ```
+
+3. Im Postfach-Formular: Anbieter `IMAP / SMTP`, Vorlage **Microsoft 365**, Verfahren
+   **Nur Anwendung**, dann Tenant-ID, Client-ID und Client-Secret eintragen (oder
+   *Zugangsdaten* auf *Aus den Plugin-Einstellungen* stehen lassen, um die zentrale
+   Registrierung weiterzuverwenden). Host und Port sind vorbelegt:
+   `outlook.office365.com:993` und `smtp.office365.com:587`.
+
+### Rezept: Google Workspace / Gmail (einmalige Zustimmung)
+
+1. In der Google Cloud Console eine **OAuth-Client-ID** vom Typ *Webanwendung* anlegen und die
+   Callback-URL des Plugins als autorisierte Redirect-URI eintragen.
+2. Den Scope `https://mail.google.com/` freigeben und den OAuth-Zustimmungsbildschirm
+   **veröffentlichen** — Refresh-Tokens, die im Status *Testing* ausgestellt werden, verfallen
+   nach 7 Tagen.
+3. Im Postfach-Formular: Anbieter `IMAP / SMTP`, Vorlage **Google Workspace / Gmail**, Verfahren
+   **Einmalige Zustimmung**, Client-ID und Client-Secret eintragen, speichern, anschließend
+   **Verbinden** drücken und die Google-Zustimmung abschließen.
+
+Gmail bildet Ordner als Labels ab — das Verschieben einer Mail ändert ihr Label. Für die
+Sonderordner die Pfade `[Gmail]/…` verwenden.
+
+Für eine Workspace-Domain lässt sich stattdessen ein **Dienstkonto** mit domainweiter
+Delegierung verwenden (Verfahren *Dienstkonto*, Scope `https://mail.google.com/`): Adresse des
+Dienstkontos und dessen privaten PEM-Schlüssel eintragen, eine interaktive Zustimmung entfällt.
+
+### Rezept: selbst gehosteter Server (Dovecot, Zimbra, Hoster)
+
+1. Anbieter `IMAP / SMTP`, Vorlage **Andere / selbst gehostet**.
+2. IMAP- und SMTP-Host, Port und Verschlüsselung eintragen (`SSL/TLS` auf 993/465, `STARTTLS`
+   auf 143/587).
+3. Anmeldung **Benutzername und Passwort**, dann Postfachbenutzer und Passwort (bzw. ein
+   App-Passwort, sofern der Anbieter eines anbietet). Das SASL-Verfahren wird ausgehandelt: IMAP
+   nutzt das Kommando `LOGIN`, sofern der Server nicht `LOGINDISABLED` anzeigt — dann meldet es
+   sich mit `PLAIN` oder `LOGIN` an; SMTP nimmt das erste von `PLAIN`, `LOGIN`, `CRAM-MD5`, das
+   der Server anbietet. Die meisten Server akzeptieren ein Passwort nur über TLS, deshalb
+   `SSL/TLS` oder `STARTTLS` beibehalten.
+4. *Zertifikat prüfen* nur bei einem selbst signierten Zertifikat in einem vertrauenswürdigen
+   Netz deaktivieren — jede Nutzung wird als Warnung protokolliert.
+
+### Wissenswertes zum IMAP-Verhalten
+
+- Nachrichten werden durchgängig über ihre **UID** angesprochen, sodass paralleler Zugriff auf
+  das Postfach keine Verwechslungen verursachen kann.
+- Das Abrufen markiert eine Mail nicht von selbst als gelesen (`BODY.PEEK`); `\Seen` wird
+  explizit gesetzt, wenn die Mail in den Zielordner verschoben wird. Für Umgebungen ohne
+  Verschiebemöglichkeit gibt es *Nur ungelesene Mails abrufen*.
+- Ordnernamen werden als lesbarer Text mit `/` als Trennzeichen eingetragen und auf dem
+  Transportweg in modifiziertes UTF-7 sowie das Trennzeichen des Servers übersetzt, sodass Namen
+  wie `Gelöschte Elemente` funktionieren.
+- Verschoben wird mit `MOVE` (RFC 6851), sofern der Server es anbietet, sonst mit `COPY` +
+  `\Deleted` + `UID EXPUNGE`. **Ein Server ohne `MOVE` und ohne `UIDPLUS` fällt auf ein einfaches
+  `EXPUNGE` zurück, das auch andere bereits als gelöscht markierte Mails im Quellordner
+  endgültig entfernt.**
+
 ## E-Mail-Verarbeitung
 
 ### Ablauf pro Postfachabruf
@@ -154,7 +289,7 @@ Graph API (Quellordner)
   Ignorieren-Regeln ─────────── trifft zu ─────▶ Skipped-Ordner
         │
         ▼
-  MIME herunterladen (Graph)
+  Rohes MIME herunterladen (Graph / IMAP BODY.PEEK)
         │
         ▼
   Auto-Reply-Filter ────────── Abwesenheit ────▶ Skipped-Ordner
@@ -280,9 +415,31 @@ Der Betreff wird aus der Projekteinstellung *Betreff-Vorlage* generiert
 Notizfeld eingefügt werden, erscheinen im Empfänger-Postfach als eingebettete
 Inline-Bilder (CID-Methode, nicht als Anhang).
 
-**Transportwahl**: An jedem Postfach kann zwischen `graph` (Graph-API, Standard)
-und `smtp` (Redmine-SMTP) gewählt werden. Bei SMTP werden Inline-Bilder als
-Base64-Data-URI in den HTML-Body eingebettet.
+**Transportwahl**: Jedes Postfach wählt einen von drei Antwort-Transporten:
+
+| Wert | Versand über | Inline-Bilder | Kopie im Gesendet-Ordner |
+|------|--------------|---------------|--------------------------|
+| `provider` (Vorgabe für neue Postfächer) | das Backend des Postfachs — Graph-API oder eigener SMTP-Server | CID | ja |
+| `graph` | Microsoft Graph über die zentrale App-Registrierung | CID | ja |
+| `smtp` | globale SMTP-Einstellungen von Redmine aus der `configuration.yml` | Base64-Data-URI | nur IMAP-Postfächer |
+
+`graph` wird **nur für ein Postfach angeboten, das Microsoft auch hostet** — ein Graph-Postfach
+oder ein IMAP-Postfach mit der Microsoft-Vorlage („Microsoft 365 über IMAP“). Ein Gmail- oder
+Dovecot-Postfach auf Graph zu stellen hieße, `sendMail` für eine Adresse aufzurufen, die es im
+Tenant nicht gibt; das Formular blendet die Option deshalb aus und das Modell lehnt sie ab.
+
+Ausgehende Mails werden im **Gesendet-Ordner** des Postfachs abgelegt, damit das Postfach beide
+Hälften der Unterhaltung enthält. Graph erledigt das selbst; bei IMAP legt das Plugin die Kopie
+ab und nimmt den Ordner aus dem `\Sent`-Kennzeichen des Servers (RFC 6154), dann aus dem Feld
+*Ordner für gesendete Mails*, dann aus der Vorlage. Lässt sich die Kopie nicht ablegen, wird die
+Mail trotzdem versendet — protokolliert wird nur eine Warnung.
+
+`smtp` ist der Weg, der **am Postfach überhaupt keine Mail-Zugangsdaten** braucht — praktisch,
+wenn Redmine bereits ein funktionierendes Relay hat und das Postfach nur *empfangen* soll. Ein
+IMAP-Postfach auf diesem Weg benötigt auch keinen SMTP-Host. Der Preis sind die Inline-Bilder:
+Hier werden sie als data-URI eingebettet statt als CID-Anhang, was manche Clients nicht anzeigen.
+
+Der Autoresponder nutzt denselben Transport wie Antworten.
 
 Die gespeicherten Empfängeradressen werden nach dem Seitenaufruf in den
 Journalüberschriften als Badge eingeblendet (clientseitig per Timestamp-
@@ -366,9 +523,10 @@ Eintrag **expert Helpdesk** im Administrationsmenü, der direkt hierher verlinkt
 
 | Einstellung | Beschreibung |
 |---|---|
-| Tenant-ID | Azure-Verzeichnis-ID (GUID) |
-| Client-ID | App-Registrierungs-ID (GUID) |
-| Client-Secret | Geheimnis der App-Registrierung |
+| Tenant-ID | Azure-Verzeichnis-ID (GUID) — Graph-Postfächer |
+| Client-ID | App-Registrierungs-ID (GUID) — Graph-Postfächer |
+| Client-Secret | Geheimnis der App-Registrierung — Graph-Postfächer |
+| Standard-Zugangsdaten für IMAP/SMTP-Postfächer | Vorlage, Verfahren, Tenant/Client/Secret, Autorisierungs- und Token-URL, Scope sowie IMAP-/SMTP-Standardhosts, -ports und -verschlüsselung. Gilt für jedes Postfach, dessen *Zugangsdaten* auf *Aus den Plugin-Einstellungen* stehen — siehe [Mail-Anbieter](#mail-anbieter). |
 | API-Key (Mailabruf) | Sichert den globalen Abruf-Endpunkt ab |
 | API-Key (SLA-Prüfung) | Sichert den `helpdesk/sla_check`-Endpunkt ab |
 | Einträge pro Seite | Standard-Seitengröße der Kundenliste (Standard: 25) |

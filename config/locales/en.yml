@@ -25,6 +25,7 @@ en:
   field_helpdesk_processed_folder: Processed folder
   field_helpdesk_skipped_folder: Skipped folder
   field_helpdesk_failed_folder: Failed folder
+  field_helpdesk_sent_folder: Sent folder
   field_helpdesk_enabled: Enabled
   field_helpdesk_last_fetched_at: Last fetch
   field_helpdesk_last_error: Last error
@@ -34,6 +35,90 @@ en:
   text_helpdesk_skipped_folder_info: Skipped mails (blacklist, ignore rules, auto-reply filter) are moved here. Empty = same folder as "Processed".
   text_helpdesk_failed_folder_info: Mails that caused an error during processing are moved here. Empty = same folder as "Processed".
   text_helpdesk_suppress_notifications_info: Prevents duplicate mails to customers when the autoresponder is active.
+
+  # --- Mail provider (IMAP/SMTP) --------------------------------------------
+  field_helpdesk_provider: Mail provider
+  label_helpdesk_provider_graph: "Microsoft 365 (Graph API)"
+  label_helpdesk_provider_imap: "IMAP / SMTP"
+  text_helpdesk_provider_info: "Graph uses the central Azure app registration. IMAP/SMTP works with Google Workspace, Exchange on-premises, self-hosted servers (Dovecot, Zimbra) and any hoster."
+  field_helpdesk_credentials_source: Credentials
+  label_helpdesk_credentials_global: From plugin settings
+  label_helpdesk_credentials_mailbox: Individual for this mailbox
+  text_helpdesk_credentials_source_info: "A mailbox uses either the global credentials or its own - blank fields are never filled in from the other source."
+  field_helpdesk_auth_method: Authentication
+  label_helpdesk_auth_oauth2: "OAuth2 (recommended)"
+  label_helpdesk_auth_password: Username and password
+  text_helpdesk_auth_password_info: "Only for servers without OAuth2. Microsoft 365 no longer accepts basic authentication."
+  field_helpdesk_oauth_grant: OAuth2 flow
+  label_helpdesk_grant_client_credentials: "Application only (no consent)"
+  label_helpdesk_grant_authorization_code: "One-time consent (refresh token)"
+  label_helpdesk_grant_jwt_bearer: "Service account (signed assertion)"
+  field_helpdesk_oauth_preset: Preset
+  label_helpdesk_preset_microsoft: Microsoft 365
+  label_helpdesk_preset_google: Google Workspace / Gmail
+  label_helpdesk_preset_generic: Other / self-hosted
+  field_helpdesk_oauth_tenant_id: Tenant ID
+  field_helpdesk_oauth_client_id: Client ID
+  field_helpdesk_oauth_client_secret: Client secret
+  field_helpdesk_oauth_authorize_url: Authorization URL
+  field_helpdesk_oauth_token_url: Token URL
+  field_helpdesk_oauth_scope: Scope
+  field_helpdesk_oauth_sa_email: Service account address
+  field_helpdesk_oauth_sa_key: Service account key (PEM)
+  label_helpdesk_imap_settings: "Incoming mail (IMAP)"
+  label_helpdesk_smtp_settings: "Outgoing mail (SMTP)"
+  label_helpdesk_oauth_settings: Authentication
+  field_helpdesk_imap_host: IMAP server
+  field_helpdesk_imap_port: IMAP port
+  field_helpdesk_imap_security: IMAP encryption
+  field_helpdesk_imap_username: IMAP user
+  field_helpdesk_imap_verify_ssl: Verify IMAP certificate
+  field_helpdesk_imap_unseen_only: Only fetch unread mails
+  field_helpdesk_imap_timeout: Timeout (seconds)
+  field_helpdesk_smtp_host: SMTP server
+  field_helpdesk_smtp_port: SMTP port
+  field_helpdesk_smtp_security: SMTP encryption
+  field_helpdesk_smtp_username: SMTP user
+  field_helpdesk_smtp_verify_ssl: Verify SMTP certificate
+  field_helpdesk_mail_password: Password
+  label_helpdesk_security_ssl: "SSL/TLS"
+  label_helpdesk_security_starttls: STARTTLS
+  label_helpdesk_security_plain: "Unencrypted (not recommended)"
+  text_helpdesk_imap_username_info: "Empty = the mailbox address is used."
+  text_helpdesk_imap_unseen_only_info: "For setups in which processed mails cannot be moved to another folder."
+  text_helpdesk_verify_ssl_info: "Only disable for self-signed certificates in a trusted network."
+  text_helpdesk_secret_blank_info: "Leave empty to keep the stored value; enter \"-\" to delete it."
+  text_helpdesk_gmail_labels_info: "Gmail maps folders to labels; moving a mail relabels it."
+  text_helpdesk_expunge_fallback_warning: "Servers without MOVE and UIDPLUS support expunge the whole source folder, which also removes other mails already flagged as deleted."
+  label_helpdesk_oauth_connect: Connect
+  label_helpdesk_oauth_reconnect: Reconnect
+  label_helpdesk_oauth_connected_since: "Connected since %{date}"
+  label_helpdesk_oauth_not_connected: Not connected yet
+  label_helpdesk_oauth_callback_url: Callback URL
+  text_helpdesk_oauth_callback_url_info: "Register exactly this URL as the redirect URI with your identity provider."
+  label_helpdesk_test_connection: Test connection
+  label_helpdesk_default_mail_credentials: "Central mail access (application registration)"
+  label_helpdesk_api_keys: "API keys for cron endpoints"
+  text_helpdesk_default_preset_info: "Governs which fields below are needed. Mailboxes set to \"From plugin settings\" inherit this."
+  text_helpdesk_global_app_registration_info: "One registration for everything: Graph mailboxes and IMAP/SMTP mailboxes on OAuth2 both use it."
+  text_helpdesk_default_host_info: "Used when a mailbox leaves the host empty. A named preset always wins over this."
+  text_helpdesk_default_oauth_urls_info: "Only needed for self-hosted servers - Microsoft and Google supply these through their preset."
+  label_helpdesk_transport_provider: "Mailbox backend (Graph resp. its own SMTP server)"
+  notice_helpdesk_connection_ok: Connection successful.
+  notice_helpdesk_oauth_connected: Mailbox connected successfully.
+  error_helpdesk_connection_failed: "Connection failed: %{message}"
+  error_helpdesk_imap_auth_failed: IMAP login failed
+  error_helpdesk_smtp_auth_failed: SMTP login failed
+  error_helpdesk_imap_no_auth_mechanism: "The server refuses LOGIN and offers no PLAIN or LOGIN mechanism either. Check the encryption setting - many servers only allow a password over TLS."
+  error_helpdesk_smtp_no_auth_mechanism: "The server offers no usable password mechanism (PLAIN, LOGIN, CRAM-MD5). Check the encryption setting."
+  error_helpdesk_oauth_state_invalid: Invalid or expired authorization request.
+  error_helpdesk_oauth_reauth_required: Access was revoked - please connect the mailbox again.
+  error_helpdesk_oauth_token_failed: OAuth2 token could not be obtained
+  error_helpdesk_oauth_no_refresh_token: "The identity provider returned no refresh token. Check the scope (Google needs access_type=offline)."
+  error_helpdesk_secret_undecryptable: "Stored secret cannot be decrypted - secret_key_base has probably changed. Please re-enter it."
+  error_helpdesk_provider_not_configured: Mail provider is not fully configured.
+  error_helpdesk_missing_parameters: Missing parameters.
+  error_helpdesk_access_denied: Access denied.
 
   label_helpdesk_reopen: Issue reopening
   field_helpdesk_reopen_status: Reopen status
@@ -277,7 +362,12 @@ en:
   field_helpdesk_reply_transport: "Send via"
   label_helpdesk_transport_graph: "Microsoft Graph API (Exchange)"
   label_helpdesk_transport_smtp: "SMTP (Redmine default)"
-  text_helpdesk_reply_transport_info: "Graph API requires a configured Azure app registration. SMTP uses the SMTP settings from the Redmine configuration."
+  label_helpdesk_transport_mailbox_smtp: "The mailbox itself (its own SMTP server)"
+  label_helpdesk_transport_mailbox_graph: "The mailbox itself (Graph API)"
+  text_helpdesk_sent_folder_info: "Where a copy of outgoing mail is filed, so the mailbox shows both halves of the conversation. Leave empty to let the server name its own Sent folder."
+  error_helpdesk_transport_not_available: "is not available for this mailbox - Graph can only send for a mailbox hosted in Microsoft 365"
+  warning_helpdesk_sent_append_failed: "The mail was sent, but no copy could be filed in the Sent folder: %{message}"
+  text_helpdesk_reply_transport_info: "Mailbox backend uses whatever the mailbox itself is configured for. Graph API requires a configured Azure app registration. SMTP uses the SMTP settings from the Redmine configuration and needs no mail credentials on the mailbox at all - note that inline images are embedded as data URIs there instead of CID attachments. Replies, initial mails and the autoresponder all follow this setting."
   button_helpdesk_send_reply: Send reply
   label_helpdesk_reply_placeholder: Enter reply text here …
   notice_helpdesk_reply_sent: "Reply sent to %{email}."

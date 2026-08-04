@@ -5,11 +5,28 @@
      id="helpdesk-mailbox-box"
      data-folders-url="<%= url_for(:controller => 'helpdesk_mailboxes', :action => 'folders', :project_id => @project.identifier) %>"
      data-create-folder-url="<%= url_for(:controller => 'helpdesk_mailboxes', :action => 'create_folder', :project_id => @project.identifier) %>"
+     data-test-connection-url="<%= url_for(:controller => 'helpdesk_mailboxes', :action => 'test_connection', :project_id => @project.identifier) %>"
+     data-presets="<%= h(RedmineExpertHelpdesk::ProviderPresets::PRESETS.to_json) %>"
+     data-mailbox-id="<%= @mailbox.id %>"
      data-csrf="<%= form_authenticity_token %>">
   <p>
     <label><%= l(:field_helpdesk_mailbox_address) %> <span class="required">*</span></label>
     <%= text_field_tag 'helpdesk_mailbox[mailbox_address]', @mailbox.mailbox_address,
         :id => 'hd_mailbox_address', :size => 50 %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_provider) %></label>
+    <%= select_tag 'helpdesk_mailbox[provider]',
+        options_for_select([[l(:label_helpdesk_provider_graph), 'graph'],
+                            [l(:label_helpdesk_provider_imap),  'imap']],
+                           @mailbox.provider),
+        :id => 'hd_provider' %>
+    <em class="info"><%= l(:text_helpdesk_provider_info) %></em>
+  </p>
+  <p>
+    <label></label>
+    <button type="button" id="hd_test_connection"><span class="icon icon-checked"><%= hd_icon_label('checked') %><%= l(:label_helpdesk_test_connection) %></span></button>
+    <span id="hd_conn_status" style="font-size:0.9em;margin-left:6px;"></span>
   </p>
   <p>
     <label><%= l(:field_helpdesk_source_folder) %></label>
@@ -40,6 +57,14 @@
            list="hd_folder_datalist" autocomplete="off">
     <em class="info"><%= l(:text_helpdesk_failed_folder_info) %></em>
   </p>
+  <%# Nur fuer IMAP-Postfaecher: Graph legt die gesendete Kopie selbst ab. %>
+  <p id="hd_sent_folder_row">
+    <label><%= l(:field_helpdesk_sent_folder) %></label>
+    <input type="text" id="hd_sent_folder" name="helpdesk_mailbox[sent_folder]"
+           value="<%= h(@mailbox.sent_folder) %>" size="30"
+           list="hd_folder_datalist" autocomplete="off">
+    <em class="info"><%= l(:text_helpdesk_sent_folder_info) %></em>
+  </p>
   <datalist id="hd_folder_datalist"></datalist>
   <p>
     <label><%= l(:field_helpdesk_enabled) %></label>
@@ -47,6 +72,187 @@
     <%= check_box_tag 'helpdesk_mailbox[enabled]', '1', @mailbox.enabled? %>
   </p>
 </div>
+
+<fieldset class="box tabular" id="hd_imap_fieldset">
+  <legend><%= l(:label_helpdesk_imap_settings) %></legend>
+  <p>
+    <label><%= l(:field_helpdesk_oauth_preset) %></label>
+    <%= select_tag 'helpdesk_mailbox[oauth_preset]',
+        options_for_select([[l(:label_helpdesk_preset_microsoft), 'microsoft'],
+                            [l(:label_helpdesk_preset_google),    'google'],
+                            [l(:label_helpdesk_preset_generic),   'generic']],
+                           @mailbox.oauth_preset.presence || 'microsoft'),
+        :id => 'hd_oauth_preset' %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_imap_host) %></label>
+    <%= text_field_tag 'helpdesk_mailbox[imap_host]', @mailbox.imap_host, :id => 'hd_imap_host', :size => 40 %>
+    <%= l(:field_helpdesk_imap_port) %>
+    <%= text_field_tag 'helpdesk_mailbox[imap_port]', @mailbox.imap_port, :id => 'hd_imap_port', :size => 5 %>
+    <%= select_tag 'helpdesk_mailbox[imap_security]',
+        options_for_select([[l(:label_helpdesk_security_ssl), 'ssl'],
+                            [l(:label_helpdesk_security_starttls), 'starttls'],
+                            [l(:label_helpdesk_security_plain), 'plain']],
+                           @mailbox.imap_security.presence || 'ssl'),
+        :id => 'hd_imap_security' %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_imap_username) %></label>
+    <%= text_field_tag 'helpdesk_mailbox[imap_username]', @mailbox.imap_username, :size => 40 %>
+    <em class="info"><%= l(:text_helpdesk_imap_username_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_imap_verify_ssl) %></label>
+    <%= hidden_field_tag 'helpdesk_mailbox[imap_verify_ssl]', '0' %>
+    <%= check_box_tag 'helpdesk_mailbox[imap_verify_ssl]', '1', @mailbox.imap_verify_ssl != false %>
+    <em class="info"><%= l(:text_helpdesk_verify_ssl_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_imap_unseen_only) %></label>
+    <%= hidden_field_tag 'helpdesk_mailbox[imap_unseen_only]', '0' %>
+    <%= check_box_tag 'helpdesk_mailbox[imap_unseen_only]', '1', @mailbox.imap_unseen_only == true %>
+    <em class="info"><%= l(:text_helpdesk_imap_unseen_only_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_imap_timeout) %></label>
+    <%= text_field_tag 'helpdesk_mailbox[imap_timeout]', @mailbox.imap_timeout, :size => 5 %>
+  </p>
+  <p><em class="info"><%= l(:text_helpdesk_gmail_labels_info) %></em></p>
+  <p><em class="info"><%= l(:text_helpdesk_expunge_fallback_warning) %></em></p>
+</fieldset>
+
+<fieldset class="box tabular" id="hd_smtp_fieldset">
+  <legend><%= l(:label_helpdesk_smtp_settings) %></legend>
+  <p>
+    <label><%= l(:field_helpdesk_smtp_host) %></label>
+    <%= text_field_tag 'helpdesk_mailbox[smtp_host]', @mailbox.smtp_host, :id => 'hd_smtp_host', :size => 40 %>
+    <%= l(:field_helpdesk_smtp_port) %>
+    <%= text_field_tag 'helpdesk_mailbox[smtp_port]', @mailbox.smtp_port, :id => 'hd_smtp_port', :size => 5 %>
+    <%= select_tag 'helpdesk_mailbox[smtp_security]',
+        options_for_select([[l(:label_helpdesk_security_ssl), 'ssl'],
+                            [l(:label_helpdesk_security_starttls), 'starttls'],
+                            [l(:label_helpdesk_security_plain), 'plain']],
+                           @mailbox.smtp_security.presence || 'starttls'),
+        :id => 'hd_smtp_security' %>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_smtp_username) %></label>
+    <%= text_field_tag 'helpdesk_mailbox[smtp_username]', @mailbox.smtp_username, :size => 40 %>
+    <em class="info"><%= l(:text_helpdesk_imap_username_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_smtp_verify_ssl) %></label>
+    <%= hidden_field_tag 'helpdesk_mailbox[smtp_verify_ssl]', '0' %>
+    <%= check_box_tag 'helpdesk_mailbox[smtp_verify_ssl]', '1', @mailbox.smtp_verify_ssl != false %>
+  </p>
+</fieldset>
+
+<fieldset class="box tabular" id="hd_auth_fieldset">
+  <legend><%= l(:label_helpdesk_oauth_settings) %></legend>
+  <%# Nur bei OAuth2 relevant: ein Passwort gehoert immer zum einzelnen Postfach. %>
+  <p id="hd_credentials_source_row">
+    <label><%= l(:field_helpdesk_credentials_source) %></label>
+    <%= select_tag 'helpdesk_mailbox[credentials_source]',
+        options_for_select([[l(:label_helpdesk_credentials_global),  'global'],
+                            [l(:label_helpdesk_credentials_mailbox), 'mailbox']],
+                           @mailbox.credentials_source.presence || 'global'),
+        :id => 'hd_credentials_source' %>
+    <em class="info"><%= l(:text_helpdesk_credentials_source_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_auth_method) %></label>
+    <%= select_tag 'helpdesk_mailbox[auth_method]',
+        options_for_select([[l(:label_helpdesk_auth_oauth2),   'oauth2'],
+                            [l(:label_helpdesk_auth_password), 'password']],
+                           @mailbox.auth_method.presence || 'oauth2'),
+        :id => 'hd_auth_method' %>
+    <em class="info"><%= l(:text_helpdesk_auth_password_info) %></em>
+  </p>
+  <div id="hd_password_block">
+    <p>
+      <label><%= l(:field_helpdesk_mail_password) %></label>
+      <%= password_field_tag 'helpdesk_mailbox[mail_password]', '', :size => 40, :autocomplete => 'new-password' %>
+      <em class="info"><%= l(:text_helpdesk_secret_blank_info) %></em>
+    </p>
+  </div>
+  <div id="hd_oauth_block">
+    <p>
+      <label><%= l(:field_helpdesk_oauth_grant) %></label>
+      <%= select_tag 'helpdesk_mailbox[oauth_grant]',
+          options_for_select([[l(:label_helpdesk_grant_client_credentials), 'client_credentials'],
+                              [l(:label_helpdesk_grant_authorization_code), 'authorization_code'],
+                              [l(:label_helpdesk_grant_jwt_bearer),         'jwt_bearer']],
+                             @mailbox.oauth_grant.presence || 'client_credentials'),
+          :id => 'hd_oauth_grant' %>
+    </p>
+    <div id="hd_oauth_credentials">
+      <p id="hd_oauth_tenant_row">
+        <label><%= l(:field_helpdesk_oauth_tenant_id) %></label>
+        <%= text_field_tag 'helpdesk_mailbox[oauth_tenant_id]', @mailbox.oauth_tenant_id, :id => 'hd_oauth_tenant_id', :size => 40 %>
+      </p>
+      <p>
+        <label><%= l(:field_helpdesk_oauth_client_id) %></label>
+        <%= text_field_tag 'helpdesk_mailbox[oauth_client_id]', @mailbox.oauth_client_id, :size => 40 %>
+      </p>
+      <p>
+        <label><%= l(:field_helpdesk_oauth_client_secret) %></label>
+        <%= password_field_tag 'helpdesk_mailbox[oauth_client_secret]', '', :size => 40, :autocomplete => 'new-password' %>
+        <em class="info"><%= l(:text_helpdesk_secret_blank_info) %></em>
+      </p>
+      <%# Microsoft und Google liefern diese drei Werte ueber die Vorlage; nur
+          "Andere / selbst gehostet" braucht sie von Hand. %>
+      <div id="hd_oauth_urls">
+        <p>
+          <label><%= l(:field_helpdesk_oauth_authorize_url) %></label>
+          <%= text_field_tag 'helpdesk_mailbox[oauth_authorize_url]', @mailbox.oauth_authorize_url, :id => 'hd_oauth_authorize_url', :size => 60 %>
+        </p>
+        <p>
+          <label><%= l(:field_helpdesk_oauth_token_url) %></label>
+          <%= text_field_tag 'helpdesk_mailbox[oauth_token_url]', @mailbox.oauth_token_url, :id => 'hd_oauth_token_url', :size => 60 %>
+        </p>
+        <p>
+          <label><%= l(:field_helpdesk_oauth_scope) %></label>
+          <%= text_field_tag 'helpdesk_mailbox[oauth_scope]', @mailbox.oauth_scope, :id => 'hd_oauth_scope', :size => 60 %>
+          <em class="info"><%= l(:text_helpdesk_default_oauth_urls_info) %></em>
+        </p>
+      </div>
+    </div>
+    <div id="hd_oauth_sa_block">
+      <p>
+        <label><%= l(:field_helpdesk_oauth_sa_email) %></label>
+        <%= text_field_tag 'helpdesk_mailbox[oauth_sa_email]', @mailbox.oauth_sa_email, :size => 40 %>
+      </p>
+      <p>
+        <label><%= l(:field_helpdesk_oauth_sa_key) %></label>
+        <%= text_area_tag 'helpdesk_mailbox[oauth_sa_key]', '', :rows => 4, :cols => 60 %>
+        <em class="info"><%= l(:text_helpdesk_secret_blank_info) %></em>
+      </p>
+    </div>
+    <div id="hd_oauth_consent_block">
+      <p>
+        <label><%= l(:label_helpdesk_oauth_callback_url) %></label>
+        <code><%= ExpertHelpdeskOauthController.callback_url %></code>
+        <em class="info"><%= l(:text_helpdesk_oauth_callback_url_info) %></em>
+      </p>
+      <p>
+        <label></label>
+        <% if @mailbox.new_record? %>
+          <em class="info"><%= l(:label_helpdesk_oauth_not_connected) %></em>
+        <% elsif @mailbox.oauth_connected_at.present? %>
+          <%= link_to l(:label_helpdesk_oauth_reconnect),
+                      oauth_authorize_helpdesk_mailbox_path(:project_id => @project.identifier, :id => @mailbox),
+                      :class => 'icon icon-reload' %>
+          <em class="info"><%= l(:label_helpdesk_oauth_connected_since, :date => format_time(@mailbox.oauth_connected_at)) %></em>
+        <% else %>
+          <%= link_to l(:label_helpdesk_oauth_connect),
+                      oauth_authorize_helpdesk_mailbox_path(:project_id => @project.identifier, :id => @mailbox),
+                      :class => 'icon icon-add' %>
+          <em class="info"><%= l(:label_helpdesk_oauth_not_connected) %></em>
+        <% end %>
+      </p>
+    </div>
+  </div>
+</fieldset>
 
 <fieldset class="box tabular">
   <legend><%= l(:label_helpdesk_defaults) %></legend>
@@ -158,12 +364,19 @@
   <legend><%= l(:label_helpdesk_reply_templates) %></legend>
   <p>
     <label><%= l(:field_helpdesk_reply_transport) %></label>
+    <%# Sending through Graph only works for a mailbox Microsoft actually hosts;
+        the JS below removes that option for anything else, and the model
+        validates the same rule so the API cannot store it either. %>
     <%= select_tag 'helpdesk_mailbox[reply_transport]',
         options_for_select(
-          [[l(:label_helpdesk_transport_graph), 'graph'],
-           [l(:label_helpdesk_transport_smtp),  'smtp']],
+          [[l(:label_helpdesk_transport_provider), 'provider'],
+           [l(:label_helpdesk_transport_graph),    'graph'],
+           [l(:label_helpdesk_transport_smtp),     'smtp']],
           @mailbox.reply_transport.presence || 'graph'
-        ) %>
+        ),
+        :id => 'hd_reply_transport',
+        :data => { :label_smtp  => l(:label_helpdesk_transport_mailbox_smtp),
+                   :label_graph => l(:label_helpdesk_transport_mailbox_graph) } %>
     <em class="info"><%= l(:text_helpdesk_reply_transport_info) %></em>
   </p>
   <p>
@@ -241,6 +454,29 @@
   var datalist     = document.getElementById('hd_folder_datalist');
   var refreshBtn   = document.getElementById('hd_refresh_folders');
   var statusEl     = document.getElementById('hd_folder_status');
+  var testUrl      = box.dataset.testConnectionUrl;
+  var mailboxId    = box.dataset.mailboxId;
+  var presets      = JSON.parse(box.dataset.presets || '{}');
+  var providerSel  = document.getElementById('hd_provider');
+  var presetSel    = document.getElementById('hd_oauth_preset');
+  var authMethodSel = document.getElementById('hd_auth_method');
+  var grantSel     = document.getElementById('hd_oauth_grant');
+  var imapFs       = document.getElementById('hd_imap_fieldset');
+  var smtpFs       = document.getElementById('hd_smtp_fieldset');
+  var authFs       = document.getElementById('hd_auth_fieldset');
+  var passwordBlock = document.getElementById('hd_password_block');
+  var oauthBlock   = document.getElementById('hd_oauth_block');
+  var saBlock      = document.getElementById('hd_oauth_sa_block');
+  var consentBlock = document.getElementById('hd_oauth_consent_block');
+  var sourceSel    = document.getElementById('hd_credentials_source');
+  var sourceRow    = document.getElementById('hd_credentials_source_row');
+  var transportSel = document.getElementById('hd_reply_transport');
+  var sentFolderRow = document.getElementById('hd_sent_folder_row');
+  var credentialsBlock = document.getElementById('hd_oauth_credentials');
+  var tenantRow    = document.getElementById('hd_oauth_tenant_row');
+  var urlsBlock    = document.getElementById('hd_oauth_urls');
+  var testBtn      = document.getElementById('hd_test_connection');
+  var connStatus   = document.getElementById('hd_conn_status');
   var knownFolders = [];
 
   function setStatus(msg, color) {
@@ -258,37 +494,173 @@
     });
   }
 
+  // Der komplette Formularzustand wird mitgeschickt, damit der Server den
+  // Provider (Graph oder IMAP) samt Verbindungsdaten aufbauen kann, statt einer
+  // beliebigen Adresse zu vertrauen.
+  function formPayload() {
+    var form = box.closest('form');
+    var body = form ? new FormData(form) : new FormData();
+    // Beim Bearbeiten enthaelt das Formular Rails' verstecktes _method=put.
+    // Mitgeschickt wuerde daraus ein PUT auf die Member-Route und damit
+    // #update mit id="folders" - also ein 404 statt einer Ordnerliste.
+    body.delete('_method');
+    if (mailboxId) body.append('id', mailboxId);
+    return body;
+  }
+
+  function postJson(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+      body: body
+    }).then(function (r) {
+      // Ein Fehler-Status liefert oft HTML statt JSON. Den Status durchreichen,
+      // statt am Parser zu scheitern - sonst steht ueberall nur "Netzwerkfehler".
+      return r.json()
+        .catch(function () { return { error: 'HTTP ' + r.status + ' ' + r.statusText }; })
+        .then(function (data) { return { ok: r.ok, data: data, statusText: r.statusText }; });
+    });
+  }
+
   function loadFolders(address) {
     if (!address) return;
     setStatus('Lade Ordner\u2026', '#888');
-    fetch(foldersUrl + '?mailbox_address=' + encodeURIComponent(address), {
-      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (Array.isArray(data)) {
-          populateDatalist(data);
-          setStatus(data.length + ' Ordner geladen', 'green');
+    postJson(foldersUrl, formPayload())
+      .then(function (res) {
+        if (Array.isArray(res.data)) {
+          populateDatalist(res.data);
+          setStatus(res.data.length + ' Ordner geladen', 'green');
         } else {
-          setStatus('Fehler: ' + (data.error || 'unbekannt'), 'red');
+          setStatus('Fehler: ' + (res.data.error || 'unbekannt'), 'red');
         }
       })
       .catch(function () { setStatus('Netzwerkfehler', 'red'); });
   }
 
   function createFolderRequest(address, name) {
-    var body = new FormData();
-    body.append('mailbox_address', address);
+    var body = formPayload();
     body.append('folder_name', name);
-    return fetch(createUrl, {
-      method: 'POST',
-      headers: { 'X-CSRF-Token': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-      body: body
-    }).then(function (r) {
-      return r.json().then(function (data) {
-        if (!r.ok || data.error) throw new Error(data.error || r.statusText);
-        return data;
-      });
+    return postJson(createUrl, body).then(function (res) {
+      if (!res.ok || res.data.error) throw new Error(res.data.error || res.statusText);
+      return res.data;
+    });
+  }
+
+  // Sichtbarkeit der Provider-Abschnitte und Anmeldeblöcke
+  function syncVisibility() {
+    var isImap = providerSel && providerSel.value === 'imap';
+    [imapFs, smtpFs, authFs].forEach(function (el) {
+      if (el) el.style.display = isImap ? '' : 'none';
+    });
+    if (!isImap) return;
+
+    var oauth = !authMethodSel || authMethodSel.value === 'oauth2';
+    if (passwordBlock) passwordBlock.style.display = oauth ? 'none' : '';
+    if (oauthBlock) oauthBlock.style.display = oauth ? '' : 'none';
+
+    var grant = grantSel ? grantSel.value : 'client_credentials';
+    if (saBlock) saBlock.style.display = grant === 'jwt_bearer' ? '' : 'none';
+    // Der Consent-Block bleibt auch bei globalen Zugangsdaten sichtbar: das
+    // Refresh-Token gehört zum Postfach, nicht zur App-Registrierung.
+    if (consentBlock) consentBlock.style.display = grant === 'authorization_code' ? '' : 'none';
+
+    // Die Herkunft der Zugangsdaten betrifft nur die App-Registrierung; ein
+    // Passwort gehört immer zum einzelnen Postfach.
+    if (sourceRow) sourceRow.style.display = oauth ? '' : 'none';
+
+    // Bei "aus den Plugin-Einstellungen" werden die eigenen Felder komplett
+    // ignoriert - sie stehen zu lassen, hieße zwei Wahrheiten anzuzeigen.
+    var ownCredentials = !sourceSel || sourceSel.value === 'mailbox';
+    if (credentialsBlock) credentialsBlock.style.display = ownCredentials ? '' : 'none';
+
+    var preset = presetSel ? presetSel.value : 'microsoft';
+    if (tenantRow) tenantRow.style.display = preset === 'microsoft' ? '' : 'none';
+    if (urlsBlock) urlsBlock.style.display = preset === 'generic' ? '' : 'none';
+
+    // Graph nur als Preis fuer ein Postfach, das Microsoft auch hostet - sonst
+    // schickt der Versand ein sendMail an ein Postfach, das dort nicht existiert.
+    syncTransport(isImap, preset);
+    if (sentFolderRow) sentFolderRow.style.display = isImap ? '' : 'none';
+  }
+
+  function syncTransport(isImap, preset) {
+    if (!transportSel) return;
+
+    var microsoftHosted = !isImap || preset === 'microsoft';
+    var graphOption = transportSel.querySelector('option[value="graph"]');
+    if (graphOption) {
+      graphOption.hidden   = !microsoftHosted;
+      graphOption.disabled = !microsoftHosted;
+      // Eine unerlaubte Auswahl still stehen zu lassen, hiesse den Fehler bis
+      // zum Speichern zu verstecken.
+      if (!microsoftHosted && transportSel.value === 'graph') transportSel.value = 'provider';
+    }
+
+    // Das eigene Backend heisst je nach Anbieter anders; "Provider" sagt niemandem etwas.
+    var own = transportSel.querySelector('option[value="provider"]');
+    if (own) {
+      own.textContent = isImap ? transportSel.dataset.labelSmtp : transportSel.dataset.labelGraph;
+    }
+  }
+
+  // Vorlage füllt ausschließlich leere Felder - eingetragene Werte bleiben stehen.
+  function applyPreset() {
+    if (!presetSel || !presets) return;
+    var preset = presets[presetSel.value];
+    if (!preset) return;
+
+    var tenant = (document.getElementById('hd_oauth_tenant_id') || {}).value || 'common';
+    var grant = grantSel ? grantSel.value : 'client_credentials';
+    var scopes = preset.scopes || {};
+
+    var pairs = [
+      ['hd_imap_host', preset.imap_host], ['hd_imap_port', preset.imap_port],
+      ['hd_imap_security', preset.imap_security],
+      ['hd_smtp_host', preset.smtp_host], ['hd_smtp_port', preset.smtp_port],
+      ['hd_smtp_security', preset.smtp_security],
+      ['hd_oauth_authorize_url', (preset.authorize_url || '').replace('{tenant}', tenant)],
+      ['hd_oauth_token_url', (preset.token_url || '').replace('{tenant}', tenant)],
+      ['hd_oauth_scope', scopes[grant] || '']
+    ];
+
+    pairs.forEach(function (pair) {
+      var el = document.getElementById(pair[0]);
+      if (el && !String(el.value || '').trim() && pair[1]) el.value = pair[1];
+    });
+  }
+
+  syncVisibility();
+  [providerSel, authMethodSel, grantSel, sourceSel, presetSel].forEach(function (el) {
+    if (el) el.addEventListener('change', syncVisibility);
+  });
+  if (presetSel) presetSel.addEventListener('change', applyPreset);
+  if (grantSel) grantSel.addEventListener('change', applyPreset);
+  if (providerSel) {
+    providerSel.addEventListener('change', function () {
+      if (this.value === 'imap') applyPreset();
+    });
+  }
+
+  if (testBtn) {
+    testBtn.addEventListener('click', function () {
+      connStatus.textContent = '\u2026';
+      connStatus.style.color = '#888';
+      postJson(testUrl, formPayload())
+        .then(function (res) {
+          var text = res.data.message || (res.data.ok ? 'OK' : '');
+          // Den erkannten Gesendet-Ordner mitzeigen: ein falscher Treffer faellt
+          // sonst erst nach der ersten Antwort im Log auf.
+          if (res.data.ok && res.data.sent_folder) {
+            text += ' – ' + res.data.sent_folder;
+          }
+          connStatus.textContent = text;
+          connStatus.style.color = res.data.ok ? 'green' : 'red';
+          if (res.data.ok && Array.isArray(res.data.folders)) populateDatalist(res.data.folders);
+        })
+        .catch(function () {
+          connStatus.textContent = 'Netzwerkfehler';
+          connStatus.style.color = 'red';
+        });
     });
   }
 

@@ -260,6 +260,7 @@
     <thead>
       <tr>
         <th><%= l(:field_helpdesk_mailbox_address) %></th>
+        <th><%= l(:field_helpdesk_provider) %></th>
         <th><%= l(:field_helpdesk_source_folder) %></th>
         <th><%= l(:field_helpdesk_processed_folder) %></th>
         <th><%= l(:field_helpdesk_enabled) %></th>
@@ -272,6 +273,7 @@
       <% mailboxes.each do |mailbox| %>
         <tr>
           <td><%= mailbox.mailbox_address %></td>
+          <td><%= mailbox.imap? ? l(:label_helpdesk_provider_imap) : l(:label_helpdesk_provider_graph) %></td>
           <td><%= mailbox.source_folder %></td>
           <td><%= mailbox.processed_folder %></td>
           <td><%= mailbox.enabled? ? l(:general_text_Yes) : l(:general_text_No) %></td>

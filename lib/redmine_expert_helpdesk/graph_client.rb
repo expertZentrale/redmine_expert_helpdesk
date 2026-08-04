@@ -15,21 +15,16 @@ require 'net/http'
 require 'uri'
 require 'json'
 require 'base64'
+require 'digest'
 
 module RedmineExpertHelpdesk
   class GraphClient
     GRAPH_BASE  = 'https://graph.microsoft.com/v1.0'.freeze
-    TOKEN_CACHE_KEY = 'redmine_expert_helpdesk/graph_token'.freeze
+    TOKEN_CACHE_PREFIX = 'redmine_expert_helpdesk/graph_token'.freeze
 
-    class GraphError < StandardError
-      attr_reader :status, :body
-
-      def initialize(message, status = nil, body = nil)
-        super(message)
-        @status = status
-        @body = body
-      end
-    end
+    # GraphError inherits from ProviderError so callers can rescue the common
+    # provider error and still catch Graph failures.
+    class GraphError < MailProvider::ProviderError; end
 
     class ConfigurationError < GraphError; end
 
@@ -161,7 +156,8 @@ module RedmineExpertHelpdesk
     # --- Token-Handling -----------------------------------------------------
 
     def access_token
-      cached = Rails.cache.read(TOKEN_CACHE_KEY)
+      cache_key = token_cache_key
+      cached = Rails.cache.read(cache_key)
       return cached if cached
 
       raise ConfigurationError.new('Helpdesk: Tenant-ID, Client-ID oder Client-Secret nicht konfiguriert') unless configured?
@@ -181,8 +177,18 @@ module RedmineExpertHelpdesk
 
       # Token etwas frueher verfallen lassen als von Azure angegeben
       ttl = [body['expires_in'].to_i - 120, 60].max
-      Rails.cache.write(TOKEN_CACHE_KEY, body['access_token'], :expires_in => ttl.seconds)
+      Rails.cache.write(cache_key, body['access_token'], :expires_in => ttl.seconds)
       body['access_token']
+    end
+
+    # The cache key includes a fingerprint of the credentials, so rotating the
+    # client secret takes effect immediately instead of after the cached token
+    # expires.
+    def token_cache_key
+      fingerprint = Digest::SHA256.hexdigest(
+        [@settings['tenant_id'], @settings['client_id'], @settings['client_secret']].join('|')
+      )[0, 12]
+      "#{TOKEN_CACHE_PREFIX}/#{fingerprint}"
     end
 
     private

@@ -1,42 +1,149 @@
-<%# Zentrale Konfiguration der Azure-App-Registrierung (Administration -> Plugins) %>
-<table>
-  <tr>
-    <td style="vertical-align: top; padding-right: 2em;">
-      <p>
-        <label><%= l(:label_helpdesk_tenant_id) %></label>
-        <%= text_field_tag 'settings[tenant_id]', @settings['tenant_id'], :size => 50 %>
-      </p>
-      <p>
-        <label><%= l(:label_helpdesk_client_id) %></label>
-        <%= text_field_tag 'settings[client_id]', @settings['client_id'], :size => 50 %>
-      </p>
-      <p>
-        <label><%= l(:label_helpdesk_client_secret) %></label>
-        <%= password_field_tag 'settings[client_secret]', @settings['client_secret'], :size => 50 %>
-      </p>
-      <p>
-        <label><%= l(:label_helpdesk_fetch_api_key) %></label>
-        <%= text_field_tag 'settings[fetch_api_key]', @settings['fetch_api_key'], :size => 50 %>
-        <em class="info"><%= l(:text_helpdesk_fetch_api_key_info) %></em>
-      </p>
-      <p>
-        <label><%= l(:label_helpdesk_sla_api_key) %></label>
-        <%= text_field_tag 'settings[sla_api_key]', @settings['sla_api_key'], :size => 50 %>
-        <em class="info"><%= l(:text_helpdesk_sla_api_key_info) %></em>
-      </p>
-    </td>
-    <td style="vertical-align: top;">
-      <div class="wiki">
-        <strong><%= l(:label_helpdesk_azure_hints) %></strong>
-        <ul>
-          <li>Application-Permissions: <code>Mail.ReadWrite</code>, <code>Mail.Send</code> (Admin-Consent erforderlich)</li>
-          <li>Zugriff per <code>ApplicationAccessPolicy</code> auf die Helpdesk-Postf&auml;cher einschr&auml;nken</li>
-          <li>Abruf aller Postf&auml;cher: <code>curl "<%= Setting.protocol %>://<%= Setting.host_name %>/helpdesk/fetch_all?key=API-KEY"</code></li>
-        </ul>
-      </div>
-    </td>
-  </tr>
-</table>
+<%# Zentraler Mail-Zugang. Es gibt genau EINE App-Registrierung - dieselbe, die
+    der Graph-Provider seit jeher nutzt. Welche Felder darunter sichtbar sind,
+    haengt an der Vorlage bzw. am OAuth2-Verfahren, damit jeder Anbietertyp nur
+    das sieht, was er wirklich braucht. %>
+<fieldset class="box tabular" id="hd_settings_mail">
+  <legend><%= l(:label_helpdesk_default_mail_credentials) %></legend>
+  <p>
+    <label><%= l(:field_helpdesk_oauth_preset) %></label>
+    <%= select_tag 'settings[default_oauth_preset]',
+        options_for_select([[l(:label_helpdesk_preset_microsoft), 'microsoft'],
+                            [l(:label_helpdesk_preset_google),    'google'],
+                            [l(:label_helpdesk_preset_generic),   'generic']],
+                           @settings['default_oauth_preset']),
+        :id => 'hd_s_preset' %>
+    <em class="info"><%= l(:text_helpdesk_default_preset_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:field_helpdesk_oauth_grant) %></label>
+    <%= select_tag 'settings[default_oauth_grant]',
+        options_for_select([[l(:label_helpdesk_grant_client_credentials), 'client_credentials'],
+                            [l(:label_helpdesk_grant_authorization_code), 'authorization_code'],
+                            [l(:label_helpdesk_grant_jwt_bearer),         'jwt_bearer']],
+                           @settings['default_oauth_grant']),
+        :id => 'hd_s_grant' %>
+  </p>
+  <p id="hd_s_tenant_row">
+    <label><%= l(:label_helpdesk_tenant_id) %></label>
+    <%= text_field_tag 'settings[tenant_id]', @settings['tenant_id'], :size => 50 %>
+  </p>
+  <p>
+    <label><%= l(:label_helpdesk_client_id) %></label>
+    <%= text_field_tag 'settings[client_id]', @settings['client_id'], :size => 50 %>
+  </p>
+  <p>
+    <label><%= l(:label_helpdesk_client_secret) %></label>
+    <%= password_field_tag 'settings[client_secret]', @settings['client_secret'], :size => 50 %>
+    <em class="info"><%= l(:text_helpdesk_global_app_registration_info) %></em>
+  </p>
+
+  <%# Vorlagen fuer Microsoft/Google liefern Hosts und URLs selbst; nur bei
+      "Andere / selbst gehostet" muss der Betreiber sie angeben. %>
+  <div id="hd_s_generic_block">
+    <p>
+      <label><%= l(:field_helpdesk_imap_host) %></label>
+      <%= text_field_tag 'settings[default_imap_host]', @settings['default_imap_host'], :size => 40 %>
+      <%= text_field_tag 'settings[default_imap_port]', @settings['default_imap_port'], :size => 5 %>
+      <%= select_tag 'settings[default_imap_security]',
+          options_for_select([[l(:label_helpdesk_security_ssl), 'ssl'],
+                              [l(:label_helpdesk_security_starttls), 'starttls'],
+                              [l(:label_helpdesk_security_plain), 'plain']],
+                             @settings['default_imap_security']) %>
+    </p>
+    <p>
+      <label><%= l(:field_helpdesk_smtp_host) %></label>
+      <%= text_field_tag 'settings[default_smtp_host]', @settings['default_smtp_host'], :size => 40 %>
+      <%= text_field_tag 'settings[default_smtp_port]', @settings['default_smtp_port'], :size => 5 %>
+      <%= select_tag 'settings[default_smtp_security]',
+          options_for_select([[l(:label_helpdesk_security_ssl), 'ssl'],
+                              [l(:label_helpdesk_security_starttls), 'starttls'],
+                              [l(:label_helpdesk_security_plain), 'plain']],
+                             @settings['default_smtp_security']) %>
+      <em class="info"><%= l(:text_helpdesk_default_host_info) %></em>
+    </p>
+    <p>
+      <label><%= l(:field_helpdesk_oauth_authorize_url) %></label>
+      <%= text_field_tag 'settings[default_oauth_authorize_url]', @settings['default_oauth_authorize_url'], :size => 70 %>
+    </p>
+    <p>
+      <label><%= l(:field_helpdesk_oauth_token_url) %></label>
+      <%= text_field_tag 'settings[default_oauth_token_url]', @settings['default_oauth_token_url'], :size => 70 %>
+    </p>
+    <p>
+      <label><%= l(:field_helpdesk_oauth_scope) %></label>
+      <%= text_field_tag 'settings[default_oauth_scope]', @settings['default_oauth_scope'], :size => 70 %>
+      <em class="info"><%= l(:text_helpdesk_default_oauth_urls_info) %></em>
+    </p>
+  </div>
+
+  <%# Nur das Verfahren "Einmalige Zustimmung" fuehrt ueber eine Redirect-URI. %>
+  <div id="hd_s_consent_block">
+    <p>
+      <label><%= l(:label_helpdesk_oauth_callback_url) %></label>
+      <code><%= ExpertHelpdeskOauthController.callback_url %></code>
+      <em class="info"><%= l(:text_helpdesk_oauth_callback_url_info) %></em>
+    </p>
+  </div>
+
+  <div class="wiki" id="hd_s_azure_hints" style="margin-top:1em;">
+    <strong><%= l(:label_helpdesk_azure_hints) %></strong>
+    <ul>
+      <li>Graph-Postf&auml;cher: Application-Permissions <code>Mail.ReadWrite</code>, <code>Mail.Send</code> (Admin-Consent erforderlich)</li>
+      <li>IMAP/SMTP-Postf&auml;cher (nur Anwendung): <code>IMAP.AccessAsApp</code>, <code>SMTP.SendAsApp</code></li>
+      <li>Zugriff per <code>ApplicationAccessPolicy</code> auf die Helpdesk-Postf&auml;cher einschr&auml;nken</li>
+    </ul>
+  </div>
+
+  <p><em class="info"><%= l(:text_helpdesk_credentials_source_info) %></em></p>
+</fieldset>
+
+<fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_api_keys) %></legend>
+  <p>
+    <label><%= l(:label_helpdesk_fetch_api_key) %></label>
+    <%= text_field_tag 'settings[fetch_api_key]', @settings['fetch_api_key'], :size => 50 %>
+    <em class="info"><%= l(:text_helpdesk_fetch_api_key_info) %></em>
+  </p>
+  <p>
+    <label></label>
+    <code>curl "<%= Setting.protocol %>://<%= Setting.host_name %>/helpdesk/fetch_all?key=API-KEY"</code>
+  </p>
+  <p>
+    <label><%= l(:label_helpdesk_sla_api_key) %></label>
+    <%= text_field_tag 'settings[sla_api_key]', @settings['sla_api_key'], :size => 50 %>
+    <em class="info"><%= l(:text_helpdesk_sla_api_key_info) %></em>
+  </p>
+</fieldset>
+
+<script type="text/javascript">
+//<![CDATA[
+// Blendet die Felder aus, die die gewaehlte Vorlage bzw. das Verfahren selbst
+// liefert - so bleibt genau das stehen, was der Betreiber eintragen muss.
+(function () {
+  var presetSel = document.getElementById('hd_s_preset');
+  var grantSel  = document.getElementById('hd_s_grant');
+  if (!presetSel || !grantSel) return;
+
+  function show(id, visible) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = visible ? '' : 'none';
+  }
+
+  function sync() {
+    var preset = presetSel.value;
+    var grant  = grantSel.value;
+    show('hd_s_tenant_row',     preset === 'microsoft');
+    show('hd_s_generic_block',  preset === 'generic');
+    show('hd_s_consent_block',  grant === 'authorization_code');
+    show('hd_s_azure_hints',    preset === 'microsoft');
+  }
+
+  sync();
+  presetSel.addEventListener('change', sync);
+  grantSel.addEventListener('change', sync);
+}());
+//]]>
+</script>
 
 <hr />
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_display_settings) %></h3>
