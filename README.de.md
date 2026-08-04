@@ -16,7 +16,7 @@ Zwei CI-Workflows laufen bei jedem Push und Pull Request: die
 unterstützten Versionen – 5.1, 6.0, 6.1, 7.0 – auf frischer MariaDB) und ein
 [Docker-Image-Smoke-Test](.github/workflows/docker-image.yml), der das Plugin in den
 **offiziellen `redmine`-Docker-Images** startet, mit denen wir deployen (Tags 5.1, 6.0, 6.1, 7.0) –
-siehe [Tests ausführen](#tests-ausführen).
+siehe [Tests](#tests).
 
 ## Inhalt
 
@@ -32,13 +32,14 @@ siehe [Tests ausführen](#tests-ausführen).
 - [SLA-Prüfung auslösen](#sla-prüfung-auslösen)
 - [Plugin-Einstellungen](#plugin-einstellungen)
 - [REST-API](#rest-api)
+- [KI-Zusammenfassungen](#ki-zusammenfassungen)
+- [Wissensbasis (RAG)](#wissensbasis-rag)
+- [Tests](#tests) — was die CI ausführt
 - [Azure-App-Registrierung (einmalig)](#azure-app-registrierung-einmalig)
 - [Installation](#installation)
 - [Makros für Vorlagen](#makros-für-vorlagen)
 - [Hinweise](#hinweise)
-- [KI-Zusammenfassungen](#ki-zusammenfassungen)
-- [Wissensbasis (RAG)](#wissensbasis-rag)
-- [Tests ausführen](#tests-ausführen)
+- [Tests ausführen](#tests-ausführen) — selbst ausführen
 - [Lizenz](#lizenz)
 - [Komponenten von Drittanbietern](#komponenten-von-drittanbietern)
 
@@ -514,6 +515,19 @@ Aktualisierung](docs/screenshots/de/10-contact-profile.png)
   Kundenprofil sowie Verlauf der gesendeten Antworten (To/CC/BCC, Zeitstempel,
   Anhänge).
 
+### Kunde einem bestehenden Ticket zuordnen
+
+Jedem Ticket — auch einem ohne eingehende E-Mail von Hand angelegten — lässt sich
+über die Seitenleiste ein Kunde zuordnen. Das Formular „Kunde zuordnen" dort
+erlaubt:
+
+- Kunden per E-Mail-Adresse suchen oder neu anlegen (mit Autovervollständigung).
+- Optional eine erste E-Mail an den Kunden senden (der Mailtext entspricht
+  standardmäßig der Ticketbeschreibung; die konfigurierbaren Header-/Footer-Vorlagen
+  werden angewendet).
+- Nur zuordnen, ohne zu senden (hinterlässt eine Nachricht mit `direction=init`
+  als Kundenverknüpfung).
+
 ## Mailabruf auslösen
 
 Es gibt bewusst keinen eingebauten Scheduler. Zwei Wege:
@@ -594,6 +608,137 @@ curl -H "X-Redmine-API-Key: $KEY" -H "Content-Type: application/json" \
      -d '{"helpdesk_ticket":{"subject":"Drucker defekt","tracker_id":1,"contact_email":"jane@acme.example"}}' \
      "https://redmine.example.de/projects/42/helpdesk/tickets.json"
 ```
+
+## KI-Zusammenfassungen
+
+Bei aus eingehenden Mails erzeugten Tickets (optional auch bei Journal-Antworten) kann das
+Plugin eine KI das eigentliche Anliegen des Kunden zusammenfassen lassen und die
+Zusammenfassung als **private (interne) Journal-Notiz** ans Ticket hängen – hilfreich bei
+schwer verständlichen Mails oder weitergeleiteten Verläufen mit verstreuten Informationen.
+Standardmäßig deaktiviert, Opt-in pro Projekt.
+
+> **KI-Nutzungsstatistik.** Da die KI-Funktionen externe APIs aufrufen und ein Kostenrisiko
+> bergen, wird jeder KI-Aufruf (Zusammenfassungen, KB-Extraktion, Embeddings, RAG-Retrieval) in
+> `helpdesk_ai_requests` protokolliert – inkl. Fehlversuchen und Antwortzeit. Ein projektbezogener
+> Reiter **„KI-Statistik"** (gleiche Zeitraumauswahl und Kennzahlen-Übersicht wie die SLA-Statistik)
+> schlüsselt die Nutzung nach Volumen, Token, Anfragetyp, Provider/Modell, Erfolgsquote und
+> Stoßzeiten auf. Der Reiter ist über die **globale** Berechtigung `view_helpdesk_ai_statistics`
+> geschützt: einer Rolle (z. B. *ai-admin*) gewähren, dann sehen diese Benutzer den Reiter in jedem
+> Helpdesk-Projekt. Nur Token – es werden noch keine Geldkosten berechnet.
+
+**Zentrale Konfiguration** (*Administration → Plugins → Redmine expert Helpdesk*):
+- **Anbieter** – OpenAI (Chat Completions), Anthropic (Messages) oder **Eigener Endpunkt**
+  (beliebige OpenAI-kompatible Basis-URL, z. B. self-hosted Ollama / vLLM / LocalAI / LM Studio).
+- **API-Key**, **Endpunkt** (leer = Anbieter-Standard; für „Eigener Endpunkt" erforderlich),
+  **Modell**.
+- **Standard-Prompt** (guter deutscher Default mitgeliefert) sowie Limits (max.
+  Eingabezeichen / Ausgabe-Tokens / Timeout).
+
+**Projekt-Konfiguration** (Projekt-*Einstellungen → expert Helpdesk*, sichtbar wenn KI zentral
+aktiviert ist):
+- Für das Projekt aktivieren; **Umfang** wählen (nur Erstmail oder Erstmail und Antworten).
+- **Prompt-Modus** – zentralen Prompt *erben*, *erweitern* oder durch einen
+  Projekt-Prompt *ersetzen*.
+- **Anhänge** – unabhängig wählbar, was an die KI geht: Dateinamen/Metadaten, extrahierter
+  Text (PDF via optionalem `pdf-reader`, Textdateien) und/oder Bilder (erfordert ein
+  vision-fähiges Modell).
+- **Ticketverlauf** – optional den gesamten Verlauf (Beschreibung + alle Notizen) statt nur
+  der auslösenden Mail senden, optional inklusive **privater Notizen** (Standard aus; diese
+  internen Notizen gehen dann ebenfalls an den Anbieter). Die eigenen KI-Zusammenfassungs-
+  Notizen werden immer ausgeschlossen.
+
+Die Zusammenfassung läuft **asynchron** (ActiveJob `HelpdeskAiSummaryJob`); KI-Latenz oder
+-Fehler blockieren den Mailabruf nicht – scheitert der Call, wird das Ticket dennoch erzeugt
+und der Fehler nur geloggt. Der **Token-Verbrauch** jeder Zusammenfassung wird als 🤖-Badge
+im Journal-Header der Notiz angezeigt (Tooltip: Eingabe-/Ausgabe-Tokens und Modell) – analog
+zu den An/CC/BCC-Empfänger-Badges. Eine Zusammenfassung lässt sich zudem manuell über die
+Karte **„KI-Assistent"** in der Helpdesk-Seitenleiste des Tickets **neu erzeugen**
+(*🤖 KI-Zusammenfassung neu erzeugen*) – eine eigene Karte unterhalb der Kundenkarte, die nur
+erscheint, wenn KI/KB für das Projekt aktiv ist. Der Button erscheint nur, wenn
+*KI-Zusammenfassungen für dieses Projekt erzeugen* aktiviert ist. Praktisch nach einem
+fehlgeschlagenen Lauf oder für Tickets, die vor Aktivierung der Funktion eingingen.
+
+> **Datenschutz:** Der Inhalt eingehender Mails und die gewählten Anhänge werden an den
+> konfigurierten Anbieter übertragen. Für einen vollständig lokalen Betrieb den Anbieter
+> **Eigener Endpunkt** mit einer self-hosted, OpenAI-kompatiblen URL verwenden. Die Funktion
+> ist standardmäßig aus und pro Projekt zu aktivieren.
+
+---
+
+## Wissensbasis (RAG)
+
+Aus gelösten Tickets lässt sich eine **projektbezogene Wissensbasis** aufbauen: ein KI-Aufruf
+extrahiert je geschlossenem Ticket ein `{Problem, Lösung}`-Paar, bettet das Problem ein und legt
+es in einer externen Vektor-Datenbank ab. Bei einer neuen Mail sucht der Zusammenfassungs-Job
+**nur in der Wissensbasis dieses Projekts** nach ähnlichen gelösten Tickets und ergänzt – wenn
+genügend über dem Schwellwert liegen – einen **Lösungsvorschlag** in der Zusammenfassung und/oder
+ein Seitenleisten-Panel. Standardmäßig deaktiviert.
+
+**Zentrale Konfiguration** (*Administration → Plugins*):
+- **Vektor-Store** (`kb_backend`): **Qdrant** (REST, kein Zusatz-Gem) oder **Postgres + pgvector**
+  (benötigt das `pg`-Gem im Deployment; `PgvectorStore` lädt es per gekapseltem `require`).
+- **Embeddings**: Anbieter (OpenAI oder ein self-hosted OpenAI-kompatibler Endpunkt – Anthropic
+  hat keine Embeddings-API), Modell, Endpunkt, Key (leer nutzt den Key der Zusammenfassung beim
+  gleichen Anbieter).
+- Extraktions-Prompt und Retrieval-Parameter (Top-K, Min. Score, Min. Treffer).
+
+**Projekt-Konfiguration** (Projekt-*Einstellungen → expert Helpdesk*, sichtbar wenn die KB aktiv ist):
+- **Beitrag** (`kb_ingest_mode`): aus / **auto** (beim Schließen, wenn eine Lösung erkannt wurde) /
+  **manuell** (beim Schließen entsteht ein *pending*-Eintrag; Freigabe über die Ticket-Seitenleiste).
+- **Lösungsvorschläge anzeigen** (`kb_proposal_display`): aus / Zusammenfassung / Seitenleiste / beides.
+
+**Isolation:** jedes Projekt hat einen eigenen Vektor-Namensraum (Qdrant-Collection / erzwungener
+`project_id`-Filter) – ein Projekt ruft nie das Wissen eines anderen ab.
+
+**Batch:** `rake redmine_expert_helpdesk:kb_backfill` nimmt bestehende geschlossene Tickets auf;
+`kb_reembed` baut die Vektoren nach einem Modellwechsel neu.
+
+**Einrichtung:** einen von Redmine erreichbaren Vektor-Dienst betreiben – z. B. einen
+`qdrant/qdrant`-Container (`http://qdrant:6333`) oder eine `pgvector/pgvector`-Postgres – und die
+Plugin-Einstellungen darauf zeigen lassen.
+
+> **Datenschutz:** Problem-/Lösungstext wird an den Embeddings-Anbieter übertragen und im
+> Vektor-Store gespeichert. Für einen rein lokalen Betrieb einen self-hosted Embeddings-Endpunkt
+> verwenden.
+
+---
+
+## Tests
+
+Das Plugin bringt MiniTest-Unit- und -Integrationstests mit (`test/`). Sie benötigen eine
+Redmine-Umgebung (sie laden Redmines eigenen Test-Helper und die Fixtures), laufen also
+innerhalb eines Redmine-Checkouts mit dem Plugin unter `plugins/redmine_expert_helpdesk`:
+
+```bash
+# Alle Plugin-Tests
+bundle exec rake redmine:plugins:test NAME=redmine_expert_helpdesk RAILS_ENV=test
+
+# Eine einzelne Datei / ein einzelner Test
+bundle exec ruby -Itest plugins/redmine_expert_helpdesk/test/unit/sla_test.rb
+bundle exec ruby -Itest plugins/redmine_expert_helpdesk/test/unit/sla_test.rb -n test_reaction_deadline
+```
+
+**Kontinuierliche Integration:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) führt die komplette Suite bei
+jedem Push und Pull Request aus. Eine Build-Matrix checkt jede unterstützte
+Redmine-Version frisch aus, kopiert das Plugin hinein, migriert eine leere MariaDB
+und startet die Tests – so werden alle Versionen in einem isolierten, reproduzierbaren
+Zustand geprüft:
+
+| Redmine | Ruby | Rails |
+|---------|------|-------|
+| 5.1-stable | 3.2 | 6.1 |
+| 6.0-stable | 3.3 | 7.2 |
+| 6.1-stable | 3.3 | 7.2 |
+| 7.0-stable | 3.4 | 8.1 |
+
+**Docker-Image-Smoke-Test:** [`.github/workflows/docker-image.yml`](.github/workflows/docker-image.yml)
+startet das Plugin zusätzlich in den **offiziellen `redmine`-Docker-Images**, mit denen wir
+deployen (Tags `5.1`, `6.0`, `6.1`, `7.0`). Pro Tag wird das offizielle Image gegen eine frische
+MariaDB gestartet, das Plugin read-only eingehängt, via `REDMINE_PLUGINS_MIGRATE=1` migriert
+und geprüft, dass Redmine `/login` (HTTP 200) mit geladenem Plugin ausliefert — fängt also
+`init.rb`-Lade-, Migrations- oder Gem-Versionsprobleme ab, die nur im ausgelieferten Image
+auftreten. `7.0`/`7` in die Matrix aufnehmen, sobald das offizielle Image einen Redmine-7-Tag
+anbietet.
 
 ## Azure-App-Registrierung (einmalig)
 
@@ -975,100 +1120,6 @@ Standard-Betreff-Vorlage: `Re: [#{{issue.id}}] {{issue.subject}}`
 
 ---
 
-## KI-Zusammenfassungen
-
-Bei aus eingehenden Mails erzeugten Tickets (optional auch bei Journal-Antworten) kann das
-Plugin eine KI das eigentliche Anliegen des Kunden zusammenfassen lassen und die
-Zusammenfassung als **private (interne) Journal-Notiz** ans Ticket hängen – hilfreich bei
-schwer verständlichen Mails oder weitergeleiteten Verläufen mit verstreuten Informationen.
-Standardmäßig deaktiviert, Opt-in pro Projekt.
-
-> **KI-Nutzungsstatistik.** Da die KI-Funktionen externe APIs aufrufen und ein Kostenrisiko
-> bergen, wird jeder KI-Aufruf (Zusammenfassungen, KB-Extraktion, Embeddings, RAG-Retrieval) in
-> `helpdesk_ai_requests` protokolliert – inkl. Fehlversuchen und Antwortzeit. Ein projektbezogener
-> Reiter **„KI-Statistik"** (gleiche Zeitraumauswahl und Kennzahlen-Übersicht wie die SLA-Statistik)
-> schlüsselt die Nutzung nach Volumen, Token, Anfragetyp, Provider/Modell, Erfolgsquote und
-> Stoßzeiten auf. Der Reiter ist über die **globale** Berechtigung `view_helpdesk_ai_statistics`
-> geschützt: einer Rolle (z. B. *ai-admin*) gewähren, dann sehen diese Benutzer den Reiter in jedem
-> Helpdesk-Projekt. Nur Token – es werden noch keine Geldkosten berechnet.
-
-**Zentrale Konfiguration** (*Administration → Plugins → Redmine expert Helpdesk*):
-- **Anbieter** – OpenAI (Chat Completions), Anthropic (Messages) oder **Eigener Endpunkt**
-  (beliebige OpenAI-kompatible Basis-URL, z. B. self-hosted Ollama / vLLM / LocalAI / LM Studio).
-- **API-Key**, **Endpunkt** (leer = Anbieter-Standard; für „Eigener Endpunkt" erforderlich),
-  **Modell**.
-- **Standard-Prompt** (guter deutscher Default mitgeliefert) sowie Limits (max.
-  Eingabezeichen / Ausgabe-Tokens / Timeout).
-
-**Projekt-Konfiguration** (Projekt-*Einstellungen → expert Helpdesk*, sichtbar wenn KI zentral
-aktiviert ist):
-- Für das Projekt aktivieren; **Umfang** wählen (nur Erstmail oder Erstmail und Antworten).
-- **Prompt-Modus** – zentralen Prompt *erben*, *erweitern* oder durch einen
-  Projekt-Prompt *ersetzen*.
-- **Anhänge** – unabhängig wählbar, was an die KI geht: Dateinamen/Metadaten, extrahierter
-  Text (PDF via optionalem `pdf-reader`, Textdateien) und/oder Bilder (erfordert ein
-  vision-fähiges Modell).
-- **Ticketverlauf** – optional den gesamten Verlauf (Beschreibung + alle Notizen) statt nur
-  der auslösenden Mail senden, optional inklusive **privater Notizen** (Standard aus; diese
-  internen Notizen gehen dann ebenfalls an den Anbieter). Die eigenen KI-Zusammenfassungs-
-  Notizen werden immer ausgeschlossen.
-
-Die Zusammenfassung läuft **asynchron** (ActiveJob `HelpdeskAiSummaryJob`); KI-Latenz oder
--Fehler blockieren den Mailabruf nicht – scheitert der Call, wird das Ticket dennoch erzeugt
-und der Fehler nur geloggt. Der **Token-Verbrauch** jeder Zusammenfassung wird als 🤖-Badge
-im Journal-Header der Notiz angezeigt (Tooltip: Eingabe-/Ausgabe-Tokens und Modell) – analog
-zu den An/CC/BCC-Empfänger-Badges. Eine Zusammenfassung lässt sich zudem manuell über die
-Karte **„KI-Assistent"** in der Helpdesk-Seitenleiste des Tickets **neu erzeugen**
-(*🤖 KI-Zusammenfassung neu erzeugen*) – eine eigene Karte unterhalb der Kundenkarte, die nur
-erscheint, wenn KI/KB für das Projekt aktiv ist. Der Button erscheint nur, wenn
-*KI-Zusammenfassungen für dieses Projekt erzeugen* aktiviert ist. Praktisch nach einem
-fehlgeschlagenen Lauf oder für Tickets, die vor Aktivierung der Funktion eingingen.
-
-> **Datenschutz:** Der Inhalt eingehender Mails und die gewählten Anhänge werden an den
-> konfigurierten Anbieter übertragen. Für einen vollständig lokalen Betrieb den Anbieter
-> **Eigener Endpunkt** mit einer self-hosted, OpenAI-kompatiblen URL verwenden. Die Funktion
-> ist standardmäßig aus und pro Projekt zu aktivieren.
-
----
-
-## Wissensbasis (RAG)
-
-Aus gelösten Tickets lässt sich eine **projektbezogene Wissensbasis** aufbauen: ein KI-Aufruf
-extrahiert je geschlossenem Ticket ein `{Problem, Lösung}`-Paar, bettet das Problem ein und legt
-es in einer externen Vektor-Datenbank ab. Bei einer neuen Mail sucht der Zusammenfassungs-Job
-**nur in der Wissensbasis dieses Projekts** nach ähnlichen gelösten Tickets und ergänzt – wenn
-genügend über dem Schwellwert liegen – einen **Lösungsvorschlag** in der Zusammenfassung und/oder
-ein Seitenleisten-Panel. Standardmäßig deaktiviert.
-
-**Zentrale Konfiguration** (*Administration → Plugins*):
-- **Vektor-Store** (`kb_backend`): **Qdrant** (REST, kein Zusatz-Gem) oder **Postgres + pgvector**
-  (benötigt das `pg`-Gem im Deployment; `PgvectorStore` lädt es per gekapseltem `require`).
-- **Embeddings**: Anbieter (OpenAI oder ein self-hosted OpenAI-kompatibler Endpunkt – Anthropic
-  hat keine Embeddings-API), Modell, Endpunkt, Key (leer nutzt den Key der Zusammenfassung beim
-  gleichen Anbieter).
-- Extraktions-Prompt und Retrieval-Parameter (Top-K, Min. Score, Min. Treffer).
-
-**Projekt-Konfiguration** (Projekt-*Einstellungen → expert Helpdesk*, sichtbar wenn die KB aktiv ist):
-- **Beitrag** (`kb_ingest_mode`): aus / **auto** (beim Schließen, wenn eine Lösung erkannt wurde) /
-  **manuell** (beim Schließen entsteht ein *pending*-Eintrag; Freigabe über die Ticket-Seitenleiste).
-- **Lösungsvorschläge anzeigen** (`kb_proposal_display`): aus / Zusammenfassung / Seitenleiste / beides.
-
-**Isolation:** jedes Projekt hat einen eigenen Vektor-Namensraum (Qdrant-Collection / erzwungener
-`project_id`-Filter) – ein Projekt ruft nie das Wissen eines anderen ab.
-
-**Batch:** `rake redmine_expert_helpdesk:kb_backfill` nimmt bestehende geschlossene Tickets auf;
-`kb_reembed` baut die Vektoren nach einem Modellwechsel neu.
-
-**Einrichtung:** einen von Redmine erreichbaren Vektor-Dienst betreiben – z. B. einen
-`qdrant/qdrant`-Container (`http://qdrant:6333`) oder eine `pgvector/pgvector`-Postgres – und die
-Plugin-Einstellungen darauf zeigen lassen.
-
-> **Datenschutz:** Problem-/Lösungstext wird an den Embeddings-Anbieter übertragen und im
-> Vektor-Store gespeichert. Für einen rein lokalen Betrieb einen self-hosted Embeddings-Endpunkt
-> verwenden.
-
----
-
 ## Tests ausführen
 
 Das Plugin enthält Minitest-Unit-Tests unter `test/unit/`. Sie laufen in der
@@ -1125,29 +1176,6 @@ bundle exec ruby -Itest \
 - Nach `bundle update`, um Gem-Kompatibilitätsprobleme zu erkennen.
 - In CI/CD als Schritt nach `redmine:plugins:migrate`.
 
-### Automatisierte Tests (GitHub Actions / CI)
-
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) führt die komplette Suite bei
-jedem Push und Pull Request aus. Eine Build-Matrix checkt jede unterstützte
-Redmine-Version frisch aus, kopiert das Plugin hinein, migriert eine leere MariaDB
-und startet die Tests – so werden alle Versionen in einem isolierten, reproduzierbaren
-Zustand geprüft:
-
-| Redmine | Ruby | Rails |
-|---------|------|-------|
-| 5.1-stable | 3.2 | 6.1 |
-| 6.0-stable | 3.3 | 7.2 |
-| 6.1-stable | 3.3 | 7.2 |
-| 7.0-stable | 3.4 | 8.1 |
-
-**Docker-Image-Smoke-Test:** [`.github/workflows/docker-image.yml`](.github/workflows/docker-image.yml)
-startet das Plugin zusätzlich in den **offiziellen `redmine`-Docker-Images**, mit denen wir
-deployen (Tags `5.1`, `6.0`, `6.1`, `7.0`). Pro Tag wird das offizielle Image gegen eine frische
-MariaDB gestartet, das Plugin read-only eingehängt, via `REDMINE_PLUGINS_MIGRATE=1` migriert
-und geprüft, dass Redmine `/login` (HTTP 200) mit geladenem Plugin ausliefert — fängt also
-`init.rb`-Lade-, Migrations- oder Gem-Versionsprobleme ab, die nur im ausgelieferten Image
-auftreten. `7.0`/`7` in die Matrix aufnehmen, sobald das offizielle Image einen Redmine-7-Tag
-anbietet.
 
 ### Container-Workflow
 
