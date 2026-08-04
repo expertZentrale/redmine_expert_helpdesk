@@ -125,6 +125,17 @@
   (`assets/stylesheets/helpdesk_mailbox_form.css`).
 
 ### Fixed
+- **Die README hat das Plugin weiterhin als reine Microsoft-365-Lösung vorgestellt.** Der
+  Einleitungssatz — „E-Mail-zu-Ticket-Plugin für Redmine mit Microsoft-365-Anbindung über die
+  Microsoft Graph API" — stammte aus der Zeit vor dem generischen IMAP/SMTP-Backend; der
+  Absatz, den die meisten Leser als einzigen sehen, widersprach damit der Funktionsliste
+  direkt darunter. Es ist dieselbe stille Drift, die schon
+  `docs/redmine_org/description.textile` nach dem Release von 0.2.0 noch „only Microsoft O365
+  is supported" verkünden ließ. Ebenfalls korrigiert: der Punkt *Kundenantworten*, der den
+  Graph-`sendMail`-Weg als einzigen Versandweg beschrieb, sowie ein Hinweis unter
+  *Voraussetzungen*, dass `rake db:create RAILS_ENV=test` neben den RedmineUP-Plugins nicht
+  funktionieren kann (der Task bootet Rails, und `redmine_contacts` ruft `table_exists?` gegen
+  die noch nicht existierende Datenbank auf).
 - **Die Phishing-Erkennung lief unter Ruby 4.0 (Redmine-7-Images) auf einen Fehler.** Der
   `PhishingScanner` hat mit `CGI.parse` das eingepackte Ziel aus Microsoft SafeLinks und anderen
   Redirect-Links geholt; Ruby 4.0 hat diese Methode entfernt. Jeder Link mit Query-String löste

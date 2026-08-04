@@ -5,8 +5,11 @@
 [![CI](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml)
 [![Docker image smoke test](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/docker-image.yml/badge.svg)](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/docker-image.yml)
 
-E-Mail-zu-Ticket-Plugin für Redmine mit Microsoft-365-Anbindung über die
-Microsoft Graph API (OAuth 2.0 Client-Credentials-Flow, App-Only).
+E-Mail-zu-Ticket-Plugin für Redmine. Jedes Postfach wählt sein eigenes Backend:
+**Microsoft 365** über die Microsoft Graph API oder generisches **IMAP/SMTP** für Google
+Workspace, Exchange on-premises, selbst gehostete Server und beliebige Hoster —
+authentifiziert per OAuth2/XOAUTH2 oder, wo der Server kein OAuth2 kann, mit
+Benutzername und Passwort über TLS.
 
 Zwei CI-Workflows laufen bei jedem Push und Pull Request: die
 [Testsuite](.github/workflows/ci.yml) (MiniTest gegen den Redmine-Quellcode für alle
@@ -34,9 +37,10 @@ siehe [Tests ausführen](#tests-ausführen).
   einzelne Postfächer können sie durch eigene Zugangsdaten ersetzen.
 - **Autoresponder**: Konfigurierbare Bestätigungsmail bei neuen Tickets.
 - **Kundenantworten**: Antwort an den Kunden direkt von der Ticketseite, mit
-  Header-/Footer-Vorlagen; Versand per MIME-basiertem Graph-API-Endpunkt aus
-  dem Projektpostfach (landet in dessen „Gesendete Elemente"). Unterstützt
-  Inline-Bilder (via CID), normale Anhänge sowie mehrere Empfänger in CC/BCC.
+  Header-/Footer-Vorlagen; Versand als vollständiges MIME aus dem Projektpostfach
+  über dessen jeweiliges Backend — Graph oder der eigene SMTP-Server — und in beiden
+  Fällen abgelegt in „Gesendete Elemente". Unterstützt Inline-Bilder (via CID),
+  normale Anhänge sowie mehrere Empfänger in CC/BCC.
 - **Autocomplete in Adressfeldern**: Beim Tippen in An/CC/BCC werden passende
   Kontakte des Projekts vorgeschlagen (ab 2 Zeichen, Dropdown mit Tastatur-
   und Mausnavigation, kommagetrennte Mehrfacheingabe). Display-Namen mit
@@ -1058,6 +1062,13 @@ bundle exec rake db:create RAILS_ENV=test
 bundle exec rake db:migrate RAILS_ENV=test
 bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=test
 ```
+
+> **Neben RedmineUP-Plugins schlägt `rake db:create` fehl**: der Task bootet Rails, und
+> `redmine_contacts` ruft beim Laden seiner Modelle `table_exists?` auf — gegen genau die
+> Datenbank, die es noch nicht gibt. Die Datenbank vorher mit dem Datenbank-Client anlegen
+> und nur die beiden `migrate`-Tasks laufen lassen. Im Deploy-Repository ist das bereits
+> als Compose-Service hinterlegt:
+> `docker-compose --profile test run --build --rm redmine-test`.
 
 ### Alle Plugin-Tests ausführen
 

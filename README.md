@@ -5,8 +5,10 @@
 [![CI](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/ci.yml)
 [![Docker image smoke test](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/docker-image.yml/badge.svg)](https://github.com/expertZentrale/redmine_expert_helpdesk/actions/workflows/docker-image.yml)
 
-Email-to-ticket plugin for Redmine with Microsoft 365 integration via the
-Microsoft Graph API (OAuth 2.0 Client Credentials Flow, app-only).
+Email-to-ticket plugin for Redmine. Each mailbox picks its own backend: **Microsoft 365**
+via the Microsoft Graph API, or generic **IMAP/SMTP** for Google Workspace, Exchange
+on-premises, self-hosted servers and any hoster — authenticating with OAuth2/XOAUTH2 or,
+where the server has no OAuth2, username and password over TLS.
 
 Two CI workflows run on every push and pull request: the
 [test suite](.github/workflows/ci.yml) (MiniTest against Redmine source for all
@@ -34,9 +36,10 @@ see [Tests](#tests).
   individual mailboxes may override them with their own credentials.
 - **Autoresponder**: Configurable confirmation email for new tickets.
 - **Customer replies**: Reply to the customer directly from the ticket page,
-  with header/footer templates; sent via MIME-based Graph API endpoint from
-  the project mailbox (lands in its "Sent Items"). Supports inline images
-  (CID method), regular attachments and multiple recipients in CC/BCC.
+  with header/footer templates; sent as full MIME from the project mailbox over
+  whichever backend it uses — Graph or its own SMTP server — and filed in its
+  "Sent Items" either way. Supports inline images (CID method), regular
+  attachments and multiple recipients in CC/BCC.
 - **Address field autocomplete**: Typing in To/CC/BCC fields suggests matching
   project contacts (from 2 characters, dropdown with keyboard and mouse
   navigation, comma-separated multi-value). Display names containing commas
@@ -1066,6 +1069,12 @@ bundle exec rake db:create RAILS_ENV=test
 bundle exec rake db:migrate RAILS_ENV=test
 bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=test
 ```
+
+> **Alongside RedmineUP plugins, `rake db:create` fails**: it boots Rails, and
+> `redmine_contacts` calls `table_exists?` while loading its models — against the database
+> that does not exist yet. Create the database with your database client first, then run
+> only the two `migrate` tasks. In the deploy repo this is already wired up as a compose
+> service: `docker-compose --profile test run --build --rm redmine-test`.
 
 ### Run all plugin tests
 
