@@ -18,6 +18,30 @@ unterstützten Versionen – 5.1, 6.0, 6.1, 7.0 – auf frischer MariaDB) und ei
 **offiziellen `redmine`-Docker-Images** startet, mit denen wir deployen (Tags 5.1, 6.0, 6.1, 7.0) –
 siehe [Tests ausführen](#tests-ausführen).
 
+## Inhalt
+
+- [Funktionen](#funktionen)
+- [Bildschirmfotos](#bildschirmfotos)
+- [Mail-Anbieter](#mail-anbieter) — Backends, Zugangsdaten, Authentifizierung
+  - [Rezept: Microsoft 365 über IMAP (nur Anwendung)](#rezept-microsoft-365-über-imap-nur-anwendung)
+  - [Rezept: Google Workspace / Gmail (einmalige Zustimmung)](#rezept-google-workspace--gmail-einmalige-zustimmung)
+  - [Rezept: selbst gehosteter Server (Dovecot, Zimbra, Hoster)](#rezept-selbst-gehosteter-server-dovecot-zimbra-hoster)
+- [E-Mail-Verarbeitung](#e-mail-verarbeitung) — Abrufablauf, Antwortzuordnung, Antwortversand
+- [Kontakte / Kundenliste](#kontakte--kundenliste)
+- [Mailabruf auslösen](#mailabruf-auslösen)
+- [SLA-Prüfung auslösen](#sla-prüfung-auslösen)
+- [Plugin-Einstellungen](#plugin-einstellungen)
+- [REST-API](#rest-api)
+- [Azure-App-Registrierung (einmalig)](#azure-app-registrierung-einmalig)
+- [Installation](#installation)
+- [Makros für Vorlagen](#makros-für-vorlagen)
+- [Hinweise](#hinweise)
+- [KI-Zusammenfassungen](#ki-zusammenfassungen)
+- [Wissensbasis (RAG)](#wissensbasis-rag)
+- [Tests ausführen](#tests-ausführen)
+- [Lizenz](#lizenz)
+- [Komponenten von Drittanbietern](#komponenten-von-drittanbietern)
+
 ## Funktionen
 
 - **E-Mail zu Ticket**: Mails aus Microsoft 365 oder beliebigen IMAP-Postfächern werden als Tickets angelegt;

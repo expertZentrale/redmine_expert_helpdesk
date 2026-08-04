@@ -17,6 +17,31 @@ supported versions — 5.1, 6.0, 6.1, 7.0 — on a clean MariaDB) and a
 inside the **official `redmine` Docker images** we deploy with (tags 5.1, 6.0, 6.1, 7.0) —
 see [Tests](#tests).
 
+## Contents
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Mail providers](#mail-providers) — backends, credentials, authentication
+  - [Recipe: Microsoft 365 over IMAP (application only)](#recipe-microsoft-365-over-imap-application-only)
+  - [Recipe: Google Workspace / Gmail (one-time consent)](#recipe-google-workspace--gmail-one-time-consent)
+  - [Recipe: self-hosted server (Dovecot, Zimbra, hoster)](#recipe-self-hosted-server-dovecot-zimbra-hoster)
+- [Email Processing](#email-processing) — fetch flow, reply matching, sending replies
+- [Contacts / Customer List](#contacts--customer-list)
+- [Triggering a Mail Fetch](#triggering-a-mail-fetch)
+- [Triggering the SLA Check](#triggering-the-sla-check)
+- [Plugin Settings](#plugin-settings)
+- [REST API](#rest-api)
+- [AI summaries](#ai-summaries)
+- [Knowledge base (RAG)](#knowledge-base-rag)
+- [Tests](#tests) — what CI runs
+- [Azure App Registration (one-time setup)](#azure-app-registration-one-time-setup)
+- [Installation](#installation)
+- [Template Macros](#template-macros)
+- [Notes](#notes)
+- [Running the Tests](#running-the-tests) — running them yourself
+- [License](#license)
+- [Third-party components](#third-party-components)
+
 ## Features
 
 - **Email to ticket**: Mails from Microsoft 365 or any IMAP mailbox are created as tickets;
