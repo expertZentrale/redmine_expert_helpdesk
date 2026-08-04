@@ -77,6 +77,17 @@
 - **The Graph access-token cache key now includes a credential fingerprint.** Rotating the client
   secret used to leave a stale token in the cache for up to an hour.
 
+### Added
+- **`docs/redmine_org/` — maintained copy-paste sources for the redmine.org plugin directory.**
+  The listing at <https://www.redmine.org/plugins/redmine_expert_helpdesk> renders Textile, not
+  Markdown, so the description had to be hand-converted on every update and had silently gone
+  stale: it still advertised "only Microsoft O365 is supported" after 0.2.0 shipped the generic
+  IMAP/SMTP backend. `description.textile` now holds the current description and
+  `releases/<version>.textile` the per-version notes, both ready to paste unedited. Keeping them
+  current is part of cutting a release (documented in `CLAUDE.md` and
+  `.github/copilot-instructions.md`); `docs/` is excluded from the release archives, so none of it
+  ships to users.
+
 ### Changed
 - **The folder fields on the mailbox form are real comboboxes now.** All five (source, processed,
   skipped, failed, sent) were `<input list="…">` bound to a shared `<datalist>`. Browsers draw that

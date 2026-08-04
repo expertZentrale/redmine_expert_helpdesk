@@ -1,0 +1,58 @@
+h3. What it does
+
+Turns mailboxes into a Redmine helpdesk. Incoming mail becomes a ticket, replies are matched onto the existing ticket, and agents answer the customer straight from the ticket page. Contacts, SLA tracking, phishing detection and a rules engine sit on top.
+
+Reply matching is delegated to Redmine's own @MailHandler@, so @In-Reply-To@ and @[#id]@ subject patterns behave exactly as they do for Redmine's built-in mail handling, attachments included.
+
+h3. Mail providers
+
+Each mailbox chooses its own backend:
+
+* *Microsoft 365* via the Microsoft Graph API (application-only).
+* *Generic IMAP/SMTP* for Google Workspace, Exchange on-premises, self-hosted servers (Dovecot, Zimbra) and any ordinary hoster.
+
+Authentication is *OAuth2/XOAUTH2* by default, with three grants — @client_credentials@ (app-only), @authorization_code@ (one-time consent) and @jwt_bearer@ (service account with domain-wide delegation). Username/password over TLS remains available for servers without OAuth2. Per-mailbox secrets are stored encrypted.
+
+h3. Features
+
+* *Per-project mailboxes* — source and target folders, defaults for tracker, priority and status, handling of unknown senders.
+* *Autoresponder* — configurable confirmation mail for new tickets.
+* *Customer replies* from the ticket page, with header/footer templates, inline images (CID), attachments and CC/BCC. Sent through the mailbox itself, so a copy lands in its Sent folder.
+* *Address autocomplete* — To/CC/BCC suggest matching project contacts.
+* *Contacts* — senders are saved automatically; customer list per project and a customer panel with previous tickets on the ticket page.
+* *Black-/whitelists* — sender and domain filters per mailbox.
+* *SLA* — reaction and solution targets in business minutes, per-priority overrides, traffic-light display, sortable and filterable SLA columns in the issue list, breach notification via a cron endpoint, plus an "SLA statistics" tab with charts.
+* *Phishing detection* — optional check of incoming links against a local mirror of PhishTank and the Phishing.Database feed, Microsoft SafeLinks decoded locally. On a hit the links are neutralised or the mail is quarantined, per project.
+* *AI summaries and knowledge base* (optional) — per-project mail summaries via OpenAI, Anthropic or an OpenAI-compatible endpoint, and a RAG knowledge base built from resolved tickets (Qdrant or pgvector). Off by default.
+* *Rules* — automation by subject or sender: set priority, tracker, category, assignee, or ignore the mail.
+* *Initial mail* — assign a customer contact to any ticket and optionally send the first outbound mail.
+
+h3. Requirements
+
+* Redmine 5.1.x, 6.0.x, 6.1.x or 7.0.x
+* No additional gems — Ruby standard library only
+
+The pgvector knowledge-base backend is the one exception and needs @gem 'pg'@ in your deployment; the default Qdrant backend does not.
+
+h3. Installation
+
+Download the archive from the "Releases":https://github.com/expertZentrale/redmine_expert_helpdesk/releases page and extract it into your Redmine @plugins/@ directory — it already contains a top-level @redmine_expert_helpdesk/@ folder. Then:
+
+<pre>
+bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=production
+</pre>
+
+Restart Redmine, enable the *expert Helpdesk* module in the project and assign the permissions to your roles.
+
+h3. Links
+
+* "Source and releases":https://github.com/expertZentrale/redmine_expert_helpdesk
+* "Documentation (English)":https://github.com/expertZentrale/redmine_expert_helpdesk/blob/main/README.md
+* "Dokumentation (Deutsch)":https://github.com/expertZentrale/redmine_expert_helpdesk/blob/main/README.de.md
+* "Changelog":https://github.com/expertZentrale/redmine_expert_helpdesk/blob/main/CHANGELOG.md
+* "REST API":https://github.com/expertZentrale/redmine_expert_helpdesk/blob/main/API.md
+* "Issues":https://github.com/expertZentrale/redmine_expert_helpdesk/issues
+
+h3. License
+
+GNU General Public License, version 2 or later — the same license Redmine itself uses.

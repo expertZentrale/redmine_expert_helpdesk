@@ -1,0 +1,20 @@
+h3. Added
+
+* *Generic IMAP/SMTP mailboxes.* Until now mail could only be fetched from Microsoft 365 via the Graph API. A mailbox now picks its backend itself, so Google Workspace, Exchange on-premises, self-hosted servers (Dovecot, Zimbra) and ordinary hosters work as well. Incoming mail arrives over IMAP, outgoing mail leaves through the mailbox's own SMTP server.
+* *OAuth2 (XOAUTH2) as the default authentication,* with three grants: @client_credentials@ (application-only), @authorization_code@ (one-time consent through the browser) and @jwt_bearer@ (service account with domain-wide delegation, assertion signed locally). Username/password over TLS stays available for servers without OAuth2.
+* *Per-mailbox secrets are stored encrypted* — client secrets, refresh tokens, passwords and service-account keys. Existing plaintext values keep working, so no data migration is forced.
+* *Connection presets* for Microsoft, Google and generic servers prefill host, port and encryption, and central defaults can be set once under Administration for operators running a single mail server.
+* *"Test connection" button* on the mailbox form: verifies login, lists the folders and probes the outgoing route in one step.
+
+h3. Fixed
+
+* Rotating an OAuth2 client secret did not invalidate the cached access token — the token issued for the superseded secret stayed in use until it expired.
+* A new IMAP mailbox defaulted to a reply transport its own validation rejects.
+* Connection presets and the central defaults could never set a port or an encryption mode; only the host fields worked.
+* An IMAP mailbox could be configured to send through Microsoft Graph even when Microsoft does not host it.
+* The autoresponder ignored the mailbox's reply transport and always sent through Graph.
+* Boot failure and a silently missing OAuth controller when installed alongside RedmineUP's helpdesk plugin.
+
+h3. Upgrade notes
+
+Migrations @034@–@037@ run on upgrade. Existing Microsoft 365 mailboxes are untouched and keep using the Graph API — the new backend is opt-in per mailbox.

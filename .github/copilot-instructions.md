@@ -95,6 +95,21 @@ mismatch), builds `redmine_expert_helpdesk-<version>.{zip,tar.gz}` (top-level
 with notes from the CHANGELOG entries added since the previous tag. `ci.yml` / `docker-image.yml`
 run on `main`/PRs only.
 
+**Every release must also update `docs/redmine_org/`** — the copy-paste sources for the listing at
+<https://www.redmine.org/plugins/redmine_expert_helpdesk>. That directory renders **Textile**, not
+Markdown (`h3.` headings, `*bold*`, `@code@`, `"label":url`), so these files are written in Textile
+and are pasted in unedited. Part of the release commit, not an afterthought:
+
+- `docs/redmine_org/releases/<version>.textile` — new file per release. User-facing changes only;
+  the CHANGELOG is the source but this is not a copy of it. Add an *Upgrade notes* section when
+  migrations run or behaviour changes.
+- `docs/redmine_org/description.textile` — update whenever the release changes what the plugin
+  *is* or *supports* (new backends, new requirements, dropped limitations), and bump the Redmine
+  versions under *Requirements* when they move. This one drifts silently: 0.1.6 still advertised
+  "only Microsoft O365 is supported" after 0.2.0 had shipped generic IMAP/SMTP.
+
+`docs/` is excluded from the release archives, so none of it ships to users.
+
 ## Triggering mail fetch
 
 No built-in scheduler. Fetch runs via the project settings button (*Helpdesk → Fetch mails now*)

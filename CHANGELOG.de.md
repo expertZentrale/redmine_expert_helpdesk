@@ -82,6 +82,17 @@
   Zugangsdaten.** Ein gewechseltes Client-Secret hinterließ bisher bis zu eine Stunde lang ein
   veraltetes Token im Cache.
 
+### Added
+- **`docs/redmine_org/` — gepflegte Vorlagen für das Plugin-Verzeichnis auf redmine.org.** Der
+  Eintrag unter <https://www.redmine.org/plugins/redmine_expert_helpdesk> wird in Textile
+  gerendert, nicht in Markdown. Die Beschreibung musste deshalb bei jeder Aktualisierung von Hand
+  umgesetzt werden und war unbemerkt veraltet: Sie warb noch mit „nur Microsoft O365 wird
+  unterstützt“, nachdem 0.2.0 längst das generische IMAP/SMTP-Backend mitbrachte.
+  `description.textile` enthält nun die aktuelle Beschreibung, `releases/<version>.textile` die
+  Notizen je Version — beides ohne Nacharbeit einfügbar. Das Aktualisieren gehört zum Erstellen
+  eines Releases (dokumentiert in `CLAUDE.md` und `.github/copilot-instructions.md`); `docs/` ist
+  von den Release-Archiven ausgenommen, es wird also nichts davon ausgeliefert.
+
 ### Changed
 - **Die Ordnerfelder im Postfach-Formular sind jetzt echte Auswahlfelder.** Alle fünf (Quelle,
   verarbeitet, übersprungen, fehlerhaft, gesendet) waren `<input list="…">` an einer gemeinsamen

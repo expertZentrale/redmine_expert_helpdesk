@@ -1,0 +1,7 @@
+h3. Fixed
+
+* *The folder fields on the mailbox form are real dropdowns now.* All five (source, processed, skipped, failed, sent) were text inputs backed by an HTML @datalist@, which browsers draw exactly like their own autofill history — so a folder genuinely read from the mailbox was indistinguishable from a value typed into the field once before.
+
+Each field now has a chevron that opens the full folder list and filters by substring while typing, so @arbeit@ finds @Verarbeitet@. Arrow keys, Enter, Escape, hover and mouse selection all work. Free text stays valid: a folder that does not exist yet is offered for creation and is still created when the form is saved.
+
+The field and the list follow the active Redmine theme — the input uses the same chevron and metrics as a native select, and the list reuses Redmine's own autocomplete styling. No new dependency.
