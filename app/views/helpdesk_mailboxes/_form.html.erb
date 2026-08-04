@@ -1,4 +1,5 @@
 <%# Formular fuer Postfach-Konfiguration (neu/bearbeiten) %>
+<%= stylesheet_link_tag 'helpdesk_mailbox_form', :plugin => 'redmine_expert_helpdesk' %>
 <%= error_messages_for @mailbox %>
 
 <div class="box tabular"
@@ -32,7 +33,7 @@
     <label><%= l(:field_helpdesk_source_folder) %></label>
     <input type="text" id="hd_source_folder" name="helpdesk_mailbox[source_folder]"
            value="<%= h(@mailbox.source_folder) %>" size="30"
-           list="hd_folder_datalist" autocomplete="off">
+           class="hd-folder-input" autocomplete="off">
     <button type="button" id="hd_refresh_folders" title="Ordnerliste vom Postfach laden"><span class="icon icon-reload"><%= hd_icon_label('reload') %>Ordner laden</span></button>
     <span id="hd_folder_status" style="font-size:0.9em;margin-left:6px;"></span>
   </p>
@@ -40,21 +41,21 @@
     <label><%= l(:field_helpdesk_processed_folder) %></label>
     <input type="text" id="hd_processed_folder" name="helpdesk_mailbox[processed_folder]"
            value="<%= h(@mailbox.processed_folder) %>" size="30"
-           list="hd_folder_datalist" autocomplete="off">
+           class="hd-folder-input" autocomplete="off">
     <em class="info"><%= l(:text_helpdesk_processed_folder_info) %></em>
   </p>
   <p>
     <label><%= l(:field_helpdesk_skipped_folder) %></label>
     <input type="text" id="hd_skipped_folder" name="helpdesk_mailbox[skipped_folder]"
            value="<%= h(@mailbox.skipped_folder) %>" size="30"
-           list="hd_folder_datalist" autocomplete="off">
+           class="hd-folder-input" autocomplete="off">
     <em class="info"><%= l(:text_helpdesk_skipped_folder_info) %></em>
   </p>
   <p>
     <label><%= l(:field_helpdesk_failed_folder) %></label>
     <input type="text" id="hd_failed_folder" name="helpdesk_mailbox[failed_folder]"
            value="<%= h(@mailbox.failed_folder) %>" size="30"
-           list="hd_folder_datalist" autocomplete="off">
+           class="hd-folder-input" autocomplete="off">
     <em class="info"><%= l(:text_helpdesk_failed_folder_info) %></em>
   </p>
   <%# Nur fuer IMAP-Postfaecher: Graph legt die gesendete Kopie selbst ab. %>
@@ -62,10 +63,9 @@
     <label><%= l(:field_helpdesk_sent_folder) %></label>
     <input type="text" id="hd_sent_folder" name="helpdesk_mailbox[sent_folder]"
            value="<%= h(@mailbox.sent_folder) %>" size="30"
-           list="hd_folder_datalist" autocomplete="off">
+           class="hd-folder-input" autocomplete="off">
     <em class="info"><%= l(:text_helpdesk_sent_folder_info) %></em>
   </p>
-  <datalist id="hd_folder_datalist"></datalist>
   <p>
     <label><%= l(:field_helpdesk_enabled) %></label>
     <%= hidden_field_tag 'helpdesk_mailbox[enabled]', '0' %>
@@ -451,7 +451,6 @@
   var addrInput    = document.getElementById('hd_mailbox_address');
   var sourceInput  = document.getElementById('hd_source_folder');
   var procInput    = document.getElementById('hd_processed_folder');
-  var datalist     = document.getElementById('hd_folder_datalist');
   var refreshBtn   = document.getElementById('hd_refresh_folders');
   var statusEl     = document.getElementById('hd_folder_status');
   var testUrl      = box.dataset.testConnectionUrl;
@@ -484,15 +483,220 @@
     statusEl.style.color = color || '#888';
   }
 
+  // Folder comboboxes
+  //
+  // These were <input list="..."> bound to a <datalist>. The browser draws that
+  // popup exactly like its own autofill history, so a real folder from the
+  // mailbox was indistinguishable from a previously typed value - and the
+  // matching is prefix-only in several browsers. This is a listbox we own.
+  //
+  // Free text stays valid on purpose: the submit handler further down offers to
+  // create a folder that does not exist yet, so the input is never restricted
+  // to the known list.
+  var combos = [];
+
   function populateDatalist(names) {
     knownFolders = names;
-    datalist.innerHTML = '';
-    names.forEach(function (name) {
-      var opt = document.createElement('option');
-      opt.value = name;
-      datalist.appendChild(opt);
-    });
+    combos.forEach(function (c) { if (!c.list.hidden) c.render(); });
   }
+
+  function buildCombo(input) {
+    var wrap = document.createElement('span');
+    wrap.className = 'hd-combo';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    var toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'hd-combo-toggle';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Ordnerliste anzeigen');
+    // No glyph: the chevron is painted by the input's background, exactly like
+    // a Redmine <select>. This button is only the hit area over it.
+    wrap.appendChild(toggle);
+
+    var list = document.createElement('ul');
+    // Redmine's own autocomplete classes, so the list inherits the theme's
+    // border, radius, padding and active colour instead of inventing its own.
+    list.className = 'hd-combo-list ui-autocomplete ui-menu ui-widget ui-widget-content';
+    list.id = input.id + '_list';
+    list.setAttribute('role', 'listbox');
+    list.hidden = true;
+    wrap.appendChild(list);
+
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-controls', list.id);
+
+    var active = -1;
+    // Opening via the toggle or the arrow keys browses the whole list; the
+    // current value must not filter it, or the field can never be changed to
+    // anything that does not contain what is already in it. Typing filters.
+    var filtering = false;
+
+    // jQuery UI puts the styling and the active state on the inner wrapper div,
+    // not the <li>, so that is what we query and highlight.
+    function options() {
+      return Array.prototype.slice.call(list.querySelectorAll('.ui-menu-item-wrapper'));
+    }
+
+    function highlight(i) {
+      var opts = options();
+      if (!opts.length) { active = -1; return; }
+      active = (i + opts.length) % opts.length;
+      opts.forEach(function (o, n) {
+        var on = n === active;
+        o.classList.toggle('ui-state-active', on);
+        o.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      input.setAttribute('aria-activedescendant', opts[active].id);
+      opts[active].scrollIntoView({ block: 'nearest' });
+    }
+
+    function addOption(label, value, extraClass) {
+      var li = document.createElement('li');
+      li.className = 'ui-menu-item' + (extraClass ? ' ' + extraClass : '');
+      var div = document.createElement('div');
+      div.className = 'ui-menu-item-wrapper';
+      div.id = list.id + '_opt' + list.childElementCount;
+      div.setAttribute('role', 'option');
+      div.setAttribute('aria-selected', 'false');
+      div.textContent = label;
+      // The label is not the value ("+ \"x\" anlegen" vs "x"), so keep the
+      // value with the element for the keyboard path.
+      div.dataset.value = value;
+      li.appendChild(div);
+      // mousedown, not click: blur would close the list before click fires.
+      li.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        commit(value);
+      });
+      // Pointer hover should track the same highlight the keyboard uses.
+      li.addEventListener('mouseenter', function () {
+        highlight(options().indexOf(div));
+      });
+      list.appendChild(li);
+    }
+
+    function render() {
+      var typed = input.value.trim();
+      var needle = filtering ? typed.toLowerCase() : '';
+      list.innerHTML = '';
+      active = -1;
+      input.removeAttribute('aria-activedescendant');
+
+      // Substring, not prefix: folder trees like "INBOX/Support" are far easier
+      // to find by the leaf name than by their full path.
+      var matches = knownFolders.filter(function (n) {
+        return !needle || n.toLowerCase().indexOf(needle) !== -1;
+      });
+      matches.forEach(function (n) { addOption(n, n); });
+
+      if (!knownFolders.length) {
+        var hint = document.createElement('li');
+        hint.className = 'hd-combo-empty';
+        hint.textContent = 'Noch keine Ordner geladen – "Ordner laden" verwenden';
+        list.appendChild(hint);
+      } else if (!matches.length && !typed) {
+        var none = document.createElement('li');
+        none.className = 'hd-combo-empty';
+        none.textContent = 'Keine Ordner vorhanden';
+        list.appendChild(none);
+      }
+
+      // Only offer creation for something that is genuinely not there yet -
+      // compared against what is typed, not against the (possibly empty) filter.
+      var exact = knownFolders.some(function (n) { return n.toLowerCase() === typed.toLowerCase(); });
+      if (typed && !exact) {
+        addOption('+ "' + typed + '" anlegen', typed, 'hd-combo-create');
+      }
+    }
+
+    // The list is position:fixed, so it has to be placed by hand - see the
+    // stylesheet for why it cannot simply be absolute inside the wrapper.
+    function place() {
+      var r = input.getBoundingClientRect();
+      list.style.left = r.left + 'px';
+      list.style.top = r.bottom + 'px';
+      list.style.minWidth = r.width + 'px';
+    }
+
+    function open(browseAll) {
+      filtering = !browseAll;
+      render();
+      list.hidden = false;
+      place();
+      toggle.setAttribute('aria-expanded', 'true');
+      input.setAttribute('aria-expanded', 'true');
+    }
+
+    function close() {
+      list.hidden = true;
+      toggle.setAttribute('aria-expanded', 'false');
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+      active = -1;
+    }
+
+    function commit(value) {
+      input.value = value;
+      close();
+      input.focus();
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    toggle.addEventListener('click', function () {
+      if (list.hidden) { open(true); input.focus(); } else { close(); }
+    });
+
+    input.addEventListener('input', function () {
+      filtering = true;
+      if (list.hidden) open(false); else render();
+    });
+
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (list.hidden) open(true);
+        highlight(active + 1);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (list.hidden) open(true);
+        highlight(active - 1);
+      } else if (e.key === 'Enter') {
+        // Only swallow Enter while a suggestion is highlighted, so the key
+        // still submits the form the rest of the time.
+        if (!list.hidden && active >= 0) {
+          e.preventDefault();
+          commit(options()[active].dataset.value);
+        }
+      } else if (e.key === 'Escape') {
+        if (!list.hidden) { e.stopPropagation(); close(); }
+      } else if (e.key === 'Tab') {
+        close();
+      }
+    });
+
+    input.addEventListener('blur', function () {
+      // Deferred so a mousedown on an option still lands.
+      window.setTimeout(function () {
+        if (!wrap.contains(document.activeElement)) close();
+      }, 120);
+    });
+
+    // A fixed list does not travel with the page, so close it rather than let
+    // it hang over unrelated fields.
+    window.addEventListener('scroll', function () { if (!list.hidden) close(); }, true);
+    window.addEventListener('resize', function () { if (!list.hidden) place(); });
+
+    return { input: input, list: list, render: render };
+  }
+
+  Array.prototype.forEach.call(
+    document.querySelectorAll('.hd-folder-input'),
+    function (input) { combos.push(buildCombo(input)); }
+  );
 
   // Der komplette Formularzustand wird mitgeschickt, damit der Server den
   // Provider (Graph oder IMAP) samt Verbindungsdaten aufbauen kann, statt einer

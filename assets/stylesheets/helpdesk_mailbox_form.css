@@ -1,0 +1,76 @@
+/* Folder combobox on the mailbox form.
+ *
+ * The folder fields used to be <input list="..."> bound to a <datalist>. The
+ * browser renders that popup exactly like its own autofill history - no
+ * dropdown affordance, unstyleable, and prefix-only matching in several
+ * browsers - so operators could not tell a real folder list from a saved-value
+ * suggestion.
+ *
+ * Everything here is deliberately borrowed from Redmine rather than invented:
+ * the field carries the same chevron and metrics as a native <select>, and the
+ * list reuses Redmine's own .ui-autocomplete / .ui-menu-item classes, so it
+ * inherits the theme's colours, borders and active state. Only layout and the
+ * two states jQuery UI has no class for are defined below.
+ *
+ * Free text stays valid: a typed folder that does not exist yet is offered for
+ * creation when the form is submitted.
+ */
+
+.hd-combo {
+  position: relative;
+  display: inline-block;
+}
+
+/* Same chevron, offset and reserved space as Redmine's select rule. The icon is
+   inlined because Redmine's copy is digest-fingerprinted (/assets/chevron-down-
+   <hash>.svg), so a static path would break on every asset recompile. */
+.hd-combo input[type="text"] {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%23ccd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg>');
+  background-repeat: no-repeat;
+  background-position: calc(100% - 2px) 50%;
+  padding-inline-end: 20px;
+}
+
+/* Transparent hit area over the chevron - the arrow itself is drawn by the
+   input above, so this button must not paint anything of its own. */
+.hd-combo-toggle {
+  position: absolute;
+  inset-block: 1px;
+  inset-inline-end: 1px;
+  inline-size: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Fixed, not absolute: Redmine gives the surrounding <p> overflow:hidden, which
+   clips an absolutely positioned dropdown - the list rendered at full height and
+   was simply never visible. Fixed escapes the clip; open() sets top/left from
+   the input's bounding rect and the list closes on scroll.
+   Border, radius and item padding come from .ui-autocomplete / .ui-menu-item. */
+.hd-combo-list {
+  position: fixed;
+  z-index: 1000;
+  max-block-size: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hd-combo-list[hidden] { display: none; }
+
+/* Not folders, so they are set apart from the real entries above them. */
+.hd-combo-create > div {
+  border-block-start: 1px solid var(--oc-gray-3, #dee2e6);
+  font-style: italic;
+}
+
+.hd-combo-empty {
+  padding-block: 4px;
+  padding-inline: 8px;
+  color: var(--oc-gray-6, #868e96);
+  font-style: italic;
+  white-space: nowrap;
+}
