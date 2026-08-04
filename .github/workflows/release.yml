@@ -62,26 +62,34 @@ jobs:
             exit 1
           fi
 
-      # 4. Release-Notes aus der CHANGELOG.md erzeugen: die seit dem vorherigen Tag
-      #    neu hinzugekommenen Eintraege unter einer Versions-Ueberschrift.
+      # 4. Release-Notes aus der CHANGELOG.md erzeugen: der Abschnitt
+      #    "## [<version>]", der zum getaggten Release gehoert.
+      #
+      #    Frueher wurde stattdessen der Diff gegen den vorherigen Tag genommen.
+      #    Das ging nur so lange gut, wie die CHANGELOG-Abschnitte nie umsortiert
+      #    wurden: git diff arbeitet zeilenweise, ein verschobener Block ist fuer
+      #    ihn "geloescht und neu hinzugefuegt". Als die Ueberschriften 2026-08-04
+      #    auf echte Versionen aufgeteilt wurden, waeren so die Eintraege von
+      #    0.2.1 und 0.2.0 in den Notes von 0.2.2 gelandet. Der Abschnitt zur
+      #    getaggten Version ist die direkte Antwort auf die Frage und braucht
+      #    den Vergleich gar nicht.
       - name: Release-Notes aus CHANGELOG erzeugen
         run: |
-          PREV=$(git tag --sort=-v:refname | grep -vFx "${{ steps.ver.outputs.tag }}" | head -1 || true)
+          VER="${{ steps.ver.outputs.version }}"
+          awk -v ver="$VER" '
+            $0 == "## [" ver "]" || index($0, "## [" ver "] ") == 1 { f = 1; next }
+            f && /^## / { exit }
+            f { print }
+          ' CHANGELOG.md > SECTION.md
+          if ! grep -q '[^[:space:]]' SECTION.md; then
+            echo "::error::CHANGELOG.md hat keinen Abschnitt '## [${VER}]'. Bitte den Eintrag fuer diese Version anlegen, committen und den Tag darauf zeigen lassen."
+            exit 1
+          fi
           {
-            echo "## redmine_expert_helpdesk ${{ steps.ver.outputs.version }} – $(date +%Y-%m-%d)"
-            echo
-            if [ -n "$PREV" ]; then
-              echo "_Aenderungen seit ${PREV}:_"
-              echo
-              # Netto neu hinzugekommene CHANGELOG-Zeilen (+) seit dem letzten Tag;
-              # Diff-Kopf (+++) und die Sammel-Header (## [Unreleased] ...) entfernen.
-              git diff --no-color "$PREV" HEAD -- CHANGELOG.md \
-                | grep '^+' | grep -v '^+++' | sed 's/^+//' | grep -vE '^## \[Unreleased\]'
-            else
-              # Erstes Release: obersten ## -Block der CHANGELOG uebernehmen.
-              awk '/^## /{c++} c==1' CHANGELOG.md | grep -vE '^## \[Unreleased\]'
-            fi
+            echo "## redmine_expert_helpdesk ${VER} – $(date +%Y-%m-%d)"
+            cat SECTION.md
           } > RELEASE_NOTES.md
+          rm -f SECTION.md
           echo "----- RELEASE_NOTES.md -----"
           cat RELEASE_NOTES.md
 

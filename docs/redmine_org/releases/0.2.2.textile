@@ -1,0 +1,21 @@
+h3. Added
+
+* *Mailboxes can now be managed over the REST API.* The generic IMAP/SMTP support in 0.2.0 gave a mailbox a large configuration surface — which backend it uses, IMAP and SMTP hosts, OAuth2 credentials, folders — but none of it could be reached from outside the web interface, and a ticket fetched over the API did not even say which backend its mail had arrived through.
+
+There is now a full set of endpoints: list and create mailboxes per project, read, update and delete an individual one, and a @test_connection@ call that probes the stored settings and reports the folders it can see. Reading requires the same @manage_helpdesk@ permission as writing, because a mailbox exposes mail hosts, usernames and OAuth client ids.
+
+Secrets go in but never come back out: the mailbox password, OAuth client secret and service-account key can be set through the API and are never returned. Responses only report whether one is stored. Sending a single hyphen clears a stored secret, matching the masked fields in the web interface. The interactive OAuth consent stays in the browser, where an identity provider needs it.
+
+* *AI summary and knowledge-base settings are available over the API.* The per-project settings endpoint quietly left out every AI and knowledge-base field, so those two features could only be configured by hand. They are now read and written like the SLA and phishing settings.
+
+h3. Fixed
+
+* *Phishing detection stopped working on Ruby 4.0.* Microsoft SafeLinks and other redirect links are unwrapped by reading the original address out of the link's query string. The method used for that was removed in Ruby 4.0, so on Redmine 7 every link carrying a query string raised an error: SafeLinks were no longer decoded and redirect links were never flagged. Query strings are now parsed with a method that is not going away.
+
+* *Documentation no longer describes the plugin as Microsoft-365-only.* The README still opened by calling this a Microsoft 365 plugin, months after generic IMAP/SMTP had shipped, and the plugin description shown in Redmine's own plugin list said the same. Both now state the actual choice of backends. The READMEs also gained a table of contents, and the German edition was brought back in line with the English one — it was missing a section entirely.
+
+h3. Upgrade notes
+
+No migrations and no configuration changes. Existing mailboxes are untouched.
+
+To use the new endpoints, enable the REST web service under Administration → Settings → API; requests authenticate with the usual @X-Redmine-API-Key@ header and are authorized by the existing helpdesk permissions.

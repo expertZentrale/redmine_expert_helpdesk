@@ -6,9 +6,10 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
-## [Unreleased] 2026-07-30 (86)
+## [0.2.2] - 2026-08-04
 
 ### Added
+
 - **Mailboxes in the REST API.** The mail backend gained a large configuration surface with the
   generic IMAP/SMTP support (provider choice, IMAP/SMTP hosts, OAuth2 grants and presets, sent
   folder), but none of it was reachable from the API — mailboxes were UI-only, and the embedded
@@ -27,6 +28,69 @@
   /projects/:id/helpdesk/settings` silently omitted every `ai_*` and `kb_*` field, so the AI
   summary and RAG knowledge base could only be configured through the UI. Both are now read and
   written like the SLA and phishing settings.
+- **`docs/redmine_org/` — maintained copy-paste sources for the redmine.org plugin directory.**
+  The listing at <https://www.redmine.org/plugins/redmine_expert_helpdesk> renders Textile, not
+  Markdown, so the description had to be hand-converted on every update and had silently gone
+  stale: it still advertised "only Microsoft O365 is supported" after 0.2.0 shipped the generic
+  IMAP/SMTP backend. `description.textile`, `installation.textile` (the directory keeps those in separate
+  fields) and `releases/<version>.textile` now hold the current text, ready to paste unedited. Keeping them
+  current is part of cutting a release (documented in `CLAUDE.md` and
+  `.github/copilot-instructions.md`); `docs/` is excluded from the release archives, so none of it
+  ships to users.
+
+### Fixed
+
+- **Both READMEs had no table of contents.** They run past 1150 lines with around 20 top-level
+  sections, so finding out whether the plugin documents, say, the knowledge base or the release
+  process meant scrolling the whole file. Each now opens with a contents list in document order,
+  the three mail-provider recipes nested under *Mail providers*.
+- **`README.de.md` had drifted from the English structure**, which the language policy asks us to
+  keep in sync. The AI-summary and knowledge-base sections sat near the end instead of after the
+  REST API; the CI description was a subsection of *Tests ausführen* where English gives it its
+  own *Tests* section; and *Assigning a contact to an existing ticket* was missing from the German
+  file altogether. Section order and subsection counts now match one-for-one.
+- **The redmine.org sources did not mention the REST API.** `description.textile` listed every
+  other feature but left the API to a bare link at the bottom, and `installation.textile`
+  documented only the two key-secured cron endpoints — so nothing told a reader that the REST
+  web service has to be enabled in *Administration → Settings → API*, or that mailbox endpoints
+  need `manage_helpdesk` to read. Both now cover it.
+- **The README still introduced the plugin as Microsoft-365-only.** Its opening sentence —
+  "Email-to-ticket plugin for Redmine with Microsoft 365 integration via the Microsoft Graph API"
+  — predated the generic IMAP/SMTP backend, so the one paragraph most readers see contradicted
+  the feature list right below it. This is the same silent drift that had left
+  `docs/redmine_org/description.textile` advertising "only Microsoft O365 is supported" after
+  0.2.0 shipped. Also corrected the *Customer replies* bullet, which described the Graph
+  `sendMail` path as the only way a reply leaves the system, and noted in *Prerequisites* that
+  `rake db:create RAILS_ENV=test` cannot work alongside the RedmineUP plugins (it boots Rails,
+  and `redmine_contacts` calls `table_exists?` against the database that does not exist yet).
+- **Phishing detection crashed on Ruby 4.0 (Redmine 7 images).** `PhishingScanner` used `CGI.parse`
+  to pull the wrapped target out of Microsoft SafeLinks and other redirect links, and Ruby 4.0
+  removed that method — every link with a query string raised `NoMethodError: undefined method
+  'parse' for class CGI`, so SafeLinks were no longer decoded and redirect links were never
+  flagged. Query strings are now parsed with `URI.decode_www_form_component` behind a small
+  `query_pairs` helper. Deliberately not `URI.decode_www_form`: it raises on a segment without
+  `=` and then discards the whole query string along with the valid pairs, whereas `CGI.parse`
+  was tolerant — and the redirect links this code exists to unwrap are rarely well-formed.
+
+## [0.2.1] - 2026-08-04
+
+### Changed
+
+- **The folder fields on the mailbox form are real comboboxes now.** All five (source, processed,
+  skipped, failed, sent) were `<input list="…">` bound to a shared `<datalist>`. Browsers draw that
+  popup exactly like their own autofill history — no dropdown affordance, no way to style it, and
+  prefix-only matching in several of them — so a folder actually read from the mailbox was
+  indistinguishable from a value typed there once before. Each field now has a `▾` toggle that
+  opens the full list, filters by substring as you type (so `arbeit` finds `Verarbeitet`), and
+  supports arrow keys, Enter, Escape and mouse selection. Free text is still valid: a folder that
+  does not exist yet is offered as `+ "…" anlegen` and is still created on submit, so the existing
+  create-on-save flow is untouched. Vanilla JS, no new dependency
+  (`assets/stylesheets/helpdesk_mailbox_form.css`).
+
+## [0.2.0] - 2026-08-04
+
+### Added
+
 - **GitHub issue templates.** Bug reports and feature requests are now filed through YAML issue
   forms in `.github/ISSUE_TEMPLATE/`, so the details that were previously missing from most
   reports — plugin version, the Administration → Information table, and the affected area — are
@@ -73,17 +137,9 @@
   preset (`Sent Items` / `[Gmail]/Sent Mail` / `Sent`); "Test connection" reports which one it
   resolved. **A failed APPEND is logged and swallowed** — by that point the customer already has
   the mail, and an archiving problem must never look like a send failure.
-- **`docs/redmine_org/` — maintained copy-paste sources for the redmine.org plugin directory.**
-  The listing at <https://www.redmine.org/plugins/redmine_expert_helpdesk> renders Textile, not
-  Markdown, so the description had to be hand-converted on every update and had silently gone
-  stale: it still advertised "only Microsoft O365 is supported" after 0.2.0 shipped the generic
-  IMAP/SMTP backend. `description.textile`, `installation.textile` (the directory keeps those in separate
-  fields) and `releases/<version>.textile` now hold the current text, ready to paste unedited. Keeping them
-  current is part of cutting a release (documented in `CLAUDE.md` and
-  `.github/copilot-instructions.md`); `docs/` is excluded from the release archives, so none of it
-  ships to users.
 
 ### Changed
+
 - **`MailProcessor` is now provider-neutral.** It talks to a `MailProvider` instead of `GraphClient`
   and consumes a normalized `MailProvider::MessageMeta` struct instead of reading raw Graph JSON
   keys (`meta['subject']`, `meta.dig('from','emailAddress','address')`, …). A whole fetch cycle runs
@@ -103,40 +159,9 @@
   the plugin settings partial and `init.rb`.
 - **The Graph access-token cache key now includes a credential fingerprint.** Rotating the client
   secret used to leave a stale token in the cache for up to an hour.
-- **The folder fields on the mailbox form are real comboboxes now.** All five (source, processed,
-  skipped, failed, sent) were `<input list="…">` bound to a shared `<datalist>`. Browsers draw that
-  popup exactly like their own autofill history — no dropdown affordance, no way to style it, and
-  prefix-only matching in several of them — so a folder actually read from the mailbox was
-  indistinguishable from a value typed there once before. Each field now has a `▾` toggle that
-  opens the full list, filters by substring as you type (so `arbeit` finds `Verarbeitet`), and
-  supports arrow keys, Enter, Escape and mouse selection. Free text is still valid: a folder that
-  does not exist yet is offered as `+ "…" anlegen` and is still created on submit, so the existing
-  create-on-save flow is untouched. Vanilla JS, no new dependency
-  (`assets/stylesheets/helpdesk_mailbox_form.css`).
 
 ### Fixed
-- **The redmine.org sources did not mention the REST API.** `description.textile` listed every
-  other feature but left the API to a bare link at the bottom, and `installation.textile`
-  documented only the two key-secured cron endpoints — so nothing told a reader that the REST
-  web service has to be enabled in *Administration → Settings → API*, or that mailbox endpoints
-  need `manage_helpdesk` to read. Both now cover it.
-- **The README still introduced the plugin as Microsoft-365-only.** Its opening sentence —
-  "Email-to-ticket plugin for Redmine with Microsoft 365 integration via the Microsoft Graph API"
-  — predated the generic IMAP/SMTP backend, so the one paragraph most readers see contradicted
-  the feature list right below it. This is the same silent drift that had left
-  `docs/redmine_org/description.textile` advertising "only Microsoft O365 is supported" after
-  0.2.0 shipped. Also corrected the *Customer replies* bullet, which described the Graph
-  `sendMail` path as the only way a reply leaves the system, and noted in *Prerequisites* that
-  `rake db:create RAILS_ENV=test` cannot work alongside the RedmineUP plugins (it boots Rails,
-  and `redmine_contacts` calls `table_exists?` against the database that does not exist yet).
-- **Phishing detection crashed on Ruby 4.0 (Redmine 7 images).** `PhishingScanner` used `CGI.parse`
-  to pull the wrapped target out of Microsoft SafeLinks and other redirect links, and Ruby 4.0
-  removed that method — every link with a query string raised `NoMethodError: undefined method
-  'parse' for class CGI`, so SafeLinks were no longer decoded and redirect links were never
-  flagged. Query strings are now parsed with `URI.decode_www_form_component` behind a small
-  `query_pairs` helper. Deliberately not `URI.decode_www_form`: it raises on a segment without
-  `=` and then discards the whole query string along with the valid pairs, whereas `CGI.parse`
-  was tolerant — and the redirect links this code exists to unwrap are rarely well-formed.
+
 - **Rotating an OAuth2 client secret did not invalidate the cached access token.** The comment on
   `OauthTokenProvider#cache_key` promised that "changing any credential changes the key", but the
   fingerprint covered only `client_id`, `tenant_id`, `token_url`, `scope` and the grant — none of
@@ -237,6 +262,7 @@
   than replies only.
 
 ### Changed (configuration UI)
+
 - **The settings page now shows only the fields the selected provider type actually needs.** The
   preset select comes first and governs the rest: the tenant ID appears for Microsoft only, the
   authorize/token URLs, scope and IMAP/SMTP hosts for "Other / self-hosted" only, the callback URL
@@ -253,6 +279,7 @@
   relay, whose health is Redmine's own business.
 
 ### Migration
+
 - `036_add_sent_folder_to_helpdesk_mailboxes.rb` — `sent_folder`. Blank means "ask the server",
   so no configuration is required.
 - `034_add_provider_to_helpdesk_mailboxes.rb` — `provider`, `credentials_source`, `imap_host`,
@@ -268,6 +295,7 @@
   installations.
 
 ### Notes on IMAP behaviour
+
 - UIDs are used throughout (`UID SEARCH`/`FETCH`/`STORE`/`MOVE`); sequence numbers shift under
   concurrent mailbox activity.
 - Fetches use `BODY.PEEK[...]`, never `BODY[...]`, which would silently set `\Seen`.

@@ -5,9 +5,10 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
-## [Unreleased] 2026-07-30 (86)
+## [0.2.2] - 2026-08-04
 
 ### Added
+
 - **Postfächer in der REST-API.** Mit der generischen IMAP/SMTP-Unterstützung ist die
   Konfiguration eines Postfachs deutlich gewachsen (Backend-Auswahl, IMAP-/SMTP-Hosts,
   OAuth2-Grants und -Presets, Gesendet-Ordner) — erreichbar war davon über die API nichts:
@@ -29,6 +30,77 @@
   ausgelassen, KI-Zusammenfassung und RAG-Wissensbasis waren also nur über die Oberfläche
   konfigurierbar. Beide werden jetzt wie die SLA- und Phishing-Einstellungen gelesen und
   geschrieben.
+- **`docs/redmine_org/` — gepflegte Vorlagen für das Plugin-Verzeichnis auf redmine.org.** Der
+  Eintrag unter <https://www.redmine.org/plugins/redmine_expert_helpdesk> wird in Textile
+  gerendert, nicht in Markdown. Die Beschreibung musste deshalb bei jeder Aktualisierung von Hand
+  umgesetzt werden und war unbemerkt veraltet: Sie warb noch mit „nur Microsoft O365 wird
+  unterstützt“, nachdem 0.2.0 längst das generische IMAP/SMTP-Backend mitbrachte.
+  `description.textile`, `installation.textile` (das Verzeichnis führt beide in getrennten
+  Feldern) und `releases/<version>.textile` enthalten nun den aktuellen Text, ohne Nacharbeit
+  einfügbar. Das Aktualisieren gehört zum Erstellen
+  eines Releases (dokumentiert in `CLAUDE.md` und `.github/copilot-instructions.md`); `docs/` ist
+  von den Release-Archiven ausgenommen, es wird also nichts davon ausgeliefert.
+
+### Fixed
+
+- **Beide READMEs hatten kein Inhaltsverzeichnis.** Sie umfassen über 1150 Zeilen mit rund 20
+  Hauptabschnitten; um herauszufinden, ob das Plugin etwa die Wissensbasis oder den
+  Release-Prozess dokumentiert, musste man die ganze Datei durchscrollen. Beide beginnen jetzt
+  mit einer Inhaltsübersicht in Dokumentreihenfolge, die drei Anbieter-Rezepte eingerückt unter
+  *Mail-Anbieter*.
+- **`README.de.md` war von der englischen Struktur abgewichen**, die die Sprachrichtlinie
+  synchron halten möchte. Die Abschnitte zu KI-Zusammenfassung und Wissensbasis standen am Ende
+  statt hinter der REST-API; die CI-Beschreibung war ein Unterabschnitt von *Tests ausführen*,
+  wo das Englische ihr einen eigenen Abschnitt *Tests* gibt; und *Kunde einem bestehenden Ticket
+  zuordnen* fehlte in der deutschen Datei komplett. Abschnittsreihenfolge und Anzahl der
+  Unterabschnitte stimmen jetzt eins zu eins überein.
+- **Die redmine.org-Quellen erwähnten die REST-API nicht.** `description.textile` führte jede
+  andere Funktion auf, ließ die API aber bei einem blanken Link am Ende, und
+  `installation.textile` dokumentierte nur die beiden per Schlüssel gesicherten
+  Cron-Endpunkte — nirgends stand also, dass der REST-Webservice unter *Administration →
+  Konfiguration → API* aktiviert sein muss oder dass die Postfach-Endpunkte auch zum Lesen
+  `manage_helpdesk` verlangen. Beides ist jetzt beschrieben.
+- **Die README hat das Plugin weiterhin als reine Microsoft-365-Lösung vorgestellt.** Der
+  Einleitungssatz — „E-Mail-zu-Ticket-Plugin für Redmine mit Microsoft-365-Anbindung über die
+  Microsoft Graph API" — stammte aus der Zeit vor dem generischen IMAP/SMTP-Backend; der
+  Absatz, den die meisten Leser als einzigen sehen, widersprach damit der Funktionsliste
+  direkt darunter. Es ist dieselbe stille Drift, die schon
+  `docs/redmine_org/description.textile` nach dem Release von 0.2.0 noch „only Microsoft O365
+  is supported" verkünden ließ. Ebenfalls korrigiert: der Punkt *Kundenantworten*, der den
+  Graph-`sendMail`-Weg als einzigen Versandweg beschrieb, sowie ein Hinweis unter
+  *Voraussetzungen*, dass `rake db:create RAILS_ENV=test` neben den RedmineUP-Plugins nicht
+  funktionieren kann (der Task bootet Rails, und `redmine_contacts` ruft `table_exists?` gegen
+  die noch nicht existierende Datenbank auf).
+- **Die Phishing-Erkennung lief unter Ruby 4.0 (Redmine-7-Images) auf einen Fehler.** Der
+  `PhishingScanner` hat mit `CGI.parse` das eingepackte Ziel aus Microsoft SafeLinks und anderen
+  Redirect-Links geholt; Ruby 4.0 hat diese Methode entfernt. Jeder Link mit Query-String löste
+  damit `NoMethodError: undefined method 'parse' for class CGI` aus — SafeLinks wurden nicht mehr
+  aufgelöst und Redirect-Links nie markiert. Query-Strings werden jetzt über einen kleinen Helfer
+  `query_pairs` mit `URI.decode_www_form_component` zerlegt. Bewusst nicht mit
+  `URI.decode_www_form`: das wirft bei einem Segment ohne `=` und verwirft dann den ganzen
+  Query-String samt der gültigen Paare, während `CGI.parse` tolerant war — und genau die
+  Redirect-Links, für die dieser Code existiert, sind selten sauber gebaut.
+
+## [0.2.1] - 2026-08-04
+
+### Changed
+
+- **Die Ordnerfelder im Postfach-Formular sind jetzt echte Auswahlfelder.** Alle fünf (Quelle,
+  verarbeitet, übersprungen, fehlerhaft, gesendet) waren `<input list="…">` an einer gemeinsamen
+  `<datalist>`. Browser zeichnen dieses Popup genau wie ihren eigenen Ausfüllverlauf — kein
+  erkennbares Aufklapp-Element, nicht gestaltbar und in mehreren Browsern nur Präfix-Treffer —, ein
+  wirklich aus dem Postfach gelesener Ordner war also nicht von einem früher eingetippten Wert zu
+  unterscheiden. Jedes Feld hat nun einen `▾`-Schalter, der die vollständige Liste öffnet, beim
+  Tippen nach Teilzeichenfolge filtert (`arbeit` findet also `Verarbeitet`) und Pfeiltasten, Enter,
+  Escape sowie Mausauswahl unterstützt. Freitext bleibt gültig: ein noch nicht vorhandener Ordner
+  wird als `+ "…" anlegen` angeboten und weiterhin beim Speichern erzeugt, der bestehende Ablauf
+  bleibt also unverändert. Reines JavaScript, keine neue Abhängigkeit
+  (`assets/stylesheets/helpdesk_mailbox_form.css`).
+
+## [0.2.0] - 2026-08-04
+
+### Added
+
 - **Issue-Vorlagen für GitHub.** Fehlermeldungen und Feature-Wünsche werden jetzt über
   YAML-Formulare in `.github/ISSUE_TEMPLATE/` erfasst. Damit sind die Angaben, die bisher in den
   meisten Meldungen fehlten — Plugin-Version, die Tabelle aus Administration → Information und der
@@ -78,18 +150,9 @@
   `[Gmail]/Sent Mail` / `Sent`); „Verbindung testen“ nennt den erkannten Ordner. **Ein
   fehlgeschlagenes APPEND wird protokolliert und verschluckt** — der Kunde hat die Mail zu diesem
   Zeitpunkt bereits, und ein Ablageproblem darf nie wie ein Versandfehler aussehen.
-- **`docs/redmine_org/` — gepflegte Vorlagen für das Plugin-Verzeichnis auf redmine.org.** Der
-  Eintrag unter <https://www.redmine.org/plugins/redmine_expert_helpdesk> wird in Textile
-  gerendert, nicht in Markdown. Die Beschreibung musste deshalb bei jeder Aktualisierung von Hand
-  umgesetzt werden und war unbemerkt veraltet: Sie warb noch mit „nur Microsoft O365 wird
-  unterstützt“, nachdem 0.2.0 längst das generische IMAP/SMTP-Backend mitbrachte.
-  `description.textile`, `installation.textile` (das Verzeichnis führt beide in getrennten
-  Feldern) und `releases/<version>.textile` enthalten nun den aktuellen Text, ohne Nacharbeit
-  einfügbar. Das Aktualisieren gehört zum Erstellen
-  eines Releases (dokumentiert in `CLAUDE.md` und `.github/copilot-instructions.md`); `docs/` ist
-  von den Release-Archiven ausgenommen, es wird also nichts davon ausgeliefert.
 
 ### Changed
+
 - **`MailProcessor` ist jetzt providerneutral.** Er spricht mit einem `MailProvider` statt mit dem
   `GraphClient` und verarbeitet ein normalisiertes `MailProvider::MessageMeta`-Struct statt roher
   Graph-JSON-Schlüssel (`meta['subject']`, `meta.dig('from','emailAddress','address')`, …). Ein
@@ -112,45 +175,9 @@
 - **Der Cache-Schlüssel des Graph-Access-Tokens enthält jetzt einen Fingerabdruck der
   Zugangsdaten.** Ein gewechseltes Client-Secret hinterließ bisher bis zu eine Stunde lang ein
   veraltetes Token im Cache.
-- **Die Ordnerfelder im Postfach-Formular sind jetzt echte Auswahlfelder.** Alle fünf (Quelle,
-  verarbeitet, übersprungen, fehlerhaft, gesendet) waren `<input list="…">` an einer gemeinsamen
-  `<datalist>`. Browser zeichnen dieses Popup genau wie ihren eigenen Ausfüllverlauf — kein
-  erkennbares Aufklapp-Element, nicht gestaltbar und in mehreren Browsern nur Präfix-Treffer —, ein
-  wirklich aus dem Postfach gelesener Ordner war also nicht von einem früher eingetippten Wert zu
-  unterscheiden. Jedes Feld hat nun einen `▾`-Schalter, der die vollständige Liste öffnet, beim
-  Tippen nach Teilzeichenfolge filtert (`arbeit` findet also `Verarbeitet`) und Pfeiltasten, Enter,
-  Escape sowie Mausauswahl unterstützt. Freitext bleibt gültig: ein noch nicht vorhandener Ordner
-  wird als `+ "…" anlegen` angeboten und weiterhin beim Speichern erzeugt, der bestehende Ablauf
-  bleibt also unverändert. Reines JavaScript, keine neue Abhängigkeit
-  (`assets/stylesheets/helpdesk_mailbox_form.css`).
 
 ### Fixed
-- **Die redmine.org-Quellen erwähnten die REST-API nicht.** `description.textile` führte jede
-  andere Funktion auf, ließ die API aber bei einem blanken Link am Ende, und
-  `installation.textile` dokumentierte nur die beiden per Schlüssel gesicherten
-  Cron-Endpunkte — nirgends stand also, dass der REST-Webservice unter *Administration →
-  Konfiguration → API* aktiviert sein muss oder dass die Postfach-Endpunkte auch zum Lesen
-  `manage_helpdesk` verlangen. Beides ist jetzt beschrieben.
-- **Die README hat das Plugin weiterhin als reine Microsoft-365-Lösung vorgestellt.** Der
-  Einleitungssatz — „E-Mail-zu-Ticket-Plugin für Redmine mit Microsoft-365-Anbindung über die
-  Microsoft Graph API" — stammte aus der Zeit vor dem generischen IMAP/SMTP-Backend; der
-  Absatz, den die meisten Leser als einzigen sehen, widersprach damit der Funktionsliste
-  direkt darunter. Es ist dieselbe stille Drift, die schon
-  `docs/redmine_org/description.textile` nach dem Release von 0.2.0 noch „only Microsoft O365
-  is supported" verkünden ließ. Ebenfalls korrigiert: der Punkt *Kundenantworten*, der den
-  Graph-`sendMail`-Weg als einzigen Versandweg beschrieb, sowie ein Hinweis unter
-  *Voraussetzungen*, dass `rake db:create RAILS_ENV=test` neben den RedmineUP-Plugins nicht
-  funktionieren kann (der Task bootet Rails, und `redmine_contacts` ruft `table_exists?` gegen
-  die noch nicht existierende Datenbank auf).
-- **Die Phishing-Erkennung lief unter Ruby 4.0 (Redmine-7-Images) auf einen Fehler.** Der
-  `PhishingScanner` hat mit `CGI.parse` das eingepackte Ziel aus Microsoft SafeLinks und anderen
-  Redirect-Links geholt; Ruby 4.0 hat diese Methode entfernt. Jeder Link mit Query-String löste
-  damit `NoMethodError: undefined method 'parse' for class CGI` aus — SafeLinks wurden nicht mehr
-  aufgelöst und Redirect-Links nie markiert. Query-Strings werden jetzt über einen kleinen Helfer
-  `query_pairs` mit `URI.decode_www_form_component` zerlegt. Bewusst nicht mit
-  `URI.decode_www_form`: das wirft bei einem Segment ohne `=` und verwirft dann den ganzen
-  Query-String samt der gültigen Paare, während `CGI.parse` tolerant war — und genau die
-  Redirect-Links, für die dieser Code existiert, sind selten sauber gebaut.
+
 - **Das Wechseln eines OAuth2-Client-Secrets verwarf das zwischengespeicherte Access-Token nicht.**
   Der Kommentar an `OauthTokenProvider#cache_key` versprach, dass „jede Änderung an den
   Zugangsdaten den Schlüssel ändert“ — der Fingerabdruck enthielt aber nur `client_id`,
@@ -260,6 +287,7 @@
   denn es steuert Antworten, Erstmails und den Autoresponder gleichermaßen, nicht nur Antworten.
 
 ### Changed (Konfigurationsoberfläche)
+
 - **Die Einstellungsseite zeigt nur noch die Felder, die der gewählte Anbietertyp wirklich
   braucht.** Die Vorlage steht an erster Stelle und steuert den Rest: die Tenant-ID erscheint nur
   bei Microsoft, die Authorize-/Token-URLs, der Scope und die IMAP/SMTP-Hosts nur bei „Andere /
@@ -277,6 +305,7 @@
   dessen Zustand Redmines eigene Sache ist.
 
 ### Migration
+
 - `036_add_sent_folder_to_helpdesk_mailboxes.rb` — `sent_folder`. Leer bedeutet „den Server
   fragen“, es ist also keine Konfiguration nötig.
 - `034_add_provider_to_helpdesk_mailboxes.rb` — `provider`, `credentials_source`, `imap_host`,
@@ -292,6 +321,7 @@
   Konfiguration** bestehender Installationen nötig.
 
 ### Hinweise zum IMAP-Verhalten
+
 - Durchgängig werden UIDs verwendet (`UID SEARCH`/`FETCH`/`STORE`/`MOVE`); Sequenznummern
   verschieben sich, sobald parallel auf das Postfach zugegriffen wird.
 - Abrufe nutzen `BODY.PEEK[...]`, nie `BODY[...]` — letzteres würde stillschweigend `\Seen` setzen.
