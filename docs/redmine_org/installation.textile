@@ -1,0 +1,108 @@
+h3. Requirements
+
+* Redmine 5.1.x, 6.0.x, 6.1.x or 7.0.x
+* No additional gems — Ruby standard library only
+
+Every release is tested against Redmine 5.1, 6.0, 6.1 and 7.0 on a clean MariaDB, and additionally booted inside the official @redmine@ Docker images for the same versions.
+
+The only exception to "no gems" is the optional pgvector backend of the knowledge base, which needs @gem 'pg'@ in your deployment. The default Qdrant backend does not, and both are off unless you enable them.
+
+h3. 1. Install the plugin
+
+Download @redmine_expert_helpdesk-<version>.zip@ (or @.tar.gz@) from the "Releases":https://github.com/expertZentrale/redmine_expert_helpdesk/releases page. The archive already contains a top-level @redmine_expert_helpdesk/@ folder, so extract it directly into your Redmine @plugins/@ directory:
+
+<pre>
+cd /path/to/redmine/plugins
+unzip redmine_expert_helpdesk-<version>.zip
+</pre>
+
+Alternatively, from source:
+
+<pre>
+cd /path/to/redmine/plugins
+git clone https://github.com/expertZentrale/redmine_expert_helpdesk.git
+</pre>
+
+The directory *must* be named @redmine_expert_helpdesk@ — Redmine derives the plugin id from it, and the plugin's own asset and settings paths depend on it.
+
+h3. 2. Run the migrations
+
+<pre>
+cd /path/to/redmine
+bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=production
+</pre>
+
+Then restart Redmine so the plugin is loaded — @touch tmp/restart.txt@ for Passenger, or restart the Puma/Unicorn service.
+
+h3. 3. Enable the module and grant permissions
+
+Enable *expert Helpdesk* per project under *Project settings → Modules*, then assign the permissions under *Administration → Roles and permissions*:
+
+|_. Permission |_. Grants |
+| Manage helpdesk mailboxes | Mailbox configuration, folders, rules |
+| Fetch helpdesk mails | The "Fetch mails now" button |
+| Send customer replies | Reply form, contact autocomplete, initial mail |
+| View helpdesk info | Info bar and sidebar on the ticket page |
+| Manage contacts | Customer list and customer profile |
+| View SLA statistics | The project's "SLA statistics" tab |
+
+*View AI statistics* is the one *global* permission — it is granted once to a role and then applies across all projects without project membership, because it exposes the token spend of the AI features.
+
+h3. 4. Central configuration
+
+Under *Administration → Plugins → Redmine expert Helpdesk*, or via the *expert Helpdesk* entry in the Administration menu, which links there directly.
+
+|_. Setting |_. Purpose |
+| Tenant ID / Client ID / Client Secret | The Azure app registration, used by Microsoft 365 mailboxes and shared by IMAP/SMTP mailboxes that authenticate with OAuth2 |
+| Default credentials for IMAP/SMTP | Preset, grant, authorization and token URL, scope, plus default IMAP/SMTP host, port and encryption |
+| API key (mail fetch) | Secures the global @helpdesk/fetch_all@ endpoint |
+| API key (SLA check) | Secures the @helpdesk/sla_check@ endpoint |
+| Entries per page | Page size of the customer list (default 25) |
+| Max. tickets in customer profile | Tickets shown in the customer detail view (default 10) |
+
+Nothing here is required for a mailbox that carries its own credentials — see the next step.
+
+h3. 5. Add a mailbox
+
+Under *Project settings → Helpdesk*, add a mailbox and pick its *Mail provider*:
+
+|_. Provider |_. Incoming |_. Outgoing |_. Typical use |
+| Microsoft 365 (Graph) | Graph API | Graph @sendMail@ | Microsoft 365 / Exchange Online |
+| IMAP / SMTP | IMAP | SMTP | Google Workspace, Exchange on-premises, Dovecot, Zimbra, any hoster |
+
+*Credentials* is an explicit switch, not a fallback chain. *From plugin settings* uses the central app registration above; *Individual for this mailbox* uses only the mailbox's own fields. A mailbox uses one source entirely — blank fields are deliberately not filled in from the other, so a half-configured mailbox cannot silently authenticate against the wrong tenant.
+
+Use *Test connection* before saving. It performs a real login, lists the folders and probes the outgoing route, so a wrong port, encryption mode or credential surfaces immediately instead of on the first fetch.
+
+For Microsoft 365 the app registration needs the application permissions @Mail.ReadWrite@ and @Mail.Send@, granted with admin consent.
+
+h3. 6. Schedule the fetch
+
+There is no built-in scheduler. Mail is fetched either with the *Fetch mails now* button in the project settings, or through an endpoint meant for cron:
+
+<pre>
+curl "https://redmine.example.com/helpdesk/fetch_all?key=FETCH-API-KEY"
+</pre>
+
+That processes every active mailbox across all projects and piggybacks the phishing-feed sync. The SLA breach check is deliberately separate, so it can run on its own schedule:
+
+<pre>
+curl "https://redmine.example.com/helpdesk/sla_check?key=SLA-API-KEY"
+</pre>
+
+Both keys come from the central configuration. Endpoints without a key configured refuse the request rather than running unauthenticated.
+
+h3. Upgrading
+
+Replace the plugin directory with the new version, then run the migration command from step 2 again and restart. Migrations are additive and existing mailboxes keep their configuration; if a release needs anything beyond that it is called out in that version's notes.
+
+Downgrading is not supported — roll back the database alongside the plugin if you need to.
+
+h3. Uninstalling
+
+<pre>
+bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk VERSION=0 RAILS_ENV=production
+rm -rf plugins/redmine_expert_helpdesk
+</pre>
+
+This drops the plugin's tables and all helpdesk data — contacts, message log, SLA tracking. Tickets created from mail are ordinary Redmine issues and stay.

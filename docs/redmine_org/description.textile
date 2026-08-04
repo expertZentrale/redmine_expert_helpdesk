@@ -34,16 +34,6 @@ h3. Requirements
 
 The pgvector knowledge-base backend is the one exception and needs @gem 'pg'@ in your deployment; the default Qdrant backend does not.
 
-h3. Installation
-
-Download the archive from the "Releases":https://github.com/expertZentrale/redmine_expert_helpdesk/releases page and extract it into your Redmine @plugins/@ directory — it already contains a top-level @redmine_expert_helpdesk/@ folder. Then:
-
-<pre>
-bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=production
-</pre>
-
-Restart Redmine, enable the *expert Helpdesk* module in the project and assign the permissions to your roles.
-
 h3. Links
 
 * "Source and releases":https://github.com/expertZentrale/redmine_expert_helpdesk
