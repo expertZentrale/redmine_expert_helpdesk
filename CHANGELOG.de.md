@@ -104,6 +104,15 @@
   (`assets/stylesheets/helpdesk_mailbox_form.css`).
 
 ### Fixed
+- **Die Phishing-Erkennung lief unter Ruby 4.0 (Redmine-7-Images) auf einen Fehler.** Der
+  `PhishingScanner` hat mit `CGI.parse` das eingepackte Ziel aus Microsoft SafeLinks und anderen
+  Redirect-Links geholt; Ruby 4.0 hat diese Methode entfernt. Jeder Link mit Query-String löste
+  damit `NoMethodError: undefined method 'parse' for class CGI` aus — SafeLinks wurden nicht mehr
+  aufgelöst und Redirect-Links nie markiert. Query-Strings werden jetzt über einen kleinen Helfer
+  `query_pairs` mit `URI.decode_www_form_component` zerlegt. Bewusst nicht mit
+  `URI.decode_www_form`: das wirft bei einem Segment ohne `=` und verwirft dann den ganzen
+  Query-String samt der gültigen Paare, während `CGI.parse` tolerant war — und genau die
+  Redirect-Links, für die dieser Code existiert, sind selten sauber gebaut.
 - **Das Wechseln eines OAuth2-Client-Secrets verwarf das zwischengespeicherte Access-Token nicht.**
   Der Kommentar an `OauthTokenProvider#cache_key` versprach, dass „jede Änderung an den
   Zugangsdaten den Schlüssel ändert“ — der Fingerabdruck enthielt aber nur `client_id`,

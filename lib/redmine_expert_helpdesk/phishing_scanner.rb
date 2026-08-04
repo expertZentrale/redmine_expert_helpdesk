@@ -125,8 +125,7 @@ module RedmineExpertHelpdesk
       uri = URI.parse(url)
       return url unless uri.host&.downcase&.end_with?(SAFELINKS_HOST_SUFFIX)
 
-      params = CGI.parse(uri.query.to_s)
-      original = params['url']&.first
+      original = query_pairs(uri).find { |key, _value| key == 'url' }&.last
       original.presence || url
     rescue URI::Error
       url
@@ -176,20 +175,44 @@ module RedmineExpertHelpdesk
 
     # Extrahiert eine im Query-Parameter eingebettete absolute Ziel-URL
     # (Redirect-/Tracking-Links wie ...?link=https%3A%2F%2Fevil.example%2F).
-    # CGI.parse dekodiert die Werte bereits. Liefert nil wenn keine vorhanden.
+    # query_pairs dekodiert die Werte bereits. Liefert nil wenn keine vorhanden.
     def extract_embedded_url(url)
       uri = URI.parse(url)
       return nil if uri.query.blank?
 
-      CGI.parse(uri.query).each_value do |values|
-        values.each do |value|
-          candidate = value.to_s.strip
-          return candidate if candidate =~ %r{\Ahttps?://}i
-        end
+      query_pairs(uri).each do |_key, value|
+        candidate = value.to_s.strip
+        return candidate if candidate =~ %r{\Ahttps?://}i
       end
       nil
     rescue StandardError
       nil
+    end
+
+    # Query-String als [[key, value], ...] mit dekodierten Werten.
+    #
+    # Ersetzt CGI.parse, das Ruby 4.0 entfernt hat. Auch nicht
+    # URI.decode_www_form: das wirft bei einem Segment ohne "=" und verwirft
+    # dann den ganzen Query-String samt der gueltigen Paare. CGI.parse war an
+    # dieser Stelle tolerant, und genau darauf kommt es hier an - die
+    # Redirect-Links, die wir auspacken wollen, sind selten sauber gebaut.
+    def query_pairs(uri)
+      return [] if uri.query.blank?
+
+      uri.query.split(/[&;]/).filter_map do |pair|
+        key, value = pair.split('=', 2)
+        next if key.nil? || key.empty?
+
+        [decode_component(key), decode_component(value)]
+      end
+    end
+
+    def decode_component(value)
+      URI.decode_www_form_component(value.to_s)
+    rescue ArgumentError
+      # Kaputtes Prozent-Encoding: unveraendert durchreichen statt den
+      # kompletten Link zu verlieren.
+      value.to_s
     end
 
     # Ist der Host ein bekannter Kurz-URL-Dienst?

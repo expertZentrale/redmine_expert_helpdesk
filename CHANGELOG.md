@@ -97,6 +97,14 @@
   (`assets/stylesheets/helpdesk_mailbox_form.css`).
 
 ### Fixed
+- **Phishing detection crashed on Ruby 4.0 (Redmine 7 images).** `PhishingScanner` used `CGI.parse`
+  to pull the wrapped target out of Microsoft SafeLinks and other redirect links, and Ruby 4.0
+  removed that method — every link with a query string raised `NoMethodError: undefined method
+  'parse' for class CGI`, so SafeLinks were no longer decoded and redirect links were never
+  flagged. Query strings are now parsed with `URI.decode_www_form_component` behind a small
+  `query_pairs` helper. Deliberately not `URI.decode_www_form`: it raises on a segment without
+  `=` and then discards the whole query string along with the valid pairs, whereas `CGI.parse`
+  was tolerant — and the redirect links this code exists to unwrap are rarely well-formed.
 - **Rotating an OAuth2 client secret did not invalidate the cached access token.** The comment on
   `OauthTokenProvider#cache_key` promised that "changing any credential changes the key", but the
   fingerprint covered only `client_id`, `tenant_id`, `token_url`, `scope` and the grant — none of
