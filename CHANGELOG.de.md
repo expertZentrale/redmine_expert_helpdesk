@@ -5,7 +5,7 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
-## [Unreleased]
+## [0.2.3] - 2026-08-06
 
 ### Added
 
@@ -20,14 +20,6 @@
   für „Meine Seite". Private Notizen löschen die Markierung bewusst nicht – eine interne Notiz ist
   keine Antwort an den Kunden. Abschaltbar unter *Administration → Plugins → Redmine expert
   Helpdesk*.
-
-### Fixed
-
-- **Die automatische Wiedereröffnung erscheint jetzt in der Ticket-Historie.** Der `MailProcessor`
-  setzte den Wiedereröffnungs-Status per `save(validate: false)` ohne Journal – der Status sprang
-  also von geschlossen auf offen, ohne Spur in Historie oder Aktivitäten. Der Statuswechsel wird
-  nun als Detail an dem Journal vermerkt, das die eingehende Antwort ohnehin anlegt: ein
-  Historien-Eintrag statt zwei, und keine zusätzliche Benachrichtigungsmail.
 
 - **Kurze Mails kosten keinen KI-Aufruf mehr.** Ein zweizeiliges „Bitte rufen Sie zurück" fasst
   sich selbst zusammen, trotzdem ging jede eingehende Mail an den Anbieter. Die neue zentrale
@@ -49,6 +41,12 @@
   Schwelle nur raten.
 
 ### Fixed
+
+- **Die automatische Wiedereröffnung erscheint jetzt in der Ticket-Historie.** Der `MailProcessor`
+  setzte den Wiedereröffnungs-Status per `save(validate: false)` ohne Journal – der Status sprang
+  also von geschlossen auf offen, ohne Spur in Historie oder Aktivitäten. Der Statuswechsel wird
+  nun als Detail an dem Journal vermerkt, das die eingehende Antwort ohnehin anlegt: ein
+  Historien-Eintrag statt zwei, und keine zusätzliche Benachrichtigungsmail.
 
 - **Graph wurde als Versandweg für IMAP-Postfächer angeboten, für die er nicht funktionieren kann.**
   Ein IMAP-Postfach über die zentrale Graph-Registrierung senden zu lassen, ist bei „Microsoft 365

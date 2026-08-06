@@ -1,0 +1,31 @@
+h3. Added
+
+* *Tickets waiting for a response are now visible at a glance.* When a customer replied by mail to an existing ticket — or a reply reopened a closed one — nothing marked that ticket as needing attention, and agents had to fall back on filtering by SLA status. A ticket is now flagged *Awaiting response* as soon as an inbound reply arrives on an existing ticket, and the flag clears the moment an agent posts a public note or closes the ticket. Four places show it: a sortable *Awaiting response* column and filter in the issue list, a marker on the row itself, a counter in the issue-list sidebar, and a "Helpdesk: awaiting response" block for My page. The stored timestamp is that of the *oldest unanswered* reply, so a second mail does not make a ticket that has been waiting for days look fresh. A private note deliberately does not clear the flag — an internal remark is not an answer to the customer.
+
+* *Short mails no longer cost an AI call.* A two-line "please call me back" summarises to itself, yet every ingested mail was sent to the provider. The new *Min. input length* setting skips the call below a configurable number of characters.
+
+* *AI diagnostics have their own log level.* The diagnostic lines about input length and skip decisions can be raised, lowered or silenced independently of the rest of the log. AI errors are always logged.
+
+* *Every outgoing mail is logged with the transport it took.* Replies, initial mails, autoresponder mails and SLA notifications leave over three different transports and previously all looked alike in the log. Each send now records which one it used; failures are always logged as errors.
+
+h3. Fixed
+
+* *Auto-reopening a ticket now shows up in its history.* The reopen status was written without a journal entry, so a ticket jumped from closed back to open with no trace in the ticket history or the activity feed — nothing indicated why it had reopened. The status change is now recorded on the journal that the inbound reply already creates: one history entry rather than two, and no extra notification mail.
+
+* *Graph was offered as the send path for IMAP mailboxes it cannot serve.* The rule read the mailbox's @oauth_preset@ column, which is not in force for a mailbox using the central credentials, so the option appeared where it could not work.
+
+h3. Changed
+
+* *The send path moved next to the mail provider in the mailbox form,* where it belongs — it governs replies, initial mails and the autoresponder alike, not just replies.
+
+h3. Upgrade notes
+
+*This release runs a migration.* Two columns are added to @helpdesk_ticket_infos@ for the awaiting-response flag:
+
+<pre>
+bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=production
+</pre>
+
+Existing tickets start unflagged; the flag is set from the next inbound reply onwards.
+
+The feature is on by default and can be switched off under *Administration → Plugins → Redmine expert Helpdesk*. Switching it off hides the column content, row markers, sidebar counter and My page block. No new permission is needed — the existing *expert Helpdesk* project module and the *Send customer replies* permission govern it, the latter deciding whose public note counts as an answer.

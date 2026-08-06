@@ -6,7 +6,7 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
-## [Unreleased]
+## [0.2.3] - 2026-08-06
 
 ### Added
 
@@ -19,14 +19,6 @@
   and a *Helpdesk: awaiting response* block for My Page. Private notes deliberately do not clear
   the flag — an internal remark is not an answer to the customer. Turn the whole thing off under
   *Administration → Plugins → Redmine expert Helpdesk*.
-
-### Fixed
-
-- **Auto-reopening a ticket now shows up in its history.** `MailProcessor` set the reopen status
-  with `save(validate: false)` and without a journal, so the status jumped from closed to open with
-  no trace in the ticket history or the activity feed. The status change is now recorded as a
-  detail on the journal the inbound reply already creates — one history entry instead of two, and
-  no additional notification mail.
 
 - **Short mails no longer cost an AI call.** A two-line "please call me back" summarizes to
   itself, yet every ingested mail went to the provider. The new central setting **Min. input
@@ -47,6 +39,12 @@
   could only be tuned by guessing what a given mail measured.
 
 ### Fixed
+
+- **Auto-reopening a ticket now shows up in its history.** `MailProcessor` set the reopen status
+  with `save(validate: false)` and without a journal, so the status jumped from closed to open with
+  no trace in the ticket history or the activity feed. The status change is now recorded as a
+  detail on the journal the inbound reply already creates — one history entry instead of two, and
+  no additional notification mail.
 
 - **Graph was offered as the send path for IMAP mailboxes it cannot serve.** Sending an IMAP
   mailbox's mail through the central Graph registration is legitimate for "Microsoft 365 over IMAP"
