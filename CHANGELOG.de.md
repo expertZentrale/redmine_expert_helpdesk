@@ -9,6 +9,26 @@
 
 ### Added
 
+- **Tickets, die auf Bearbeitung warten, sind jetzt sofort erkennbar.** Wenn ein Kunde per Mail
+  geantwortet hat – oder eine Antwort ein geschlossenes Ticket wiedereröffnet hat – war nirgends
+  markiert, dass das Ticket Aufmerksamkeit braucht; Mitarbeiter mussten sich mit dem SLA-Status
+  behelfen. Ein Ticket wird nun als **Wartet auf Bearbeitung** markiert, sobald eine eingehende
+  Antwort zu einem bestehenden Ticket eintrifft. Die Markierung entfällt, sobald ein Mitarbeiter
+  öffentlich antwortet oder das Ticket schließt. Vier Oberflächen zeigen sie an: eine sortierbare
+  Spalte **Wartet auf Bearbeitung** samt Filter in der Ticket-Liste, eine hervorgehobene Zeile,
+  ein Zähler in der Seitenleiste der Ticket-Liste und ein Block *Helpdesk: Wartet auf Bearbeitung*
+  für „Meine Seite". Private Notizen löschen die Markierung bewusst nicht – eine interne Notiz ist
+  keine Antwort an den Kunden. Abschaltbar unter *Administration → Plugins → Redmine expert
+  Helpdesk*.
+
+### Fixed
+
+- **Die automatische Wiedereröffnung erscheint jetzt in der Ticket-Historie.** Der `MailProcessor`
+  setzte den Wiedereröffnungs-Status per `save(validate: false)` ohne Journal – der Status sprang
+  also von geschlossen auf offen, ohne Spur in Historie oder Aktivitäten. Der Statuswechsel wird
+  nun als Detail an dem Journal vermerkt, das die eingehende Antwort ohnehin anlegt: ein
+  Historien-Eintrag statt zwei, und keine zusätzliche Benachrichtigungsmail.
+
 - **Kurze Mails kosten keinen KI-Aufruf mehr.** Ein zweizeiliges „Bitte rufen Sie zurück" fasst
   sich selbst zusammen, trotzdem ging jede eingehende Mail an den Anbieter. Die neue zentrale
   Einstellung **Min. Eingabezeichen** (*Administration → Plugins → Redmine expert Helpdesk*,

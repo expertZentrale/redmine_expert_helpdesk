@@ -9,6 +9,7 @@ module RedmineExpertHelpdesk
       def self.included(base)
         base.after_save :helpdesk_refresh_sla_deadlines
         base.after_save :helpdesk_enqueue_kb_ingest
+        base.after_save :helpdesk_clear_awaiting_on_close
       end
 
       # Gibt den Anzeigenamen des ersten eingehenden Absenderkontakts zurueck
@@ -42,6 +43,29 @@ module RedmineExpertHelpdesk
         done = closed? ? closed_on : nil
         RedmineExpertHelpdesk::Sla.clock_status_from(
           info.sla_solution_due_at, info.sla_solution_warn_at, done)
+      end
+
+      # [since, reason] when a customer is waiting for an answer, otherwise nil.
+      # Wrapped in an array so a nil result is memoized too -- this is hit once per
+      # grid row by both column_content and css_classes.
+      def helpdesk_awaiting_agent
+        @helpdesk_awaiting_agent ||= begin
+          info = HelpdeskTicketInfo.for_issue(self)
+          [info&.awaiting_agent_since ? [info.awaiting_agent_since, info.awaiting_agent_reason] : nil]
+        end
+        @helpdesk_awaiting_agent.first
+      end
+
+      # Closing a ticket answers the customer even without a note. At the model
+      # (after_save) so bulk and API changes are caught too -- same reasoning as the
+      # KB ingest below.
+      def helpdesk_clear_awaiting_on_close
+        return unless saved_change_to_status_id? && closed?
+        return unless project&.module_enabled?(:helpdesk)
+
+        HelpdeskTicketInfo.clear_awaiting_agent!(self)
+      rescue StandardError => e
+        Rails.logger.warn("Helpdesk: clear_awaiting_on_close fehlgeschlagen (Issue ##{id}): #{e.message}")
       end
 
       # Nach dem Speichern die vorberechneten Faelligkeiten aktualisieren, aber

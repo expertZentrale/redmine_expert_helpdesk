@@ -48,6 +48,8 @@ require File.expand_path('../lib/redmine_expert_helpdesk/patches/project_patch',
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/issue_patch', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/issue_query_patch', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/queries_helper_patch', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/patches/issue_css_classes_patch', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/patches/journal_patch', __FILE__)
 
 Redmine::Plugin.register :redmine_expert_helpdesk do
   name 'Redmine expert Helpdesk'
@@ -79,6 +81,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'default_smtp_host'     => '',
              'default_smtp_port'     => '587',
              'default_smtp_security' => 'starttls',
+             'awaiting_agent_enabled'   => '1',
              'contacts_per_page'        => '25',
              'contact_ticket_limit'     => '10',
              'phishtank_enabled'        => '0',
@@ -223,6 +226,14 @@ end
 # die SLA-Chip-Spalten mit alias_method_chain-Plugins koexistieren
 # (z. B. RedmineUP redmine_contacts_helpdesk). Siehe queries_helper_patch.rb.
 RedmineExpertHelpdesk::Patches::QueriesHelperPatch.apply!(QueriesHelper)
+
+# css_classes ebenfalls per UnboundMethod-Capture (siehe issue_css_classes_patch.rb):
+# IssuePatch wird per include eingebunden und kann die Methode nicht ueberschreiben.
+RedmineExpertHelpdesk::Patches::IssueCssClassesPatch.apply!(Issue)
+
+unless Journal.included_modules.include?(RedmineExpertHelpdesk::Patches::JournalPatch)
+  Journal.include(RedmineExpertHelpdesk::Patches::JournalPatch)
+end
 # hd_icon_label global verfuegbar machen: Redmine setzt include_all_helpers = false,
 # daher werden Plugin-Helfer nicht automatisch in Kern-Views eingebunden.
 # ApplicationHelper ist in allen Views verfuegbar.
