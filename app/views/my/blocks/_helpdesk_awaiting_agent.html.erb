@@ -3,6 +3,7 @@
     globs plugins/*/app/views/my/blocks/_*.html.erb), so no registration in init.rb is
     needed. The block key is the bare filename and must not collide with RedmineUP's
     "my_helpdesk_tickets". The label comes from the nested my.blocks.* i18n key. %>
+<% if HelpdeskTicketInfo.awaiting_agent_enabled? %>
 <%
   issues = Issue.visible.open
                 .joins("INNER JOIN helpdesk_ticket_infos hti ON hti.issue_id = #{Issue.quoted_table_name}.id")
@@ -56,4 +57,5 @@
 <% end %>
 <% else %>
 <p class="nodata"><%= l(:label_no_data) %></p>
+<% end %>
 <% end %>

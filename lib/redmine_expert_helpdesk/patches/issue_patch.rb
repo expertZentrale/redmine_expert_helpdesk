@@ -50,7 +50,7 @@ module RedmineExpertHelpdesk
       # grid row by both column_content and css_classes.
       def helpdesk_awaiting_agent
         @helpdesk_awaiting_agent ||= begin
-          info = HelpdeskTicketInfo.for_issue(self)
+          info = HelpdeskTicketInfo.awaiting_agent_enabled? ? HelpdeskTicketInfo.for_issue(self) : nil
           [info&.awaiting_agent_since ? [info.awaiting_agent_since, info.awaiting_agent_reason] : nil]
         end
         @helpdesk_awaiting_agent.first

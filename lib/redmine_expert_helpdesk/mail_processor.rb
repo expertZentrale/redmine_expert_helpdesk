@@ -163,7 +163,7 @@ module RedmineExpertHelpdesk
         # HelpdeskTicketInfo row is guaranteed to exist. New tickets are not flagged
         # (they are new work by definition), and neither are mails an agent sent in
         # themselves.
-        if !new_issue && awaiting_agent_enabled? && !agent_authored?(object, issue)
+        if !new_issue && HelpdeskTicketInfo.awaiting_agent_enabled? && !agent_authored?(object, issue)
           HelpdeskTicketInfo.mark_awaiting_agent!(
             issue, reopened ? 'reopen' : 'reply', meta.received_at || Time.current
           )
@@ -375,10 +375,6 @@ module RedmineExpertHelpdesk
       user.present? && user.allowed_to?(:send_helpdesk_reply, issue.project)
     rescue StandardError
       false
-    end
-
-    def awaiting_agent_enabled?
-      Setting.plugin_redmine_expert_helpdesk['awaiting_agent_enabled'].to_s != '0'
     end
 
     # --- Auto-Reply-Filter --------------------------------------------------

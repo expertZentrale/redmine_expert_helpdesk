@@ -14,6 +14,13 @@ class HelpdeskTicketInfo < HelpdeskApplicationRecord
 
   scope :awaiting_agent, -> { where.not(:awaiting_agent_since => nil) }
 
+  # Single home for the global feature switch: setting, marking, clearing and every
+  # renderer must agree, otherwise turning the feature off would still leave chips
+  # and highlighted rows behind for tickets flagged earlier.
+  def self.awaiting_agent_enabled?
+    Setting.plugin_redmine_expert_helpdesk['awaiting_agent_enabled'].to_s != '0'
+  end
+
   def self.for_issue(issue)
     find_by(:issue_id => issue.is_a?(Issue) ? issue.id : issue)
   end

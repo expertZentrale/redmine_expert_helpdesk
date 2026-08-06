@@ -144,6 +144,58 @@ class HelpdeskAwaitingAgentTest < ActiveSupport::TestCase
     assert_not_includes ids, @issue.id
   end
 
+  # -----------------------------------------------------------------------
+  # Global switch
+  # -----------------------------------------------------------------------
+
+  def with_awaiting_disabled
+    previous = Setting.plugin_redmine_expert_helpdesk
+    Setting.plugin_redmine_expert_helpdesk = previous.merge('awaiting_agent_enabled' => '0')
+    yield
+  ensure
+    Setting.plugin_redmine_expert_helpdesk = previous
+  end
+
+  # Turning the feature off must hide chips and row highlights for tickets that
+  # were flagged while it was on.
+  def test_accessor_returns_nil_when_feature_is_disabled
+    HelpdeskTicketInfo.mark_awaiting_agent!(@issue, 'reply', Time.current)
+
+    with_awaiting_disabled do
+      assert_not HelpdeskTicketInfo.awaiting_agent_enabled?
+      assert_nil Issue.find(@issue.id).helpdesk_awaiting_agent
+    end
+  end
+
+  def test_css_classes_omit_hd_awaiting_when_feature_is_disabled
+    HelpdeskTicketInfo.mark_awaiting_agent!(@issue, 'reply', Time.current)
+
+    with_awaiting_disabled do
+      assert_not_includes Issue.find(@issue.id).css_classes.split, 'hd-awaiting'
+    end
+  end
+
+  # -----------------------------------------------------------------------
+  # Sort order
+  # -----------------------------------------------------------------------
+
+  # Ascending must put waiting tickets first, oldest wait first -- clicking the
+  # column is meant to surface who has been waiting longest.
+  def test_sort_puts_waiting_tickets_first_ascending
+    waiting_old = Issue.find(1)
+    waiting_new = Issue.find(2)
+    [waiting_old, waiting_new].each { |i| HelpdeskTicketInfo.where(:issue_id => i.id).delete_all }
+    HelpdeskTicketInfo.mark_awaiting_agent!(waiting_old, 'reply', 5.days.ago)
+    HelpdeskTicketInfo.mark_awaiting_agent!(waiting_new, 'reply', 1.hour.ago)
+
+    query = IssueQuery.new(:name => '_')
+    query.sort_criteria = [['helpdesk_awaiting_agent', 'asc']]
+    ids = query.issues.map(&:id)
+
+    assert_equal waiting_old.id, ids.first, 'longest-waiting ticket must sort first'
+    assert_operator ids.index(waiting_old.id), :<, ids.index(waiting_new.id)
+  end
+
   def test_awaiting_agent_column_is_available
     assert IssueQuery.new(:name => '_').available_columns.any? { |c| c.name == :helpdesk_awaiting_agent }
   end

@@ -20,7 +20,7 @@ module RedmineExpertHelpdesk
       def helpdesk_clear_awaiting_agent
         return unless journalized.is_a?(Issue)
         return if notes.blank? || private_notes?
-        return unless Setting.plugin_redmine_expert_helpdesk['awaiting_agent_enabled'].to_s != '0'
+        return unless HelpdeskTicketInfo.awaiting_agent_enabled?
 
         issue = journalized
         return unless issue.project&.module_enabled?(:helpdesk)

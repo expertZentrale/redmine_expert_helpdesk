@@ -58,9 +58,10 @@ module RedmineExpertHelpdesk
          WHERE ti.issue_id = #{Issue.quoted_table_name}.id)
       SQL
 
-      # Wartende Tickets zuerst, darin die am laengsten wartenden zuerst.
+      # Aufsteigend sortiert: wartende Tickets zuerst, darin die am laengsten
+      # wartenden zuerst. Wartende bekommen daher 0, nicht 1.
       AWAITING_SORT_SQL = [
-        "(CASE WHEN #{AWAITING_SINCE_SQL} IS NULL THEN 0 ELSE 1 END)",
+        "(CASE WHEN #{AWAITING_SINCE_SQL} IS NULL THEN 1 ELSE 0 END)",
         AWAITING_SINCE_SQL
       ].freeze
 

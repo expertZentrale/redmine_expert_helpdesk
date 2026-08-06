@@ -275,7 +275,10 @@ module RedmineExpertHelpdesk
     # Verlinkt auf denselben Filter wie die Query-Spalte, damit Zaehler und Liste
     # uebereinstimmen.
     def awaiting_agent_counter(context)
-      return '' if Setting.plugin_redmine_expert_helpdesk['awaiting_agent_enabled'].to_s == '0'
+      return '' unless HelpdeskTicketInfo.awaiting_agent_enabled?
+
+      controller = context[:controller]
+      return '' if controller.nil?
 
       project = context[:project]
       return '' if project && !project.module_enabled?(:helpdesk)
@@ -288,7 +291,7 @@ module RedmineExpertHelpdesk
       count = scope.count
       return '' if count.zero?
 
-      context[:controller].send(:render_to_string, {
+      controller.send(:render_to_string, {
         :partial => 'helpdesk/awaiting_counter',
         :locals  => { :count => count, :project => project }
       })
