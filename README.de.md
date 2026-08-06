@@ -411,6 +411,40 @@ Der `MailHandler` prüft in dieser Reihenfolge:
 > Berechtigungsprüfungen. `unknown_user_mode` am Postfach steuert, was bei
 > unbekannten Absendern passiert (`accept`, `create`, `ignore`).
 
+### Tickets, die auf Bearbeitung warten
+
+Trifft eine eingehende Mail zu einem **bestehenden** Ticket ein, wird dieses Ticket als **Wartet
+auf Bearbeitung** markiert – damit es nicht zwischen Tickets untergeht, auf die niemand wartet.
+Dasselbe gilt, wenn eine Antwort ein geschlossenes Ticket wiedereröffnet; als Grund erscheint dann
+*Wiedereröffnet* statt *Kunde hat geantwortet*, und die Wiedereröffnung wird in der Ticket-Historie
+vermerkt.
+
+Gespeichert wird der Zeitpunkt der **ältesten unbeantworteten** Kundenantwort – eine zweite Antwort
+lässt ein seit Tagen wartendes Ticket also nicht wieder frisch aussehen. Die Markierung entfällt,
+wenn
+
+- ein Mitarbeiter eine **öffentliche** Notiz schreibt (eine private Notiz ist eine interne
+  Anmerkung, keine Antwort), oder
+- das Ticket geschlossen wird – auch per Sammelbearbeitung oder über die REST-API.
+
+Vier Stellen zeigen sie an:
+
+| Oberfläche | Was man sieht |
+| --- | --- |
+| Ticket-Liste | Spalte *Wartet auf Bearbeitung* (sortierbar, längste Wartezeit zuerst) und Filter |
+| Zeilen der Ticket-Liste | Wartende Tickets erhalten einen Marker am linken Rand |
+| Seitenleiste der Ticket-Liste | Zähler mit Link auf die gefilterte Liste |
+| Meine Seite | Block *Helpdesk: Wartet auf Bearbeitung* – eigene wartende Tickets, älteste zuerst |
+
+Zwei Hinweise:
+
+- Ein Kunde, der Projektmitglied mit der Berechtigung *Kundenantworten senden* ist, gilt als
+  Mitarbeiter – seine Mails markieren ein Ticket daher nie.
+- Wird ein Ticket nach dem Schließen manuell wiedereröffnet, kehrt die Markierung nicht zurück;
+  nur eine neue eingehende Mail setzt sie erneut.
+
+Abschaltbar unter *Administration → Plugins → Redmine expert Helpdesk*.
+
 ### EML-Anhang und Journalverlinkung
 
 Jede verarbeitete Mail wird als `.eml`-Datei am Ticket gespeichert (Anhang mit

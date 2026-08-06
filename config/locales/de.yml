@@ -239,6 +239,15 @@ de:
   label_helpdesk_sla_due_at: 'fällig bis %{time}'
   label_helpdesk_sla_reaction_col: 'SLA Reaktion'
   label_helpdesk_sla_solution_col: 'SLA Lösung'
+  label_helpdesk_awaiting_agent_col: 'Wartet auf Bearbeitung'
+  label_helpdesk_awaiting_yes: 'Wartet auf Bearbeitung'
+  label_helpdesk_awaiting_no: 'Beantwortet'
+  label_helpdesk_awaiting_reply: 'Kunde hat geantwortet'
+  label_helpdesk_awaiting_reopen: 'Wiedereröffnet'
+  label_helpdesk_awaiting_count: '%{count} Ticket(s) warten auf Bearbeitung'
+  label_helpdesk_awaiting_show_all: 'Alle anzeigen'
+  field_helpdesk_awaiting_agent_enabled: 'Tickets markieren, die auf Bearbeitung warten'
+  text_helpdesk_awaiting_agent_enabled_info: 'Markiert ein Ticket, wenn ein Kunde per Mail antwortet oder ein geschlossenes Ticket wiedereröffnet wird. Die Markierung entfällt, sobald ein Mitarbeiter öffentlich antwortet oder das Ticket schließt.'
   label_helpdesk_sla_statistics: 'SLA-Statistik'
   permission_view_helpdesk_sla_statistics: 'SLA-Statistik ansehen'
   label_helpdesk_stats_group_by: 'Gruppieren nach'
@@ -500,3 +509,9 @@ de:
   notice_helpdesk_kb_approved: 'Zur Wissensbasis hinzugefügt.'
   text_helpdesk_kb_not_configured: 'Die Wissensbasis ist nicht aktiviert/konfiguriert (siehe Administration → Plugins).'
   text_helpdesk_kb_nothing_to_approve: 'Für dieses Ticket gibt es keinen ausstehenden Wissensbasis-Eintrag.'
+
+  # Verschachtelter Key, nicht die flache label_*-Konvention: Redmines Blockauswahl
+  # auf "Meine Seite" sucht das Label unter my.blocks.<Partial-Name>.
+  my:
+    blocks:
+      helpdesk_awaiting_agent: 'Helpdesk: Wartet auf Bearbeitung'

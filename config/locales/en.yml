@@ -239,6 +239,15 @@ en:
   label_helpdesk_sla_due_at: 'due by %{time}'
   label_helpdesk_sla_reaction_col: 'SLA reaction'
   label_helpdesk_sla_solution_col: 'SLA solution'
+  label_helpdesk_awaiting_agent_col: 'Awaiting response'
+  label_helpdesk_awaiting_yes: 'Awaiting response'
+  label_helpdesk_awaiting_no: 'Answered'
+  label_helpdesk_awaiting_reply: 'Customer replied'
+  label_helpdesk_awaiting_reopen: 'Reopened'
+  label_helpdesk_awaiting_count: '%{count} ticket(s) awaiting response'
+  label_helpdesk_awaiting_show_all: 'Show all'
+  field_helpdesk_awaiting_agent_enabled: 'Mark tickets awaiting a response'
+  text_helpdesk_awaiting_agent_enabled_info: 'Flags a ticket when a customer replies by mail or a closed ticket is reopened. The flag is cleared as soon as an agent posts a public reply or closes the ticket.'
   label_helpdesk_sla_statistics: 'SLA statistics'
   permission_view_helpdesk_sla_statistics: 'View SLA statistics'
   label_helpdesk_stats_group_by: 'Group by'
@@ -500,3 +509,9 @@ en:
   notice_helpdesk_kb_approved: 'Added to the knowledge base.'
   text_helpdesk_kb_not_configured: 'The knowledge base is not enabled/configured (see Administration → Plugins).'
   text_helpdesk_kb_nothing_to_approve: 'There is no pending knowledge-base entry for this ticket.'
+
+  # Nested key, not the flat label_* convention: Redmine's My Page block selector
+  # looks the block label up as my.blocks.<partial name>.
+  my:
+    blocks:
+      helpdesk_awaiting_agent: 'Helpdesk: awaiting response'

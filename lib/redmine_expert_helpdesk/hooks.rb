@@ -74,7 +74,9 @@ module RedmineExpertHelpdesk
     # Zeigt Kontaktinfo auch fuer manuell/ausgehend zugeordnete Tickets.
     def view_issues_sidebar_queries_bottom(context = {})
       issue = context[:controller]&.instance_variable_get(:@issue)
-      return '' unless issue
+      # Ohne @issue ist es die Ticket-Liste: dort den "Wartet auf Bearbeitung"-Zaehler
+      # zeigen. Rendert einmal pro Seite (nicht pro Zeile), ein COUNT genuegt.
+      return awaiting_agent_counter(context) unless issue
 
       project = issue.project
       return '' unless project.module_enabled?(:helpdesk)
@@ -265,6 +267,37 @@ module RedmineExpertHelpdesk
 })();
 //]]>
 </script>)
+    end
+
+    private
+
+    # Zaehler "Wartet auf Bearbeitung" fuer die Seitenleiste der Ticket-Liste.
+    # Verlinkt auf denselben Filter wie die Query-Spalte, damit Zaehler und Liste
+    # uebereinstimmen.
+    def awaiting_agent_counter(context)
+      return '' unless HelpdeskTicketInfo.awaiting_agent_enabled?
+
+      controller = context[:controller]
+      return '' if controller.nil?
+
+      project = context[:project]
+      return '' if project && !project.module_enabled?(:helpdesk)
+
+      scope = Issue.visible.open
+                   .joins("INNER JOIN helpdesk_ticket_infos hti ON hti.issue_id = #{Issue.quoted_table_name}.id")
+                   .where('hti.awaiting_agent_since IS NOT NULL')
+      scope = scope.where(:project_id => project.self_and_descendants.select(:id)) if project
+
+      count = scope.count
+      return '' if count.zero?
+
+      controller.send(:render_to_string, {
+        :partial => 'helpdesk/awaiting_counter',
+        :locals  => { :count => count, :project => project }
+      })
+    rescue StandardError => e
+      Rails.logger.warn("Helpdesk: awaiting_agent_counter fehlgeschlagen: #{e.message}")
+      ''
     end
   end
 end

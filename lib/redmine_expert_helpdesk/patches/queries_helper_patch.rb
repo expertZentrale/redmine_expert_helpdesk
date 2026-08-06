@@ -27,6 +27,17 @@ module RedmineExpertHelpdesk
 
         original = base.instance_method(:column_content)
         base.send(:define_method, :column_content) do |column, item|
+          if column.name == :helpdesk_awaiting_agent && item.is_a?(Issue)
+            awaiting = item.helpdesk_awaiting_agent
+            next ''.html_safe if awaiting.nil?
+
+            since, reason = awaiting
+            label = l("label_helpdesk_awaiting_#{reason == 'reopen' ? 'reopen' : 'reply'}")
+            next content_tag(:span,
+                             safe_join([label, ' (', time_tag(since), ')']),
+                             :class => 'hd-sla-chip hd-awaiting-chip')
+          end
+
           unless SLA_COLUMNS.include?(column.name) && item.is_a?(Issue)
             next original.bind(self).call(column, item)
           end

@@ -394,6 +394,37 @@ The `MailHandler` checks in this order:
 > `unknown_user_mode` on the mailbox controls what happens with unknown senders
 > (`accept`, `create`, `ignore`).
 
+### Tickets awaiting a response
+
+When an inbound mail lands on an **existing** ticket, that ticket is flagged **Awaiting response**
+so it does not get lost between tickets nobody is waiting on. The same happens when a reply
+reopens a closed ticket — the reason is then shown as *Reopened* instead of *Customer replied*,
+and the reopen itself is recorded in the ticket history.
+
+The flag stores the timestamp of the **oldest unanswered** customer reply, so a second reply does
+not make a ticket that has been waiting for days look fresh. It clears when
+
+- an agent posts a **public** note (a private note is an internal remark, not an answer), or
+- the ticket is closed — including via bulk edit or the REST API.
+
+Four places show it:
+
+| Surface | What you get |
+| --- | --- |
+| Ticket list | *Awaiting response* column (sortable, longest wait first) and filter |
+| Ticket list rows | Waiting tickets get a marker on the left edge |
+| Ticket-list sidebar | Counter linking to the filtered list |
+| My Page | Block *Helpdesk: awaiting response* — your waiting tickets, oldest first |
+
+Two things worth knowing:
+
+- A customer who is a project member with the *Send customer replies* permission counts as an
+  agent, so their mails never flag a ticket.
+- Reopening a ticket manually after it was closed does not restore the flag — only a new inbound
+  mail sets it again.
+
+Turn the feature off under *Administration → Plugins → Redmine expert Helpdesk*.
+
 ### EML attachment and journal link
 
 Every processed mail is stored as a `.eml` file attached to the ticket

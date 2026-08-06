@@ -10,6 +10,24 @@
 
 ### Added
 
+- **Tickets awaiting a response are now visible at a glance.** When a customer replied by mail —
+  or a reply reopened a closed ticket — nothing marked the ticket as needing attention, so agents
+  had to fall back on filtering by SLA status. A ticket is now flagged **Awaiting response** the
+  moment an inbound reply arrives on an existing ticket, and the flag clears as soon as an agent
+  posts a public note or closes the ticket. Four surfaces show it: a sortable **Awaiting response**
+  column plus filter in the ticket list, a highlighted row, a counter in the ticket-list sidebar,
+  and a *Helpdesk: awaiting response* block for My Page. Private notes deliberately do not clear
+  the flag — an internal remark is not an answer to the customer. Turn the whole thing off under
+  *Administration → Plugins → Redmine expert Helpdesk*.
+
+### Fixed
+
+- **Auto-reopening a ticket now shows up in its history.** `MailProcessor` set the reopen status
+  with `save(validate: false)` and without a journal, so the status jumped from closed to open with
+  no trace in the ticket history or the activity feed. The status change is now recorded as a
+  detail on the journal the inbound reply already creates — one history entry instead of two, and
+  no additional notification mail.
+
 - **Short mails no longer cost an AI call.** A two-line "please call me back" summarizes to
   itself, yet every ingested mail went to the provider. The new central setting **Min. input
   characters** (*Administration → Plugins → Redmine expert Helpdesk*, default 200) sets the

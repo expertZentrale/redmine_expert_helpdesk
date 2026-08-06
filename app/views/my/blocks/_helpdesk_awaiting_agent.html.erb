@@ -1,0 +1,61 @@
+<%# My Page block: helpdesk tickets assigned to me that are waiting for an answer.
+    Redmine discovers plugin blocks by file convention (Redmine::MyPage.additional_blocks
+    globs plugins/*/app/views/my/blocks/_*.html.erb), so no registration in init.rb is
+    needed. The block key is the bare filename and must not collide with RedmineUP's
+    "my_helpdesk_tickets". The label comes from the nested my.blocks.* i18n key. %>
+<% if HelpdeskTicketInfo.awaiting_agent_enabled? %>
+<%
+  issues = Issue.visible.open
+                .joins("INNER JOIN helpdesk_ticket_infos hti ON hti.issue_id = #{Issue.quoted_table_name}.id")
+                .where('hti.awaiting_agent_since IS NOT NULL')
+                .where(:assigned_to_id => ([User.current.id] + User.current.group_ids))
+                .includes(:project, :status, :tracker)
+                .order(Arel.sql('hti.awaiting_agent_since ASC'))
+  total = issues.count
+  issues = issues.limit(10)
+%>
+
+<h3><%= l(:'my.blocks.helpdesk_awaiting_agent') %> (<%= total %>)</h3>
+
+<% if issues.any? %>
+<table class="list issues">
+  <thead>
+    <tr>
+      <th><%= l(:field_project) %></th>
+      <th><%= l(:field_subject) %></th>
+      <th><%= l(:label_helpdesk_awaiting_agent_col) %></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% issues.each do |issue| %>
+      <%# css_classes carries hd-awaiting, so the block highlights like the ticket list %>
+      <tr class="hascontextmenu <%= cycle('odd', 'even') %> <%= issue.css_classes %>">
+        <td class="project"><%= link_to_project(issue.project) %></td>
+        <td class="subject"><%= link_to_issue(issue, :project => false) %></td>
+        <td class="hd-awaiting-cell">
+          <% since, reason = issue.helpdesk_awaiting_agent %>
+          <% if since %>
+            <span class="hd-sla-chip hd-awaiting-chip">
+              <%= l("label_helpdesk_awaiting_#{reason == 'reopen' ? 'reopen' : 'reply'}") %>
+              (<%= time_tag(since) %>)
+            </span>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<% if total > issues.length %>
+  <p class="small">
+    <%= link_to l(:label_helpdesk_awaiting_show_all),
+                issues_path(:set_filter => 1,
+                            :f  => %w(helpdesk_awaiting_agent status_id),
+                            :op => { 'helpdesk_awaiting_agent' => '=', 'status_id' => 'o' },
+                            :v  => { 'helpdesk_awaiting_agent' => ['1'] }) %>
+  </p>
+<% end %>
+<% else %>
+<p class="nodata"><%= l(:label_no_data) %></p>
+<% end %>
+<% end %>

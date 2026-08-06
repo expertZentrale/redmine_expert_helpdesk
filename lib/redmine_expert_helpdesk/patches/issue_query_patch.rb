@@ -49,6 +49,22 @@ module RedmineExpertHelpdesk
         'breached'      => 5
       }.freeze
 
+      # "Wartet auf Bearbeitung": Zeitpunkt der aeltesten unbeantworteten Kunden-
+      # antwort. Anders als bei den SLA-Spalten ist das ein reiner IS-NULL-Test,
+      # daher kein UTC_TIMESTAMP() und kein Zeitzonen-Thema; das Wartealter wird in
+      # Ruby gerendert.
+      AWAITING_SINCE_SQL = <<~SQL.squish.freeze
+        (SELECT ti.awaiting_agent_since FROM helpdesk_ticket_infos ti
+         WHERE ti.issue_id = #{Issue.quoted_table_name}.id)
+      SQL
+
+      # Aufsteigend sortiert: wartende Tickets zuerst, darin die am laengsten
+      # wartenden zuerst. Wartende bekommen daher 0, nicht 1.
+      AWAITING_SORT_SQL = [
+        "(CASE WHEN #{AWAITING_SINCE_SQL} IS NULL THEN 1 ELSE 0 END)",
+        AWAITING_SINCE_SQL
+      ].freeze
+
       def self.prepended(base)
         unless base.available_columns.any? { |c| c.name == :helpdesk_kunde }
           base.available_columns << QueryColumn.new(
@@ -73,6 +89,17 @@ module RedmineExpertHelpdesk
             :caption  => :label_helpdesk_sla_solution_col
           )
         end
+
+        # Bewusst nicht an einen Setting-Lesezugriff gekoppelt: prepended laeuft beim
+        # Boot, ein Setting-Zugriff dort waere ein Boot-Order-Risiko. Eine registrierte,
+        # ggf. leere Spalte ist harmlos.
+        unless base.available_columns.any? { |c| c.name == :helpdesk_awaiting_agent }
+          base.available_columns << QueryColumn.new(
+            :helpdesk_awaiting_agent,
+            :sortable => AWAITING_SORT_SQL,
+            :caption  => :label_helpdesk_awaiting_agent_col
+          )
+        end
       end
 
       # Filter-Definition: wird bei jeder Query-Instanz registriert
@@ -87,6 +114,10 @@ module RedmineExpertHelpdesk
           :type => :list, :label => :label_helpdesk_sla_reaction_col, :values => sla_filter_values
         add_available_filter 'helpdesk_sla_solution',
           :type => :list, :label => :label_helpdesk_sla_solution_col, :values => sla_filter_values
+
+        add_available_filter 'helpdesk_awaiting_agent',
+          :type => :list, :label => :label_helpdesk_awaiting_agent_col,
+          :values => [[l(:label_helpdesk_awaiting_yes), '1'], [l(:label_helpdesk_awaiting_no), '0']]
       end
 
       def sql_for_helpdesk_sla_reaction_field(field, operator, value)
@@ -95,6 +126,27 @@ module RedmineExpertHelpdesk
 
       def sql_for_helpdesk_sla_solution_field(field, operator, value)
         sla_rank_condition(SLA_SOLUTION_RANK_SQL, operator, value)
+      end
+
+      def sql_for_helpdesk_awaiting_agent_field(field, operator, value)
+        exists = <<~SQL.squish
+          EXISTS (SELECT 1 FROM helpdesk_ticket_infos ti
+                  WHERE ti.issue_id = #{Issue.quoted_table_name}.id
+                    AND ti.awaiting_agent_since IS NOT NULL)
+        SQL
+
+        values = Array(value)
+        cond = if values.include?('1') && values.include?('0')
+                 '1=1'
+               elsif values.include?('1')
+                 exists
+               elsif values.include?('0')
+                 "NOT (#{exists})"
+               else
+                 '1=0'
+               end
+
+        operator == '!' ? "NOT (#{cond})" : cond
       end
 
       # Baut die Bedingung "(rang) IN (...)" fuer den Listen-Filter.

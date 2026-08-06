@@ -31,6 +31,13 @@
 .hd-sla-warning  { background: #fff3cd; border-color: #e0a800; color: #7a5c00; }
 .hd-sla-breached { background: #fce4e4; border-color: #e0a0a0; color: #a01818; font-weight: bold; }
 
+/* --- "Wartet auf Bearbeitung" --- */
+/* Linker Marker statt Hintergrundfarbe: Redmine faerbt Zeilenhintergruende bereits
+   nach Prioritaet, und .closed/.overdue wuerden mit einer Hintergrundregel kollidieren. */
+tr.issue.hd-awaiting td:first-child { box-shadow: inset 3px 0 0 #e0a800; }
+.hd-awaiting-chip { background: #fff3cd; border-color: #e0a800; color: #7a5c00; }
+.hd-awaiting-counter { margin: 0 0 1em; }
+
 /* --- SLA-Statistik-Seite (CSS-Balkendiagramme, keine externen Libs) --- */
 .hd-stats-filter { margin: 0 0 1em; padding: 8px; background: #f6f6f6; border: 1px solid #e0e0e0; border-radius: 3px; }
 .hd-stats-filter label { margin-right: 12px; }

@@ -1,0 +1,12 @@
+<%# Sidebar counter on the issue list: how many tickets wait for an agent.
+    Links to the same filter the query column uses, so counter and list agree. %>
+<h3><%= l(:label_helpdesk_awaiting_agent_col) %></h3>
+<p class="hd-awaiting-counter">
+  <%= link_to l(:label_helpdesk_awaiting_count, :count => count),
+              issues_path((project ? { :project_id => project } : {}).merge(
+                :set_filter => 1,
+                :f  => %w(helpdesk_awaiting_agent status_id),
+                :op => { 'helpdesk_awaiting_agent' => '=', 'status_id' => 'o' },
+                :v  => { 'helpdesk_awaiting_agent' => ['1'] }
+              )) %>
+</p>

@@ -155,9 +155,19 @@ module RedmineExpertHelpdesk
 
       if issue
         apply_rules(issue, subject, sender) if new_issue
-        reopen_if_closed(issue) unless new_issue
+        reopened = new_issue ? false : reopen_if_closed(issue, (object.is_a?(Journal) ? object : nil))
         contact = HelpdeskContact.find_or_create_for(sender, sender_name, @mailbox.project)
         HelpdeskTicketInfo.link!(issue, contact, @mailbox)
+
+        # Mark the ticket as waiting for an agent. Runs after link!, so the
+        # HelpdeskTicketInfo row is guaranteed to exist. New tickets are not flagged
+        # (they are new work by definition), and neither are mails an agent sent in
+        # themselves.
+        if !new_issue && HelpdeskTicketInfo.awaiting_agent_enabled? && !agent_authored?(object, issue)
+          HelpdeskTicketInfo.mark_awaiting_agent!(
+            issue, reopened ? 'reopen' : 'reply', meta.received_at || Time.current
+          )
+        end
 
         eml_author = (object.is_a?(Journal) ? object.user : issue.author) || User.anonymous
 
@@ -306,16 +316,65 @@ module RedmineExpertHelpdesk
 
     # Setzt den Status eines geschlossenen Tickets auf den konfigurierten Wiedereroeffnungs-Status.
     # Wird nur aufgerufen, wenn reopen_status_id am Postfach gesetzt ist.
-    def reopen_if_closed(issue)
-      return unless issue.status&.is_closed?
-      return if @mailbox.reopen_status_id.blank?
+    # Returns true when the ticket was actually reopened.
+    #
+    # save(validate: false) is deliberate and must stay: the ticket is mutated from
+    # arbitrary inbound mail, and a field made mandatory, a workflow transition or a
+    # locked version added since the ticket was created would otherwise make the save
+    # fail silently -- leaving the ticket closed with the customer's reply inside it.
+    def reopen_if_closed(issue, journal = nil)
+      return false unless issue.status&.is_closed?
+      return false if @mailbox.reopen_status_id.blank?
 
       reopen_status = IssueStatus.find_by(:id => @mailbox.reopen_status_id)
-      return unless reopen_status
+      return false unless reopen_status
+      return false if reopen_status.id == issue.status_id
 
+      old_status_id = issue.status_id
       issue.status = reopen_status
       issue.save(:validate => false)
+      record_reopen_journal(issue, journal, old_status_id, reopen_status.id)
       Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): Ticket ##{issue.id} wiedereroffnet \u2013 Status \"#{reopen_status.name}\""
+      true
+    end
+
+    # Makes the auto-reopen visible in the ticket history. Because the status is set
+    # without init_journal, Redmine writes no journal on its own.
+    #
+    # Preferred path: attach the status detail to the journal MailHandler just created
+    # for the customer reply. That shows one history entry (note + status change)
+    # instead of two, and creates no new Journal record -- so it cannot notify anyone.
+    # Using issue.init_journal instead would arm Redmine's notification after_save and
+    # could send mail, which this feature explicitly must not do.
+    def record_reopen_journal(issue, journal, old_status_id, new_status_id)
+      detail = {
+        :property => 'attr', :prop_key => 'status_id',
+        :old_value => old_status_id.to_s, :value => new_status_id.to_s
+      }
+
+      if journal&.persisted?
+        JournalDetail.create!(detail.merge(:journal => journal))
+      else
+        fallback = Journal.new(:journalized => issue, :user => issue.author || User.anonymous)
+        fallback.notify = false # Journal#after_create would mail the watchers otherwise
+        fallback.details << JournalDetail.new(detail)
+        fallback.save!
+      end
+    rescue StandardError => e
+      Rails.logger.warn "Helpdesk: Wiedereroeffnungs-Journal fuer Ticket ##{issue.id} fehlgeschlagen: #{e.message}"
+    end
+
+    # True when the inbound mail was written by an agent (someone allowed to reply to
+    # customers), so their own mail does not flag the ticket as waiting. Uses the same
+    # definition of "agent" as the clear path in JournalPatch, which keeps setting and
+    # clearing symmetric.
+    def agent_authored?(object, issue)
+      return false unless object.is_a?(Journal)
+
+      user = object.user
+      user.present? && user.allowed_to?(:send_helpdesk_reply, issue.project)
+    rescue StandardError
+      false
     end
 
     # --- Auto-Reply-Filter --------------------------------------------------
