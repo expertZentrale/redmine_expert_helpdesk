@@ -437,9 +437,14 @@ not as attachments).
 | `smtp` | Redmine's global SMTP settings from `configuration.yml` | Base64 data URIs | IMAP mailboxes only |
 
 `graph` is offered **only for a mailbox Microsoft actually hosts** — a Graph mailbox, or an IMAP
-mailbox on the Microsoft preset ("Microsoft 365 over IMAP"). Pointing a Gmail or Dovecot mailbox
-at Graph would send `sendMail` for an address that does not exist in the tenant, so the form
-hides the option and the model refuses it.
+mailbox whose **effective** OAuth2 template is Microsoft ("Microsoft 365 over IMAP"). Effective
+means the template actually in force: the mailbox's own only when *Credentials* is set to
+*Individually for this mailbox*, otherwise the one from the plugin settings. Pointing a Gmail or
+Dovecot mailbox at Graph would send `sendMail` for an address that does not exist in the tenant, so
+the form hides the option and the model refuses it. For the same reason it is offered only when the
+**central app registration is configured** — otherwise it would be a transport that fails at send
+time. (A Graph mailbox is exempt from that second condition: its own backend is Graph regardless,
+and requiring credentials there would make it unsavable while the Azure app is still being set up.)
 
 Outgoing mail is filed in the mailbox's **Sent folder** so the mailbox holds both halves of the
 conversation. Graph does that itself; for IMAP the plugin appends the message, taking the folder
@@ -452,6 +457,21 @@ this transport does not need an SMTP host either. The trade-off is inline images
 embeds them as data URIs rather than CID attachments, which some clients refuse to display.
 
 The autoresponder uses the same transport as replies.
+
+**Every send is logged.** Since three transports and four senders (agent reply, initial mail,
+autoresponder, SLA notification) all end up as "a mail left Redmine", each one writes a single
+log line naming the route it took:
+
+```
+[helpdesk] mail sent: kind=reply via="mailbox SMTP (smtp.example.com:587)" mailbox=support@example.com \
+  project=support issue=#4711 to="customer@example.com" message_id=<...> subject="Re: [#4711] Printer broken"
+```
+
+A send that raises is logged as `[helpdesk] mail FAILED: …` including the exception, always at
+**error** level, and the exception is re-raised as before. The severity of the success line is
+configurable under *Administration → Plugins → Redmine expert Helpdesk → Logging*
+(`debug` / `info` / `warn` / `error`, default `info`) — pick `debug` to keep it out of a
+production log, which by default records `info` and above.
 
 Stored recipient addresses are shown as badges in the journal headers after
 page load (client-side, by comparing `HelpdeskMessage.sent_at` with
@@ -611,6 +631,16 @@ per project.
 - **API key**, **endpoint** (blank = provider default; required for Custom), **model**.
 - **Default prompt** (a sensible German default is shipped) + limits (max input characters
   / output tokens / timeout).
+- **Min. input characters** (default 200) — mails shorter than this skip the AI call
+  entirely, since a two-line mail summarizes to itself. The private note then just states
+  that the summary was skipped and why (it still carries the 🤖 badge, with 0 tokens).
+  `0` disables the check and always summarizes.
+- **Log level for AI diagnostics** (*Logging* section, default `debug`, `off` to silence) —
+  the severity at which the plugin logs the measured input length and the resulting decision:
+  `[helpdesk][ai][debug] length issue=#42 chars=87 min=200 images=0 decision=skip`. Rails logs
+  at `info` in production and would drop a `debug` line, so the line is raised to the logger's
+  own level and carries its severity in the prefix instead — picking `debug` never silently
+  logs nothing.
 
 **Per-project configuration** (project *Settings → expert Helpdesk*, shown when AI is enabled
 centrally):

@@ -150,6 +150,9 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     user creation), then applies rules, links contact, autoresponder, phishing check, stores
     `.eml`, moves the mail. Reply-vs-new matching is delegated entirely to `MailHandler`.
   - `init_mailer.rb` — outbound "initial" mail (contact-assign / "New Helpdesk Ticket" flow).
+  - `mail_logger.rb` — one log line per outgoing mail incl. the transport used. Every send site
+    wraps its send in `MailLogger.track` (replies, init mail, autoresponder, SLA mail); success at
+    the `mail_log_level` setting (default `info`), failures always `error` + re-raise.
   - `template_renderer.rb` — `{{issue.*}}` templating for subjects/headers/footers/autoresponder.
   - `ai_client.rb` — AI provider client (`Net::HTTP`, mirrors `graph_client.rb`) for per-project
     mail summaries: `openai` / `anthropic` / `custom` (OpenAI-compatible, self-hosted). Central
@@ -210,9 +213,12 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
   mails **and** the autoresponder all follow it. **Anything that sends must ask
   `MailProvider.outgoing_for(mailbox)`** — never `MailProvider.for`, which is the *receiving*
   factory; three call sites once kept their own copy of that branch and each was wrong at least
-  once. `graph` is only available when `microsoft_hosted?` (a Graph mailbox, or an IMAP mailbox
-  on the Microsoft preset); the model validates it, so a Gmail mailbox cannot be pointed at
-  `sendMail` for an address that does not exist in the tenant.
+  once. `graph` is only available when `graph_transport_available?`: a Graph mailbox, or an IMAP
+  mailbox whose **effective** preset is Microsoft (`MailboxCredentials.preset_for`, not the
+  `oauth_preset` column — that one is not in force for global credentials) **and** with the central
+  app registration configured. The model validates it, so a Gmail mailbox cannot be pointed at
+  `sendMail` for an address that does not exist in the tenant; `syncTransport` in the mailbox form
+  mirrors the same rule.
 - **A Sent copy is filed for IMAP mailboxes** (`ImapClient#append_sent`), because SMTP files
   nothing and Graph's `sendMail` does. Folder resolution: RFC 6154 `\Sent` special-use flag →
   `sent_folder` column → preset. A failed APPEND is logged and swallowed — the customer already

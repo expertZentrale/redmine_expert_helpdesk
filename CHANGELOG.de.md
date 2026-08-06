@@ -5,6 +5,71 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Added
+
+- **Kurze Mails kosten keinen KI-Aufruf mehr.** Ein zweizeiliges „Bitte rufen Sie zurück" fasst
+  sich selbst zusammen, trotzdem ging jede eingehende Mail an den Anbieter. Die neue zentrale
+  Einstellung **Min. Eingabezeichen** (*Administration → Plugins → Redmine expert Helpdesk*,
+  Standard 200) legt die Schwelle fest: darunter überspringt `HelpdeskAiSummaryJob` den Anbieter
+  (und das Wissensbasis-Retrieval) und legt eine interne Notiz an, die festhält, dass die
+  Zusammenfassung übersprungen wurde und warum. Die Notiz wird wie jede andere KI-Notiz
+  protokolliert und behält damit ihr 🤖-Badge im Journal (0 Tokens); der eingesparte Aufruf
+  taucht in der Nutzungsstatistik auf. Vor der Messung werden
+  Leerzeichen normalisiert, damit Quoted-Printable-Umbrüche die Länge nicht aufblähen; Mails mit
+  Bildern gehen immer an die KI, und `0` deaktiviert die Prüfung.
+- **KI-Diagnose hat ein eigenes Log-Level.** Das neue `RedmineExpertHelpdesk::AiLogger`
+  (Gegenstück zu `MailLogger`) schreibt die gemessene Eingabelänge und die Entscheidung als
+  `[helpdesk][ai] length issue=#… chars=… min=… images=… decision=skip|summarize` – mit dem
+  Schweregrad aus **Log-Level für KI-Diagnose** (*Logging*, Standard `debug`, `off` schaltet ab).
+  Rails loggt in Produktion auf `:info` und würde eine `debug`-Zeile verschlucken – die
+  Einstellung sähe kaputt aus –, deshalb wird eine Zeile unterhalb der Logger-Schwelle auf diese
+  angehoben und trägt ihren Schweregrad stattdessen im Präfix. Ohne die Zeile ließe sich die
+  Schwelle nur raten.
+
+### Fixed
+
+- **Graph wurde als Versandweg für IMAP-Postfächer angeboten, für die er nicht funktionieren kann.**
+  Ein IMAP-Postfach über die zentrale Graph-Registrierung senden zu lassen, ist bei „Microsoft 365
+  über IMAP" legitim (und in Tenants ohne SMTP-AUTH der einzige funktionierende Weg) — die Regel las
+  dafür aber die **Spalte** `oauth_preset` des Postfachs, die gar nicht wirksam ist, wenn die
+  Zugangsdaten aus den Plugin-Einstellungen kommen (Standard). Ein Postfach mit globalen
+  Zugangsdaten wurde damit an einem Wert gemessen, den niemand benutzt: leer (die REST-API füllt ihn
+  nie nach) verbot Graph für ein echtes Microsoft-Postfach, ein veraltetes `microsoft` erlaubte ihn
+  auf einer Installation mit globaler Vorlage „Google". Zusätzlich wurde nie geprüft, ob überhaupt
+  eine zentrale App-Registrierung existiert — auf einer reinen IMAP-Installation ließ sich `graph`
+  auswählen und speichern und scheiterte erst beim Senden. `HelpdeskMailbox#microsoft_hosted?` fragt
+  jetzt `MailboxCredentials.preset_for` nach der **wirksamen** Vorlage, und das neue
+  `#graph_transport_available?` verlangt zusätzlich konfigurierte zentrale Zugangsdaten (ein
+  Graph-Postfach bleibt ausgenommen — sein Backend ist ohnehin Graph, und die Forderung würde es
+  unspeicherbar machen, solange die Azure-App noch eingerichtet wird). Das Postfach-Formular wendet
+  dieselbe Regel an, die Option erscheint also nicht mehr, wo sie nicht funktionieren kann.
+
+### Changed
+
+- **Der Versandweg steht jetzt neben dem Mail-Anbieter im Postfach-Formular.** "Versandweg" saß im
+  Abschnitt *Antwortvorlagen* zwischen Kopfzeile, Fußzeile und Signaturvorschau — eine technische
+  Transportentscheidung unter Textbausteinen, und eine, die Antworten, Initialmails und den
+  Autoresponder gleichermaßen betrifft, nicht nur Antworten. Er steht jetzt direkt unter
+  *Anbieter* am Kopf des Formulars, wo "wie kommt Mail rein" und "wie geht Mail raus"
+  zusammen gelesen werden. Gespeicherte Werte und Feldname (`reply_transport`) bleiben unverändert,
+  es muss nichts neu konfiguriert werden.
+
+### Added
+
+- **Jede ausgehende Mail wird mit ihrem Transportweg protokolliert.** Ausgehende Mail verlässt das
+  Plugin über drei Transportwege (Graph `sendMail`, eigener SMTP-Server des Postfachs, globales
+  ActionMailer-SMTP von Redmine) aus vier Stellen (Agenten-Antwort, Initialmail, Autoresponder,
+  SLA-Benachrichtigung) — bei einer vermissten Mail stand im Log nirgends, *auf welchem Weg* sie
+  versendet wurde. Alle Sendestellen laufen jetzt über `RedmineExpertHelpdesk::MailLogger`, der pro
+  Mail eine Zeile mit Route (inkl. SMTP-Host/Port), Postfach, Projekt, Ticket, Empfängern,
+  Message-ID und Betreff schreibt. Fehlgeschlagene Sendungen werden auf **error**-Level samt
+  Exception protokolliert und weitergeworfen, die bestehende Fehlerbehandlung bleibt unverändert.
+  Das Log-Level der Erfolgsmeldung ist unter *Administration → Plugins → Redmine expert Helpdesk →
+  Protokollierung* konfigurierbar (`mail_log_level`, Standard `info`; `debug` hält sie aus einem
+  Produktiv-Log heraus).
+
 ## [0.2.2] - 2026-08-04
 
 ### Added

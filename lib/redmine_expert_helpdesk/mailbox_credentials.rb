@@ -25,6 +25,22 @@ module RedmineExpertHelpdesk
         mailbox.credentials_source == 'mailbox' ? from_mailbox(mailbox) : from_global(mailbox, settings)
       end
 
+      # The preset that is actually in effect. A mailbox on global credentials
+      # follows the plugin settings - its own oauth_preset column is not used
+      # then and may be blank or stale, so anything deciding "is this mailbox
+      # hosted by X" has to ask here, not read the column.
+      def preset_for(mailbox, settings = nil)
+        return mailbox.oauth_preset.to_s if mailbox.credentials_source == 'mailbox'
+
+        global_preset(settings)
+      end
+
+      # The preset every mailbox on global credentials inherits.
+      def global_preset(settings = nil)
+        settings ||= Setting.plugin_redmine_expert_helpdesk
+        settings['default_oauth_preset'].presence || 'microsoft'
+      end
+
       private
 
       def from_mailbox(mailbox)
@@ -51,7 +67,7 @@ module RedmineExpertHelpdesk
       # Holding a second copy under default_oauth_* only ever produced two
       # sources of truth with an invisible precedence rule.
       def from_global(mailbox, settings)
-        preset = settings['default_oauth_preset'].presence || 'microsoft'
+        preset = preset_for(mailbox, settings)
         grant  = settings['default_oauth_grant'].presence || 'client_credentials'
         tenant = settings['tenant_id']
 

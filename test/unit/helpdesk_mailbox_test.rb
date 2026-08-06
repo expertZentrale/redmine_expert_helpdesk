@@ -151,20 +151,58 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
   end
 
   def test_graph_transport_is_unavailable_for_a_non_microsoft_mailbox
-    mailbox = imap_mailbox(:oauth_preset => 'google', :reply_transport => 'graph')
+    with_central_graph do
+      mailbox = imap_mailbox(:credentials_source => 'mailbox', :oauth_preset => 'google',
+                             :reply_transport => 'graph')
 
-    assert_not mailbox.valid?
-    assert_includes mailbox.errors.attribute_names, :reply_transport
-    assert_not_includes mailbox.available_reply_transports, 'graph'
+      assert_not mailbox.valid?
+      assert_includes mailbox.errors.attribute_names, :reply_transport
+      assert_not_includes mailbox.available_reply_transports, 'graph'
+    end
   end
 
   # "Microsoft 365 over IMAP" is a real setup, and there Graph is a legitimate
   # sender for a mailbox fetched over IMAP.
   def test_graph_transport_is_available_for_microsoft_over_imap
-    mailbox = imap_mailbox(:oauth_preset => 'microsoft', :reply_transport => 'graph')
+    with_central_graph do
+      mailbox = imap_mailbox(:credentials_source => 'mailbox', :oauth_preset => 'microsoft',
+                             :reply_transport => 'graph')
 
-    assert_includes mailbox.available_reply_transports, 'graph'
-    assert mailbox.valid?, mailbox.errors.full_messages.join(', ')
+      assert_includes mailbox.available_reply_transports, 'graph'
+      assert mailbox.valid?, mailbox.errors.full_messages.join(', ')
+    end
+  end
+
+  # A mailbox on global credentials follows the plugin settings - its own
+  # oauth_preset column is not in effect and is usually blank, so it must not be
+  # what decides whether Microsoft hosts this mailbox.
+  def test_graph_transport_follows_the_effective_preset_not_the_column
+    with_central_graph('default_oauth_preset' => 'microsoft') do
+      mailbox = imap_mailbox(:credentials_source => 'global', :oauth_preset => nil,
+                             :reply_transport => 'graph')
+
+      assert_includes mailbox.available_reply_transports, 'graph'
+      assert mailbox.valid?, mailbox.errors.full_messages.join(', ')
+    end
+
+    with_central_graph('default_oauth_preset' => 'google') do
+      stale = imap_mailbox(:credentials_source => 'global', :oauth_preset => 'microsoft')
+
+      assert_not_includes stale.available_reply_transports, 'graph'
+    end
+  end
+
+  # Without a central app registration, Graph is a route that only fails at send
+  # time - except for a Graph mailbox, whose own backend is Graph anyway.
+  def test_graph_transport_needs_a_configured_registration
+    with_settings_hash('tenant_id' => '', 'client_id' => '', 'client_secret' => '',
+                       'default_oauth_preset' => 'microsoft') do
+      assert_not_includes imap_mailbox(:credentials_source => 'global').available_reply_transports,
+                          'graph'
+      assert_includes HelpdeskMailbox.new(:project => Project.new,
+                                          :mailbox_address => 'hd@example.com')
+                                     .available_reply_transports, 'graph'
+    end
   end
 
   # Rows written before this rule existed store 'graph' on a Graph mailbox.
@@ -240,6 +278,14 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
                           :provider        => 'imap',
                           :imap_host       => 'imap.example.com',
                           :smtp_host       => 'smtp.example.com' }.merge(attrs))
+  end
+
+  # Graph as an explicit transport needs the central registration; these tests
+  # are about the preset rule, not about missing credentials.
+  def with_central_graph(overrides = {}, &block)
+    with_settings_hash({ 'tenant_id'     => 'tenant',
+                         'client_id'     => 'client',
+                         'client_secret' => 'secret' }.merge(overrides), &block)
   end
 
   def with_settings_hash(overrides)

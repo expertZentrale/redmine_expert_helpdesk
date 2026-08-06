@@ -552,7 +552,10 @@ module RedmineExpertHelpdesk
         mail['References']  = ref_id
       end
 
-      deliver_autoresponder(mail)
+      MailLogger.track(
+        :kind => 'autoresponder', :mailbox => @mailbox, :issue => issue,
+        :to => contact.email, :subject => subject, :message_id => mail.message_id
+      ) { deliver_autoresponder(mail) }
 
       HelpdeskMessage.create!(
         :issue => issue, :helpdesk_contact => contact, :helpdesk_mailbox => @mailbox,

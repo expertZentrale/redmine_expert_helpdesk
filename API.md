@@ -711,7 +711,10 @@ curl -H "X-Redmine-API-Key: $KEY" -H "Content-Type: application/json" \
 Validation worth knowing: `imap_host` is required when `provider` is `imap`;
 `smtp_host` is required when the mailbox sends through its own SMTP server; and
 `reply_transport: "graph"` is rejected unless the mailbox is actually Microsoft-hosted
-(`provider: "graph"`, or `provider: "imap"` with `oauth_preset: "microsoft"`).
+(`provider: "graph"`, or `provider: "imap"` whose **effective** preset is `microsoft` — the
+`oauth_preset` field only counts with `credentials_source: "mailbox"`, otherwise the plugin's
+global default preset applies) and a central app registration is configured. Read
+`available_reply_transports` off the mailbox to see what a given mailbox accepts.
 
 Blank connection fields are filled from the selected `oauth_preset` and the plugin's
 global defaults on save, so a minimal payload is usually enough.

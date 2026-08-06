@@ -453,9 +453,15 @@ Inline-Bilder (CID-Methode, nicht als Anhang).
 | `smtp` | globale SMTP-Einstellungen von Redmine aus der `configuration.yml` | Base64-Data-URI | nur IMAP-Postfächer |
 
 `graph` wird **nur für ein Postfach angeboten, das Microsoft auch hostet** — ein Graph-Postfach
-oder ein IMAP-Postfach mit der Microsoft-Vorlage („Microsoft 365 über IMAP“). Ein Gmail- oder
-Dovecot-Postfach auf Graph zu stellen hieße, `sendMail` für eine Adresse aufzurufen, die es im
-Tenant nicht gibt; das Formular blendet die Option deshalb aus und das Modell lehnt sie ab.
+oder ein IMAP-Postfach, dessen **wirksame** OAuth2-Vorlage Microsoft ist („Microsoft 365 über
+IMAP“). Wirksam heißt: die eigene Vorlage nur, wenn *Zugangsdaten* auf *Individuell für dieses
+Postfach* steht, sonst die aus den Plugin-Einstellungen. Ein Gmail- oder Dovecot-Postfach auf Graph
+zu stellen hieße, `sendMail` für eine Adresse aufzurufen, die es im Tenant nicht gibt; das Formular
+blendet die Option deshalb aus und das Modell lehnt sie ab. Aus demselben Grund wird sie nur
+angeboten, wenn die **zentrale App-Registrierung konfiguriert** ist — sonst wäre es ein Weg, der
+erst beim Senden scheitert. (Ein Graph-Postfach ist von dieser zweiten Bedingung ausgenommen: sein
+Backend ist ohnehin Graph, und die Forderung würde es unspeicherbar machen, solange die Azure-App
+noch eingerichtet wird.)
 
 Ausgehende Mails werden im **Gesendet-Ordner** des Postfachs abgelegt, damit das Postfach beide
 Hälften der Unterhaltung enthält. Graph erledigt das selbst; bei IMAP legt das Plugin die Kopie
@@ -469,6 +475,21 @@ IMAP-Postfach auf diesem Weg benötigt auch keinen SMTP-Host. Der Preis sind die
 Hier werden sie als data-URI eingebettet statt als CID-Anhang, was manche Clients nicht anzeigen.
 
 Der Autoresponder nutzt denselben Transport wie Antworten.
+
+**Jeder Versand wird protokolliert.** Da drei Transportwege und vier Absender (Agenten-Antwort,
+Initialmail, Autoresponder, SLA-Benachrichtigung) am Ende alle nur "eine Mail hat Redmine
+verlassen" bedeuten, schreibt jeder Versand eine Logzeile mit dem verwendeten Weg:
+
+```
+[helpdesk] mail sent: kind=reply via="mailbox SMTP (smtp.example.com:587)" mailbox=support@example.com \
+  project=support issue=#4711 to="kunde@example.com" message_id=<...> subject="Re: [#4711] Drucker defekt"
+```
+
+Ein fehlgeschlagener Versand wird als `[helpdesk] mail FAILED: …` samt Exception protokolliert,
+immer auf **error**-Level, und die Exception wird wie bisher weitergeworfen. Das Level der
+Erfolgsmeldung ist unter *Administration → Plugins → Redmine expert Helpdesk → Protokollierung*
+konfigurierbar (`debug` / `info` / `warn` / `error`, Standard `info`) — mit `debug` bleibt sie aus
+einem Produktiv-Log heraus, das standardmäßig ab `info` schreibt.
 
 Die gespeicherten Empfängeradressen werden nach dem Seitenaufruf in den
 Journalüberschriften als Badge eingeblendet (clientseitig per Timestamp-
@@ -633,6 +654,16 @@ Standardmäßig deaktiviert, Opt-in pro Projekt.
   **Modell**.
 - **Standard-Prompt** (guter deutscher Default mitgeliefert) sowie Limits (max.
   Eingabezeichen / Ausgabe-Tokens / Timeout).
+- **Min. Eingabezeichen** (Standard 200) – kürzere Mails werden gar nicht erst an die KI
+  geschickt, denn eine zweizeilige Mail fasst sich selbst zusammen. Die interne Notiz hält
+  dann nur fest, dass die Zusammenfassung übersprungen wurde und warum (mit 🤖-Badge und
+  0 Tokens). `0` deaktiviert die Prüfung.
+- **Log-Level für KI-Diagnose** (Abschnitt *Logging*, Standard `debug`, `off` schaltet ab) –
+  mit welchem Schweregrad die gemessene Eingabelänge und die Entscheidung geloggt werden:
+  `[helpdesk][ai][debug] length issue=#42 chars=87 min=200 images=0 decision=skip`. Rails loggt
+  in Produktion auf `info` und würde eine `debug`-Zeile verwerfen – deshalb wird die Zeile auf
+  das Logger-Level angehoben und trägt ihren Schweregrad im Präfix. `debug` läuft damit nie
+  ins Leere.
 
 **Projekt-Konfiguration** (Projekt-*Einstellungen → expert Helpdesk*, sichtbar wenn KI zentral
 aktiviert ist):

@@ -159,7 +159,12 @@ module RedmineExpertHelpdesk
 
       mail_obj.delivery_method(ActionMailer::Base.delivery_method,
                                ActionMailer::Base.smtp_settings || {})
-      mail_obj.deliver!
+      MailLogger.track(
+        :kind => 'initial', :mailbox => @mailbox, :issue => @issue,
+        :to => @to_list, :cc => @cc_list, :bcc => @bcc_list,
+        :subject => subject, :message_id => message_id,
+        :detail => "delivery_method=#{ActionMailer::Base.delivery_method}"
+      ) { mail_obj.deliver! }
       # Redmine's relay files nothing in the mailbox itself. No-op for Graph.
       MailProvider.for(@mailbox).archive_sent(mail_obj.to_s)
 
@@ -177,7 +182,11 @@ module RedmineExpertHelpdesk
       cid_map, html_with_cid = build_cid_map(body_html, inline_atts)
       mime_msg = build_cid_mime(@mailbox.mailbox_address, @to_list.join(', '),
                                 subject, html_with_cid, regular_atts, cid_map, message_id)
-      MailProvider.outgoing_for(@mailbox).send_mail_mime(mime_msg)
+      MailLogger.track(
+        :kind => 'initial', :mailbox => @mailbox, :issue => @issue,
+        :to => @to_list, :cc => @cc_list, :bcc => @bcc_list,
+        :subject => subject, :message_id => message_id
+      ) { MailProvider.outgoing_for(@mailbox).send_mail_mime(mime_msg) }
 
       # Versendete Dateien (regulaere Anhaenge + inline eingebettete Bilder) fuer die
       # Anzeige im Kundenbereich zurueckgeben.

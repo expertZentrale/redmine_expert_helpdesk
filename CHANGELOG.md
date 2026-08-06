@@ -6,6 +6,67 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Added
+
+- **Short mails no longer cost an AI call.** A two-line "please call me back" summarizes to
+  itself, yet every ingested mail went to the provider. The new central setting **Min. input
+  characters** (*Administration → Plugins → Redmine expert Helpdesk*, default 200) sets the
+  threshold: below it, `HelpdeskAiSummaryJob` skips the provider (and the knowledge-base
+  retrieval) and posts a private note stating that the summary was skipped and why. The note
+  is recorded like any other AI note, so it keeps its 🤖 journal badge (0 tokens) and the
+  saved call shows up in the usage statistics. Whitespace is normalized before measuring, so quoted-printable
+  line noise does not inflate the length; mails with images always go to the AI, and `0`
+  disables the check.
+- **AI diagnostics have their own log level.** The new `RedmineExpertHelpdesk::AiLogger`
+  (counterpart of `MailLogger`) writes the measured input length and the skip decision as
+  `[helpdesk][ai] length issue=#… chars=… min=… images=… decision=skip|summarize`, at the
+  severity set by **Log level for AI diagnostics** (*Logging*, default `debug`, `off` to
+  silence). Rails runs its logger at `:info` in production, which would swallow a `debug` line
+  and make the setting look broken, so a line below the logger's threshold is raised to that
+  threshold and carries its own severity in the prefix instead. Without the line the threshold
+  could only be tuned by guessing what a given mail measured.
+
+### Fixed
+
+- **Graph was offered as the send path for IMAP mailboxes it cannot serve.** Sending an IMAP
+  mailbox's mail through the central Graph registration is legitimate for "Microsoft 365 over IMAP"
+  (and the only working path in tenants that disable SMTP AUTH), but the rule that decided it read
+  the mailbox's own `oauth_preset` **column** — which is not in effect when credentials come from the
+  plugin settings, the default. A mailbox on global credentials was therefore judged by a value
+  nobody was using: blank (the REST API never backfills it) refused Graph for a genuine Microsoft
+  mailbox, a stale `microsoft` allowed it on an install whose global template is Google. On top of
+  that, nothing checked whether a central app registration existed at all, so on a pure IMAP install
+  `graph` could be selected and saved and then failed at send time. `HelpdeskMailbox#microsoft_hosted?`
+  now asks `MailboxCredentials.preset_for` for the **effective** preset, and the new
+  `#graph_transport_available?` additionally requires configured central credentials (a Graph mailbox
+  stays exempt — its own backend is Graph either way, and requiring credentials there would make it
+  unsavable while the Azure app is still being set up). The mailbox form applies the same rule, so
+  the option no longer appears where it cannot work.
+
+### Changed
+
+- **The send path moved next to the mail provider in the mailbox form.** "Send via" sat in the
+  *Reply templates* section, between header, footer and signature preview — a transport choice
+  filed under text snippets, and one that governs replies, initial mails and the autoresponder
+  alike, not just replies. It now sits directly under *Provider* at the top of the form, where
+  "how mail comes in" and "how mail goes out" are read together. No stored value or field name
+  changed (`reply_transport`), so nothing needs re-configuring.
+
+### Added
+
+- **Every outgoing mail is logged with the transport it took.** Outgoing mail leaves the plugin
+  through three transports (Graph `sendMail`, the mailbox's own SMTP server, Redmine's global
+  ActionMailer SMTP) from four places (agent reply, initial mail, autoresponder, SLA breach
+  notification) — when a customer reported a missing mail, nothing in the log said *which way* it
+  had been sent. All send sites now funnel through `RedmineExpertHelpdesk::MailLogger`, which
+  writes one line per mail containing the route (including SMTP host/port), mailbox, project,
+  issue, recipients, message id and subject. Failed sends are logged at **error** level with the
+  exception and re-raised, so existing error handling is unchanged. The severity of the success
+  line is configurable under *Administration → Plugins → Redmine expert Helpdesk → Logging*
+  (`mail_log_level`, default `info`; `debug` keeps it out of a production log).
+
 ## [0.2.2] - 2026-08-04
 
 ### Added

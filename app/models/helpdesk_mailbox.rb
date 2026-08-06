@@ -171,14 +171,31 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
   # every 'graph' mailbox, plus an IMAP mailbox on the Microsoft preset - the
   # "Microsoft 365 over IMAP" setup, where Graph is a legitimate outgoing route
   # and files the Sent copy for free.
+  #
+  # Judged by the preset that is in EFFECT, not by the oauth_preset column: a
+  # mailbox on global credentials follows the plugin settings, so the column is
+  # either blank (nothing backfills it - the API can leave it empty) or stale
+  # from an earlier configuration. Reading it decided this question with a value
+  # nobody was using.
   def microsoft_hosted?
-    graph? || (imap? && oauth_preset.to_s == 'microsoft')
+    graph? || (imap? && RedmineExpertHelpdesk::MailboxCredentials.preset_for(self) == 'microsoft')
+  end
+
+  # Being hosted by Microsoft is not enough - the central app registration has to
+  # exist, otherwise 'graph' is a route that only fails at send time. A 'graph'
+  # mailbox is exempt: its own backend is Graph either way, and demanding
+  # credentials here would make it unsavable while the Azure app is still being
+  # set up.
+  def graph_transport_available?
+    return true if graph?
+
+    microsoft_hosted? && RedmineExpertHelpdesk::GraphClient.new.configured?
   end
 
   # The transports this mailbox may actually use. Drives the form select and the
   # validation, so an unusable combination cannot be stored in the first place.
   def available_reply_transports
-    REPLY_TRANSPORTS.reject { |t| t == 'graph' && !microsoft_hosted? }
+    REPLY_TRANSPORTS.reject { |t| t == 'graph' && !graph_transport_available? }
   end
 
   # True unless an interactive OAuth consent is still outstanding.

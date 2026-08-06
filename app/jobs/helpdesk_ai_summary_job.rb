@@ -54,6 +54,24 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
     user_text, image_parts = build_input(base_text, attachments, ps, settings)
     return if user_text.blank? && image_parts.empty?
 
+    # Too short to be worth an AI call: a two-line mail summarizes to itself.
+    # Note the skip (the mail itself is right above it) and spare provider/RAG.
+    short = too_short?(base_text, settings)
+    RedmineExpertHelpdesk::AiLogger.debug(
+      "length issue=##{issue.id} chars=#{measured_length(base_text)} " \
+      "min=#{settings['ai_min_input_chars'].to_i} images=#{image_parts.size} " \
+      "decision=#{short && image_parts.empty? ? 'skip' : 'summarize'}"
+    )
+
+    if image_parts.empty? && short
+      journal = create_note(issue,
+                            I18n.t(:text_helpdesk_ai_skipped_short,
+                                   :min => settings['ai_min_input_chars'].to_i),
+                            I18n.t(:label_helpdesk_ai_summary_skipped))
+      record_skipped(issue, journal, client)
+      return
+    end
+
     prompt  = ps.effective_ai_prompt.presence || RedmineExpertHelpdesk::AiClient::DEFAULT_PROMPT
     system  = RedmineExpertHelpdesk::TemplateRenderer.render(prompt, :issue => issue, :contact => contact_for(issue))
 
@@ -147,6 +165,20 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
         issue.attachments.to_a
       end
     list.reject { |a| a.id == exclude_id || a.description == 'Original E-Mail' }
+  end
+
+  # Mail body below the configured threshold? Whitespace is normalized first, so
+  # quoted-printable line noise does not inflate the length. 0/blank disables the
+  # check (every mail goes to the AI).
+  def too_short?(base_text, settings)
+    min_chars = settings['ai_min_input_chars'].to_i
+    return false unless min_chars.positive?
+
+    measured_length(base_text) < min_chars
+  end
+
+  def measured_length(base_text)
+    base_text.to_s.gsub(/\s+/, ' ').strip.length
   end
 
   # Baut den User-Text (Mailinhalt + optionale Anhang-Infos) und die Bildliste
@@ -268,8 +300,8 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
       'Passt nichts, lasse den Abschnitt weg.'
   end
 
-  def create_note(issue, summary)
-    body = "🤖 #{I18n.t(:label_helpdesk_ai_summary)}\n\n#{summary}"
+  def create_note(issue, summary, label = I18n.t(:label_helpdesk_ai_summary))
+    body = "🤖 #{label}\n\n#{summary}"
     journal = Journal.new(
       :journalized   => issue,
       :user          => User.anonymous,
@@ -291,6 +323,21 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
       :model         => client.model,
       :input_tokens  => usage[:input],
       :output_tokens => usage[:output]
+    )
+  rescue => e
+    Rails.logger.warn("[helpdesk][ai] Token-Protokoll konnte nicht gespeichert werden: #{e.message}")
+  end
+
+  # Skipped run: same record, explicit zero usage. Keeps the note marked as an
+  # automatic AI note (🤖 badge) and makes the saved call visible in the stats.
+  def record_skipped(issue, journal, client)
+    HelpdeskAiSummary.create!(
+      :issue_id      => issue.id,
+      :journal_id    => journal&.id,
+      :provider      => client.provider,
+      :model         => client.model,
+      :input_tokens  => 0,
+      :output_tokens => 0
     )
   rescue => e
     Rails.logger.warn("[helpdesk][ai] Token-Protokoll konnte nicht gespeichert werden: #{e.message}")

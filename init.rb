@@ -14,6 +14,7 @@
 require File.expand_path('../lib/redmine_expert_helpdesk/secret_box', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/provider_presets', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/xoauth2', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/mail_logger', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mail_provider', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mailbox_credentials', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/oauth_token_provider', __FILE__)
@@ -23,6 +24,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/imap_client', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/smtp_sender', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/imap_provider', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mailbox_folders', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/ai_logger', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_client', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_store', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_extractor', __FILE__)
@@ -93,6 +95,8 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'ai_model'             => '',
              'ai_prompt'            => RedmineExpertHelpdesk::AiClient::DEFAULT_PROMPT,
              'ai_max_input_chars'   => '12000',
+             'ai_min_input_chars'   => '200',
+             'ai_log_level'         => RedmineExpertHelpdesk::AiLogger::DEFAULT_LEVEL,
              'ai_max_output_tokens' => '500',
              'ai_timeout'           => '60',
              'kb_enabled'         => '0',
@@ -107,7 +111,9 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'kb_extract_prompt'  => RedmineExpertHelpdesk::KnowledgeExtractor::DEFAULT_PROMPT,
              'kb_top_k'           => '3',
              'kb_min_score'       => '0.5',
-             'kb_min_results'     => '1'
+             'kb_min_results'     => '1',
+             # Severity of the "mail sent" log line (failures are always errors).
+             'mail_log_level'     => RedmineExpertHelpdesk::MailLogger::DEFAULT_LEVEL
            }
 
   project_module :helpdesk do

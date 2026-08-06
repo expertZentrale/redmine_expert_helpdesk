@@ -278,7 +278,8 @@
     });
 
     hdAiSummaries.forEach(function(s) {
-      if (!s.total) return;
+      // 0 is a real value (skipped run), only an unknown usage suppresses the badge.
+      if (s.total == null) return;
       var h4 = noteHeaderFor(s.journalId);
       if (h4) badgeTarget(h4).appendChild(buildAiBadge(s));
     });

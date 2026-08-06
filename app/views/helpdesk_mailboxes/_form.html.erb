@@ -24,6 +24,31 @@
         :id => 'hd_provider' %>
     <em class="info"><%= l(:text_helpdesk_provider_info) %></em>
   </p>
+  <%# Sits next to the provider, not with the reply templates: the provider says
+      how mail comes in, this says how it goes out - and it governs replies,
+      initial mails and the autoresponder alike, not just reply templates.
+      Sending through Graph only works for a mailbox Microsoft actually hosts;
+      the JS below removes that option for anything else, and the model
+      validates the same rule so the API cannot store it either. %>
+  <p>
+    <label><%= l(:field_helpdesk_reply_transport) %></label>
+    <%= select_tag 'helpdesk_mailbox[reply_transport]',
+        options_for_select(
+          [[l(:label_helpdesk_transport_provider), 'provider'],
+           [l(:label_helpdesk_transport_graph),    'graph'],
+           [l(:label_helpdesk_transport_smtp),     'smtp']],
+          @mailbox.reply_transport.presence || 'graph'
+        ),
+        :id => 'hd_reply_transport',
+        :data => { :label_smtp  => l(:label_helpdesk_transport_mailbox_smtp),
+                   :label_graph => l(:label_helpdesk_transport_mailbox_graph),
+                   # Both are invisible to the form: the effective preset of a
+                   # mailbox on global credentials, and whether a central app
+                   # registration exists at all.
+                   :global_preset => RedmineExpertHelpdesk::MailboxCredentials.global_preset,
+                   :central_graph => RedmineExpertHelpdesk::GraphClient.new.configured? } %>
+    <em class="info"><%= l(:text_helpdesk_reply_transport_info) %></em>
+  </p>
   <p>
     <label></label>
     <button type="button" id="hd_test_connection"><span class="icon icon-checked"><%= hd_icon_label('checked') %><%= l(:label_helpdesk_test_connection) %></span></button>
@@ -362,23 +387,6 @@
 
 <fieldset class="box tabular">
   <legend><%= l(:label_helpdesk_reply_templates) %></legend>
-  <p>
-    <label><%= l(:field_helpdesk_reply_transport) %></label>
-    <%# Sending through Graph only works for a mailbox Microsoft actually hosts;
-        the JS below removes that option for anything else, and the model
-        validates the same rule so the API cannot store it either. %>
-    <%= select_tag 'helpdesk_mailbox[reply_transport]',
-        options_for_select(
-          [[l(:label_helpdesk_transport_provider), 'provider'],
-           [l(:label_helpdesk_transport_graph),    'graph'],
-           [l(:label_helpdesk_transport_smtp),     'smtp']],
-          @mailbox.reply_transport.presence || 'graph'
-        ),
-        :id => 'hd_reply_transport',
-        :data => { :label_smtp  => l(:label_helpdesk_transport_mailbox_smtp),
-                   :label_graph => l(:label_helpdesk_transport_mailbox_graph) } %>
-    <em class="info"><%= l(:text_helpdesk_reply_transport_info) %></em>
-  </p>
   <p>
     <label><%= l(:field_helpdesk_reply_header) %></label>
     <%= text_area_tag 'helpdesk_mailbox[reply_header]', @mailbox.reply_header, :rows => 3, :cols => 60 %>
@@ -756,6 +764,9 @@
     [imapFs, smtpFs, authFs].forEach(function (el) {
       if (el) el.style.display = isImap ? '' : 'none';
     });
+    // Die Transportauswahl haengt am Anbieter und muss auch fuer ein
+    // Graph-Postfach stimmen - daher vor dem IMAP-Teil.
+    syncTransport(isImap);
     if (!isImap) return;
 
     var oauth = !authMethodSel || authMethodSel.value === 'oauth2';
@@ -781,16 +792,24 @@
     if (tenantRow) tenantRow.style.display = preset === 'microsoft' ? '' : 'none';
     if (urlsBlock) urlsBlock.style.display = preset === 'generic' ? '' : 'none';
 
-    // Graph nur als Preis fuer ein Postfach, das Microsoft auch hostet - sonst
-    // schickt der Versand ein sendMail an ein Postfach, das dort nicht existiert.
-    syncTransport(isImap, preset);
     if (sentFolderRow) sentFolderRow.style.display = isImap ? '' : 'none';
   }
 
-  function syncTransport(isImap, preset) {
+  // Graph nur fuer ein Postfach, das Microsoft auch hostet - sonst schickt der
+  // Versand ein sendMail an ein Postfach, das dort nicht existiert - und nur,
+  // wenn die zentrale App-Registrierung ueberhaupt gepflegt ist; sonst waere es
+  // ein Weg, der erst beim Senden scheitert. Spiegelt
+  // HelpdeskMailbox#graph_transport_available?.
+  function syncTransport(isImap) {
     if (!transportSel) return;
 
-    var microsoftHosted = !isImap || preset === 'microsoft';
+    // Bei Zugangsdaten aus den Plugin-Einstellungen zaehlt deren Vorlage, nicht
+    // das dann ausgeblendete Feld am Postfach.
+    var ownCredentials  = sourceSel && sourceSel.value === 'mailbox';
+    var preset          = (ownCredentials && presetSel) ? presetSel.value
+                                                        : transportSel.dataset.globalPreset;
+    var centralGraph    = transportSel.dataset.centralGraph === 'true';
+    var microsoftHosted = !isImap || (preset === 'microsoft' && centralGraph);
     var graphOption = transportSel.querySelector('option[value="graph"]');
     if (graphOption) {
       graphOption.hidden   = !microsoftHosted;

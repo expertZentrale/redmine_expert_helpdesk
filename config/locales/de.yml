@@ -99,6 +99,11 @@ de:
   label_helpdesk_test_connection: Verbindung testen
   label_helpdesk_default_mail_credentials: "Zentraler Mail-Zugang (App-Registrierung)"
   label_helpdesk_api_keys: "API-Keys für Cron-Endpunkte"
+  label_helpdesk_logging: "Protokollierung"
+  label_helpdesk_ai_log_level: "Log-Level für KI-Diagnose"
+  text_helpdesk_ai_log_level_info: "Schweregrad der KI-Diagnosezeilen (Eingabelänge, Übersprung-Entscheidung); 'off' schaltet sie ab. Die Zeile wird immer geschrieben: loggt Rails auf höherem Level (Produktion: info), wird sie dorthin angehoben und behält ihren Schweregrad im Präfix. KI-Fehler werden immer geloggt."
+  label_helpdesk_mail_log_level: "Log-Level für gesendete Mails"
+  text_helpdesk_mail_log_level_info: "Jede vom Helpdesk versendete Mail (Antwort, Initialmail, Autoresponder, SLA-Benachrichtigung) wird mit dem verwendeten Transportweg protokolliert. Fehlgeschlagene Sendungen werden immer als Fehler protokolliert."
   text_helpdesk_default_preset_info: "Bestimmt, welche Felder darunter überhaupt nötig sind. Postfächer mit \"Aus den Plugin-Einstellungen\" erben diese Vorlage."
   text_helpdesk_global_app_registration_info: "Eine Registrierung für alles: Graph-Postfächer und IMAP/SMTP-Postfächer mit OAuth2 nutzen sie gemeinsam."
   text_helpdesk_default_host_info: "Wird verwendet, wenn ein Postfach den Host leer lässt. Eine benannte Vorlage hat immer Vorrang."
@@ -365,9 +370,9 @@ de:
   label_helpdesk_transport_mailbox_smtp: "Das Postfach selbst (eigener SMTP-Server)"
   label_helpdesk_transport_mailbox_graph: "Das Postfach selbst (Graph-API)"
   text_helpdesk_sent_folder_info: "Hier wird eine Kopie ausgehender Mails abgelegt, damit das Postfach beide Hälften der Unterhaltung zeigt. Leer lassen, damit der Server seinen eigenen Gesendet-Ordner benennt."
-  error_helpdesk_transport_not_available: "ist für dieses Postfach nicht verfügbar — Graph kann nur für ein in Microsoft 365 gehostetes Postfach versenden"
+  error_helpdesk_transport_not_available: "ist für dieses Postfach nicht verfügbar — Graph kann nur für ein in Microsoft 365 gehostetes Postfach und nur mit konfigurierter zentraler App-Registrierung versenden"
   warning_helpdesk_sent_append_failed: "Die Mail wurde versendet, es konnte aber keine Kopie im Gesendet-Ordner abgelegt werden: %{message}"
-  text_helpdesk_reply_transport_info: "Backend des Postfachs nutzt das, was für das Postfach selbst konfiguriert ist. Graph API benötigt eine konfigurierte Azure-App-Registrierung. SMTP verwendet die in der Redmine-Konfiguration hinterlegten SMTP-Einstellungen und benötigt am Postfach überhaupt keine Mail-Zugangsdaten — dort werden Inline-Bilder allerdings als data-URI eingebettet statt als CID-Anhang. Antworten, Erstmails und Autoresponder folgen alle dieser Einstellung."
+  text_helpdesk_reply_transport_info: "Backend des Postfachs nutzt das, was für das Postfach selbst konfiguriert ist. Graph API wird für ein IMAP-Postfach nur angeboten, wenn das Postfach in Microsoft 365 liegt (wirksame Vorlage \"Microsoft\"), und benötigt eine konfigurierte zentrale Azure-App-Registrierung. SMTP verwendet die in der Redmine-Konfiguration hinterlegten SMTP-Einstellungen und benötigt am Postfach überhaupt keine Mail-Zugangsdaten — dort werden Inline-Bilder allerdings als data-URI eingebettet statt als CID-Anhang. Antworten, Erstmails und Autoresponder folgen alle dieser Einstellung."
   button_helpdesk_send_reply: Antwort senden
   label_helpdesk_reply_placeholder: Antworttext hier eingeben …
   notice_helpdesk_reply_sent: "Antwort an %{email} gesendet."
@@ -413,11 +418,15 @@ de:
   field_helpdesk_ai_prompt: 'Prompt'
   text_helpdesk_ai_prompt_info: 'Zentraler Standard-Prompt. Projekte können ihn erweitern oder ersetzen.'
   field_helpdesk_ai_max_input_chars: 'Max. Eingabezeichen'
+  field_helpdesk_ai_min_input_chars: 'Min. Eingabezeichen'
   text_helpdesk_ai_max_input_chars_info: 'Mailinhalt (und Anhang-Text) wird vor dem Senden auf diese Länge gekürzt.'
+  text_helpdesk_ai_min_input_chars_info: 'Kürzere Mails werden nicht an die KI geschickt; stattdessen wird der Originaltext als Notiz angelegt. 0 = immer zusammenfassen.'
   field_helpdesk_ai_max_output_tokens: 'Max. Ausgabe-Tokens'
   field_helpdesk_ai_timeout: 'Timeout (Sekunden)'
   text_helpdesk_ai_privacy_info: 'Datenschutz: Der Inhalt eingehender Mails und die gewählten Anhänge werden an den konfigurierten Anbieter übertragen. Für einen vollständig lokalen Betrieb den Anbieter "Eigener Endpunkt" mit einer self-hosted URL verwenden.'
   label_helpdesk_ai_summary: 'KI-Zusammenfassung'
+  label_helpdesk_ai_summary_skipped: 'KI-Zusammenfassung übersprungen'
+  text_helpdesk_ai_skipped_short: 'Die Mail ist kürzer als das eingestellte Minimum von %{min} Zeichen – es wurde keine KI-Zusammenfassung erzeugt, der Originaltext oben spricht für sich.'
   label_helpdesk_ai_assistant: 'KI-Assistent'
   field_helpdesk_ai_summary_enabled: 'KI-Zusammenfassungen für dieses Projekt erzeugen'
   text_helpdesk_ai_summary_enabled_info: 'Fügt Tickets aus eingehenden Mails eine private Zusammenfassungs-Notiz hinzu.'

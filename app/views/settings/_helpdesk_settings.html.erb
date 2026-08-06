@@ -115,6 +115,26 @@
   </p>
 </fieldset>
 
+<fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_logging) %></legend>
+  <p>
+    <label><%= l(:label_helpdesk_mail_log_level) %></label>
+    <%= select_tag 'settings[mail_log_level]',
+          options_for_select(RedmineExpertHelpdesk::MailLogger::LEVELS.map { |lvl| [lvl, lvl] },
+                             @settings['mail_log_level'].presence ||
+                               RedmineExpertHelpdesk::MailLogger::DEFAULT_LEVEL) %>
+    <em class="info"><%= l(:text_helpdesk_mail_log_level_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:label_helpdesk_ai_log_level) %></label>
+    <%= select_tag 'settings[ai_log_level]',
+          options_for_select(RedmineExpertHelpdesk::AiLogger::LEVELS.map { |lvl| [lvl, lvl] },
+                             @settings['ai_log_level'].presence ||
+                               RedmineExpertHelpdesk::AiLogger::DEFAULT_LEVEL) %>
+    <em class="info"><%= l(:text_helpdesk_ai_log_level_info) %></em>
+  </p>
+</fieldset>
+
 <script type="text/javascript">
 //<![CDATA[
 // Blendet die Felder aus, die die gewaehlte Vorlage bzw. das Verfahren selbst
@@ -208,6 +228,11 @@
   <label><%= l(:field_helpdesk_ai_max_input_chars) %></label>
   <%= text_field_tag 'settings[ai_max_input_chars]', @settings['ai_max_input_chars'].presence || '12000', :size => 8 %>
   <em class="info"><%= l(:text_helpdesk_ai_max_input_chars_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_min_input_chars) %></label>
+  <%= text_field_tag 'settings[ai_min_input_chars]', @settings['ai_min_input_chars'].presence || '200', :size => 8 %>
+  <em class="info"><%= l(:text_helpdesk_ai_min_input_chars_info) %></em>
 </p>
 <p>
   <label><%= l(:field_helpdesk_ai_max_output_tokens) %></label>

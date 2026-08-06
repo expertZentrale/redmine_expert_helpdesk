@@ -77,7 +77,13 @@ class HelpdeskRepliesController < ApplicationController
       cid_map, html_with_cid = build_cid_map(body_html, inline_atts)
       mime_msg = build_cid_mime(mailbox.mailbox_address, reply_to, reply_cc, reply_bcc,
                                 subject, html_with_cid, cid_map, regular_atts, message_id)
-      RedmineExpertHelpdesk::MailProvider.outgoing_for(mailbox).send_mail_mime(mime_msg)
+      RedmineExpertHelpdesk::MailLogger.track(
+        :kind => 'reply', :mailbox => mailbox, :issue => @issue,
+        :to => reply_to, :cc => reply_cc, :bcc => reply_bcc,
+        :subject => subject, :message_id => message_id
+      ) do
+        RedmineExpertHelpdesk::MailProvider.outgoing_for(mailbox).send_mail_mime(mime_msg)
+      end
       sent_filenames.concat(regular_atts.map(&:filename))
       sent_filenames.concat(cid_map.keys.map(&:filename))
     end
@@ -154,7 +160,11 @@ class HelpdeskRepliesController < ApplicationController
     delivery_method = ActionMailer::Base.delivery_method
     smtp_settings   = ActionMailer::Base.smtp_settings || {}
     mail_obj.delivery_method(delivery_method, smtp_settings)
-    mail_obj.deliver!
+    RedmineExpertHelpdesk::MailLogger.track(
+      :kind => 'reply', :mailbox => mailbox, :issue => @issue,
+      :to => to, :cc => cc, :bcc => bcc, :subject => subject,
+      :message_id => mail_obj.message_id, :detail => "delivery_method=#{delivery_method}"
+    ) { mail_obj.deliver! }
     # Redmine's relay files nothing in the mailbox itself; for an IMAP mailbox we
     # can still put the copy where the agents look. No-op for Graph mailboxes.
     RedmineExpertHelpdesk::MailProvider.for(mailbox).archive_sent(mail_obj.to_s)
