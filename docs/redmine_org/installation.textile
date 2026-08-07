@@ -46,7 +46,7 @@ Enable *expert Helpdesk* per project under *Project settings → Modules*, then 
 | Manage contacts | Customer list and customer profile |
 | View SLA statistics | The project's "SLA statistics" tab |
 
-*View AI statistics* is the one *global* permission — it is granted once to a role and then applies across all projects without project membership, because it exposes the token spend of the AI features.
+*View AI statistics* is the one *global* permission — it is granted once to a role and then applies across all projects without project membership, because it exposes the token spend of the AI features. The tab it unlocks is shown only where the AI features or the knowledge base are enabled; with both switched off it stays hidden and the page answers 403.
 
 h3. 4. Central configuration
 

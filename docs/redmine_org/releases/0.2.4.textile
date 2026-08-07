@@ -1,0 +1,11 @@
+h3. Fixed
+
+* *The "AI statistics" tab no longer appears when the AI features are switched off.* It showed up in every helpdesk project for anyone holding the global *View AI statistics* permission, even with both the AI features and the knowledge base disabled — where it led to a permanently empty page. The tab now appears once at least one of the two is enabled, because the page reports both AI summaries and knowledge-base requests, and either one alone makes it meaningful. The page itself answers 403 while both are off, so it can no longer be reached by typing the URL.
+
+* *Every checkbox in the plugin settings and the mailbox form shipped a duplicate DOM id.* Each checkbox is preceded by a hidden field carrying its unchecked value, and both were given the same id, derived from the shared field name — so @getElementById@ returned the invisible hidden field instead of the checkbox. Twelve checkboxes were affected. Saving the forms was never affected, which is why it went unnoticed.
+
+h3. Upgrade notes
+
+*No migration, no new setting, no new permission.*
+
+One visible change on upgrade: sites that hold the *View AI statistics* permission but run with the AI features and the knowledge base switched off will find the tab gone. Enabling either one under *Administration → Plugins → Redmine expert Helpdesk* brings it back with all of its history intact — nothing is deleted, only hidden.

@@ -5,7 +5,7 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
-## [Unreleased]
+## [0.2.4] - 2026-08-07
 
 ### Behoben
 
