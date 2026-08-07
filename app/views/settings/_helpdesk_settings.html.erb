@@ -118,7 +118,10 @@
 <fieldset class="box tabular">
   <legend><%= l(:label_helpdesk_awaiting_agent_col) %></legend>
   <p>
-    <%= hidden_field_tag 'settings[awaiting_agent_enabled]', '0' %>
+    <%# The unchecked-value companion of the checkbox below. It must stay id-less: Rails derives
+        an id from the field name, which is the very id the checkbox carries, so without :id => nil
+        the page ships two elements with the same id and getElementById finds the hidden one. %>
+    <%= hidden_field_tag 'settings[awaiting_agent_enabled]', '0', :id => nil %>
     <%= check_box_tag 'settings[awaiting_agent_enabled]', '1',
           @settings['awaiting_agent_enabled'].to_s != '0',
           :id => 'settings_awaiting_agent_enabled' %>
@@ -202,7 +205,7 @@
 <hr />
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_ai_settings) %></h3>
 <p>
-  <%= hidden_field_tag 'settings[ai_enabled]', '0' %>
+  <%= hidden_field_tag 'settings[ai_enabled]', '0', :id => nil %>
   <%= check_box_tag 'settings[ai_enabled]', '1', @settings['ai_enabled'] == '1', :id => 'settings_ai_enabled' %>
   <%= label_tag 'settings_ai_enabled', l(:field_helpdesk_ai_enabled) %>
   <em class="info"><%= l(:text_helpdesk_ai_enabled_info) %></em>
@@ -259,7 +262,7 @@
 <hr />
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_kb_settings) %></h3>
 <p>
-  <%= hidden_field_tag 'settings[kb_enabled]', '0' %>
+  <%= hidden_field_tag 'settings[kb_enabled]', '0', :id => nil %>
   <%= check_box_tag 'settings[kb_enabled]', '1', @settings['kb_enabled'] == '1', :id => 'settings_kb_enabled' %>
   <%= label_tag 'settings_kb_enabled', l(:field_helpdesk_kb_enabled) %>
   <em class="info"><%= l(:text_helpdesk_kb_enabled_info) %></em>
@@ -326,7 +329,7 @@
 <hr />
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_phishtank) %></h3>
 <p>
-  <%= hidden_field_tag 'settings[phishtank_enabled]', '0' %>
+  <%= hidden_field_tag 'settings[phishtank_enabled]', '0', :id => nil %>
   <%= check_box_tag 'settings[phishtank_enabled]', '1', @settings['phishtank_enabled'] == '1',
                     :id => 'settings_phishtank_enabled' %>
   <%= label_tag 'settings_phishtank_enabled', l(:field_helpdesk_phishtank_enabled) %>
@@ -350,7 +353,7 @@
   <em class="info"><%= l(:text_helpdesk_phishtank_interval_info) %></em>
 </p>
 <p>
-  <%= hidden_field_tag 'settings[phishing_database_enabled]', '0' %>
+  <%= hidden_field_tag 'settings[phishing_database_enabled]', '0', :id => nil %>
   <%= check_box_tag 'settings[phishing_database_enabled]', '1', @settings['phishing_database_enabled'] == '1',
                     :id => 'settings_phishing_database_enabled' %>
   <%= label_tag 'settings_phishing_database_enabled', l(:field_helpdesk_phishing_database_enabled) %>

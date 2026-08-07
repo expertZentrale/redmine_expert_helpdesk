@@ -147,7 +147,7 @@
 </fieldset>
 
 <%# --- KI-Zusammenfassung (nur wenn zentral aktiviert) --- %>
-<% if Setting.plugin_redmine_expert_helpdesk['ai_enabled'] == '1' %>
+<% if RedmineExpertHelpdesk::AiFeatures.ai_enabled? %>
   <fieldset class="tabular" style="margin-bottom: 14px;">
     <legend><%= l(:label_helpdesk_ai_summary) %></legend>
     <%= form_tag helpdesk_project_setting_path(:project_id => @project), :method => :put do %>
@@ -218,7 +218,7 @@
 <% end %>
 
 <%# --- Wissensbasis (RAG), nur wenn zentral aktiviert --- %>
-<% if Setting.plugin_redmine_expert_helpdesk['kb_enabled'] == '1' %>
+<% if RedmineExpertHelpdesk::AiFeatures.kb_enabled? %>
   <fieldset class="tabular" style="margin-bottom: 14px;">
     <legend><%= l(:label_helpdesk_kb_settings) %></legend>
     <%= form_tag helpdesk_project_setting_path(:project_id => @project), :method => :put do %>

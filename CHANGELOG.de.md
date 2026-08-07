@@ -5,6 +5,33 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Behoben
+
+- **Der Reiter „KI-Statistik“ erscheint nicht mehr, wenn die KI abgeschaltet ist.** Er wurde in
+  jedem Helpdesk-Projekt angezeigt, sobald jemand die globale Berechtigung *KI-Nutzungsstatistik
+  ansehen* hatte – auch bei deaktivierten KI-Funktionen und deaktivierter Wissensbasis, wo er
+  ausschließlich zu einer leeren Seite führte. Der Reiter erscheint jetzt, sobald mindestens eine
+  der beiden Funktionen aktiv ist (die Seite weist sowohl KI-Zusammenfassungen als auch
+  Wissensbasis-Anfragen aus, jede der beiden allein macht sie also sinnvoll); die Seite selbst
+  antwortet bei beidem aus mit 403, statt über die direkte URL erreichbar zu bleiben.
+
+- **Doppelte DOM-IDs bei jeder Checkbox in den Plugin-Einstellungen und im Postfach-Formular.**
+  Vor jeder Checkbox steht ein verstecktes Feld mit ihrem Aus-Wert, und Rails leitete aus dem
+  gemeinsamen Feldnamen für beide dieselbe ID ab – `getElementById` lieferte damit das unsichtbare
+  versteckte Feld statt der Checkbox. Die versteckten Felder haben jetzt keine ID mehr (12
+  Checkboxen in *Administration → Plugins → Redmine expert Helpdesk* und im Postfach-Formular).
+  Das Absenden der Formulare war nie betroffen, weshalb es bisher nicht auffiel.
+
+### Geändert
+
+- **Nur noch eine Stelle entscheidet, ob die KI-Funktionen aktiv sind.** Die Prüfung auf
+  `ai_enabled` / `kb_enabled` lag in acht Controllern, Jobs, Patches, Views und Rake-Tasks als
+  Kopie vor – und fehlte beim Reiter „KI-Statistik“ vollständig, was zu obigem Fehler führte. Alle
+  Stellen nutzen jetzt die neuen Prädikate in `RedmineExpertHelpdesk::AiFeatures`. Abgesehen von
+  der Fehlerbehebung ändert sich das Verhalten nicht.
+
 ## [0.2.3] - 2026-08-06
 
 ### Added

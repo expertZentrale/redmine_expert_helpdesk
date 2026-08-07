@@ -679,7 +679,9 @@ Standardmäßig deaktiviert, Opt-in pro Projekt.
 > schlüsselt die Nutzung nach Volumen, Token, Anfragetyp, Provider/Modell, Erfolgsquote und
 > Stoßzeiten auf. Der Reiter ist über die **globale** Berechtigung `view_helpdesk_ai_statistics`
 > geschützt: einer Rolle (z. B. *ai-admin*) gewähren, dann sehen diese Benutzer den Reiter in jedem
-> Helpdesk-Projekt. Nur Token – es werden noch keine Geldkosten berechnet.
+> Helpdesk-Projekt, in dem mindestens die KI-Funktionen oder die Wissensbasis aktiv sind – sind
+> beide zentral abgeschaltet, ist der Reiter ausgeblendet und die Seite antwortet mit 403.
+> Nur Token – es werden noch keine Geldkosten berechnet.
 
 **Zentrale Konfiguration** (*Administration → Plugins → Redmine expert Helpdesk*):
 - **Anbieter** – OpenAI (Chat Completions), Anthropic (Messages) oder **Eigener Endpunkt**

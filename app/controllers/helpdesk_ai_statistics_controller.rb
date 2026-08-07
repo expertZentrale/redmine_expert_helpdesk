@@ -6,6 +6,7 @@ class HelpdeskAiStatisticsController < ApplicationController
   include HelpdeskStatsDateRange
 
   before_action :find_project_by_project_id
+  before_action :require_ai_features_enabled
   before_action :require_ai_stats_permission
 
   def index
@@ -19,6 +20,12 @@ class HelpdeskAiStatisticsController < ApplicationController
   end
 
   private
+
+  # Mirrors the menu gate in init.rb: with both AI and the knowledge base off the page has
+  # nothing to show, so the URL must not be reachable by hand either.
+  def require_ai_features_enabled
+    render_403 unless RedmineExpertHelpdesk::AiFeatures.any_enabled?
+  end
 
   def require_ai_stats_permission
     render_403 unless User.current.allowed_to?(:view_helpdesk_ai_statistics, nil, :global => true)

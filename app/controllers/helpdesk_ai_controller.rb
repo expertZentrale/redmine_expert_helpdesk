@@ -8,7 +8,8 @@ class HelpdeskAiController < ApplicationController
 
   def regenerate
     settings = Setting.plugin_redmine_expert_helpdesk
-    unless settings['ai_enabled'].to_s == '1' && RedmineExpertHelpdesk::AiClient.new(settings).configured?
+    unless RedmineExpertHelpdesk::AiFeatures.ai_enabled? &&
+           RedmineExpertHelpdesk::AiClient.new(settings).configured?
       flash[:warning] = l(:text_helpdesk_ai_not_configured)
       return redirect_to issue_path(@issue)
     end

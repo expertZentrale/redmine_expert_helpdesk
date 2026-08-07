@@ -44,7 +44,7 @@ class HelpdeskKnowledgeController < ApplicationController
 
   def kb_ready?
     settings = Setting.plugin_redmine_expert_helpdesk
-    settings['kb_enabled'].to_s == '1' &&
+    RedmineExpertHelpdesk::AiFeatures.kb_enabled? &&
       RedmineExpertHelpdesk::KnowledgeStore.for(settings).configured? &&
       RedmineExpertHelpdesk::AiClient.new(settings).embed_configured?
   end
