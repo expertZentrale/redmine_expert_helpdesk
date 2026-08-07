@@ -25,6 +25,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/smtp_sender', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/imap_provider', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mailbox_folders', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_logger', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/ai_features', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_client', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_store', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_extractor', __FILE__)
@@ -169,8 +170,10 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
            HelpdeskProjectSetting.for_project(p).sla_enabled?
        }
 
-  # KI-Statistik-Reiter: sichtbar bei aktivem Helpdesk-Modul und globaler
-  # Berechtigung view_helpdesk_ai_statistics (Rolle "ai-admin").
+  # AI statistics tab: visible with the helpdesk module enabled, at least one of the AI/KB
+  # features switched on globally (the page reports both kinds of request, so either one alone
+  # makes it meaningful), and the global view_helpdesk_ai_statistics permission (role "ai-admin").
+  # The permission check comes last — it is by far the most expensive of the three.
   menu :project_menu, :helpdesk_ai_statistics,
        { :controller => 'helpdesk_ai_statistics', :action => 'index' },
        :caption  => :label_helpdesk_ai_statistics,
@@ -178,6 +181,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
        :param    => :project_id,
        :if       => Proc.new { |p|
          p.module_enabled?(:helpdesk) &&
+           RedmineExpertHelpdesk::AiFeatures.any_enabled? &&
            User.current.allowed_to?(:view_helpdesk_ai_statistics, nil, :global => true)
        }
 

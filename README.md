@@ -653,8 +653,9 @@ per project.
 > (same time-frame selector and totals-at-a-glance layout as the SLA dashboard) breaks usage down
 > by volume, tokens, request type, provider/model, success rate and busiest times. The tab is
 > restricted to the **global** permission `view_helpdesk_ai_statistics`: grant it to a role (e.g.
-> one you name *ai-admin*) and those users see the tab on every helpdesk project. Tokens only — no
-> monetary cost is computed yet.
+> one you name *ai-admin*) and those users see the tab on every helpdesk project where at least
+> one of the AI features or the knowledge base is enabled — with both switched off centrally the
+> tab is hidden and the page answers 403. Tokens only — no monetary cost is computed yet.
 
 **Central configuration** (*Administration → Plugins → Redmine expert Helpdesk*):
 - **Provider** — OpenAI (Chat Completions), Anthropic (Messages), or **Custom** (any

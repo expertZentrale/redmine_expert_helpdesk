@@ -235,7 +235,7 @@ module RedmineExpertHelpdesk
     # Antworten), damit ohne aktivierte Funktion kein Job in die Queue geht.
     # Fehler beim Enqueue duerfen die Mailverarbeitung nicht abbrechen.
     def enqueue_ai_summary(issue, object, new_issue, msg)
-      return unless Setting.plugin_redmine_expert_helpdesk['ai_enabled'].to_s == '1'
+      return unless RedmineExpertHelpdesk::AiFeatures.ai_enabled?
 
       ps = HelpdeskProjectSetting.for_project(issue.project)
       return unless ps.ai_summary_enabled?

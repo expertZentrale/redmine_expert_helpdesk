@@ -9,7 +9,7 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
   # unabhaengig vom Projekt-Modus.
   def perform(issue_id, force: false)
     settings = Setting.plugin_redmine_expert_helpdesk
-    return unless settings['kb_enabled'].to_s == '1'
+    return unless RedmineExpertHelpdesk::AiFeatures.kb_enabled?
 
     issue = Issue.find_by(:id => issue_id)
     return unless issue && issue.closed?

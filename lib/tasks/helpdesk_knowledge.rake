@@ -6,7 +6,7 @@
 namespace :redmine_expert_helpdesk do
   desc 'Nimmt bereits geschlossene Tickets beitragender Projekte in die Wissensbasis auf'
   task :kb_backfill => :environment do
-    unless Setting.plugin_redmine_expert_helpdesk['kb_enabled'] == '1'
+    unless RedmineExpertHelpdesk::AiFeatures.kb_enabled?
       puts 'Wissensbasis ist in den Plugin-Einstellungen deaktiviert.'
       next
     end
@@ -33,7 +33,7 @@ namespace :redmine_expert_helpdesk do
   desc 'Baut die Vektoren aller freigegebenen Wissensbasis-Eintraege neu (z. B. nach Modellwechsel)'
   task :kb_reembed => :environment do
     settings = Setting.plugin_redmine_expert_helpdesk
-    unless settings['kb_enabled'] == '1'
+    unless RedmineExpertHelpdesk::AiFeatures.kb_enabled?
       puts 'Wissensbasis ist deaktiviert.'
       next
     end

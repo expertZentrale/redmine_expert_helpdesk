@@ -6,6 +6,31 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Fixed
+
+- **The AI statistics tab no longer shows up when AI is switched off.** The tab appeared on every
+  helpdesk project for anyone holding the global *View AI usage statistics* permission — even with
+  both the AI features and the knowledge base disabled, in which case it only ever led to an empty
+  page. It is now shown when at least one of the two is enabled (the page reports both AI summary
+  and knowledge-base requests, so either one alone makes it meaningful), and the page itself
+  answers 403 while both are off instead of being reachable by typing the URL.
+
+- **Duplicate DOM ids on every checkbox in the plugin settings and the mailbox form.** Each
+  checkbox is preceded by a hidden field carrying its unchecked value, and Rails derived the same
+  id for both from the shared field name — so `getElementById` returned the invisible hidden field
+  instead of the checkbox. The hidden companions are id-less now (12 checkboxes across
+  *Administration → Plugins → Redmine expert Helpdesk* and the mailbox form). Form submission was
+  never affected, which is why this went unnoticed.
+
+### Changed
+
+- **One place decides whether the AI features are on.** The `ai_enabled` / `kb_enabled` check was
+  copied into eight controllers, jobs, patches, views and rake tasks, and the AI statistics tab was
+  missing it entirely — which is what caused the bug above. All of them now call the new
+  `RedmineExpertHelpdesk::AiFeatures` predicates. No behaviour change beyond the fix.
+
 ## [0.2.3] - 2026-08-06
 
 ### Added

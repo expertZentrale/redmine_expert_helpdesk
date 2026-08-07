@@ -12,8 +12,8 @@
   # KI-Assistent-Bereich (eigene Karte unter der Kundenkarte): nur anzeigen, wenn
   # KI oder Wissensbasis fuer das Projekt tatsaechlich aktiv ist. Jede Zeile hat
   # ihr eigenes Gate; die Karte erscheint, sobald mindestens ein Element sichtbar ist.
-  ai_on   = Setting.plugin_redmine_expert_helpdesk['ai_enabled'] == '1'
-  kb_on   = Setting.plugin_redmine_expert_helpdesk['kb_enabled'] == '1'
+  ai_on   = RedmineExpertHelpdesk::AiFeatures.ai_enabled?
+  kb_on   = RedmineExpertHelpdesk::AiFeatures.kb_enabled?
   hd_ps   = (ai_on || kb_on) ? HelpdeskProjectSetting.for_project(project) : nil
   can_rep = User.current.allowed_to?(:send_helpdesk_reply, project)
 

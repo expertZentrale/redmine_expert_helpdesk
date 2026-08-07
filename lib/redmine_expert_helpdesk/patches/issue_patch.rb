@@ -88,7 +88,7 @@ module RedmineExpertHelpdesk
       def helpdesk_enqueue_kb_ingest
         return unless saved_change_to_status_id? && closed?
         return unless project&.module_enabled?(:helpdesk)
-        return unless Setting.plugin_redmine_expert_helpdesk['kb_enabled'].to_s == '1'
+        return unless RedmineExpertHelpdesk::AiFeatures.kb_enabled?
 
         ps = HelpdeskProjectSetting.for_project(project)
         return if ps.kb_ingest_mode.to_s == 'off'

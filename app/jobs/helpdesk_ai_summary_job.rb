@@ -27,7 +27,7 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
   # an); globale Aktivierung + Konfiguration werden weiterhin geprueft.
   def perform(issue_id, journal_id: nil, message_id: nil, force: false)
     settings = Setting.plugin_redmine_expert_helpdesk
-    return unless settings['ai_enabled'].to_s == '1'
+    return unless RedmineExpertHelpdesk::AiFeatures.ai_enabled?
 
     issue = Issue.find_by(:id => issue_id)
     return unless issue
@@ -250,7 +250,7 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
   # (strikte Isolation ueber den Store). Liefert nur, wenn genug Treffer ueber
   # dem Score-Schwellwert liegen. Fehler blockieren die Zusammenfassung nicht.
   def retrieve_proposals(issue, ps, settings, client, query_text)
-    return [] unless settings['kb_enabled'].to_s == '1'
+    return [] unless RedmineExpertHelpdesk::AiFeatures.kb_enabled?
     return [] unless ps.kb_show_in_summary? || ps.kb_show_in_sidebar?
     return [] if query_text.blank?
 

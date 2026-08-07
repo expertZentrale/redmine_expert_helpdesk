@@ -93,7 +93,10 @@
   </p>
   <p>
     <label><%= l(:field_helpdesk_enabled) %></label>
-    <%= hidden_field_tag 'helpdesk_mailbox[enabled]', '0' %>
+    <%# The unchecked-value companion of the checkbox below. It must stay id-less: Rails derives
+        an id from the field name, which is the very id the checkbox carries, so without :id => nil
+        the page ships two elements with the same id and getElementById finds the hidden one. %>
+    <%= hidden_field_tag 'helpdesk_mailbox[enabled]', '0', :id => nil %>
     <%= check_box_tag 'helpdesk_mailbox[enabled]', '1', @mailbox.enabled? %>
   </p>
 </div>
@@ -128,13 +131,13 @@
   </p>
   <p>
     <label><%= l(:field_helpdesk_imap_verify_ssl) %></label>
-    <%= hidden_field_tag 'helpdesk_mailbox[imap_verify_ssl]', '0' %>
+    <%= hidden_field_tag 'helpdesk_mailbox[imap_verify_ssl]', '0', :id => nil %>
     <%= check_box_tag 'helpdesk_mailbox[imap_verify_ssl]', '1', @mailbox.imap_verify_ssl != false %>
     <em class="info"><%= l(:text_helpdesk_verify_ssl_info) %></em>
   </p>
   <p>
     <label><%= l(:field_helpdesk_imap_unseen_only) %></label>
-    <%= hidden_field_tag 'helpdesk_mailbox[imap_unseen_only]', '0' %>
+    <%= hidden_field_tag 'helpdesk_mailbox[imap_unseen_only]', '0', :id => nil %>
     <%= check_box_tag 'helpdesk_mailbox[imap_unseen_only]', '1', @mailbox.imap_unseen_only == true %>
     <em class="info"><%= l(:text_helpdesk_imap_unseen_only_info) %></em>
   </p>
@@ -167,7 +170,7 @@
   </p>
   <p>
     <label><%= l(:field_helpdesk_smtp_verify_ssl) %></label>
-    <%= hidden_field_tag 'helpdesk_mailbox[smtp_verify_ssl]', '0' %>
+    <%= hidden_field_tag 'helpdesk_mailbox[smtp_verify_ssl]', '0', :id => nil %>
     <%= check_box_tag 'helpdesk_mailbox[smtp_verify_ssl]', '1', @mailbox.smtp_verify_ssl != false %>
   </p>
 </fieldset>
@@ -307,7 +310,7 @@
   </p>
   <p>
     <label><%= l(:field_helpdesk_suppress_notifications) %></label>
-    <%= hidden_field_tag 'helpdesk_mailbox[suppress_notifications]', '0' %>
+    <%= hidden_field_tag 'helpdesk_mailbox[suppress_notifications]', '0', :id => nil %>
     <%= check_box_tag 'helpdesk_mailbox[suppress_notifications]', '1', @mailbox.suppress_notifications? %>
     <em class="info"><%= l(:text_helpdesk_suppress_notifications_info) %></em>
   </p>
@@ -348,7 +351,7 @@
   <legend><%= l(:label_helpdesk_auto_reply_filter) %></legend>
   <p>
     <label><%= l(:field_helpdesk_auto_reply_filter_enabled) %></label>
-    <%= hidden_field_tag 'helpdesk_mailbox[auto_reply_filter_enabled]', '0' %>
+    <%= hidden_field_tag 'helpdesk_mailbox[auto_reply_filter_enabled]', '0', :id => nil %>
     <%= check_box_tag 'helpdesk_mailbox[auto_reply_filter_enabled]', '1', @mailbox.auto_reply_filter_enabled? %>
     <em class="info"><%= l(:text_helpdesk_auto_reply_filter_info) %></em>
   </p>
@@ -370,7 +373,7 @@
   <legend><%= l(:label_helpdesk_autoresponder) %></legend>
   <p>
     <label><%= l(:field_helpdesk_autoresponder_enabled) %></label>
-    <%= hidden_field_tag 'helpdesk_mailbox[autoresponder_enabled]', '0' %>
+    <%= hidden_field_tag 'helpdesk_mailbox[autoresponder_enabled]', '0', :id => nil %>
     <%= check_box_tag 'helpdesk_mailbox[autoresponder_enabled]', '1', @mailbox.autoresponder_enabled? %>
   </p>
   <p>
