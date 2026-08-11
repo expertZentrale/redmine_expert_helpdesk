@@ -52,7 +52,8 @@
     Validity period of the client secret in years (default: 1).
 
 .PARAMETER TestMailbox
-    Address of a helpdesk mailbox to test the RBAC scope against after setup
+    Required (except with -RemoveEntraGraphPermissions): address of a helpdesk
+    mailbox to test the RBAC scope against after setup
     (Test-ServicePrincipalAuthorization).
 
 .PARAMETER RemoveEntraGraphPermissions
@@ -79,12 +80,12 @@
 
 [CmdletBinding()]
 param(
-    [string]$AppDisplayName = "redmine-helpdesk",
+    [string]$AppDisplayName = "redmine-expert-helpdesk-live",
 
     [ValidateSet("DomainSuffix", "SecurityGroup", "CustomAttribute", "EmailList")]
-    [string]$MailboxScopeOption = "DomainSuffix",
+    [string]$MailboxScopeOption = "EmailList",
 
-    [string]$MailboxDomainSuffix = "@helpdesk.example.com",
+    [string]$MailboxDomainSuffix,
 
     [string]$MailboxSecurityGroup,
 
@@ -105,33 +106,47 @@ $ErrorActionPreference = "Stop"
 $graphAppId      = "00000003-0000-0000-c000-000000000000"
 $mailReadWriteId = "e2a3a72e-5f79-4c64-b1b1-878b674786c9"
 $mailSendId      = "b633e1c5-b582-4048-a93e-9f11b44c7e96"
-$rbacScopeName   = "Redmine-Helpdesk-Mailboxes"
+$rbacScopeName   = "Redmine-expert-Helpdesk-Mailboxes-LIVE"
 
-function Get-MailboxRecipientFilter {
+function Confirm-MailboxScopeParameters {
     switch ($MailboxScopeOption) {
         "DomainSuffix" {
             if (-not $MailboxDomainSuffix) {
                 throw "Please provide -MailboxDomainSuffix (e.g. '@helpdesk.example.com')."
             }
-            return "PrimarySmtpAddress -like '*$MailboxDomainSuffix'"
         }
         "SecurityGroup" {
             if (-not $MailboxSecurityGroup) {
                 throw "Please provide -MailboxSecurityGroup."
             }
-            $dn = (Get-Group $MailboxSecurityGroup).DistinguishedName
-            return "MemberOfGroup -eq '$dn'"
         }
         "CustomAttribute" {
             if (-not $MailboxCustomAttributeValue) {
                 throw "Please provide -MailboxCustomAttributeValue."
             }
-            return "CustomAttribute1 -eq '$MailboxCustomAttributeValue'"
         }
         "EmailList" {
             if (-not $MailboxEmailList -or $MailboxEmailList.Count -eq 0) {
                 throw "Please provide -MailboxEmailList with at least one address."
             }
+        }
+    }
+}
+
+function Get-MailboxRecipientFilter {
+    switch ($MailboxScopeOption) {
+        "DomainSuffix" {
+            return "PrimarySmtpAddress -like '*$MailboxDomainSuffix'"
+        }
+        "SecurityGroup" {
+            # Requires an active Exchange Online connection.
+            $dn = (Get-Group $MailboxSecurityGroup).DistinguishedName
+            return "MemberOfGroup -eq '$dn'"
+        }
+        "CustomAttribute" {
+            return "CustomAttribute1 -eq '$MailboxCustomAttributeValue'"
+        }
+        "EmailList" {
             $clauses = $MailboxEmailList | ForEach-Object { "PrimarySmtpAddress -eq '$_'" }
             return ($clauses -join " -or ")
         }
@@ -146,10 +161,15 @@ if ($RemoveEntraGraphPermissions) {
     Write-Host "== Step 5: Remove Entra Graph permissions ==" -ForegroundColor Cyan
     Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All"
 
-    $sp = Get-MgServicePrincipal -Filter "DisplayName eq '$AppDisplayName'"
-    if (-not $sp) {
+    $sp = @(Get-MgServicePrincipal -Filter "DisplayName eq '$AppDisplayName'")
+    if ($sp.Count -eq 0) {
         throw "Service Principal '$AppDisplayName' not found."
     }
+    if ($sp.Count -gt 1) {
+        throw ("Multiple Service Principals named '$AppDisplayName' found (AppIds: " +
+               ($sp.AppId -join ', ') + "). Delete the obsolete ones first.")
+    }
+    $sp = $sp[0]
 
     Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id |
         Where-Object { $_.AppRoleId -in @($mailReadWriteId, $mailSendId) } |
@@ -166,8 +186,22 @@ if ($RemoveEntraGraphPermissions) {
 # -----------------------------------------------------------------------
 # Step 1: Register the app + create a Service Principal
 # -----------------------------------------------------------------------
+# Validate everything before the first resource is created — a run aborting
+# halfway leaves orphaned app registrations behind.
+Confirm-MailboxScopeParameters
+if (-not $TestMailbox) {
+    throw "Please provide -TestMailbox (address of a helpdesk mailbox used to verify the RBAC scope)."
+}
+
 Write-Host "== Step 1: Register the app ==" -ForegroundColor Cyan
 Connect-MgGraph -Scopes "Application.ReadWrite.All"
+
+# Abort on duplicates — otherwise later lookups by DisplayName become ambiguous.
+$existingApp = @(Get-MgApplication -Filter "DisplayName eq '$AppDisplayName'")
+if ($existingApp.Count -gt 0) {
+    throw ("An app registration named '$AppDisplayName' already exists (AppIds: " +
+           ($existingApp.AppId -join ', ') + "). Delete it or use a different -AppDisplayName.")
+}
 
 $app = New-MgApplication `
     -DisplayName    $AppDisplayName `
@@ -250,25 +284,25 @@ New-ManagementScope `
     -RecipientRestrictionFilter $recipientFilter
 
 # 4c. Assign roles.
-$exoSp = Get-ServicePrincipal -Identity $AppDisplayName
+#     Look up by ObjectId (unique) — the DisplayName may exist more than once.
+$exoSp   = Get-ServicePrincipal -Identity $sp.Id
+$exoSpId = [string]$exoSp.ObjectId
 New-ManagementRoleAssignment `
-    -App  $exoSp.ObjectId `
+    -App  $exoSpId `
     -Role "Application Mail.ReadWrite" `
     -CustomResourceScope $rbacScopeName
 New-ManagementRoleAssignment `
-    -App  $exoSp.ObjectId `
+    -App  $exoSpId `
     -Role "Application Mail.Send" `
     -CustomResourceScope $rbacScopeName
 
 Write-Host "EXO RBAC scope '$rbacScopeName' set up (filter: $recipientFilter)."
 
 # 4d. Test access (InScope must be true).
-if ($TestMailbox) {
-    Write-Host "`nTesting authorization for mailbox '$TestMailbox':"
-    Test-ServicePrincipalAuthorization `
-        -Identity $AppDisplayName `
-        -Resource $TestMailbox | Format-Table
-}
+Write-Host "`nTesting authorization for mailbox '$TestMailbox':"
+Test-ServicePrincipalAuthorization `
+    -Identity $exoSpId `
+    -Resource $TestMailbox | Format-Table
 
 Write-Host "`n=========================================================================" -ForegroundColor Yellow
 Write-Host "IMPORTANT: As long as the Entra Graph permissions from step 2 (Mail.ReadWrite," -ForegroundColor Yellow
