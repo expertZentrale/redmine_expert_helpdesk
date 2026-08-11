@@ -5,6 +5,16 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **An Kunden gesendete Mails zeigen ihren Sendezeitpunkt jetzt auch in der Journalüberschrift** –
+  so wie eingehende Mails das bereits taten. Das Badge einer ausgehenden Notiz endet mit
+  `HelpdeskMessage.sent_at` (Tooltip *Gesendet am*), womit sich der gesamte Schriftwechsel auf
+  einer Zeitachse verfolgen lässt, statt die ausgehende Seite am Zeitstempel des Journaleintrags
+  ablesen zu müssen – der sagt, wann die Notiz gespeichert wurde, nicht wann die Mail rausging.
+
 ## [0.2.4] - 2026-08-07
 
 ### Behoben
