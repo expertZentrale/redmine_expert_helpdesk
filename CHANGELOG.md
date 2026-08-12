@@ -6,6 +6,16 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Added
+
+- **Mails sent to the customer now carry their send time in the journal header**, the same way
+  received mails already did. The badge on an outgoing note ends with `HelpdeskMessage.sent_at`
+  (tooltip *Sent on*), so an agent can follow the whole correspondence on one time axis instead
+  of reading the outgoing side off the journal's own timestamp, which is when the note was saved
+  rather than when the mail left.
+
 ## [0.2.4] - 2026-08-07
 
 ### Fixed

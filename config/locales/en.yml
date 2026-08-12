@@ -213,6 +213,7 @@ en:
   label_helpdesk_received_from: 'Received from'
   text_helpdesk_multi_recipients_hint: 'Separate multiple addresses with commas'
   label_helpdesk_sent_to: 'Sent to'
+  label_helpdesk_sent_on: 'Sent on'
 
   label_helpdesk_sla: 'SLA'
   field_helpdesk_sla_enabled: 'Enable SLA'
