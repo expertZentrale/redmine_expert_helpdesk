@@ -81,7 +81,10 @@ function Invoke-Confirmed {
 
     Write-Host "`n--- $Description" -ForegroundColor Cyan
     if ($null -ne $Details) {
-        $Details | Format-List | Out-String | Write-Host
+        # Out-String defaults to the console width and wraps long values, and
+        # this is what the operator confirms a deletion against — so give it a
+        # width that leaves scope names and filters intact.
+        $Details | Format-List | Out-String -Width 4096 | Write-Host
     }
 
     if (-not $Force) {

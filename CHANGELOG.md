@@ -25,6 +25,17 @@
 
 ### Changed
 
+- **`-ListRoleAssignments` shows what an environment consists of.** Read-only: the app
+  registration and its tags, the role assignments, and every scope they point at together with its
+  recipient filter — and, for an address-list scope, the mailboxes spelled out one per line. It also
+  flags role/scope combinations assigned more than once.
+- **Table output is no longer truncated.** `Format-Table` sizes columns to the console, so the
+  authorization test's output lost the end of a scope name (`Redmine-expert-Helpdes…`) and, on a
+  narrow terminal, dropped the `ScopeType` and `InScope` columns altogether — the two that say
+  whether the mailbox is actually reachable. Columns are now sized to their content and rendered at
+  a width that leaves everything intact, so the output stays correct however narrow the terminal is
+  and when pasted elsewhere. The confirmation details in `delete-app-registration.ps1` get the same
+  treatment.
 - **`-RemoveDuplicateRoleAssignments` tidies up duplicate role assignments.** Keeps one assignment
   per role and scope and removes the rest, so `Test-ServicePrincipalAuthorization` stops printing
   each role several times. Given on its own the script does only this and stops; given alongside a

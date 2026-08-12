@@ -309,6 +309,11 @@ Benötigte PowerShell-Module: `Microsoft.Graph` und `ExchangeOnlineManagement`.
 # Client-Secret erneuern (der neue Wert muss in Redmine eingetragen werden)
 ./setup-azure-app.ps1 -NewClientSecret
 
+# Anzeigen, woraus eine Umgebung besteht: App, Rollenzuweisungen, Scopes und deren
+# Filter. Nur lesend, und nichts in der Ausgabe wird abgeschnitten.
+./setup-azure-app.ps1 -ListRoleAssignments
+./setup-azure-app.ps1 -Environment DEV -ListRoleAssignments
+
 # Je Rolle und Scope eine Zuweisung behalten, die übrigen entfernen
 ./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments -WhatIf   # erst auflisten
 ./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments

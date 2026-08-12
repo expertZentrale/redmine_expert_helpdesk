@@ -26,6 +26,18 @@
 
 ### Geändert
 
+- **`-ListRoleAssignments` zeigt, woraus eine Umgebung besteht.** Nur lesend: die
+  App-Registrierung samt ihrer Tags, die Rollenzuweisungen und jeder Scope, auf den sie zeigen,
+  jeweils mit seinem Empfängerfilter – und bei einem Adresslisten-Scope die Postfächer einzeln
+  aufgeführt. Außerdem werden Rollen-/Scope-Kombinationen gemeldet, die mehrfach zugewiesen sind.
+- **Tabellenausgaben werden nicht mehr abgeschnitten.** `Format-Table` bemisst die Spalten an der
+  Konsolenbreite – der Berechtigungsprüfung fehlte damit das Ende eines Scope-Namens
+  (`Redmine-expert-Helpdes…`), und auf einem schmalen Terminal fielen die Spalten `ScopeType` und
+  `InScope` ganz weg – also gerade die beiden, die sagen, ob das Postfach überhaupt erreichbar ist.
+  Die Spalten richten sich jetzt nach ihrem Inhalt und werden so breit ausgegeben, dass nichts
+  verloren geht – die Ausgabe bleibt also unabhängig von der Terminalbreite korrekt und auch dann,
+  wenn sie woanders eingefügt wird. Die Bestätigungsdetails in `delete-app-registration.ps1`
+  bekommen dieselbe Behandlung.
 - **`-RemoveDuplicateRoleAssignments` räumt doppelte Rollenzuweisungen auf.** Behält je Rolle und
   Scope eine Zuweisung und entfernt die übrigen, damit `Test-ServicePrincipalAuthorization` jede
   Rolle nicht mehr mehrfach ausgibt. Für sich allein angegeben macht das Skript nur das und hört

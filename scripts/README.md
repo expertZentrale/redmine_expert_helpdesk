@@ -296,6 +296,11 @@ Required PowerShell modules: `Microsoft.Graph` and `ExchangeOnlineManagement`.
 # Rotate the client secret (the new value must be entered in Redmine)
 ./setup-azure-app.ps1 -NewClientSecret
 
+# Show what an environment consists of: app, role assignments, scopes and their
+# filters. Reads only, and nothing in the output is truncated.
+./setup-azure-app.ps1 -ListRoleAssignments
+./setup-azure-app.ps1 -Environment DEV -ListRoleAssignments
+
 # Keep one role assignment per role and scope, remove the rest
 ./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments -WhatIf   # list them first
 ./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments

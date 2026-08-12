@@ -130,6 +130,12 @@
     only AFTER the EXO RBAC test in step 4 succeeded (InScope True) — otherwise
     the app loses all mail access beforehand.
 
+.PARAMETER ListRoleAssignments
+    Show what the environment currently consists of — the app registration, its
+    role assignments and the scopes they point at, with each scope's recipient
+    filter — and stop. Reads only, changes nothing. Nothing is truncated, so the
+    output can be pasted somewhere as it is.
+
 .PARAMETER RemoveDuplicateRoleAssignments
     Keep one role assignment per role and scope and remove the rest. Duplicates
     are harmless — access is identical — but Test-ServicePrincipalAuthorization
@@ -223,6 +229,8 @@ param(
     [string[]]$TestMailbox,
 
     [switch]$RemoveEntraGraphPermissions,
+
+    [switch]$ListRoleAssignments,
 
     [switch]$RemoveDuplicateRoleAssignments,
 
@@ -460,6 +468,32 @@ function ConvertTo-ComparableFilter {
     return ((($Filter -replace '[()]', ' ') -replace '\s+', ' ').Trim())
 }
 
+<#
+Renders a table with nothing cut off.
+
+Format-Table sizes columns to the console and Out-String defaults to the same
+width, which is how a scope name becomes "Redmine-expert-Helpdes…". -AutoSize
+sizes the columns to the content instead, and a generous Out-String width keeps
+the result intact however narrow the terminal is — so it stays readable, and
+stays correct when pasted somewhere else.
+#>
+function Format-UntruncatedTable {
+    param(
+        [object[]]$InputObject,
+        [string[]]$Property
+    )
+
+    if (@($InputObject).Count -eq 0) { return "" }
+
+    if ($Property) {
+        $formatted = @($InputObject) | Format-Table -Property $Property -AutoSize -Wrap
+    } else {
+        $formatted = @($InputObject) | Format-Table -AutoSize -Wrap
+    }
+
+    return ($formatted | Out-String -Width 4096)
+}
+
 # More than one match makes every later lookup ambiguous, and picking one would
 # be a guess about which installation the operator meant.
 function Assert-SingleApplication {
@@ -599,7 +633,7 @@ function Test-MailboxAuthorization {
             return $false
         }
 
-        $result | Format-Table | Out-String | Write-Host
+        Write-Host (Format-UntruncatedTable -InputObject $result)
 
         $rows = @($result | Where-Object { $_.RoleName -in $rbacRoles })
         if ($rows.Count -eq 0) { $rows = @($result) }
@@ -756,6 +790,24 @@ if ($SelfTest) {
         Assert-Throws { Get-MailboxAddressesFromFilter -Filter "PrimarySmtpAddress -like '*@example.com'" }
     }
 
+    # Format-Table clips to the console width by default, which is how a scope
+    # name turned into "Redmine-expert-Helpdes…" in the authorization output.
+    Test-Case "table output truncates nothing" {
+        $longScope    = "Redmine-expert-Helpdesk-Mailboxes-LIVE"
+        $longIdentity = "Default Role Assignment Policy-Application Mail.ReadWrite-Redmine-expert-Helpdesk"
+        $text = Format-UntruncatedTable -InputObject @(
+            [pscustomobject]@{ Role = "Application Mail.ReadWrite"; CustomResourceScope = $longScope; Identity = $longIdentity }
+        )
+        foreach ($expected in @($longScope, $longIdentity)) {
+            if ($text -notmatch [regex]::Escape($expected)) { throw "'$expected' did not survive intact" }
+        }
+        if ($text -match [char]0x2026) { throw "output contains an ellipsis" }
+    }
+
+    Test-Case "an empty table renders as nothing rather than failing" {
+        if ((Format-UntruncatedTable -InputObject @()) -ne "") { throw "expected an empty string" }
+    }
+
     Test-Case "duplicate role assignments are detected per role and scope" {
         $assignments = @(
             [pscustomobject]@{ Identity = "a1"; Role = "Application Mail.ReadWrite"; CustomResourceScope = "S" }
@@ -889,6 +941,95 @@ if ($SelfTest) {
 
     Write-Host "`nAll self-tests passed." -ForegroundColor Green
     exit 0
+}
+
+# -----------------------------------------------------------------------
+# Read-only: show what this environment currently consists of and stop.
+# -----------------------------------------------------------------------
+if ($ListRoleAssignments) {
+    Write-Host "== Environment '$Environment' ==" -ForegroundColor Cyan
+    Connect-MgGraph -Scopes "Application.Read.All"
+
+    $lookup = Resolve-HelpdeskApplication -Tag $ResourceTag -DisplayName $AppDisplayName `
+                  -NameWasGiven:$PSBoundParameters.ContainsKey('AppDisplayName')
+    Assert-SingleApplication -Apps $lookup.Apps -FoundBy $lookup.FoundBy
+    if ($lookup.Apps.Count -eq 0) {
+        throw "No app registration found by $($lookup.FoundBy)."
+    }
+    $app = $lookup.Apps[0]
+
+    Write-Host ""
+    Write-Host "App registration:  $($app.DisplayName)"
+    Write-Host "AppId (Client ID): $($app.AppId)"
+    Write-Host "Object ID (app):   $($app.Id)"
+    Write-Host "Tags:              $(@($app.Tags) -join ', ')"
+    Write-Host "Found by:          $($lookup.FoundBy)"
+
+    Connect-ExchangeOnline
+
+    $exoSp = @(Get-ExoServicePrincipal -AppId $app.AppId)
+    if ($exoSp.Count -eq 0) {
+        Write-Host ""
+        Write-Host "No Exchange Online service principal for this app — no role assignments exist." -ForegroundColor Yellow
+        return
+    }
+    $exoSp = $exoSp[0]
+    Write-Host "EXO service principal ObjectId: $($exoSp.ObjectId)"
+
+    $assignments = @(Get-OwnRoleAssignments -ServicePrincipalId ([string]$exoSp.ObjectId) `
+                                            -AssigneeName ([string]$exoSp.DisplayName))
+
+    Write-Host ""
+    Write-Host "Role assignments ($($assignments.Count)):" -ForegroundColor Cyan
+    if ($assignments.Count -eq 0) {
+        Write-Host "  none — the app cannot reach any mailbox." -ForegroundColor Yellow
+    } else {
+        Write-Host (Format-UntruncatedTable -InputObject $assignments `
+                        -Property Role, CustomResourceScope, RoleAssigneeName, Identity)
+
+        # Same grouping the tidy-up uses, so the two agree on what a duplicate is.
+        $duplicated = @($assignments | Group-Object -Property Role, CustomResourceScope |
+                        Where-Object { $_.Count -gt 1 })
+        if ($duplicated.Count -gt 0) {
+            Write-Host ("$($duplicated.Count) role/scope combination(s) assigned more than once — " +
+                        "run -RemoveDuplicateRoleAssignments to keep one of each.") -ForegroundColor Yellow
+        }
+    }
+
+    # The scopes are what actually decide which mailboxes are reachable, so the
+    # assignments alone would only be half the answer.
+    $scopeNames = @($assignments | Where-Object { $_.CustomResourceScope } |
+                    ForEach-Object { $_.CustomResourceScope } | Sort-Object -Unique)
+
+    foreach ($scopeName in $scopeNames) {
+        $scope = Get-ManagementScope -Identity $scopeName -ErrorAction SilentlyContinue
+        Write-Host ""
+        Write-Host "Scope '$scopeName':" -ForegroundColor Cyan
+        if (-not $scope) {
+            Write-Host "  not found — the assignment points at a scope that no longer exists." -ForegroundColor Red
+            continue
+        }
+
+        Write-Host "  ScopeRestrictionType: $($scope.ScopeRestrictionType)"
+        Write-Host "  RecipientFilter:      $($scope.RecipientFilter)"
+
+        # For an address list, spell the addresses out one per line — that is
+        # the question being asked here ("which mailboxes?"), and a long -or
+        # chain does not answer it at a glance.
+        try {
+            $addresses = @(Get-MailboxAddressesFromFilter -Filter ([string]$scope.RecipientFilter))
+            if ($addresses.Count -gt 0) {
+                Write-Host "  Mailboxes ($($addresses.Count)):"
+                foreach ($address in $addresses) { Write-Host "    $address" }
+            }
+        } catch {
+            # Not an address list (CustomAttribute, DomainSuffix, group) — the
+            # filter above already says everything there is to say.
+        }
+    }
+
+    Write-Host ""
+    return
 }
 
 # -----------------------------------------------------------------------
