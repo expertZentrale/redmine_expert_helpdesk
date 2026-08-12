@@ -6,6 +6,49 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Changed
+
+- **`scripts/setup-azure-app.ps1` can now add mailboxes to an existing setup.** The script used
+  to abort as soon as an app registration with the given name existed, so onboarding one more
+  project meant either tearing the whole tenant setup down and rebuilding it — which mints a new
+  client secret and forces a Redmine config change — or editing the Exchange Online management
+  scope by hand. It is now re-runnable end to end: an existing app registration, service
+  principal, client secret, EXO service principal, management scope and role assignments are
+  reused instead of duplicated, and a run with a new `-MailboxEmailList` address merges that
+  address into the existing RBAC scope. Client ID and client secret stay valid, so nothing
+  changes under *Administration → Plugins → Redmine expert Helpdesk*.
+- **`-MailboxEmailList` is additive now.** It used to describe the complete scope; it now
+  describes the addresses that must be in the scope, and the ones already there are kept. Pass
+  the new `-ReplaceMailboxList` to get the old "exactly this list" behaviour, and
+  `-RemoveMailboxEmailList` to revoke access to a mailbox again.
+- **A re-run no longer re-grants the Entra Graph permissions.** `Mail.ReadWrite`/`Mail.Send` are
+  additive to the RBAC scope, and step 5 of the setup removes them on purpose; granting them
+  again while adding a mailbox would silently give the app access to every mailbox in the tenant.
+  They are now only granted when the run created the app registration itself, or when the new
+  `-EnsureEntraGraphPermissions` asks for it explicitly. For the same reason a re-run creates no
+  second client secret unless `-NewClientSecret` is given.
+- **Further additions to the script:** `-WhatIf` previews a scope change (old filter, new filter,
+  added and removed addresses) without writing; `-TestMailbox` takes several addresses and
+  defaults to the ones the run just added; the authorization test retries, because Exchange
+  Online needs a moment to replicate a scope change and an immediate `InScope: False` is not yet
+  a failure; `-RbacScopeName` is a parameter like it already was in `delete-app-registration.ps1`;
+  and `-SelfTest` runs the scope-filter assertions offline, without connecting to a tenant.
+
+  The script grants access to mailboxes, it does not create them — the mailboxes still have to
+  exist in the tenant.
+
+### Added
+
+- **`scripts/README.md` (+ its German mirror) documents the Microsoft 365 permission model.** How the tenant-wide Entra
+  application permissions and the Exchange Online RBAC scope interact (and why the setup is only
+  complete once the former are removed), plus a comparison of the four mailbox scope options along
+  the axis that actually decides between them: who can onboard the next mailbox, and what they
+  need in order to do it — from "an Exchange Administrator runs the script" (`EmailList`) to
+  "whoever creates the shared mailbox sets one attribute" (`CustomAttribute`). Includes the
+  migration path between options and a troubleshooting section.
+
 ## [0.2.4] - 2026-08-07
 
 ### Fixed

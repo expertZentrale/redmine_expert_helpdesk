@@ -775,6 +775,17 @@ The following steps can be performed manually via the Azure Portal, via
 PowerShell (Microsoft Graph PowerShell SDK + Exchange Online PowerShell) or
 via Terraform (provider `hashicorp/azuread`).
 
+> 💡 `scripts/setup-azure-app.ps1` in this repository runs steps 1–4 in one go
+> (repo-internal tooling, not part of the release archives). It is re-runnable:
+> existing resources are reused, and a later run adds further mailboxes to the
+> RBAC scope from step 4 — see [Adding further mailboxes later](#adding-further-mailboxes-later).
+>
+> [`scripts/README.md`](scripts/README.md) explains how the two permission layers
+> interact and compares the four mailbox scope options — in particular **who is able
+> to onboard the next mailbox** under each of them, which ranges from "an Exchange
+> Administrator has to run the script" to "whoever creates the shared mailbox sets one
+> attribute". Worth reading before picking one in step 4b.
+
 ---
 
 ### Step 1 – Register the app
@@ -1041,6 +1052,63 @@ Full documentation: [Exchange Online Application RBAC](https://learn.microsoft.c
 
 In Redmine under *Administration → Plugins → Redmine expert Helpdesk* enter
 Tenant ID, Client ID and Client Secret.
+
+---
+
+### Adding further mailboxes later
+
+Every new project brings another helpdesk mailbox. Only the RBAC scope from
+step 4 has to grow — the app registration, client ID and client secret stay as
+they are, so nothing changes in the Redmine configuration.
+
+With the script (recommended — it reads the current scope, merges the new
+address in and leaves every other resource untouched):
+
+```powershell
+# Preview first: prints the old and the new filter, writes nothing
+./scripts/setup-azure-app.ps1 -MailboxEmailList "sales@example.com" -WhatIf
+
+./scripts/setup-azure-app.ps1 -MailboxEmailList "sales@example.com"
+
+# and to revoke access to a mailbox again
+./scripts/setup-azure-app.ps1 -RemoveMailboxEmailList "sales@example.com"
+```
+
+By hand it depends on the scope option chosen in step 4b. With **option A**
+(domain suffix) nothing has to be done at all as long as the new mailbox lives
+in that domain. With **option B** (security group) or **option C**
+(CustomAttribute1) the scope itself stays untouched — only the mailbox is
+enrolled:
+
+```powershell
+Add-DistributionGroupMember -Identity "helpdesk-mailboxes@example.com" -Member "sales@example.com"
+# or
+Set-Mailbox -Identity "sales@example.com" -CustomAttribute1 "Redmine"
+```
+
+If the scope enumerates the addresses explicitly (the script's default), the
+filter has to be rewritten. `Set-ManagementScope` *replaces* it, so read the
+current one first and list the existing addresses again:
+
+```powershell
+Get-ManagementScope -Identity "Redmine-Helpdesk-Mailboxes" | Format-List RecipientFilter
+
+Set-ManagementScope -Identity "Redmine-Helpdesk-Mailboxes" `
+  -RecipientRestrictionFilter "PrimarySmtpAddress -eq 'helpdesk@example.com' -or PrimarySmtpAddress -eq 'sales@example.com'"
+```
+
+Afterwards verify the new mailbox — Exchange Online needs a moment to
+replicate the change, so `InScope: False` right after the update is not yet a
+failure:
+
+```powershell
+Test-ServicePrincipalAuthorization -Identity <object-id> -Resource "sales@example.com" | Format-Table
+```
+
+> ⚠️ Do **not** re-grant the Entra permissions from step 2 when adding a
+> mailbox. They are additive to the RBAC scope, so the app would regain access
+> to every mailbox in the tenant. The script skips step 2 on an existing app
+> registration for exactly this reason.
 
 ---
 

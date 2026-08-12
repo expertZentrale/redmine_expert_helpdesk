@@ -5,6 +5,54 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Geändert
+
+- **`scripts/setup-azure-app.ps1` kann Postfächer in ein bestehendes Setup aufnehmen.** Bisher
+  brach das Skript ab, sobald eine App-Registrierung mit dem angegebenen Namen existierte – ein
+  weiteres Projekt anzubinden hieß deshalb, entweder das gesamte Tenant-Setup abzuräumen und neu
+  aufzubauen (mit neuem Client-Secret und entsprechender Änderung in Redmine) oder den Exchange
+  Online Management-Scope von Hand zu bearbeiten. Das Skript ist jetzt durchgängig wiederholt
+  ausführbar: vorhandene App-Registrierung, Service Principal, Client-Secret, EXO-Service-Principal,
+  Management-Scope und Rollenzuweisungen werden weiterverwendet statt doppelt angelegt, und ein
+  Lauf mit einer neuen Adresse in `-MailboxEmailList` nimmt diese in den bestehenden RBAC-Scope
+  auf. Client-ID und Client-Secret bleiben gültig, unter *Administration → Plugins → Redmine
+  expert Helpdesk* ändert sich also nichts.
+- **`-MailboxEmailList` wirkt jetzt ergänzend.** Der Parameter beschrieb bisher den vollständigen
+  Scope; er beschreibt jetzt die Adressen, die im Scope enthalten sein müssen, bereits vorhandene
+  bleiben erhalten. Das alte Verhalten („genau diese Liste“) liefert das neue
+  `-ReplaceMailboxList`, den Zugriff auf ein Postfach entzieht `-RemoveMailboxEmailList`.
+- **Ein erneuter Lauf vergibt die Entra-Graph-Berechtigungen nicht noch einmal.**
+  `Mail.ReadWrite`/`Mail.Send` wirken additiv zum RBAC-Scope, Schritt 5 des Setups entfernt sie
+  bewusst wieder; sie beim Aufnehmen eines Postfachs erneut zu vergeben, gäbe der App
+  stillschweigend wieder Zugriff auf jedes Postfach des Tenants. Vergeben werden sie deshalb nur
+  noch, wenn der Lauf die App-Registrierung selbst angelegt hat oder das neue
+  `-EnsureEntraGraphPermissions` es ausdrücklich verlangt. Aus demselben Grund legt ein erneuter
+  Lauf ohne `-NewClientSecret` kein zweites Client-Secret an.
+- **Weitere Ergänzungen im Skript:** `-WhatIf` zeigt eine Scope-Änderung vorab an (alter Filter,
+  neuer Filter, aufgenommene und entfernte Adressen), ohne zu schreiben; `-TestMailbox` nimmt
+  mehrere Adressen und verwendet standardmäßig die im Lauf hinzugekommenen; die Prüfung der
+  Berechtigung wiederholt sich mehrfach, weil Exchange Online einen Moment braucht, bis eine
+  Scope-Änderung repliziert ist, ein sofortiges `InScope: False` also noch kein Fehler ist;
+  `-RbacScopeName` ist ein Parameter wie schon in `delete-app-registration.ps1`; und `-SelfTest`
+  führt die Prüfungen des Scope-Filters offline aus, ohne Verbindung zu einem Tenant.
+
+  Das Skript vergibt Zugriff auf Postfächer, es legt sie nicht an – die Postfächer müssen weiterhin
+  im Tenant vorhanden sein.
+
+### Hinzugefügt
+
+- **`scripts/README.md` + `scripts/README.de.md` beschreiben das Berechtigungsmodell in
+  Microsoft 365.** Wie die
+  tenantweiten Entra-Anwendungsberechtigungen und der Exchange-Online-RBAC-Scope zusammenwirken
+  (und warum das Setup erst vollständig ist, wenn Erstere wieder entfernt sind), dazu ein Vergleich
+  der vier Varianten der Postfach-Auswahl entlang der Frage, die tatsächlich zwischen ihnen
+  entscheidet: wer das nächste Postfach aufnehmen kann und was er oder sie dafür braucht – von
+  „eine Exchange-Administratorin führt das Skript aus“ (`EmailList`) bis „wer das freigegebene
+  Postfach anlegt, setzt ein Attribut mit“ (`CustomAttribute`). Mit Migrationspfad zwischen den
+  Varianten und einem Abschnitt zur Fehlersuche.
+
 ## [0.2.4] - 2026-08-07
 
 ### Behoben
