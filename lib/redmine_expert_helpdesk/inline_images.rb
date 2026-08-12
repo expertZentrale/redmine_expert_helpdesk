@@ -42,6 +42,12 @@ module RedmineExpertHelpdesk
     # a second time.
     ANY_MARKER = /cid:|\[image:/i
 
+    # The same idea before the MIME is parsed at all: without a Content-ID header
+    # there is no part a cid: reference could resolve to. Matched on the raw bytes -
+    # a MIME string straight from the provider is rarely valid UTF-8, and the body
+    # of the mail is not worth decoding just to find that out.
+    CONTENT_ID_HEADER = /^content-id:/i
+
     module_function
 
     def enabled?
@@ -87,7 +93,7 @@ module RedmineExpertHelpdesk
     # Only the copy handed to MailHandler is touched; the caller keeps the original
     # MIME, which is what gets archived as .eml on the ticket.
     def prepare_mime(mime)
-      return mime unless enabled?
+      return mime unless enabled? && mime.to_s.b.match?(CONTENT_ID_HEADER)
 
       mail = Mail.read_from_string(mime)
       return mime unless html_body_kept?(mail)

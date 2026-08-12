@@ -155,6 +155,15 @@ class InlineImagesTest < ActiveSupport::TestCase
     assert_equal TEXT_MIME, II.prepare_mime(TEXT_MIME)
   end
 
+  # No Content-ID header means no part the reference could resolve to, so the mail
+  # is passed on without being parsed at all.
+  def test_prepare_mime_skips_mails_without_a_content_id
+    mime = HTML_ONLY_MIME.gsub(/^Content-ID:.*\n/i, '')
+
+    assert_includes mime, 'src="cid:'
+    assert_equal mime, II.prepare_mime(mime)
+  end
+
   def test_prepare_mime_survives_broken_mime
     assert_equal 'not a mail at all', II.prepare_mime('not a mail at all')
   end
