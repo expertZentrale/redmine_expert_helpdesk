@@ -301,6 +301,9 @@ Required PowerShell modules: `Microsoft.Graph` and `ExchangeOnlineManagement`.
 ./setup-azure-app.ps1 -ListRoleAssignments
 ./setup-azure-app.ps1 -Environment DEV -ListRoleAssignments
 
+# Diagnose one specific mailbox ("why does this one give 403?")
+./setup-azure-app.ps1 -ListRoleAssignments -TestMailbox "helpdesk@example.com"
+
 # Keep one role assignment per role and scope, remove the rest
 ./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments -WhatIf   # list them first
 ./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments
@@ -341,6 +344,20 @@ and remove them with:
 
 On its own like that the script does nothing else; given alongside a normal run, the tidy-up
 happens as part of it.
+
+**A Graph call returns 403 for one mailbox but not another.** Exchange RBAC is denying the app
+for that mailbox, which means the scope filter does not match it — the role assignments are fine or
+nothing would work. `-ListRoleAssignments` prints the recipients the filter actually matches, and
+with `-TestMailbox` it says what Exchange Online makes of one specific address:
+
+```powershell
+./setup-azure-app.ps1 -ListRoleAssignments -TestMailbox "helpdesk@example.com"
+```
+
+If the mailbox is missing from the match list, the usual causes are the scope condition not being
+satisfied (for `CustomAttribute`: the attribute unset, set on a different slot, or misspelled —
+check with `Get-Mailbox <addr> | Format-List CustomAttribute1`), or the change not having
+replicated yet. Attribute and group-membership changes take a few minutes to affect the scope.
 
 **"Multiple app registrations named …".** Every later lookup by display name would be ambiguous.
 Remove the obsolete registrations with `delete-app-registration.ps1`, or use a different

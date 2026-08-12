@@ -26,6 +26,12 @@
 
 ### Geändert
 
+- **`-ListRoleAssignments` zeigt, welche Postfächer ein Scope tatsächlich abdeckt** – indem
+  Exchange Online den Filter auswertet (`Get-Recipient -RecipientPreviewFilter`), statt ihn mit dem
+  Auge zu lesen; bei einem `CustomAttribute`-, Domain- oder Gruppenfilter geht es gar nicht anders.
+  Mit `-TestMailbox` wird zusätzlich ausgegeben, wie Exchange Online eine bestimmte Adresse
+  einordnet – das ist die Diagnose für ein Graph-403 bei einem einzelnen Postfach: 403 heißt, der
+  Filter trifft es nicht, es fehlt also in dieser Liste.
 - **`-ListRoleAssignments` zeigt, woraus eine Umgebung besteht.** Nur lesend: die
   App-Registrierung samt ihrer Tags, die Rollenzuweisungen und jeder Scope, auf den sie zeigen,
   jeweils mit seinem Empfängerfilter – und bei einem Adresslisten-Scope die Postfächer einzeln

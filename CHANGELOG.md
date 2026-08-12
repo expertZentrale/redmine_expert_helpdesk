@@ -25,6 +25,12 @@
 
 ### Changed
 
+- **`-ListRoleAssignments` shows which mailboxes a scope actually covers**, by asking Exchange
+  Online to evaluate the filter (`Get-Recipient -RecipientPreviewFilter`) rather than reading it by
+  eye — the only way to answer that for a `CustomAttribute`, domain or group filter. With
+  `-TestMailbox` it also reports what Exchange Online makes of one specific address, which is the
+  diagnosis for a Graph 403 on a single mailbox: a 403 means the filter does not match it, so it
+  will be missing from that list.
 - **`-ListRoleAssignments` shows what an environment consists of.** Read-only: the app
   registration and its tags, the role assignments, and every scope they point at together with its
   recipient filter — and, for an address-list scope, the mailboxes spelled out one per line. It also

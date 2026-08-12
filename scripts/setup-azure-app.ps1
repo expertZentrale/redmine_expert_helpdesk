@@ -1013,18 +1013,50 @@ if ($ListRoleAssignments) {
         Write-Host "  ScopeRestrictionType: $($scope.ScopeRestrictionType)"
         Write-Host "  RecipientFilter:      $($scope.RecipientFilter)"
 
-        # For an address list, spell the addresses out one per line — that is
-        # the question being asked here ("which mailboxes?"), and a long -or
-        # chain does not answer it at a glance.
+        # Ask Exchange Online to evaluate the filter. This is the answer to
+        # "which mailboxes can the app actually reach", and the only way to get
+        # it for a CustomAttribute, domain or group filter — none of which can
+        # be read off by eye. A mailbox missing from this list is exactly the
+        # one that will come back 403.
         try {
-            $addresses = @(Get-MailboxAddressesFromFilter -Filter ([string]$scope.RecipientFilter))
-            if ($addresses.Count -gt 0) {
-                Write-Host "  Mailboxes ($($addresses.Count)):"
-                foreach ($address in $addresses) { Write-Host "    $address" }
+            $matched = @(Get-Recipient -RecipientPreviewFilter ([string]$scope.RecipientFilter) `
+                                       -ResultSize Unlimited -ErrorAction Stop)
+            Write-Host "  Mailboxes matched by this filter ($($matched.Count)):"
+            if ($matched.Count -eq 0) {
+                Write-Host "    none — the app can reach nothing through this scope." -ForegroundColor Yellow
+            } else {
+                Write-Host (Format-UntruncatedTable -InputObject $matched `
+                                -Property PrimarySmtpAddress, RecipientTypeDetails, Name)
             }
         } catch {
-            # Not an address list (CustomAttribute, DomainSuffix, group) — the
-            # filter above already says everything there is to say.
+            Write-Host "  Could not evaluate the filter: $($_.Exception.Message)" -ForegroundColor Yellow
+
+            # Fall back to reading the addresses out of an address-list filter.
+            try {
+                $addresses = @(Get-MailboxAddressesFromFilter -Filter ([string]$scope.RecipientFilter))
+                if ($addresses.Count -gt 0) {
+                    Write-Host "  Addresses named in the filter ($($addresses.Count)):"
+                    foreach ($address in $addresses) { Write-Host "    $address" }
+                }
+            } catch {
+                # Not an address list — the filter line above says it all.
+            }
+        }
+    }
+
+    # -TestMailbox turns this into a diagnosis of one specific address: the
+    # listing says what the scope covers, this says what EXO makes of that
+    # mailbox in particular. No retries — nothing changed, so there is nothing
+    # to wait for replicating.
+    foreach ($mailbox in @($TestMailbox | Where-Object { $_ })) {
+        Write-Host ""
+        Write-Host "Authorization for '$mailbox':" -ForegroundColor Cyan
+        if (Test-MailboxAuthorization -ServicePrincipalId ([string]$exoSp.ObjectId) `
+                                      -Mailbox $mailbox -RetryCount 1) {
+            Write-Host "  in scope." -ForegroundColor Green
+        } else {
+            Write-Host ("  NOT in scope — this is what a Graph 403 on that mailbox means. " +
+                        "Check it appears in the filter match above.") -ForegroundColor Red
         }
     }
 

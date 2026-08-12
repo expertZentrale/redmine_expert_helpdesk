@@ -314,6 +314,9 @@ Benötigte PowerShell-Module: `Microsoft.Graph` und `ExchangeOnlineManagement`.
 ./setup-azure-app.ps1 -ListRoleAssignments
 ./setup-azure-app.ps1 -Environment DEV -ListRoleAssignments
 
+# Ein bestimmtes Postfach untersuchen („warum liefert gerade dieses 403?“)
+./setup-azure-app.ps1 -ListRoleAssignments -TestMailbox "helpdesk@example.com"
+
 # Je Rolle und Scope eine Zuweisung behalten, die übrigen entfernen
 ./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments -WhatIf   # erst auflisten
 ./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments
@@ -356,6 +359,22 @@ aus. Auflisten und entfernen:
 
 Für sich allein angegeben macht das Skript nichts weiter; zusammen mit einem normalen Lauf
 passiert das Aufräumen als Teil davon.
+
+**Ein Graph-Aufruf liefert bei einem Postfach 403, bei einem anderen nicht.** Exchange RBAC
+verweigert der App den Zugriff auf dieses Postfach – der Scope-Filter trifft es also nicht; an den
+Rollenzuweisungen liegt es nicht, sonst funktionierte gar nichts. `-ListRoleAssignments` gibt die
+Empfänger aus, die der Filter tatsächlich trifft, und mit `-TestMailbox` sagt es, wie Exchange
+Online eine bestimmte Adresse einordnet:
+
+```powershell
+./setup-azure-app.ps1 -ListRoleAssignments -TestMailbox "helpdesk@example.com"
+```
+
+Fehlt das Postfach in der Trefferliste, liegt es meist daran, dass die Bedingung des Scopes nicht
+erfüllt ist (bei `CustomAttribute`: Attribut nicht gesetzt, auf einem anderen Platz gesetzt oder
+vertippt – mit `Get-Mailbox <adresse> | Format-List CustomAttribute1` prüfen) oder dass die
+Änderung noch nicht repliziert ist. Attribut- und Gruppenänderungen brauchen einige Minuten, bis
+sie im Scope wirken.
 
 **„Multiple app registrations named …“.** Jede spätere Suche über den Anzeigenamen wäre mehrdeutig.
 Die überzähligen Registrierungen mit `delete-app-registration.ps1` entfernen oder einen anderen
