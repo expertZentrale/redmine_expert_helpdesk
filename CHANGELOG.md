@@ -80,6 +80,18 @@
 
 ### Fixed
 
+- **The authorization test reported success for a mailbox that was not in scope.** Exchange Online
+  returns `InScope` as the string `"False"`, and every non-empty string is truthy in PowerShell, so
+  the check inverted itself: it announced "All tested mailboxes are in scope" for a mailbox the app
+  could not reach. This gates `-RemoveEntraGraphPermissions`, so acting on it would have removed the
+  tenant-wide permissions while the RBAC scope did not actually cover the mailbox — leaving the
+  mailbox unreachable. The value is now parsed explicitly and anything unrecognised counts as not in
+  scope, and the result set is counted rather than tested for truthiness.
+- **The same role was assigned to a scope again on every run.** The check for an existing assignment
+  compared `RoleAssigneeName`, a display name that need not equal the app registration's; where it
+  differed the check matched nothing and each run added another assignment. Assignments are now
+  resolved via `-RoleAssignee`, and duplicates left by earlier runs are reported with the command to
+  remove them.
 - **Supplying a scope option's parameter without also naming the option was silently ignored.**
   `-MailboxCustomAttributeValue "…"` left `-MailboxScopeOption` at its `EmailList` default, so the
   parameter did nothing and the run aborted asking for `-MailboxEmailList` — a parameter of a

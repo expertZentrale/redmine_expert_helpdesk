@@ -445,6 +445,53 @@ function ConvertTo-ComparableFilter {
 }
 
 <#
+The Application Mail.* role assignments belonging to this service principal.
+
+Matching on RoleAssigneeName compares a display name, which need not equal the
+app registration's. When it differs the filter matches nothing, the caller
+concludes there is no assignment yet, and every run adds another one — which is
+how a scope ends up with the same role assigned several times. -RoleAssignee
+resolves the identity server-side, so prefer it and keep the name only as a
+fallback.
+#>
+function Get-OwnRoleAssignments {
+    param(
+        [Parameter(Mandatory)][string]$ServicePrincipalId,
+        [string]$AssigneeName
+    )
+
+    try {
+        return @(Get-ManagementRoleAssignment -RoleAssignee $ServicePrincipalId -ErrorAction Stop |
+            Where-Object { $_.Role -in $rbacRoles })
+    } catch {
+        return @(Get-ManagementRoleAssignment -ErrorAction SilentlyContinue |
+            Where-Object { $_.Role -in $rbacRoles -and
+                           ([string]$_.RoleAssignee -eq $ServicePrincipalId -or
+                            ($AssigneeName -and $_.RoleAssigneeName -eq $AssigneeName)) })
+    }
+}
+
+<#
+Whether an InScope value means yes.
+
+Exchange Online returns this as the STRING "False", not a boolean, and every
+non-empty string is truthy in PowerShell — so `-not $_.InScope` is False for a
+row that is not in scope, and a naive check reports success exactly when the
+mailbox is unreachable. Parse it explicitly, and treat anything unrecognised as
+not in scope: this gates -RemoveEntraGraphPermissions, so it has to fail closed.
+#>
+function Test-IsInScope {
+    param($Value)
+
+    if ($null -eq $Value)   { return $false }
+    if ($Value -is [bool])  { return $Value }
+
+    $parsed = $false
+    if ([bool]::TryParse([string]$Value, [ref]$parsed)) { return $parsed }
+    return $false
+}
+
+<#
 Verifies the RBAC scope for one mailbox. EXO needs a moment to replicate a scope
 change, so an immediate test can legitimately report InScope False — retry a few
 times before calling it a failure.
@@ -469,7 +516,11 @@ function Test-MailboxAuthorization {
 
         $rows = @($result | Where-Object { $_.RoleName -in $rbacRoles })
         if ($rows.Count -eq 0) { $rows = @($result) }
-        if ($rows.Count -gt 0 -and -not ($rows | Where-Object { -not $_.InScope })) {
+
+        # Count explicitly rather than testing a collection for truthiness —
+        # that is what made the previous version report success on failure.
+        $outOfScope = @($rows | Where-Object { -not (Test-IsInScope $_.InScope) })
+        if ($rows.Count -gt 0 -and $outOfScope.Count -eq 0) {
             return $true
         }
 
@@ -616,6 +667,38 @@ if ($SelfTest) {
 
     Test-Case "a DomainSuffix filter is not merged blindly" {
         Assert-Throws { Get-MailboxAddressesFromFilter -Filter "PrimarySmtpAddress -like '*@example.com'" }
+    }
+
+    # Exchange Online returns InScope as a string, and every non-empty string is
+    # truthy — the reason a previous version announced success for a mailbox
+    # that was not in scope at all.
+    Test-Case "the string 'False' Exchange Online returns is not in scope" {
+        if (Test-IsInScope "False") { throw "string 'False' was treated as in scope" }
+    }
+
+    Test-Case "the string 'True' is in scope" {
+        if (-not (Test-IsInScope "True")) { throw "string 'True' was not treated as in scope" }
+        if (-not (Test-IsInScope "true")) { throw "lowercase 'true' was not treated as in scope" }
+    }
+
+    Test-Case "real booleans still work" {
+        if (Test-IsInScope $false) { throw "`$false was treated as in scope" }
+        if (-not (Test-IsInScope $true)) { throw "`$true was not treated as in scope" }
+    }
+
+    Test-Case "anything unrecognised fails closed" {
+        foreach ($value in @($null, "", "yes", "1", "Unknown")) {
+            if (Test-IsInScope $value) { throw "'$value' was treated as in scope" }
+        }
+    }
+
+    Test-Case "a mixed result set is not in scope" {
+        $rows = @(
+            [pscustomobject]@{ RoleName = "Application Mail.ReadWrite"; InScope = "True" }
+            [pscustomobject]@{ RoleName = "Application Mail.Send";      InScope = "False" }
+        )
+        $outOfScope = @($rows | Where-Object { -not (Test-IsInScope $_.InScope) })
+        if ($outOfScope.Count -ne 1) { throw "expected 1 row out of scope, got $($outOfScope.Count)" }
     }
 
     Test-Case "each mailbox parameter names its own scope option" {
@@ -965,9 +1048,8 @@ $exoSpName = [string]$exoSp.DisplayName
 # a name, and it stops a re-run from building a second scope merely because
 # -RbacScopeName was not passed in.
 if (-not $PSBoundParameters.ContainsKey('RbacScopeName')) {
-    $ownScopes = @(Get-ManagementRoleAssignment -ErrorAction SilentlyContinue |
-        Where-Object { $_.Role -in $rbacRoles -and $_.CustomResourceScope -and
-                       $_.RoleAssigneeName -eq $exoSpName } |
+    $ownScopes = @(Get-OwnRoleAssignments -ServicePrincipalId $exoSpId -AssigneeName $exoSpName |
+        Where-Object { $_.CustomResourceScope } |
         ForEach-Object { $_.CustomResourceScope } | Sort-Object -Unique)
 
     if ($ownScopes.Count -gt 1) {
@@ -1082,11 +1164,25 @@ if (-not $scope) {
 #     because DisplayName is ambiguous.
 #     Get-ManagementRoleAssignment has no -CustomResourceScope filter, so filter
 #     client-side.
-$existingAssignments = @(Get-ManagementRoleAssignment -ErrorAction SilentlyContinue |
-    Where-Object { $_.CustomResourceScope -eq $RbacScopeName -and $_.RoleAssigneeName -eq $exoSpName })
+$existingAssignments = @(Get-OwnRoleAssignments -ServicePrincipalId $exoSpId -AssigneeName $exoSpName |
+    Where-Object { $_.CustomResourceScope -eq $RbacScopeName })
 
 foreach ($role in $rbacRoles) {
-    if ($existingAssignments | Where-Object { $_.Role -eq $role }) {
+    $have = @($existingAssignments | Where-Object { $_.Role -eq $role })
+
+    if ($have.Count -gt 1) {
+        # Left behind by runs that failed to recognise their own assignment.
+        # Harmless but confusing — Test-ServicePrincipalAuthorization reports a
+        # row per assignment, so the same role shows up several times.
+        Write-Host "Role '$role' is assigned to scope '$RbacScopeName' $($have.Count) times (duplicates from earlier runs):" -ForegroundColor Yellow
+        foreach ($duplicate in $have) {
+            Write-Host "    $($duplicate.Identity)" -ForegroundColor Yellow
+        }
+        Write-Host "    Remove the extras with: Remove-ManagementRoleAssignment -Identity '<identity>'" -ForegroundColor Yellow
+        continue
+    }
+
+    if ($have.Count -eq 1) {
         Write-Host "Role assignment '$role' on scope '$RbacScopeName' already exists."
         continue
     }

@@ -87,6 +87,19 @@
 
 ### Behoben
 
+- **Die Berechtigungsprüfung meldete Erfolg für ein Postfach, das gar nicht im Scope war.** Exchange
+  Online liefert `InScope` als Zeichenkette `"False"`, und jede nicht-leere Zeichenkette ist in
+  PowerShell wahr – die Prüfung kehrte sich damit um und meldete „All tested mailboxes are in scope“
+  für ein Postfach, das die App nicht erreichen konnte. Da davon `-RemoveEntraGraphPermissions`
+  abhängt, hätte ein Handeln darauf die tenantweiten Berechtigungen entfernt, während der
+  RBAC-Scope das Postfach tatsächlich nicht abdeckte – das Postfach wäre unerreichbar geworden. Der
+  Wert wird jetzt ausdrücklich ausgewertet, alles Unbekannte gilt als nicht im Scope, und das
+  Ergebnis wird gezählt statt auf Wahrheitswert geprüft.
+- **Dieselbe Rolle wurde bei jedem Lauf erneut auf den Scope zugewiesen.** Die Prüfung auf eine
+  bestehende Zuweisung verglich `RoleAssigneeName`, einen Anzeigenamen, der nicht mit dem der
+  App-Registrierung übereinstimmen muss; wich er ab, fand die Prüfung nichts und jeder Lauf legte
+  eine weitere Zuweisung an. Zuweisungen werden jetzt über `-RoleAssignee` aufgelöst, und
+  Duplikate aus früheren Läufen werden samt Befehl zum Entfernen gemeldet.
 - **Den Parameter einer Scope-Variante anzugeben, ohne die Variante zu nennen, wurde stillschweigend
   ignoriert.** `-MailboxCustomAttributeValue "…"` ließ `-MailboxScopeOption` auf der Vorgabe
   `EmailList` stehen, der Parameter blieb also wirkungslos und der Lauf brach mit der Aufforderung
