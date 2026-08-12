@@ -142,7 +142,11 @@ module RedmineExpertHelpdesk
       # zugeordnet werden, auch wenn der Betreff kein [#id]-Tag enthaelt.
       mime = ensure_thread_reference(mime)
 
-      object = MailHandler.receive(mime, mail_handler_options)
+      # Inline images: make sure the body MailHandler keeps still references the
+      # embedded images (only needed when Redmine builds the body from the HTML
+      # part - see InlineImages). The original MIME stays untouched, it is what
+      # gets archived as .eml further down.
+      object = MailHandler.receive(InlineImages.prepare_mime(mime), mail_handler_options)
 
       unless object
         # MailHandler hat die Mail abgelehnt (z. B. eigene Adresse, ungueltig)
@@ -154,6 +158,11 @@ module RedmineExpertHelpdesk
       issue, new_issue = extract_issue(object)
 
       if issue
+        # MailHandler has saved the embedded images as attachments but left their
+        # "[cid:...]" references in the text - point them at those attachments so
+        # the ticket shows the pictures instead of the markers.
+        InlineImages.rewrite!(object, mime)
+
         apply_rules(issue, subject, sender) if new_issue
         reopened = new_issue ? false : reopen_if_closed(issue, (object.is_a?(Journal) ? object : nil))
         contact = HelpdeskContact.find_or_create_for(sender, sender_name, @mailbox.project)

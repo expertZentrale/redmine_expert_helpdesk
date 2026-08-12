@@ -15,6 +15,20 @@
   vollständigen Text in die Zwischenablage; wo die Zwischenablage-API nicht zur Verfügung steht – ein
   internes Redmine über einfaches http ist kein sicherer Kontext –, wird der Text stattdessen
   markiert, statt stillschweigend nichts zu tun.
+
+- **Eingebettete Bilder einer eingehenden Mail erscheinen jetzt im Ticket statt als `[cid:…]`-
+  Markierung.** Redmines `MailHandler` speicherte jedes Inline-Bild zwar als Anhang, ließ aber die
+  Referenz des Mailprogramms im Text stehen – eine Signatur kam damit als
+  `[cid:image001.png@01DD2980.37ED1560]` an, wo die Mail ein Logo zeigte. Das neue
+  `RedmineExpertHelpdesk::InlineImages` ersetzt diese Markierungen – Outlooks `[cid:…]`, Gmails
+  `[image: …]`, `<img src="cid:…">` sowie die Textile-/Markdown-Varianten – durch die Bildsyntax der
+  eingestellten Formatierung (`!name.png!` bzw. `![](name.png)`), die auf den soeben gespeicherten
+  Anhang zeigt. Bei Mails, deren Text Redmine aus dem HTML-Teil erzeugt, werden die `<img>`-Tags
+  vorher in dieselbe Markierung umgeschrieben, weil Redmines HTML-zu-Text-Parser Bilder spurlos
+  verwirft. Die als `.eml` am Ticket archivierte Mail bleibt in beiden Fällen unverändert, und
+  Markierungen ohne passenden Anhang bleiben stehen. Abschaltbar unter
+  *Administration → Plugins → Redmine expert Helpdesk → Eingebettete Bilder*.
+
 - **An Kunden gesendete Mails zeigen ihren Sendezeitpunkt jetzt auch in der Journalüberschrift** –
   so wie eingehende Mails das bereits taten. Das Badge einer ausgehenden Notiz endet mit
   `HelpdeskMessage.sent_at` (Tooltip *Gesendet am*), womit sich der gesamte Schriftwechsel auf

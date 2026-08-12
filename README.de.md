@@ -48,6 +48,9 @@ siehe [Tests](#tests).
 - **E-Mail zu Ticket**: Mails aus Microsoft 365 oder beliebigen IMAP-Postfächern werden als Tickets angelegt;
   Antworten werden über `In-Reply-To` / `[#id]`-Betreff dem bestehenden Ticket
   zugeordnet (nutzt den Redmine-Standard-`MailHandler`, inkl. Anhänge).
+- **Eingebettete Bilder im Ticket**: Die Inline-Bilder einer Mail (Signaturlogos,
+  Screenshots) erscheinen dort, wo die Mail sie zeigte, statt eine
+  `[cid:…]`-Markierung zu hinterlassen — siehe [Eingebettete Bilder](#eingebettete-bilder).
 - **Postfach pro Projekt**: Jedes Projekt konfiguriert seine Postfächer im
   Reiter *Helpdesk* der Projekteinstellungen (Quell-/Zielordner, Standardwerte
   für Tracker/Priorität/Status, Umgang mit unbekannten Absendern).
@@ -340,13 +343,18 @@ Graph API (Quellordner)
     │  älter als reopen_max_age_days des Postfachs ist → erzwingt ein NEUES Ticket
     ├─ Auto-Submitted-Header bei NDR-/Bounce-Mails entfernen
     │  (MailHandler würde sie sonst als Auto-Reply ablehnen)
-    └─ In-Reply-To/References auf den Ticket-Thread setzen, damit Antworten auch
-       ohne [#id] im Betreff zugeordnet werden
+    ├─ In-Reply-To/References auf den Ticket-Thread setzen, damit Antworten auch
+    │  ohne [#id] im Betreff zugeordnet werden
+    └─ <img src="cid:…"> als [cid:…] markieren, wenn der Text aus dem HTML-Teil
+       entsteht (nur diese Kopie – die unten archivierte .eml bleibt das Original)
         │
         ▼
   Redmine MailHandler ──────── abgelehnt ──────▶ Skipped-Ordner
     (Ticket anlegen oder        (z. B. eigene Adresse)
      Journal ergänzen)
+        │
+        ▼
+  [cid:…]-Markierungen auf die gespeicherten eingebetteten Bilder zeigen lassen
         │
         ├─ neues Ticket: Regeln anwenden
         └─ Antwort:      Ticket wiedereröffnen, falls geschlossen
@@ -450,6 +458,35 @@ Zwei Hinweise:
   nur eine neue eingehende Mail setzt sie erneut.
 
 Abschaltbar unter *Administration → Plugins → Redmine expert Helpdesk*.
+
+### Eingebettete Bilder
+
+Mailprogramme legen Bilder nicht in den Text, sondern verweisen von dort auf einen angehängten
+Bildanhang – in Outlook als `[cid:image001.png@01DD2980.37ED1560]`, in Gmail als
+`[image: logo.png]`, in HTML als `<img src="cid:…">`. Redmines `MailHandler` speichert das Bild
+zwar als Ticket-Anhang, lässt den Text aber unverändert – eine Mailsignatur kam deshalb bisher als
+Reihe von `[cid:…]`-Markierungen an.
+
+Das Plugin lässt diese Markierungen auf den soeben gespeicherten Anhang zeigen, in der Bildsyntax
+der eingestellten Textformatierung (`!image001.png!` bei Textile, `![](image001.png)` bei
+Markdown/CommonMark) – das Ticket liest sich damit wie die Originalmail. Das gilt für die
+Beschreibung eines neuen Tickets ebenso wie für die Notiz einer Antwort.
+
+Wissenswert:
+
+- Verlinkt werden nur Bildformate, die Redmine inline darstellen kann (`bmp`, `gif`, `jpg`, `jpe`,
+  `jpeg`, `png`, `webp`). Eine Markierung ohne zugehöriges Bild – etwa weil es unter
+  *Administration → Konfiguration → Eingehende E-Mails → Ausgeschlossene Dateinamen* aussortiert
+  wurde – bleibt stehen, statt kommentarlos zu verschwinden.
+- Erzeugt Redmine den Tickettext aus dem **HTML-Teil** (keine Text-Alternative vorhanden oder
+  *Bevorzugter Nachrichtenteil* auf `html` gestellt), werden die `<img>`-Tags vor der Übergabe an
+  den `MailHandler` in dieselbe Markierung umgeschrieben – Redmines HTML-zu-Text-Umwandlung würde
+  Bilder sonst spurlos verwerfen. Verändert wird nur die Kopie für den `MailHandler`; die am Ticket
+  archivierte `.eml` ist immer die unveränderte Originalmail.
+- Die Bilder bleiben normale Ticket-Anhänge, an Download und Anhangsliste ändert sich nichts.
+
+Abschalten lässt sich das unter
+*Administration → Plugins → Redmine expert Helpdesk → Eingebettete Bilder*.
 
 ### EML-Anhang und Journalverlinkung
 
@@ -635,6 +672,7 @@ Eintrag **expert Helpdesk** im Administrationsmenü, der direkt hierher verlinkt
 | Standard-Zugangsdaten für IMAP/SMTP-Postfächer | Vorlage, Verfahren, Tenant/Client/Secret, Autorisierungs- und Token-URL, Scope sowie IMAP-/SMTP-Standardhosts, -ports und -verschlüsselung. Gilt für jedes Postfach, dessen *Zugangsdaten* auf *Aus den Plugin-Einstellungen* stehen — siehe [Mail-Anbieter](#mail-anbieter). |
 | API-Key (Mailabruf) | Sichert den globalen Abruf-Endpunkt ab |
 | API-Key (SLA-Prüfung) | Sichert den `helpdesk/sla_check`-Endpunkt ab |
+| Eingebettete Bilder im Ticket anzeigen | Ersetzt die `[cid:…]`-Markierungen einer eingehenden Mail durch das Bild selbst (Standard: an) – siehe [Eingebettete Bilder](#eingebettete-bilder) |
 | Einträge pro Seite | Standard-Seitengröße der Kundenliste (Standard: 25) |
 | Max. Tickets im Kundenprofil | Angezeigte Tickets in der Kundendetailansicht (Standard: 10) |
 
