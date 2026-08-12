@@ -97,6 +97,8 @@ en:
   label_helpdesk_oauth_callback_url: Callback URL
   text_helpdesk_oauth_callback_url_info: "Register exactly this URL as the redirect URI with your identity provider."
   label_helpdesk_test_connection: Test connection
+  button_helpdesk_copy_error: Copy message
+  notice_helpdesk_error_copied: Copied
   label_helpdesk_default_mail_credentials: "Central mail access (application registration)"
   label_helpdesk_api_keys: "API keys for cron endpoints"
   label_helpdesk_logging: "Logging"

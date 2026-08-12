@@ -126,7 +126,8 @@ module RedmineExpertHelpdesk
       req.body = encoded
       response = http.request(req)
       unless response.is_a?(Net::HTTPSuccess)
-        raise GraphError.new("MIME-Mail-Versand fehlgeschlagen (#{response.code}): POST /sendMail",
+        raise GraphError.new("MIME-Mail-Versand fehlgeschlagen (#{response.code}): POST /sendMail" \
+                             "#{graph_error_detail(response.body)}",
                              response.code.to_i, response.body)
       end
       response
@@ -236,10 +237,25 @@ module RedmineExpertHelpdesk
 
       response = http.request(req)
       unless response.is_a?(Net::HTTPSuccess)
-        raise GraphError.new("Graph-Anfrage fehlgeschlagen (#{response.code}): #{method.to_s.upcase} #{path}",
+        raise GraphError.new("Graph-Anfrage fehlgeschlagen (#{response.code}): #{method.to_s.upcase} #{path}" \
+                             "#{graph_error_detail(response.body)}",
                              response.code.to_i, response.body)
       end
       response
+    end
+
+    # Graph puts the actual reason in the response body, not in the status code.
+    # A 403 is either "ErrorAccessDenied" (the RBAC scope does not cover this
+    # mailbox) or "MailboxNotEnabledForRESTAPI" (the mailbox is inactive,
+    # soft-deleted or hosted on-premises) - completely different problems that
+    # need completely different fixes, and the status alone tells them apart not
+    # at all. Without this the operator only ever sees "(403)".
+    def graph_error_detail(body)
+      error = JSON.parse(body.to_s)['error'] rescue nil
+      return '' unless error.is_a?(Hash)
+
+      detail = [error['code'], error['message']].map(&:to_s).reject(&:empty?).join(': ')
+      detail.empty? ? '' : " - #{detail}"
     end
   end
 end
