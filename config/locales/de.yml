@@ -97,6 +97,8 @@ de:
   label_helpdesk_oauth_callback_url: Callback-URL
   text_helpdesk_oauth_callback_url_info: "Genau diese URL beim Identity Provider als Redirect-URI hinterlegen."
   label_helpdesk_test_connection: Verbindung testen
+  button_helpdesk_copy_error: Meldung kopieren
+  notice_helpdesk_error_copied: Kopiert
   label_helpdesk_default_mail_credentials: "Zentraler Mail-Zugang (App-Registrierung)"
   label_helpdesk_api_keys: "API-Keys für Cron-Endpunkte"
   label_helpdesk_logging: "Protokollierung"

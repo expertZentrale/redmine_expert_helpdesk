@@ -235,7 +235,13 @@ Provider nur exakt registrierte URIs akzeptieren. Welches Postfach gerade verbun
 in einem signierten, zehn Minuten gültigen `state`-Parameter.
 
 Mit **Verbindung testen** lassen sich Host, TLS und Anmeldung vor dem Speichern prüfen; die
-sichtbaren Ordner werden dabei gleich mit aufgelistet.
+sichtbaren Ordner werden dabei gleich mit aufgelistet. Schlägt der Test fehl, wird die Meldung des
+Anbieters angezeigt, und **Meldung kopieren** legt sie vollständig in die Zwischenablage – solche
+Meldungen sind lang und die Statuszeile bricht um, das auf dem Bildschirm Lesbare ist also nicht
+immer das, was man in ein Ticket einfügen möchte. Bei Microsoft 365 enthält die Meldung den
+Graph-Fehlercode, und der unterscheidet ein `ErrorAccessDenied` (der Exchange-RBAC-Scope deckt
+dieses Postfach nicht ab) von einem `MailboxNotEnabledForRESTAPI` (das Postfach ist inaktiv,
+vorläufig gelöscht oder liegt noch on-premises) – zwei 403er, die sonst nichts gemeinsam haben.
 
 ### Rezept: Microsoft 365 über IMAP (nur Anwendung)
 

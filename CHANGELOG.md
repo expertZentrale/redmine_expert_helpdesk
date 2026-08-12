@@ -10,6 +10,23 @@
 
 ### Added
 
+- **The mailbox form's connection test can copy the whole message.** Provider errors are long and
+  the status line wraps, so what is readable on screen is not necessarily what you want to paste
+  into a ticket. **Copy message** puts the full text on the clipboard; where the clipboard API is
+  unavailable — an internal Redmine over plain http is not a secure context — it selects the text
+  instead of failing silently.
+
+### Fixed
+
+- **A failing Microsoft Graph call now says what Graph actually reported.** The message ended at the
+  HTTP status, so a 403 could not be told apart from another 403 — `ErrorAccessDenied` (the Exchange
+  RBAC scope does not cover this mailbox) and `MailboxNotEnabledForRESTAPI` (the mailbox is inactive,
+  soft-deleted or hosted on-premises) look identical that way and need opposite fixes. Graph puts the
+  reason in the response body, which the exception already carried but never showed; the code and
+  message are now part of it. Unparsable, empty or HTML bodies add nothing rather than raising.
+
+### Added
+
 - **Mails sent to the customer now carry their send time in the journal header**, the same way
   received mails already did. The badge on an outgoing note ends with `HelpdeskMessage.sent_at`
   (tooltip *Sent on*), so an agent can follow the whole correspondence on one time axis instead

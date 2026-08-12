@@ -227,7 +227,12 @@ accept exactly registered URIs. Which mailbox is being connected travels in a si
 `state` parameter.
 
 Use **Test connection** on the mailbox form to verify host, TLS and login before saving; it also
-lists the folders it can see.
+lists the folders it can see. On failure the provider's own message is shown, and **Copy message**
+puts the whole of it on the clipboard — provider errors are long and the status line wraps, so
+what is readable on screen is not always what you want to paste into a ticket. For Microsoft 365
+the message carries Graph's error code, which is what distinguishes an `ErrorAccessDenied` (the
+Exchange RBAC scope does not cover this mailbox) from a `MailboxNotEnabledForRESTAPI` (the mailbox
+is inactive, soft-deleted or still hosted on-premises) — two 403s with nothing else in common.
 
 ### Recipe: Microsoft 365 over IMAP (application only)
 

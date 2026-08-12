@@ -52,7 +52,10 @@
   <p>
     <label></label>
     <button type="button" id="hd_test_connection"><span class="icon icon-checked"><%= hd_icon_label('checked') %><%= l(:label_helpdesk_test_connection) %></span></button>
-    <span id="hd_conn_status" style="font-size:0.9em;margin-left:6px;"></span>
+    <%# inline-block + pre-wrap so a long provider error wraps instead of running
+        off the line; the copy button hands over the untruncated text either way. %>
+    <span id="hd_conn_status" style="font-size:0.9em;margin-left:6px;display:inline-block;vertical-align:top;max-width:55em;white-space:pre-wrap;word-break:break-word;"></span>
+    <button type="button" id="hd_conn_copy" style="display:none;margin-left:6px;font-size:0.85em;vertical-align:top;"><%= l(:button_helpdesk_copy_error) %></button>
   </p>
   <p>
     <label><%= l(:field_helpdesk_source_folder) %></label>
@@ -487,6 +490,9 @@
   var urlsBlock    = document.getElementById('hd_oauth_urls');
   var testBtn      = document.getElementById('hd_test_connection');
   var connStatus   = document.getElementById('hd_conn_status');
+  var connCopy     = document.getElementById('hd_conn_copy');
+  var connCopyLabel   = <%= raw l(:button_helpdesk_copy_error).to_json %>;
+  var connCopiedLabel = <%= raw l(:notice_helpdesk_error_copied).to_json %>;
   var knownFolders = [];
 
   function setStatus(msg, color) {
@@ -867,10 +873,62 @@
     });
   }
 
+  // The full text last shown, so the copy button can hand over the whole
+  // provider error even when the status line wrapped or was cut short.
+  var connStatusFull = '';
+
+  function showConnStatus(text, color) {
+    connStatusFull = text || '';
+    connStatus.textContent = connStatusFull;
+    connStatus.style.color = color;
+    if (connCopy) {
+      connCopy.style.display = connStatusFull ? '' : 'none';
+      connCopy.textContent = connCopyLabel;
+    }
+  }
+
+  // navigator.clipboard requires a secure context, which an internal Redmine
+  // served over plain http does not have - so fall back to the selection trick
+  // instead of failing silently on exactly the installations that need this.
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      if (ok) { resolve(); } else { reject(new Error('copy unavailable')); }
+    });
+  }
+
+  if (connCopy) {
+    connCopy.addEventListener('click', function () {
+      copyText(connStatusFull).then(function () {
+        connCopy.textContent = connCopiedLabel;
+        setTimeout(function () { connCopy.textContent = connCopyLabel; }, 2000);
+      }).catch(function () {
+        // Cannot copy - select the text instead so it can be copied by hand.
+        var range = document.createRange();
+        range.selectNodeContents(connStatus);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      });
+    });
+  }
+
   if (testBtn) {
     testBtn.addEventListener('click', function () {
-      connStatus.textContent = '\u2026';
-      connStatus.style.color = '#888';
+      showConnStatus('\u2026', '#888');
+      if (connCopy) connCopy.style.display = 'none';
       postJson(testUrl, formPayload())
         .then(function (res) {
           var text = res.data.message || (res.data.ok ? 'OK' : '');
@@ -879,13 +937,11 @@
           if (res.data.ok && res.data.sent_folder) {
             text += ' – ' + res.data.sent_folder;
           }
-          connStatus.textContent = text;
-          connStatus.style.color = res.data.ok ? 'green' : 'red';
+          showConnStatus(text, res.data.ok ? 'green' : 'red');
           if (res.data.ok && Array.isArray(res.data.folders)) populateDatalist(res.data.folders);
         })
         .catch(function () {
-          connStatus.textContent = 'Netzwerkfehler';
-          connStatus.style.color = 'red';
+          showConnStatus('Netzwerkfehler', 'red');
         });
     });
   }
