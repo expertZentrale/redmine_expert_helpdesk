@@ -20,6 +20,152 @@
   `HelpdeskMessage.sent_at` (Tooltip *Gesendet am*), womit sich der gesamte Schriftwechsel auf
   einer Zeitachse verfolgen lässt, statt die ausgehende Seite am Zeitstempel des Journaleintrags
   ablesen zu müssen – der sagt, wann die Notiz gespeichert wurde, nicht wann die Mail rausging.
+- **`scripts/README.md` + `scripts/README.de.md` beschreiben das Berechtigungsmodell in
+  Microsoft 365.** Wie die tenantweiten Entra-Anwendungsberechtigungen und der
+  Exchange-Online-RBAC-Scope zusammenwirken (und warum das Setup erst vollständig ist, wenn
+  Erstere wieder entfernt sind), dazu ein Vergleich der vier Varianten der Postfach-Auswahl
+  entlang der Frage, die tatsächlich zwischen ihnen entscheidet: wer das nächste Postfach
+  aufnehmen kann und was er oder sie dafür braucht – von „eine Exchange-Administratorin führt
+  das Skript aus“ (`EmailList`) bis „wer das freigegebene Postfach anlegt, setzt ein Attribut
+  mit“ (`CustomAttribute`). Mit Migrationspfad zwischen den Varianten und einem Abschnitt zur
+  Fehlersuche.
+
+### Geändert
+
+- **`-ListRoleAssignments` zeigt, welche Postfächer ein Scope tatsächlich abdeckt** – indem
+  Exchange Online den Filter auswertet (`Get-Recipient -RecipientPreviewFilter`), statt ihn mit dem
+  Auge zu lesen; bei einem `CustomAttribute`-, Domain- oder Gruppenfilter geht es gar nicht anders.
+  Mit `-TestMailbox` wird zusätzlich ausgegeben, wie Exchange Online eine bestimmte Adresse
+  einordnet – das ist die Diagnose für ein Graph-403 bei einem einzelnen Postfach: 403 heißt, der
+  Filter trifft es nicht, es fehlt also in dieser Liste.
+- **`-ListRoleAssignments` zeigt, woraus eine Umgebung besteht.** Nur lesend: die
+  App-Registrierung samt ihrer Tags, die Rollenzuweisungen und jeder Scope, auf den sie zeigen,
+  jeweils mit seinem Empfängerfilter – und bei einem Adresslisten-Scope die Postfächer einzeln
+  aufgeführt. Außerdem werden Rollen-/Scope-Kombinationen gemeldet, die mehrfach zugewiesen sind.
+- **Tabellenausgaben werden nicht mehr abgeschnitten.** `Format-Table` bemisst die Spalten an der
+  Konsolenbreite – der Berechtigungsprüfung fehlte damit das Ende eines Scope-Namens
+  (`Redmine-expert-Helpdes…`), und auf einem schmalen Terminal fielen die Spalten `ScopeType` und
+  `InScope` ganz weg – also gerade die beiden, die sagen, ob das Postfach überhaupt erreichbar ist.
+  Die Spalten richten sich jetzt nach ihrem Inhalt und werden so breit ausgegeben, dass nichts
+  verloren geht – die Ausgabe bleibt also unabhängig von der Terminalbreite korrekt und auch dann,
+  wenn sie woanders eingefügt wird. Die Bestätigungsdetails in `delete-app-registration.ps1`
+  bekommen dieselbe Behandlung.
+- **`-RemoveDuplicateRoleAssignments` räumt doppelte Rollenzuweisungen auf.** Behält je Rolle und
+  Scope eine Zuweisung und entfernt die übrigen, damit `Test-ServicePrincipalAuthorization` jede
+  Rolle nicht mehr mehrfach ausgibt. Für sich allein angegeben macht das Skript nur das und hört
+  auf; zusammen mit einem normalen Lauf passiert das Aufräumen als Teil davon, und `-WhatIf` listet
+  auf, was entfernt würde, ohne etwas zu entfernen. Zuweisungen auf verschiedenen Scopes gelten nie
+  als Duplikate, eine DEV- und eine LIVE-Installation sind also voreinander sicher.
+- **`scripts/setup-azure-app.ps1` kann Postfächer in ein bestehendes Setup aufnehmen.** Bisher
+  brach das Skript ab, sobald eine App-Registrierung mit dem angegebenen Namen existierte – ein
+  weiteres Projekt anzubinden hieß deshalb, entweder das gesamte Tenant-Setup abzuräumen und neu
+  aufzubauen (mit neuem Client-Secret und entsprechender Änderung in Redmine) oder den Exchange
+  Online Management-Scope von Hand zu bearbeiten. Das Skript ist jetzt durchgängig wiederholt
+  ausführbar: vorhandene App-Registrierung, Service Principal, Client-Secret, EXO-Service-Principal,
+  Management-Scope und Rollenzuweisungen werden weiterverwendet statt doppelt angelegt, und ein
+  Lauf mit einer neuen Adresse in `-MailboxEmailList` nimmt diese in den bestehenden RBAC-Scope
+  auf. Client-ID und Client-Secret bleiben gültig, unter *Administration → Plugins → Redmine
+  expert Helpdesk* ändert sich also nichts.
+- **`-MailboxEmailList` wirkt jetzt ergänzend.** Der Parameter beschrieb bisher den vollständigen
+  Scope; er beschreibt jetzt die Adressen, die im Scope enthalten sein müssen, bereits vorhandene
+  bleiben erhalten. Das alte Verhalten („genau diese Liste“) liefert das neue
+  `-ReplaceMailboxList`, den Zugriff auf ein Postfach entzieht `-RemoveMailboxEmailList`.
+- **Ein erneuter Lauf vergibt die Entra-Graph-Berechtigungen nicht noch einmal.**
+  `Mail.ReadWrite`/`Mail.Send` wirken additiv zum RBAC-Scope, Schritt 5 des Setups entfernt sie
+  bewusst wieder; sie beim Aufnehmen eines Postfachs erneut zu vergeben, gäbe der App
+  stillschweigend wieder Zugriff auf jedes Postfach des Tenants. Vergeben werden sie deshalb nur
+  noch, wenn der Lauf die App-Registrierung selbst angelegt hat oder das neue
+  `-EnsureEntraGraphPermissions` es ausdrücklich verlangt. Aus demselben Grund legt ein erneuter
+  Lauf ohne `-NewClientSecret` kein zweites Client-Secret an.
+- **Weitere Ergänzungen im Skript:** `-WhatIf` zeigt eine Scope-Änderung vorab an (alter Filter,
+  neuer Filter, aufgenommene und entfernte Adressen), ohne zu schreiben; `-TestMailbox` nimmt
+  mehrere Adressen und verwendet standardmäßig die im Lauf hinzugekommenen; die Prüfung der
+  Berechtigung wiederholt sich mehrfach, weil Exchange Online einen Moment braucht, bis eine
+  Scope-Änderung repliziert ist, ein sofortiges `InScope: False` also noch kein Fehler ist;
+  `-RbacScopeName` ist ein Parameter wie schon in `delete-app-registration.ps1`; und `-SelfTest`
+  führt die Prüfungen des Scope-Filters offline aus, ohne Verbindung zu einem Tenant.
+
+  Das Skript vergibt Zugriff auf Postfächer, es legt sie nicht an – die Postfächer müssen weiterhin
+  im Tenant vorhanden sein.
+
+- **Die Einrichtungsskripte finden ihre Ressourcen über eine Markierung statt über Namen.**
+  Anzeigenamen waren der einzige Anker an einer Installation – eine von Hand unter einem anderen
+  Namen als der Skriptvorgabe angelegte Einrichtung wurde damit gar nicht gefunden, und das Skript
+  legte dann stillschweigend eine zweite, parallele App-Registrierung samt Scope an, statt die erste
+  zu erweitern. `setup-azure-app.ps1` taggt die App-Registrierung jetzt (`Tags` enthält
+  `RedmineExpertHelpdesk`, über `-ResourceTag` einstellbar) und sucht sie über dieses Tag; der
+  Service Principal wird über die AppId aufgelöst; und welcher Management-Scope erweitert wird,
+  steht in den vorhandenen Rollenzuweisungen der App – ein anders benannter Scope wird also
+  erweitert statt verdoppelt. Installationen aus der Zeit vor dem Tag werden beim nächsten Lauf
+  nachträglich markiert, das repariert sich also von selbst. `-AppDisplayName` und `-RbacScopeName`
+  braucht es damit nur noch für die Ersteinrichtung oder zur Abgrenzung, und
+  `delete-app-registration.ps1` findet sein Ziel auf demselben Weg. Mehrere Installationen in einem
+  Tenant hält `-Environment` auseinander (siehe unten).
+- **`-Environment` richtet eine Dev-Installation neben der Live-Installation ein.** Ein Dev-Stack
+  braucht eine eigene App-Registrierung, damit seine Plugin-Instanz nicht an die
+  Live-Helpdesk-Postfächer kommt – die beiden auseinanderzuhalten hieß bisher, bei jedem einzelnen
+  Lauf passenden Anzeigenamen und Scope-Namen mitzugeben. `-Environment DEV` leitet jetzt alle drei
+  Kennungen auf einmal ab – Tag `RedmineExpertHelpdesk:DEV`, App `redmine-expert-helpdesk-dev`,
+  Scope `Redmine-expert-Helpdesk-Mailboxes-DEV` –, damit nichts kollidiert und ein Dev-Lauf nur noch
+  `-Environment DEV` ist. Die Bezeichnung ist frei wählbar (`TEST`, `STAGING`, …) und
+  Groß-/Kleinschreibung spielt keine Rolle; `delete-app-registration.ps1` nimmt sie ebenfalls, das
+  Abräumen allein der Dev-Seite ist also `-Environment DEV`. Die Vorgabe `LIVE` erzeugt exakt die
+  bisher verwendeten Namen, abgesichert durch einen Selbsttest, damit bestehende Installationen
+  weiterhin gefunden werden. Jede Installation trägt zusätzlich das schlichte Tag
+  `RedmineExpertHelpdesk`, über das sich unabhängig von der Umgebung alle Installationen eines
+  Tenants auflisten lassen.
+
+### Behoben
+
+- **`-WhatIf` hielt die Entra-ID-Schreibzugriffe nicht auf.** Der Parameter war als Probelauf
+  dokumentiert und sicherte die Exchange-Online-Aufrufe ab, die Microsoft-Graph-Aufrufe liefen aber
+  trotzdem – `-RemoveEntraGraphPermissions -WhatIf` entfernte die Berechtigungen also wirklich,
+  `-NewClientSecret -WhatIf` legte wirklich ein Secret an, das niemand notiert hat, und
+  `-EnsureEntraGraphPermissions -WhatIf` vergab wirklich wieder tenantweiten Mailzugriff. Jeder
+  Schreibzugriff ist jetzt ausdrücklich abgesichert, statt sich darauf zu verlassen, dass das
+  Graph-SDK die Einstellung beachtet; die übrigen Anlagevorgänge sind unter `-WhatIf` gar nicht
+  erreichbar, weil der Lauf vorher abbricht.
+- **Werte wurden ohne Maskierung von Apostrophen in Exchange-Online-Empfängerfilter eingesetzt.**
+  Ein Gruppen-DN (`O'Brien`) oder eine Adresse (`o'brien@example.com`) mit Apostroph hätte den
+  Scope-Filter zerstört oder stillschweigend verändert, welche Postfächer er trifft. Alle vier
+  Varianten maskieren jetzt, das Zurücklesen einer Adressliste versteht die maskierte Form, und die
+  Maskierung ist idempotent – ein erneuter Lauf kann also keine weitere Ebene von Anführungszeichen
+  hinzufügen. Für den Graph-`$filter` galt dieselbe Regel bereits.
+- **`delete-app-registration.ps1` konnte in seinen Löschabfragen die falsche App benennen.** Wurde
+  eine App über das Tag gefunden, nannte die Bestätigung dennoch den Parameter `-AppDisplayName` und
+  suchte damit auch die vorläufig gelöschte Kopie und den Exchange-Service-Principal – bei einer
+  Installation unter abweichendem Namen beschrieb die Abfrage also ein anderes Objekt als das
+  gelöschte, und die Folgeschritte fanden nichts. Gearbeitet wird jetzt mit der tatsächlich
+  gefundenen App (AppId für das Exchange-Objekt, echte Anzeigenamen sonst), und bei mehreren Apps
+  mit demselben Tag bricht das Skript ab, solange nicht `-AppDisplayName` oder `-Force` sagt, welche
+  gemeint ist.
+- **Die Berechtigungsprüfung meldete Erfolg für ein Postfach, das gar nicht im Scope war.** Exchange
+  Online liefert `InScope` als Zeichenkette `"False"`, und jede nicht-leere Zeichenkette ist in
+  PowerShell wahr – die Prüfung kehrte sich damit um und meldete „All tested mailboxes are in scope“
+  für ein Postfach, das die App nicht erreichen konnte. Da davon `-RemoveEntraGraphPermissions`
+  abhängt, hätte ein Handeln darauf die tenantweiten Berechtigungen entfernt, während der
+  RBAC-Scope das Postfach tatsächlich nicht abdeckte – das Postfach wäre unerreichbar geworden. Der
+  Wert wird jetzt ausdrücklich ausgewertet, alles Unbekannte gilt als nicht im Scope, und das
+  Ergebnis wird gezählt statt auf Wahrheitswert geprüft.
+- **Dieselbe Rolle wurde bei jedem Lauf erneut auf den Scope zugewiesen.** Die Prüfung auf eine
+  bestehende Zuweisung verglich `RoleAssigneeName`, einen Anzeigenamen, der nicht mit dem der
+  App-Registrierung übereinstimmen muss; wich er ab, fand die Prüfung nichts und jeder Lauf legte
+  eine weitere Zuweisung an. Zuweisungen werden jetzt über `-RoleAssignee` aufgelöst, und
+  Duplikate aus früheren Läufen werden samt Befehl zum Entfernen gemeldet.
+- **Den Parameter einer Scope-Variante anzugeben, ohne die Variante zu nennen, wurde stillschweigend
+  ignoriert.** `-MailboxCustomAttributeValue "…"` ließ `-MailboxScopeOption` auf der Vorgabe
+  `EmailList` stehen, der Parameter blieb also wirkungslos und der Lauf brach mit der Aufforderung
+  nach `-MailboxEmailList` ab – dem Parameter einer anderen als der offensichtlich gemeinten
+  Variante. Die Variante ergibt sich jetzt aus dem angegebenen Postfach-Parameter; Parameter zweier
+  Varianten anzugeben oder einen, der einem ausdrücklichen `-MailboxScopeOption` widerspricht, ist
+  ein Fehler statt einer stillschweigenden Entscheidung. Die `EmailList`-Meldung nennt außerdem die
+  Parameter der übrigen Varianten, und die `-TestMailbox`-Meldung sagt, welchen Scope sie prüft.
+- **Ein Apostroph in `-AppDisplayName` machte die Suche nach der App-Registrierung kaputt** – in
+  beiden Skripten. Einfache Anführungszeichen begrenzen Zeichenketten in einem OData-Filter und
+  müssen zum Maskieren verdoppelt werden; unmaskiert lief ein solcher Name entweder auf einen Fehler
+  oder fragte stillschweigend etwas anderes ab – in `setup-azure-app.ps1` hätte das eine doppelte
+  App-Registrierung bedeutet, in `delete-app-registration.ps1` eine nicht gefundene und damit nicht
+  entfernte App.
 
 ### Behoben
 

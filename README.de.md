@@ -822,6 +822,19 @@ Die folgenden Schritte können manuell über das Azure-Portal, per PowerShell
 (Microsoft Graph PowerShell SDK + Exchange Online PowerShell) oder per
 Terraform (Provider `hashicorp/azuread`) ausgeführt werden.
 
+> 💡 `scripts/setup-azure-app.ps1` in diesem Repository führt die Schritte 1–4
+> in einem Durchlauf aus (Repo-internes Werkzeug, nicht Teil der
+> Release-Archive). Das Skript ist wiederholt ausführbar: vorhandene Ressourcen
+> werden weiterverwendet, ein späterer Lauf nimmt weitere Postfächer in den
+> RBAC-Scope aus Schritt 4 auf – siehe
+> [Weitere Postfächer später aufnehmen](#weitere-postfächer-später-aufnehmen).
+>
+> [`scripts/README.de.md`](scripts/README.de.md) erläutert das Zusammenspiel der
+> beiden Berechtigungsebenen und vergleicht die vier Varianten der Postfach-Auswahl –
+> insbesondere, **wer das jeweils nächste Postfach aufnehmen kann**: von „eine Exchange-
+> Administratorin muss das Skript ausführen“ bis „wer das freigegebene Postfach anlegt,
+> setzt ein Attribut mit“. Vor der Wahl in Schritt 4b lesenswert.
+
 ---
 
 ### Schritt 1 – App registrieren
@@ -1098,6 +1111,86 @@ Vollständige Dokumentation: [Exchange Online Application RBAC](https://learn.mi
 
 In Redmine unter *Administration → Plugins → Redmine expert Helpdesk*
 Tenant-ID, Client-ID und Client-Secret eintragen.
+
+---
+
+### Weitere Postfächer später aufnehmen
+
+Mit jedem neuen Projekt kommt ein weiteres Helpdesk-Postfach hinzu. Wachsen
+muss dabei nur der RBAC-Scope aus Schritt 4 – App-Registrierung, Client-ID und
+Client-Secret bleiben unverändert, an der Redmine-Konfiguration ändert sich
+also nichts.
+
+Mit dem Skript (empfohlen – es liest den aktuellen Scope, ergänzt die neue
+Adresse und lässt alle übrigen Ressourcen unangetastet):
+
+```powershell
+# Erst die Vorschau: zeigt alten und neuen Filter, schreibt nichts
+./scripts/setup-azure-app.ps1 -MailboxEmailList "sales@example.com" -WhatIf
+
+./scripts/setup-azure-app.ps1 -MailboxEmailList "sales@example.com"
+
+# und um den Zugriff auf ein Postfach wieder zu entziehen
+./scripts/setup-azure-app.ps1 -RemoveMailboxEmailList "sales@example.com"
+```
+
+Namen sind hier nicht nötig, auch wenn die eigene Einrichtung unter anderen
+angelegt wurde: Das Skript taggt die App-Registrierung
+(`RedmineExpertHelpdesk`) und findet sie über dieses Tag, löst den Service
+Principal über die AppId auf und liest den zu erweiternden Scope aus den
+vorhandenen Rollenzuweisungen der App. Eine von Hand nach den Rezepten oben
+angelegte Einrichtung wird beim ersten Lauf des Skripts nachträglich markiert –
+dafür bei diesem ersten Lauf `-AppDisplayName` mitgeben, damit klar ist, welche
+App gemeint ist. Siehe
+[`scripts/README.de.md`](scripts/README.de.md#wie-ein-erneuter-lauf-die-installation-findet).
+
+Eine eigene Installation für einen Dev-Stack (mit eigener App-Registrierung,
+damit das Dev-Plugin nicht an die Live-Postfächer kommt) ist `-Environment DEV`:
+daraus leiten sich eigenes Tag, eigener App-Name und eigener Scope-Name ab –
+nichts kollidiert, und die Live-Installation bleibt unberührt:
+
+```powershell
+./scripts/setup-azure-app.ps1 -Environment DEV `
+    -MailboxEmailList "helpdesk-dev@example.com" -TestMailbox "helpdesk-dev@example.com"
+```
+
+Von Hand hängt es von der in Schritt 4b gewählten Variante ab: bei
+**Variante A** (Domain-Suffix) ist nichts zu tun, solange das neue Postfach in
+dieser Domain liegt. Bei **Variante B** (Sicherheitsgruppe) oder **Variante C**
+(CustomAttribute1) bleibt der Scope selbst unverändert – aufgenommen wird nur
+das Postfach:
+
+```powershell
+Add-DistributionGroupMember -Identity "helpdesk-mailboxes@example.com" -Member "sales@example.com"
+# oder
+Set-Mailbox -Identity "sales@example.com" -CustomAttribute1 "Redmine"
+```
+
+Zählt der Scope die Adressen einzeln auf (die Voreinstellung des Skripts), muss
+der Filter neu geschrieben werden. `Set-ManagementScope` *ersetzt* ihn, daher
+zuerst den aktuellen auslesen und die vorhandenen Adressen wieder mit angeben:
+
+```powershell
+Get-ManagementScope -Identity "Redmine-Helpdesk-Mailboxes" | Format-List RecipientFilter
+
+Set-ManagementScope -Identity "Redmine-Helpdesk-Mailboxes" `
+  -RecipientRestrictionFilter "PrimarySmtpAddress -eq 'helpdesk@example.com' -or PrimarySmtpAddress -eq 'sales@example.com'"
+```
+
+Anschließend das neue Postfach prüfen – Exchange Online braucht einen Moment,
+bis die Änderung repliziert ist, ein `InScope: False` direkt nach der
+Aktualisierung ist also noch kein Fehler:
+
+```powershell
+Test-ServicePrincipalAuthorization -Identity <object-id> -Resource "sales@example.com" | Format-Table
+```
+
+> ⚠️ Beim Aufnehmen eines Postfachs die Entra-Berechtigungen aus Schritt 2
+> **nicht** erneut vergeben. Sie wirken additiv zum RBAC-Scope, die App käme
+> damit wieder an jedes Postfach des Tenants. Genau deshalb überspringt das
+> Skript Schritt 2 bei einer bereits vorhandenen App-Registrierung.
+
+---
 
 ## Installation
 

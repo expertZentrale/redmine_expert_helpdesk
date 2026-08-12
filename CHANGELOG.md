@@ -20,6 +20,137 @@
   (tooltip *Sent on*), so an agent can follow the whole correspondence on one time axis instead
   of reading the outgoing side off the journal's own timestamp, which is when the note was saved
   rather than when the mail left.
+- **`scripts/README.md` (+ its German mirror) documents the Microsoft 365 permission model.** How
+  the tenant-wide Entra application permissions and the Exchange Online RBAC scope interact (and
+  why the setup is only complete once the former are removed), plus a comparison of the four
+  mailbox scope options along the axis that actually decides between them: who can onboard the
+  next mailbox, and what they need in order to do it — from "an Exchange Administrator runs the
+  script" (`EmailList`) to "whoever creates the shared mailbox sets one attribute"
+  (`CustomAttribute`). Includes the migration path between options and a troubleshooting section.
+
+### Changed
+
+- **`-ListRoleAssignments` shows which mailboxes a scope actually covers**, by asking Exchange
+  Online to evaluate the filter (`Get-Recipient -RecipientPreviewFilter`) rather than reading it by
+  eye — the only way to answer that for a `CustomAttribute`, domain or group filter. With
+  `-TestMailbox` it also reports what Exchange Online makes of one specific address, which is the
+  diagnosis for a Graph 403 on a single mailbox: a 403 means the filter does not match it, so it
+  will be missing from that list.
+- **`-ListRoleAssignments` shows what an environment consists of.** Read-only: the app
+  registration and its tags, the role assignments, and every scope they point at together with its
+  recipient filter — and, for an address-list scope, the mailboxes spelled out one per line. It also
+  flags role/scope combinations assigned more than once.
+- **Table output is no longer truncated.** `Format-Table` sizes columns to the console, so the
+  authorization test's output lost the end of a scope name (`Redmine-expert-Helpdes…`) and, on a
+  narrow terminal, dropped the `ScopeType` and `InScope` columns altogether — the two that say
+  whether the mailbox is actually reachable. Columns are now sized to their content and rendered at
+  a width that leaves everything intact, so the output stays correct however narrow the terminal is
+  and when pasted elsewhere. The confirmation details in `delete-app-registration.ps1` get the same
+  treatment.
+- **`-RemoveDuplicateRoleAssignments` tidies up duplicate role assignments.** Keeps one assignment
+  per role and scope and removes the rest, so `Test-ServicePrincipalAuthorization` stops printing
+  each role several times. Given on its own the script does only this and stops; given alongside a
+  normal run the tidy-up happens as part of it, and `-WhatIf` lists what would go without removing
+  anything. Assignments on different scopes are never treated as duplicates, so a DEV and a LIVE
+  installation are safe from each other.
+- **`scripts/setup-azure-app.ps1` can now add mailboxes to an existing setup.** The script used
+  to abort as soon as an app registration with the given name existed, so onboarding one more
+  project meant either tearing the whole tenant setup down and rebuilding it — which mints a new
+  client secret and forces a Redmine config change — or editing the Exchange Online management
+  scope by hand. It is now re-runnable end to end: an existing app registration, service
+  principal, client secret, EXO service principal, management scope and role assignments are
+  reused instead of duplicated, and a run with a new `-MailboxEmailList` address merges that
+  address into the existing RBAC scope. Client ID and client secret stay valid, so nothing
+  changes under *Administration → Plugins → Redmine expert Helpdesk*.
+- **`-MailboxEmailList` is additive now.** It used to describe the complete scope; it now
+  describes the addresses that must be in the scope, and the ones already there are kept. Pass
+  the new `-ReplaceMailboxList` to get the old "exactly this list" behaviour, and
+  `-RemoveMailboxEmailList` to revoke access to a mailbox again.
+- **A re-run no longer re-grants the Entra Graph permissions.** `Mail.ReadWrite`/`Mail.Send` are
+  additive to the RBAC scope, and step 5 of the setup removes them on purpose; granting them
+  again while adding a mailbox would silently give the app access to every mailbox in the tenant.
+  They are now only granted when the run created the app registration itself, or when the new
+  `-EnsureEntraGraphPermissions` asks for it explicitly. For the same reason a re-run creates no
+  second client secret unless `-NewClientSecret` is given.
+- **Further additions to the script:** `-WhatIf` previews a scope change (old filter, new filter,
+  added and removed addresses) without writing; `-TestMailbox` takes several addresses and
+  defaults to the ones the run just added; the authorization test retries, because Exchange
+  Online needs a moment to replicate a scope change and an immediate `InScope: False` is not yet
+  a failure; `-RbacScopeName` is a parameter like it already was in `delete-app-registration.ps1`;
+  and `-SelfTest` runs the scope-filter assertions offline, without connecting to a tenant.
+
+  The script grants access to mailboxes, it does not create them — the mailboxes still have to
+  exist in the tenant.
+
+- **The setup scripts find their resources by a marker, not by name.** Display names were the only
+  handle on an installation, so a setup created by hand under a different name than the script's
+  default was not found at all — and the script would then build a second, parallel app
+  registration and scope instead of extending the first, silently. `setup-azure-app.ps1` now tags
+  the app registration (`Tags` contains `RedmineExpertHelpdesk`, configurable via `-ResourceTag`)
+  and looks it up by that tag; the service principal is resolved from the AppId; and the management
+  scope to extend is read off the app's existing role assignments, so a differently named scope is
+  extended rather than duplicated. Installations predating the tag are stamped on the next run, so
+  it heals itself. `-AppDisplayName` and `-RbacScopeName` are therefore only needed for the initial
+  setup or to disambiguate, and `delete-app-registration.ps1` finds its target the same way. Several
+  installations in one tenant are kept apart by `-Environment` (see below).
+- **`-Environment` sets up a dev installation alongside the live one.** A dev stack needs its own
+  app registration so that its plugin instance cannot reach the live helpdesk mailboxes, and
+  keeping the two apart previously meant passing a matching display name and scope name on every
+  single run. `-Environment DEV` now derives all three identities at once — tag
+  `RedmineExpertHelpdesk:DEV`, app `redmine-expert-helpdesk-dev`, scope
+  `Redmine-expert-Helpdesk-Mailboxes-DEV` — so nothing collides and a dev run is just
+  `-Environment DEV`. The label is free-form (`TEST`, `STAGING`, …) and case-insensitive;
+  `delete-app-registration.ps1` takes it too, so tearing down only the dev side is
+  `-Environment DEV`. The default `LIVE` reproduces exactly the names used until now, which is
+  locked down by a self-test so existing installations keep being found. Every installation also
+  carries the plain `RedmineExpertHelpdesk` tag, which lists all of them in a tenant regardless of
+  environment.
+
+### Fixed
+
+- **`-WhatIf` did not stop the Entra ID writes.** It was documented as a dry run and guarded the
+  Exchange Online calls, but the Microsoft Graph ones ran regardless — so
+  `-RemoveEntraGraphPermissions -WhatIf` really removed the permissions, `-NewClientSecret -WhatIf`
+  really minted a secret nobody wrote down, and `-EnsureEntraGraphPermissions -WhatIf` really
+  re-granted tenant-wide mail access. Every write is now guarded explicitly rather than trusting the
+  Graph SDK to honour the preference, and the remaining creates are unreachable under `-WhatIf`
+  because the run stops earlier.
+- **Values were interpolated into Exchange Online recipient filters without escaping apostrophes.**
+  A group DN (`O'Brien`) or an address (`o'brien@example.com`) containing one would have broken the
+  scope filter or silently changed which mailboxes it matched. All four scope options escape now,
+  reading an address list back understands the escaped form, and escaping is idempotent so a re-run
+  cannot add another layer of quotes. The same rule already applied to the Graph `$filter`.
+- **`delete-app-registration.ps1` could describe the wrong app in its deletion prompts.** Having
+  found an app by tag, it still named the `-AppDisplayName` parameter in the confirmation and used it
+  to look up the soft-deleted copy and the Exchange service principal — so for an installation
+  carrying a different name, the prompt described one object while another was deleted, and the
+  follow-up steps found nothing. It now works from the app it actually found (AppId for the Exchange
+  object, real display names elsewhere), and refuses to proceed when several apps share the tag
+  unless `-AppDisplayName` or `-Force` says which is meant.
+- **The authorization test reported success for a mailbox that was not in scope.** Exchange Online
+  returns `InScope` as the string `"False"`, and every non-empty string is truthy in PowerShell, so
+  the check inverted itself: it announced "All tested mailboxes are in scope" for a mailbox the app
+  could not reach. This gates `-RemoveEntraGraphPermissions`, so acting on it would have removed the
+  tenant-wide permissions while the RBAC scope did not actually cover the mailbox — leaving the
+  mailbox unreachable. The value is now parsed explicitly and anything unrecognised counts as not in
+  scope, and the result set is counted rather than tested for truthiness.
+- **The same role was assigned to a scope again on every run.** The check for an existing assignment
+  compared `RoleAssigneeName`, a display name that need not equal the app registration's; where it
+  differed the check matched nothing and each run added another assignment. Assignments are now
+  resolved via `-RoleAssignee`, and duplicates left by earlier runs are reported with the command to
+  remove them.
+- **Supplying a scope option's parameter without also naming the option was silently ignored.**
+  `-MailboxCustomAttributeValue "…"` left `-MailboxScopeOption` at its `EmailList` default, so the
+  parameter did nothing and the run aborted asking for `-MailboxEmailList` — a parameter of a
+  different option than the one plainly intended. The option is now taken from whichever mailbox
+  parameter was supplied; supplying parameters of two options, or one that contradicts an explicit
+  `-MailboxScopeOption`, is an error rather than a silent choice. The `EmailList` message also lists
+  the other options' parameters now, and the `-TestMailbox` message says which scope it verifies.
+- **An apostrophe in `-AppDisplayName` broke the app registration lookup** in both scripts. Single
+  quotes delimit strings in an OData filter and have to be doubled to be escaped; unescaped, such a
+  name either errored out or silently queried something else — which in `setup-azure-app.ps1` would
+  have meant creating a duplicate app registration, and in `delete-app-registration.ps1` not finding
+  the app to remove.
 
 ### Fixed
 

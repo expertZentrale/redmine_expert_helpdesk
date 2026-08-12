@@ -1,66 +1,182 @@
 <#
 .SYNOPSIS
-    One-time setup of the Azure/Entra app registration for the Redmine Expert
+    Set up (and extend) the Azure/Entra app registration for the Redmine expert
     Helpdesk plugin (Microsoft Graph API, OAuth2 Client Credentials Flow).
 
 .DESCRIPTION
-    Combines all steps from the plugin documentation (README.md, section
-    "Azure App Registration") into a single runnable PowerShell script:
+    Combines the steps from the plugin documentation (README.md, section
+    "Azure App Registration") into a runnable PowerShell script:
 
-      1. Register the app + create a Service Principal
+      1. Register app + create Service Principal
       2. Assign Graph API permissions (Mail.ReadWrite, Mail.Send) + Admin Consent
-      3. Create a client secret
+      3. Create client secret
       4. Restrict access via Exchange Online Application RBAC to the helpdesk
          mailboxes (replaces the deprecated New-ApplicationAccessPolicy)
-      5. Optional: remove the Graph permissions granted in step 2 again, so
-         that only the EXO RBAC scope from step 4 applies (see the warning
-         below — additive permissions would otherwise defeat the scope)
+      5. Optional: remove the Graph permissions granted in step 2 again, so that
+         only the EXO RBAC scope from step 4 applies (see the warning below —
+         additive permissions would otherwise defeat the scope)
+
+    The script is re-runnable. Existing resources are honoured: an existing app
+    registration, service principal, client secret, Exchange Online service
+    principal, management scope and role assignments are reused, never
+    duplicated. Running it again with additional -MailboxEmailList addresses
+    therefore adds those mailboxes to the existing RBAC scope and leaves
+    everything else untouched — the client ID and client secret configured in
+    Redmine keep working.
+
+    Note that a re-run against an existing app registration deliberately skips
+    step 2: after the initial setup the Entra Graph permissions are removed on
+    purpose (step 5), and silently re-granting them would re-open access to
+    every mailbox in the tenant. Use -EnsureEntraGraphPermissions to grant them
+    explicitly, e.g. after a first run that aborted halfway.
+
+    The script only grants access to mailboxes, it does not create them. The
+    mailboxes must already exist in the tenant.
 
     Required modules:
       - Microsoft.Graph (Microsoft Graph PowerShell SDK)
       - ExchangeOnlineManagement
 
-    Required roles/permissions for the person running this:
+    Required roles/permissions for the person running it:
       - Application Administrator (or Cloud Application Administrator) in Entra ID
       - Exchange Administrator (for step 4)
 
+.PARAMETER Environment
+    Which installation to work on — 'LIVE' (default), 'DEV', or any label you
+    like. Several installations can live in one tenant side by side; this is
+    what keeps them apart, and it is normally the only one of the four
+    identifying parameters you need to pass.
+
+    It derives all three of the following, so a DEV stack needs no other names:
+      tag             RedmineExpertHelpdesk:DEV
+      app registration redmine-expert-helpdesk-dev
+      EXO scope        Redmine-expert-Helpdesk-Mailboxes-DEV
+
 .PARAMETER AppDisplayName
-    Display name of the app registration in Entra ID.
+    Display name of the app registration in Entra ID. Defaults to
+    'redmine-expert-helpdesk-<environment>'.
+
+    Only needed when the installation cannot be found by its tag — see
+    -ResourceTag. When it is found by tag, the name it actually carries is used.
+
+.PARAMETER RbacScopeName
+    Name of the Exchange Online management scope that restricts mailbox access.
+    Defaults to 'Redmine-expert-Helpdesk-Mailboxes-<ENVIRONMENT>'.
+
+    Only used when creating the scope, or when the app has no role assignments
+    yet. On a re-run the scope the app is already assigned to wins, so a
+    differently named scope is extended rather than duplicated.
+
+.PARAMETER ResourceTag
+    Marker written to the app registration's Tags so later runs find the
+    installation without knowing the name it was created under. Defaults to
+    'RedmineExpertHelpdesk:<ENVIRONMENT>'; existing installations are stamped
+    with it on the next run. Every installation additionally carries the plain
+    'RedmineExpertHelpdesk' tag, which is how you list all of them in a tenant.
+    Set this only if the environment-derived name does not suit you.
 
 .PARAMETER MailboxScopeOption
-    Determines how mailboxes are restricted for the Exchange Online RBAC
-    scope: 'DomainSuffix' (default), 'SecurityGroup', 'CustomAttribute' or
-    'EmailList'.
+    Determines how the mailboxes restricted by the Exchange Online RBAC scope
+    are selected: 'DomainSuffix', 'SecurityGroup', 'CustomAttribute' or
+    'EmailList' (default).
 
 .PARAMETER MailboxDomainSuffix
-    Only with -MailboxScopeOption DomainSuffix: domain suffix of the allowed
+    Only for -MailboxScopeOption DomainSuffix: domain suffix of the allowed
     mailboxes, e.g. '@helpdesk.example.com'.
 
 .PARAMETER MailboxSecurityGroup
-    Only with -MailboxScopeOption SecurityGroup: name/email of the
-    mail-enabled security group containing the allowed mailboxes.
+    Only for -MailboxScopeOption SecurityGroup: name/email of the mail-enabled
+    security group of allowed mailboxes.
 
 .PARAMETER MailboxCustomAttributeValue
-    Only with -MailboxScopeOption CustomAttribute: value of CustomAttribute1
-    that marks the allowed mailboxes.
+    Only for -MailboxScopeOption CustomAttribute: value of CustomAttribute1 that
+    marks the allowed mailboxes.
 
 .PARAMETER MailboxEmailList
-    Only with -MailboxScopeOption EmailList: fixed list of allowed mailbox
-    addresses, e.g. -MailboxEmailList "a@example.com","b@example.com".
+    Only for -MailboxScopeOption EmailList: mailbox addresses that must be in the
+    RBAC scope, e.g. -MailboxEmailList "a@example.com","b@example.com".
+
+    These addresses are ADDED to the ones already in the scope; addresses that
+    are already there are kept. Use -ReplaceMailboxList to set the scope to
+    exactly this list instead.
+
+.PARAMETER RemoveMailboxEmailList
+    Only for -MailboxScopeOption EmailList: mailbox addresses to remove from the
+    RBAC scope. Removing the last address is refused — use
+    ./delete-app-registration.ps1 to remove the setup entirely.
+
+.PARAMETER ReplaceMailboxList
+    Only for -MailboxScopeOption EmailList: set the scope to exactly
+    -MailboxEmailList instead of merging with the addresses already in it.
 
 .PARAMETER SecretValidityYears
-    Validity period of the client secret in years (default: 1).
+    Validity of the client secret in years (default 1).
+
+.PARAMETER NewClientSecret
+    Create an additional client secret for an existing app registration (secret
+    rotation). Without it, a re-run keeps the existing secret and creates none.
+
+.PARAMETER EnsureEntraGraphPermissions
+    Grant the step 2 Graph permissions on an existing app registration. Only
+    needed when a first run aborted halfway — see the note in the description.
 
 .PARAMETER TestMailbox
-    Required (except with -RemoveEntraGraphPermissions): address of a helpdesk
-    mailbox to test the RBAC scope against after setup
-    (Test-ServicePrincipalAuthorization).
+    Mailbox address(es) the RBAC scope is verified against
+    (Test-ServicePrincipalAuthorization). Defaults to the addresses added by this
+    run; required on a first run of a scope option other than 'EmailList'.
 
 .PARAMETER RemoveEntraGraphPermissions
-    Switch: removes the Graph app roles assigned in step 2 (Mail.ReadWrite,
-    Mail.Send) again. Only enable this AFTER the EXO RBAC test in step 4 has
-    succeeded (InScope = True) — otherwise the app loses all mail access
-    beforehand.
+    Remove the step 2 Graph permissions (Mail.ReadWrite, Mail.Send). Run this
+    only AFTER the EXO RBAC test in step 4 succeeded (InScope True) — otherwise
+    the app loses all mail access beforehand.
+
+.PARAMETER ListRoleAssignments
+    Show what the environment currently consists of — the app registration, its
+    role assignments and the scopes they point at, with each scope's recipient
+    filter — and stop. Reads only, changes nothing. Nothing is truncated, so the
+    output can be pasted somewhere as it is.
+
+.PARAMETER RemoveDuplicateRoleAssignments
+    Keep one role assignment per role and scope and remove the rest. Duplicates
+    are harmless — access is identical — but Test-ServicePrincipalAuthorization
+    prints a row per assignment, which makes its output hard to read.
+
+    Given on its own (no mailbox parameters), the script does only this and
+    stops. Given alongside a normal run, the tidy-up happens as part of it.
+
+.PARAMETER SelfTest
+    Run the offline assertions for the mailbox scope filter helpers and exit.
+    Connects to nothing and changes nothing.
+
+.EXAMPLE
+    # Initial setup
+    ./setup-azure-app.ps1 -AppDisplayName "redmine-helpdesk" `
+        -MailboxScopeOption EmailList `
+        -MailboxEmailList "helpdesk@example.com", "support@example.com" `
+        -TestMailbox "helpdesk@example.com"
+
+.EXAMPLE
+    # Later: add another project's mailbox to the existing setup.
+    # Nothing else is touched — same app, same client secret.
+    ./setup-azure-app.ps1 -MailboxEmailList "sales@example.com"
+
+.EXAMPLE
+    # A separate installation for the dev stack, alongside the live one.
+    # -Environment derives its own tag, app name and scope name, so the two
+    # never collide; every later dev run just repeats -Environment DEV.
+    ./setup-azure-app.ps1 -Environment DEV `
+        -MailboxEmailList "helpdesk-dev@example.com" `
+        -TestMailbox "helpdesk-dev@example.com"
+
+    ./setup-azure-app.ps1 -Environment DEV -MailboxEmailList "sales-dev@example.com"
+
+.EXAMPLE
+    # Dry run first: shows the old and the new scope filter, writes nothing.
+    ./setup-azure-app.ps1 -MailboxEmailList "sales@example.com" -WhatIf
+
+.EXAMPLE
+    # Remove a mailbox from the scope again
+    ./setup-azure-app.ps1 -RemoveMailboxEmailList "sales@example.com"
 
 .EXAMPLE
     ./setup-azure-app.ps1 -AppDisplayName "redmine-helpdesk" `
@@ -68,19 +184,26 @@
         -TestMailbox "helpdesk@example.com"
 
 .EXAMPLE
-    ./setup-azure-app.ps1 -AppDisplayName "redmine-helpdesk" `
-        -MailboxScopeOption EmailList `
-        -MailboxEmailList "helpdesk@example.com", "support@example.com" `
-        -TestMailbox "helpdesk@example.com"
+    # Second run, once the RBAC scope has been successfully tested:
+    ./setup-azure-app.ps1 -RemoveEntraGraphPermissions
 
 .EXAMPLE
-    # Second run, after the RBAC scope has been successfully tested:
-    ./setup-azure-app.ps1 -RemoveEntraGraphPermissions
+    # Tidy up duplicate role assignments left by earlier runs and stop.
+    # -WhatIf lists what would go without removing anything.
+    ./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments -WhatIf
+    ./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments
 #>
 
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$AppDisplayName = "redmine-expert-helpdesk-live",
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')]
+    [string]$Environment = "LIVE",
+
+    [string]$AppDisplayName,
+
+    [string]$RbacScopeName,
+
+    [string]$ResourceTag,
 
     [ValidateSet("DomainSuffix", "SecurityGroup", "CustomAttribute", "EmailList")]
     [string]$MailboxScopeOption = "EmailList",
@@ -93,11 +216,25 @@ param(
 
     [string[]]$MailboxEmailList,
 
+    [string[]]$RemoveMailboxEmailList,
+
+    [switch]$ReplaceMailboxList,
+
     [int]$SecretValidityYears = 1,
 
-    [string]$TestMailbox,
+    [switch]$NewClientSecret,
 
-    [switch]$RemoveEntraGraphPermissions
+    [switch]$EnsureEntraGraphPermissions,
+
+    [string[]]$TestMailbox,
+
+    [switch]$RemoveEntraGraphPermissions,
+
+    [switch]$ListRoleAssignments,
+
+    [switch]$RemoveDuplicateRoleAssignments,
+
+    [switch]$SelfTest
 )
 
 $ErrorActionPreference = "Stop"
@@ -106,7 +243,37 @@ $ErrorActionPreference = "Stop"
 $graphAppId      = "00000003-0000-0000-c000-000000000000"
 $mailReadWriteId = "e2a3a72e-5f79-4c64-b1b1-878b674786c9"
 $mailSendId      = "b633e1c5-b582-4048-a93e-9f11b44c7e96"
-$rbacScopeName   = "Redmine-expert-Helpdesk-Mailboxes-LIVE"
+
+# The two EXO management roles the scope is assigned to.
+$rbacRoles = @("Application Mail.ReadWrite", "Application Mail.Send")
+
+# Every installation carries two tags: the product tag, shared by all of them
+# and useful for taking inventory of a tenant, and the installation tag, which
+# is what identifies THIS one. Keeping them separate is what lets a DEV and a
+# LIVE installation coexist without either shadowing the other.
+$productTag = "RedmineExpertHelpdesk"
+
+<#
+Which scope option the supplied mailbox parameters belong to. Each option has
+its own parameter, so supplying one says which option was meant — that beats
+silently ignoring it in favour of the default.
+#>
+function Get-ImpliedScopeOption {
+    param([string[]]$SuppliedParameters)
+
+    $optionOf = @{
+        MailboxDomainSuffix         = "DomainSuffix"
+        MailboxSecurityGroup        = "SecurityGroup"
+        MailboxCustomAttributeValue = "CustomAttribute"
+        MailboxEmailList            = "EmailList"
+        RemoveMailboxEmailList      = "EmailList"
+    }
+
+    return @(@($SuppliedParameters) |
+        Where-Object { $optionOf.ContainsKey($_) } |
+        ForEach-Object { $optionOf[$_] } |
+        Sort-Object -Unique)
+}
 
 function Confirm-MailboxScopeParameters {
     switch ($MailboxScopeOption) {
@@ -126,141 +293,1100 @@ function Confirm-MailboxScopeParameters {
             }
         }
         "EmailList" {
-            if (-not $MailboxEmailList -or $MailboxEmailList.Count -eq 0) {
-                throw "Please provide -MailboxEmailList with at least one address."
+            if ((-not $MailboxEmailList -or $MailboxEmailList.Count -eq 0) -and
+                (-not $RemoveMailboxEmailList -or $RemoveMailboxEmailList.Count -eq 0)) {
+                throw ("Please provide -MailboxEmailList and/or -RemoveMailboxEmailList.`n" +
+                       "  'EmailList' is the default scope option. For a different one, pass its`n" +
+                       "  parameter and the option is taken from it:`n" +
+                       "    -MailboxDomainSuffix '@helpdesk.example.com'   (DomainSuffix)`n" +
+                       "    -MailboxSecurityGroup 'helpdesk-mailboxes'     (SecurityGroup)`n" +
+                       "    -MailboxCustomAttributeValue 'Redmine'         (CustomAttribute)")
             }
+        }
+    }
+
+    # The list parameters only mean anything when the scope filter is the list.
+    if ($MailboxScopeOption -ne "EmailList") {
+        if ($RemoveMailboxEmailList -and $RemoveMailboxEmailList.Count -gt 0) {
+            throw "-RemoveMailboxEmailList requires -MailboxScopeOption EmailList."
+        }
+        if ($ReplaceMailboxList) {
+            throw "-ReplaceMailboxList requires -MailboxScopeOption EmailList."
         }
     }
 }
 
 function Get-MailboxRecipientFilter {
+    param([string[]]$EmailList)
+
+    # Every value below lands inside a single-quoted OPATH literal, so all of
+    # them go through the escaper — a group DN or address containing an
+    # apostrophe otherwise changes what the scope matches.
     switch ($MailboxScopeOption) {
         "DomainSuffix" {
-            return "PrimarySmtpAddress -like '*$MailboxDomainSuffix'"
+            return "PrimarySmtpAddress -like '*$(ConvertTo-FilterLiteral $MailboxDomainSuffix)'"
         }
         "SecurityGroup" {
-            # Requires an active Exchange Online connection.
-            $dn = (Get-Group $MailboxSecurityGroup).DistinguishedName
-            return "MemberOfGroup -eq '$dn'"
+            # Needs an active Exchange Online connection.
+            $groupDn = (Get-Group $MailboxSecurityGroup).DistinguishedName
+            return "MemberOfGroup -eq '$(ConvertTo-FilterLiteral $groupDn)'"
         }
         "CustomAttribute" {
-            return "CustomAttribute1 -eq '$MailboxCustomAttributeValue'"
+            return "CustomAttribute1 -eq '$(ConvertTo-FilterLiteral $MailboxCustomAttributeValue)'"
         }
         "EmailList" {
-            $clauses = $MailboxEmailList | ForEach-Object { "PrimarySmtpAddress -eq '$_'" }
+            $clauses = @($EmailList) | ForEach-Object {
+                "PrimarySmtpAddress -eq '$(ConvertTo-FilterLiteral $_)'"
+            }
             return ($clauses -join " -or ")
         }
     }
 }
 
-# -----------------------------------------------------------------------
-# Step 5 (separate run): only remove Entra Graph permissions, after the
-# EXO RBAC scope has already been successfully tested.
-# -----------------------------------------------------------------------
-if ($RemoveEntraGraphPermissions) {
-    Write-Host "== Step 5: Remove Entra Graph permissions ==" -ForegroundColor Cyan
-    Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All"
+<#
+Extracts the mailbox addresses from an existing RecipientFilter.
 
-    $sp = @(Get-MgServicePrincipal -Filter "DisplayName eq '$AppDisplayName'")
-    if ($sp.Count -eq 0) {
-        throw "Service Principal '$AppDisplayName' not found."
-    }
-    if ($sp.Count -gt 1) {
-        throw ("Multiple Service Principals named '$AppDisplayName' found (AppIds: " +
-               ($sp.AppId -join ', ') + "). Delete the obsolete ones first.")
-    }
-    $sp = $sp[0]
+Exchange Online normalises and re-parenthesises the filter it stores, so
+comparing it as a string against what we wrote is worthless — match the
+individual clauses instead, which survives the re-parenthesising.
+#>
+function Get-MailboxAddressesFromFilter {
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Filter)
 
-    Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id |
-        Where-Object { $_.AppRoleId -in @($mailReadWriteId, $mailSendId) } |
-        ForEach-Object {
-            Remove-MgServicePrincipalAppRoleAssignment `
-                -ServicePrincipalId  $sp.Id `
-                -AppRoleAssignmentId $_.Id
+    # The literal may contain doubled quotes (an escaped apostrophe), so the
+    # value is "anything that is not a quote, or a doubled quote" — [^']+ would
+    # stop at the first half of an escaped one and read the address short.
+    $pattern = "PrimarySmtpAddress\s+-eq\s+'((?:[^']|'')*)'"
+    $found   = [regex]::Matches($Filter, $pattern)
+
+    # Anything left over besides the address clauses, their -or separators,
+    # parentheses and whitespace means the scope was built from a different
+    # -MailboxScopeOption or edited by hand. Merging into it would silently
+    # destroy that filter, so refuse instead.
+    $residue = [regex]::Replace($Filter, $pattern, '')
+    $residue = ($residue -replace '-or', '') -replace '[()\s]', ''
+    if ($residue) {
+        throw ("The existing scope filter is not a plain mailbox address list and " +
+               "cannot be merged:`n  $Filter`n" +
+               "Use -ReplaceMailboxList to overwrite it, or adjust the scope in " +
+               "Exchange Online directly.")
+    }
+
+    # Unescape, so what comes back out is the address as it is written on the
+    # mailbox. Without this a re-run would escape an already-escaped address
+    # again and corrupt it a little more each time.
+    return @($found | ForEach-Object { $_.Groups[1].Value -replace "''", "'" })
+}
+
+<#
+Builds the target address list: the existing addresses plus -Add, minus -Remove
+(or exactly -Add when -Replace is given).
+#>
+function Merge-MailboxAddressList {
+    param(
+        [string[]]$Existing,
+        [string[]]$Add,
+        [string[]]$Remove,
+        [switch]$Replace
+    )
+
+    # SMTP addresses are case-insensitive, so compare them that way.
+    $drop = [System.Collections.Generic.HashSet[string]]::new(
+                [System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($address in @($Remove)) {
+        if (-not [string]::IsNullOrWhiteSpace($address)) { [void]$drop.Add($address.Trim()) }
+    }
+
+    $seen = [System.Collections.Generic.HashSet[string]]::new(
+                [System.StringComparer]::OrdinalIgnoreCase)
+    $result = [System.Collections.Generic.List[string]]::new()
+
+    $source = if ($Replace) { @($Add) } else { @($Existing) + @($Add) }
+    foreach ($address in $source) {
+        if ([string]::IsNullOrWhiteSpace($address)) { continue }
+        $trimmed = $address.Trim()
+        if ($drop.Contains($trimmed)) { continue }
+        if ($seen.Add($trimmed)) { $result.Add($trimmed) }
+    }
+
+    if ($result.Count -eq 0) {
+        throw ("The resulting mailbox list would be empty. An empty " +
+               "RecipientRestrictionFilter is not a valid scope — use " +
+               "./delete-app-registration.ps1 to remove the setup entirely.")
+    }
+
+    # Sorted so the generated filter string is stable across runs and an
+    # unchanged run is detectable as a no-op.
+    return @($result | Sort-Object)
+}
+
+<#
+Escapes a value for a single-quoted string literal in a filter.
+
+Both dialects in play delimit strings with single quotes and escape an embedded
+one by doubling it: OData ($filter, Microsoft Graph) and OPATH
+(RecipientFilter, Exchange Online). Apostrophes are not exotic here — O'Brien is
+a legitimate group name and o'brien@example.com a legitimate address —
+and unescaped they either break the filter or silently change what it matches,
+which for a scope filter means the wrong set of mailboxes.
+#>
+function ConvertTo-FilterLiteral {
+    param([AllowEmptyString()][string]$Value)
+
+    return ($Value -replace "'", "''")
+}
+
+<#
+Finds the app registrations carrying the installation marker. The tag is what
+makes an installation findable without knowing the name it was created under.
+#>
+function Find-TaggedApplication {
+    param([Parameter(Mandatory)][string]$Tag)
+
+    $literal = ConvertTo-FilterLiteral $Tag
+    try {
+        return @(Get-MgApplication -Filter "tags/any(t:t eq '$literal')" -All)
+    } catch {
+        # Some SDK/tenant combinations reject the lambda filter. Scanning
+        # client-side is slower but returns the same thing.
+        return @(Get-MgApplication -All | Where-Object { @($_.Tags) -contains $Tag })
+    }
+}
+
+<#
+Locates the installation to work on. An explicitly passed display name always
+wins; otherwise the marker tag decides, and the display name remains the
+fallback so installations created before the tag existed are still found.
+#>
+function Resolve-HelpdeskApplication {
+    param(
+        [Parameter(Mandatory)][string]$Tag,
+        [Parameter(Mandatory)][string]$DisplayName,
+        [switch]$NameWasGiven
+    )
+
+    if (-not $NameWasGiven) {
+        $tagged = @(Find-TaggedApplication -Tag $Tag)
+        if ($tagged.Count -gt 0) {
+            return [pscustomobject]@{ Apps = $tagged; FoundBy = "tag '$Tag'" }
+        }
+    }
+
+    $literal = ConvertTo-FilterLiteral $DisplayName
+    return [pscustomobject]@{
+        Apps    = @(Get-MgApplication -Filter "DisplayName eq '$literal'")
+        FoundBy = "display name '$DisplayName'"
+    }
+}
+
+# Filters only have to be compared loosely — EXO returns its own formatting.
+function ConvertTo-ComparableFilter {
+    param([AllowEmptyString()][string]$Filter)
+
+    return ((($Filter -replace '[()]', ' ') -replace '\s+', ' ').Trim())
+}
+
+<#
+Renders a table with nothing cut off.
+
+Format-Table sizes columns to the console and Out-String defaults to the same
+width, which is how a scope name becomes "Redmine-expert-Helpdes…". -AutoSize
+sizes the columns to the content instead, and a generous Out-String width keeps
+the result intact however narrow the terminal is — so it stays readable, and
+stays correct when pasted somewhere else.
+#>
+function Format-UntruncatedTable {
+    param(
+        [object[]]$InputObject,
+        [string[]]$Property
+    )
+
+    if (@($InputObject).Count -eq 0) { return "" }
+
+    if ($Property) {
+        $formatted = @($InputObject) | Format-Table -Property $Property -AutoSize -Wrap
+    } else {
+        $formatted = @($InputObject) | Format-Table -AutoSize -Wrap
+    }
+
+    return ($formatted | Out-String -Width 4096)
+}
+
+# More than one match makes every later lookup ambiguous, and picking one would
+# be a guess about which installation the operator meant.
+function Assert-SingleApplication {
+    param(
+        [object[]]$Apps,
+        [Parameter(Mandatory)][string]$FoundBy
+    )
+
+    if (@($Apps).Count -le 1) { return }
+
+    throw ("Several app registrations match the $FoundBy" + ":`n" +
+           ((@($Apps) | ForEach-Object { "  $($_.DisplayName)  (AppId $($_.AppId))" }) -join "`n") +
+           "`nGive each installation its own -Environment (which derives its own tag and names), " +
+           "or pass -AppDisplayName to say which one to use.")
+}
+
+# The Exchange Online service principal for an app, matched on AppId — the one
+# field guaranteed to agree between Entra ID and Exchange Online.
+function Get-ExoServicePrincipal {
+    param([Parameter(Mandatory)][string]$AppId)
+
+    return @(Get-ServicePrincipal -ErrorAction SilentlyContinue | Where-Object { $_.AppId -eq $AppId })
+}
+
+<#
+Reports — and with -Remove, tidies up — role assignments that duplicate another
+with the same role and scope. Duplicates grant nothing extra, but
+Test-ServicePrincipalAuthorization prints one row per assignment, so they make
+its output look like something is wrong when it is not.
+
+Returns the number removed.
+#>
+function Resolve-DuplicateRoleAssignments {
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [object[]]$Assignments,
+        [switch]$Remove
+    )
+
+    $duplicated = @(@($Assignments) | Group-Object -Property Role, CustomResourceScope |
+                    Where-Object { $_.Count -gt 1 })
+    if ($duplicated.Count -eq 0) { return 0 }
+
+    $removed = 0
+    foreach ($group in $duplicated) {
+        $role  = $group.Group[0].Role
+        $scope = $group.Group[0].CustomResourceScope
+
+        Write-Host "Role '$role' is assigned to scope '$scope' $($group.Count) times:" -ForegroundColor Yellow
+        foreach ($assignment in $group.Group) {
+            Write-Host "    $($assignment.Identity)" -ForegroundColor Yellow
         }
 
-    Write-Host "Done. Entra permissions removed. Only the EXO RBAC scope applies from now on." -ForegroundColor Green
+        if (-not $Remove) {
+            Write-Host "    Pass -RemoveDuplicateRoleAssignments to keep one and remove the rest." -ForegroundColor Yellow
+            continue
+        }
+
+        # The assignments are interchangeable, so keep the first and drop the rest.
+        foreach ($assignment in @($group.Group | Select-Object -Skip 1)) {
+            if ($PSCmdlet.ShouldProcess([string]$assignment.Identity, "Remove-ManagementRoleAssignment")) {
+                Remove-ManagementRoleAssignment -Identity $assignment.Identity -Confirm:$false | Out-Null
+                Write-Host "    removed $($assignment.Identity)" -ForegroundColor Green
+                $removed++
+            }
+        }
+    }
+
+    return $removed
+}
+
+<#
+The Application Mail.* role assignments belonging to this service principal.
+
+Matching on RoleAssigneeName compares a display name, which need not equal the
+app registration's. When it differs the filter matches nothing, the caller
+concludes there is no assignment yet, and every run adds another one — which is
+how a scope ends up with the same role assigned several times. -RoleAssignee
+resolves the identity server-side, so prefer it and keep the name only as a
+fallback.
+#>
+function Get-OwnRoleAssignments {
+    param(
+        [Parameter(Mandatory)][string]$ServicePrincipalId,
+        [string]$AssigneeName
+    )
+
+    try {
+        return @(Get-ManagementRoleAssignment -RoleAssignee $ServicePrincipalId -ErrorAction Stop |
+            Where-Object { $_.Role -in $rbacRoles })
+    } catch {
+        return @(Get-ManagementRoleAssignment -ErrorAction SilentlyContinue |
+            Where-Object { $_.Role -in $rbacRoles -and
+                           ([string]$_.RoleAssignee -eq $ServicePrincipalId -or
+                            ($AssigneeName -and $_.RoleAssigneeName -eq $AssigneeName)) })
+    }
+}
+
+<#
+Whether an InScope value means yes.
+
+Exchange Online returns this as the STRING "False", not a boolean, and every
+non-empty string is truthy in PowerShell — so `-not $_.InScope` is False for a
+row that is not in scope, and a naive check reports success exactly when the
+mailbox is unreachable. Parse it explicitly, and treat anything unrecognised as
+not in scope: this gates -RemoveEntraGraphPermissions, so it has to fail closed.
+#>
+function Test-IsInScope {
+    param($Value)
+
+    if ($null -eq $Value)   { return $false }
+    if ($Value -is [bool])  { return $Value }
+
+    $parsed = $false
+    if ([bool]::TryParse([string]$Value, [ref]$parsed)) { return $parsed }
+    return $false
+}
+
+<#
+Verifies the RBAC scope for one mailbox. EXO needs a moment to replicate a scope
+change, so an immediate test can legitimately report InScope False — retry a few
+times before calling it a failure.
+#>
+function Test-MailboxAuthorization {
+    param(
+        [Parameter(Mandatory)][string]$ServicePrincipalId,
+        [Parameter(Mandatory)][string]$Mailbox,
+        [int]$RetryCount = 4,
+        [int]$RetrySeconds = 15
+    )
+
+    for ($attempt = 1; $attempt -le $RetryCount; $attempt++) {
+        try {
+            $result = @(Test-ServicePrincipalAuthorization -Identity $ServicePrincipalId -Resource $Mailbox)
+        } catch {
+            Write-Host "  could not test '$Mailbox': $($_.Exception.Message)" -ForegroundColor Red
+            return $false
+        }
+
+        Write-Host (Format-UntruncatedTable -InputObject $result)
+
+        $rows = @($result | Where-Object { $_.RoleName -in $rbacRoles })
+        if ($rows.Count -eq 0) { $rows = @($result) }
+
+        # Count explicitly rather than testing a collection for truthiness —
+        # that is what made the previous version report success on failure.
+        $outOfScope = @($rows | Where-Object { -not (Test-IsInScope $_.InScope) })
+        if ($rows.Count -gt 0 -and $outOfScope.Count -eq 0) {
+            return $true
+        }
+
+        if ($attempt -lt $RetryCount) {
+            Write-Host ("  not in scope yet — EXO RBAC changes need a moment to replicate; " +
+                        "retrying in ${RetrySeconds}s ($attempt/$RetryCount)") -ForegroundColor DarkGray
+            Start-Sleep -Seconds $RetrySeconds
+        }
+    }
+
+    return $false
+}
+
+<#
+The names an -Environment implies. Keeping this in one place is what guarantees
+that setup and teardown, and one run and the next, agree on which installation
+they are talking about.
+#>
+function Get-InstallationNames {
+    param([Parameter(Mandatory)][string]$Environment)
+
+    $upper = $Environment.ToUpperInvariant()
+    $lower = $Environment.ToLowerInvariant()
+
+    return [pscustomobject]@{
+        Tag            = "${productTag}:$upper"
+        AppDisplayName = "redmine-expert-helpdesk-$lower"
+        RbacScopeName  = "Redmine-expert-Helpdesk-Mailboxes-$upper"
+    }
+}
+
+# PowerShell cannot derive one parameter default from another, so the names that
+# follow from -Environment are filled in here. Passing any of them explicitly
+# still wins.
+$defaultNames = Get-InstallationNames -Environment $Environment
+
+if (-not $ResourceTag)    { $ResourceTag    = $defaultNames.Tag }
+if (-not $AppDisplayName) { $AppDisplayName = $defaultNames.AppDisplayName }
+if (-not $RbacScopeName)  { $RbacScopeName  = $defaultNames.RbacScopeName }
+
+# Both tags go on the app; only $ResourceTag is used to find it again.
+$appTags = @($productTag, $ResourceTag)
+
+# -----------------------------------------------------------------------
+# Self-test: exercises the filter helpers offline, connects to nothing.
+# -----------------------------------------------------------------------
+if ($SelfTest) {
+    Write-Host "== Self-test: mailbox scope filter helpers ==" -ForegroundColor Cyan
+
+    # The helpers under test are EmailList-only.
+    $MailboxScopeOption = "EmailList"
+    $failed = 0
+
+    function Test-Case {
+        param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][scriptblock]$Body)
+
+        try {
+            & $Body
+            Write-Host "  PASS  $Name" -ForegroundColor Green
+        } catch {
+            Write-Host "  FAIL  $Name -> $($_.Exception.Message)" -ForegroundColor Red
+            $script:failed++
+        }
+    }
+
+    function Assert-Set {
+        param([string[]]$Actual, [string[]]$Expected)
+
+        $a = @($Actual) | Sort-Object
+        $e = @($Expected) | Sort-Object
+        if (($a -join '|') -ine ($e -join '|')) {
+            throw "expected [$($e -join ', ')] but got [$($a -join ', ')]"
+        }
+    }
+
+    function Assert-Throws {
+        param([Parameter(Mandatory)][scriptblock]$Body)
+
+        try { & $Body } catch { return }
+        throw "expected an exception, but none was thrown"
+    }
+
+    Test-Case "generated filter parses back to the same addresses" {
+        $addresses = @("a@example.com", "b@example.com")
+        $filter    = Get-MailboxRecipientFilter -EmailList $addresses
+        Assert-Set (Get-MailboxAddressesFromFilter -Filter $filter) $addresses
+    }
+
+    Test-Case "parses the parenthesised form Exchange Online stores" {
+        $filter = "((PrimarySmtpAddress -eq 'a@example.com') -or (PrimarySmtpAddress -eq 'b@example.com'))"
+        Assert-Set (Get-MailboxAddressesFromFilter -Filter $filter) @("a@example.com", "b@example.com")
+    }
+
+    Test-Case "parses a single-address filter" {
+        Assert-Set (Get-MailboxAddressesFromFilter -Filter "PrimarySmtpAddress -eq 'a@example.com'") `
+                   @("a@example.com")
+    }
+
+    Test-Case "adding an address keeps the existing ones" {
+        Assert-Set (Merge-MailboxAddressList -Existing @("a@example.com", "b@example.com") `
+                                             -Add @("c@example.com")) `
+                   @("a@example.com", "b@example.com", "c@example.com")
+    }
+
+    Test-Case "adding a known address does not duplicate it" {
+        Assert-Set (Merge-MailboxAddressList -Existing @("a@example.com", "b@example.com") `
+                                             -Add @("a@example.com")) `
+                   @("a@example.com", "b@example.com")
+    }
+
+    Test-Case "duplicate detection is case-insensitive" {
+        Assert-Set (Merge-MailboxAddressList -Existing @("A@Example.com") `
+                                             -Add @("a@example.com")) `
+                   @("A@Example.com")
+    }
+
+    Test-Case "removing an address keeps the rest" {
+        Assert-Set (Merge-MailboxAddressList -Existing @("a@example.com", "b@example.com", "c@example.com") `
+                                             -Remove @("B@example.com")) `
+                   @("a@example.com", "c@example.com")
+    }
+
+    Test-Case "replace sets the list verbatim" {
+        Assert-Set (Merge-MailboxAddressList -Existing @("a@example.com", "b@example.com") `
+                                             -Add @("c@example.com") -Replace) `
+                   @("c@example.com")
+    }
+
+    Test-Case "the merged list is sorted, so an unchanged run is a no-op" {
+        $first  = Merge-MailboxAddressList -Existing @("b@example.com") -Add @("a@example.com")
+        $second = Merge-MailboxAddressList -Existing $first -Add @("a@example.com")
+        if ((Get-MailboxRecipientFilter -EmailList $first) -ne (Get-MailboxRecipientFilter -EmailList $second)) {
+            throw "filter changed between two equivalent runs"
+        }
+    }
+
+    Test-Case "removing the last address is refused" {
+        Assert-Throws { Merge-MailboxAddressList -Existing @("a@example.com") -Remove @("a@example.com") }
+    }
+
+    Test-Case "a CustomAttribute filter is not merged blindly" {
+        Assert-Throws { Get-MailboxAddressesFromFilter -Filter "CustomAttribute1 -eq 'Redmine'" }
+    }
+
+    Test-Case "a DomainSuffix filter is not merged blindly" {
+        Assert-Throws { Get-MailboxAddressesFromFilter -Filter "PrimarySmtpAddress -like '*@example.com'" }
+    }
+
+    # Format-Table clips to the console width by default, which is how a scope
+    # name turned into "Redmine-expert-Helpdes…" in the authorization output.
+    Test-Case "table output truncates nothing" {
+        $longScope    = "Redmine-expert-Helpdesk-Mailboxes-LIVE"
+        $longIdentity = "Default Role Assignment Policy-Application Mail.ReadWrite-Redmine-expert-Helpdesk"
+        $text = Format-UntruncatedTable -InputObject @(
+            [pscustomobject]@{ Role = "Application Mail.ReadWrite"; CustomResourceScope = $longScope; Identity = $longIdentity }
+        )
+        foreach ($expected in @($longScope, $longIdentity)) {
+            if ($text -notmatch [regex]::Escape($expected)) { throw "'$expected' did not survive intact" }
+        }
+        if ($text -match [char]0x2026) { throw "output contains an ellipsis" }
+    }
+
+    Test-Case "an empty table renders as nothing rather than failing" {
+        if ((Format-UntruncatedTable -InputObject @()) -ne "") { throw "expected an empty string" }
+    }
+
+    Test-Case "duplicate role assignments are detected per role and scope" {
+        $assignments = @(
+            [pscustomobject]@{ Identity = "a1"; Role = "Application Mail.ReadWrite"; CustomResourceScope = "S" }
+            [pscustomobject]@{ Identity = "a2"; Role = "Application Mail.Send";      CustomResourceScope = "S" }
+            [pscustomobject]@{ Identity = "a3"; Role = "Application Mail.ReadWrite"; CustomResourceScope = "S" }
+            [pscustomobject]@{ Identity = "a4"; Role = "Application Mail.Send";      CustomResourceScope = "S" }
+        )
+        $groups = @($assignments | Group-Object -Property Role, CustomResourceScope |
+                    Where-Object { $_.Count -gt 1 })
+        if ($groups.Count -ne 2) { throw "expected 2 duplicated roles, got $($groups.Count)" }
+        $extra = @($groups | ForEach-Object { $_.Group | Select-Object -Skip 1 })
+        if ($extra.Count -ne 2) { throw "expected 2 assignments to remove, got $($extra.Count)" }
+    }
+
+    Test-Case "the same role on different scopes is not a duplicate" {
+        $assignments = @(
+            [pscustomobject]@{ Identity = "a1"; Role = "Application Mail.Send"; CustomResourceScope = "LIVE" }
+            [pscustomobject]@{ Identity = "a2"; Role = "Application Mail.Send"; CustomResourceScope = "DEV" }
+        )
+        $groups = @($assignments | Group-Object -Property Role, CustomResourceScope |
+                    Where-Object { $_.Count -gt 1 })
+        if ($groups.Count -ne 0) { throw "two environments were treated as duplicates" }
+    }
+
+    # Exchange Online returns InScope as a string, and every non-empty string is
+    # truthy — the reason a previous version announced success for a mailbox
+    # that was not in scope at all.
+    Test-Case "the string 'False' Exchange Online returns is not in scope" {
+        if (Test-IsInScope "False") { throw "string 'False' was treated as in scope" }
+    }
+
+    Test-Case "the string 'True' is in scope" {
+        if (-not (Test-IsInScope "True")) { throw "string 'True' was not treated as in scope" }
+        if (-not (Test-IsInScope "true")) { throw "lowercase 'true' was not treated as in scope" }
+    }
+
+    Test-Case "real booleans still work" {
+        if (Test-IsInScope $false) { throw "`$false was treated as in scope" }
+        if (-not (Test-IsInScope $true)) { throw "`$true was not treated as in scope" }
+    }
+
+    Test-Case "anything unrecognised fails closed" {
+        foreach ($value in @($null, "", "yes", "1", "Unknown")) {
+            if (Test-IsInScope $value) { throw "'$value' was treated as in scope" }
+        }
+    }
+
+    Test-Case "a mixed result set is not in scope" {
+        $rows = @(
+            [pscustomobject]@{ RoleName = "Application Mail.ReadWrite"; InScope = "True" }
+            [pscustomobject]@{ RoleName = "Application Mail.Send";      InScope = "False" }
+        )
+        $outOfScope = @($rows | Where-Object { -not (Test-IsInScope $_.InScope) })
+        if ($outOfScope.Count -ne 1) { throw "expected 1 row out of scope, got $($outOfScope.Count)" }
+    }
+
+    Test-Case "each mailbox parameter names its own scope option" {
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("MailboxCustomAttributeValue")) @("CustomAttribute")
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("MailboxDomainSuffix")) @("DomainSuffix")
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("MailboxSecurityGroup")) @("SecurityGroup")
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("MailboxEmailList")) @("EmailList")
+    }
+
+    # The call site must wrap this in @(): PowerShell unwraps a single-element
+    # array on the way out of a function, and indexing the resulting string
+    # yields its first character instead of the option name.
+    Test-Case "a lone implied option indexes as a whole option name" {
+        $implied = @(Get-ImpliedScopeOption -SuppliedParameters @("MailboxCustomAttributeValue"))
+        if ($implied[0] -ne "CustomAttribute") { throw "[0] gave '$($implied[0])'" }
+    }
+
+    Test-Case "add and remove both mean the EmailList option" {
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("MailboxEmailList", "RemoveMailboxEmailList")) `
+                   @("EmailList")
+    }
+
+    Test-Case "unrelated parameters imply no scope option" {
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("Environment", "AppDisplayName", "TestMailbox")) @()
+    }
+
+    Test-Case "parameters of two options are detectable as a conflict" {
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("MailboxEmailList", "MailboxDomainSuffix")) `
+                   @("DomainSuffix", "EmailList")
+    }
+
+    # If these drift, an existing LIVE installation stops being found by
+    # default and a re-run builds a second one beside it.
+    Test-Case "the LIVE environment keeps the names installations were created with" {
+        $names = Get-InstallationNames -Environment "LIVE"
+        if ($names.AppDisplayName -ne "redmine-expert-helpdesk-live") { throw "app: $($names.AppDisplayName)" }
+        if ($names.RbacScopeName -ne "Redmine-expert-Helpdesk-Mailboxes-LIVE") { throw "scope: $($names.RbacScopeName)" }
+        if ($names.Tag -ne "RedmineExpertHelpdesk:LIVE") { throw "tag: $($names.Tag)" }
+    }
+
+    Test-Case "a second environment collides with LIVE in no name at all" {
+        $live = Get-InstallationNames -Environment "LIVE"
+        $dev  = Get-InstallationNames -Environment "DEV"
+        foreach ($field in @("Tag", "AppDisplayName", "RbacScopeName")) {
+            if ($live.$field -eq $dev.$field) { throw "$field is shared: $($live.$field)" }
+        }
+    }
+
+    Test-Case "the environment label is case-insensitive" {
+        $lower = Get-InstallationNames -Environment "dev"
+        $upper = Get-InstallationNames -Environment "DEV"
+        if ($lower.Tag -ne $upper.Tag) { throw "'dev' and 'DEV' disagree: $($lower.Tag) vs $($upper.Tag)" }
+        if ($lower.AppDisplayName -ne $upper.AppDisplayName) { throw "app name disagrees" }
+    }
+
+    # o'brien@example.com is a legal address, and an unescaped apostrophe
+    # silently changes which mailboxes the scope covers.
+    Test-Case "an address with an apostrophe survives the filter round-trip" {
+        $addresses = @("o'brien@example.com", "b@example.com")
+        $filter    = Get-MailboxRecipientFilter -EmailList $addresses
+        if ($filter -notmatch "o''brien@example\.com") { throw "not escaped: $filter" }
+        Assert-Set (Get-MailboxAddressesFromFilter -Filter $filter) $addresses
+    }
+
+    # Escape, read back, escape again must be stable - otherwise every re-run
+    # would add another layer of quotes.
+    Test-Case "escaping an address is idempotent across runs" {
+        $first  = Get-MailboxRecipientFilter -EmailList @("o'brien@example.com")
+        $second = Get-MailboxRecipientFilter -EmailList @(Get-MailboxAddressesFromFilter -Filter $first)
+        if ($first -ne $second) { throw "run 1: $first`nrun 2: $second" }
+    }
+
+    Test-Case "an apostrophe in a display name is escaped for the OData filter" {
+        $literal = ConvertTo-FilterLiteral "expert's helpdesk"
+        if ($literal -ne "expert''s helpdesk") { throw "got '$literal'" }
+    }
+
+    Test-Case "a display name without an apostrophe is left alone" {
+        $literal = ConvertTo-FilterLiteral "redmine-expert-helpdesk-live"
+        if ($literal -ne "redmine-expert-helpdesk-live") { throw "got '$literal'" }
+    }
+
+    Test-Case "a mixed filter is not merged blindly" {
+        Assert-Throws {
+            Get-MailboxAddressesFromFilter `
+                -Filter "PrimarySmtpAddress -eq 'a@example.com' -and CustomAttribute1 -eq 'Redmine'"
+        }
+    }
+
+    if ($failed -gt 0) {
+        Write-Host "`n$failed self-test(s) failed." -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "`nAll self-tests passed." -ForegroundColor Green
+    exit 0
+}
+
+# -----------------------------------------------------------------------
+# Read-only: show what this environment currently consists of and stop.
+# -----------------------------------------------------------------------
+if ($ListRoleAssignments) {
+    Write-Host "== Environment '$Environment' ==" -ForegroundColor Cyan
+    Connect-MgGraph -Scopes "Application.Read.All"
+
+    $lookup = Resolve-HelpdeskApplication -Tag $ResourceTag -DisplayName $AppDisplayName `
+                  -NameWasGiven:$PSBoundParameters.ContainsKey('AppDisplayName')
+    Assert-SingleApplication -Apps $lookup.Apps -FoundBy $lookup.FoundBy
+    if ($lookup.Apps.Count -eq 0) {
+        throw "No app registration found by $($lookup.FoundBy)."
+    }
+    $app = $lookup.Apps[0]
+
+    Write-Host ""
+    Write-Host "App registration:  $($app.DisplayName)"
+    Write-Host "AppId (Client ID): $($app.AppId)"
+    Write-Host "Object ID (app):   $($app.Id)"
+    Write-Host "Tags:              $(@($app.Tags) -join ', ')"
+    Write-Host "Found by:          $($lookup.FoundBy)"
+
+    Connect-ExchangeOnline
+
+    $exoSp = @(Get-ExoServicePrincipal -AppId $app.AppId)
+    if ($exoSp.Count -eq 0) {
+        Write-Host ""
+        Write-Host "No Exchange Online service principal for this app — no role assignments exist." -ForegroundColor Yellow
+        return
+    }
+    $exoSp = $exoSp[0]
+    Write-Host "EXO service principal ObjectId: $($exoSp.ObjectId)"
+
+    $assignments = @(Get-OwnRoleAssignments -ServicePrincipalId ([string]$exoSp.ObjectId) `
+                                            -AssigneeName ([string]$exoSp.DisplayName))
+
+    Write-Host ""
+    Write-Host "Role assignments ($($assignments.Count)):" -ForegroundColor Cyan
+    if ($assignments.Count -eq 0) {
+        Write-Host "  none — the app cannot reach any mailbox." -ForegroundColor Yellow
+    } else {
+        Write-Host (Format-UntruncatedTable -InputObject $assignments `
+                        -Property Role, CustomResourceScope, RoleAssigneeName, Identity)
+
+        # Same grouping the tidy-up uses, so the two agree on what a duplicate is.
+        $duplicated = @($assignments | Group-Object -Property Role, CustomResourceScope |
+                        Where-Object { $_.Count -gt 1 })
+        if ($duplicated.Count -gt 0) {
+            Write-Host ("$($duplicated.Count) role/scope combination(s) assigned more than once — " +
+                        "run -RemoveDuplicateRoleAssignments to keep one of each.") -ForegroundColor Yellow
+        }
+    }
+
+    # The scopes are what actually decide which mailboxes are reachable, so the
+    # assignments alone would only be half the answer.
+    $scopeNames = @($assignments | Where-Object { $_.CustomResourceScope } |
+                    ForEach-Object { $_.CustomResourceScope } | Sort-Object -Unique)
+
+    foreach ($scopeName in $scopeNames) {
+        $scope = Get-ManagementScope -Identity $scopeName -ErrorAction SilentlyContinue
+        Write-Host ""
+        Write-Host "Scope '$scopeName':" -ForegroundColor Cyan
+        if (-not $scope) {
+            Write-Host "  not found — the assignment points at a scope that no longer exists." -ForegroundColor Red
+            continue
+        }
+
+        Write-Host "  ScopeRestrictionType: $($scope.ScopeRestrictionType)"
+        Write-Host "  RecipientFilter:      $($scope.RecipientFilter)"
+
+        # Ask Exchange Online to evaluate the filter. This is the answer to
+        # "which mailboxes can the app actually reach", and the only way to get
+        # it for a CustomAttribute, domain or group filter — none of which can
+        # be read off by eye. A mailbox missing from this list is exactly the
+        # one that will come back 403.
+        try {
+            $matched = @(Get-Recipient -RecipientPreviewFilter ([string]$scope.RecipientFilter) `
+                                       -ResultSize Unlimited -ErrorAction Stop)
+            Write-Host "  Mailboxes matched by this filter ($($matched.Count)):"
+            if ($matched.Count -eq 0) {
+                Write-Host "    none — the app can reach nothing through this scope." -ForegroundColor Yellow
+            } else {
+                Write-Host (Format-UntruncatedTable -InputObject $matched `
+                                -Property PrimarySmtpAddress, RecipientTypeDetails, Name)
+            }
+        } catch {
+            Write-Host "  Could not evaluate the filter: $($_.Exception.Message)" -ForegroundColor Yellow
+
+            # Fall back to reading the addresses out of an address-list filter.
+            try {
+                $addresses = @(Get-MailboxAddressesFromFilter -Filter ([string]$scope.RecipientFilter))
+                if ($addresses.Count -gt 0) {
+                    Write-Host "  Addresses named in the filter ($($addresses.Count)):"
+                    foreach ($address in $addresses) { Write-Host "    $address" }
+                }
+            } catch {
+                # Not an address list — the filter line above says it all.
+            }
+        }
+    }
+
+    # -TestMailbox turns this into a diagnosis of one specific address: the
+    # listing says what the scope covers, this says what EXO makes of that
+    # mailbox in particular. No retries — nothing changed, so there is nothing
+    # to wait for replicating.
+    foreach ($mailbox in @($TestMailbox | Where-Object { $_ })) {
+        Write-Host ""
+        Write-Host "Authorization for '$mailbox':" -ForegroundColor Cyan
+        if (Test-MailboxAuthorization -ServicePrincipalId ([string]$exoSp.ObjectId) `
+                                      -Mailbox $mailbox -RetryCount 1) {
+            Write-Host "  in scope." -ForegroundColor Green
+        } else {
+            Write-Host ("  NOT in scope — this is what a Graph 403 on that mailbox means. " +
+                        "Check it appears in the filter match above.") -ForegroundColor Red
+        }
+    }
+
+    Write-Host ""
     return
 }
 
 # -----------------------------------------------------------------------
-# Step 1: Register the app + create a Service Principal
+# Maintenance: remove duplicate role assignments and stop.
+# Mailbox parameters are what ask for a scope change, so their absence means
+# this run is only meant to tidy up.
 # -----------------------------------------------------------------------
-# Validate everything before the first resource is created — a run aborting
-# halfway leaves orphaned app registrations behind.
-Confirm-MailboxScopeParameters
-if (-not $TestMailbox) {
-    throw "Please provide -TestMailbox (address of a helpdesk mailbox used to verify the RBAC scope)."
+if ($RemoveDuplicateRoleAssignments -and
+    @(Get-ImpliedScopeOption -SuppliedParameters @($PSBoundParameters.Keys)).Count -eq 0) {
+
+    Write-Host "== Removing duplicate role assignments ==" -ForegroundColor Cyan
+    Connect-MgGraph -Scopes "Application.Read.All"
+
+    $lookup = Resolve-HelpdeskApplication -Tag $ResourceTag -DisplayName $AppDisplayName `
+                  -NameWasGiven:$PSBoundParameters.ContainsKey('AppDisplayName')
+    Assert-SingleApplication -Apps $lookup.Apps -FoundBy $lookup.FoundBy
+    if ($lookup.Apps.Count -eq 0) {
+        throw "No app registration found by $($lookup.FoundBy)."
+    }
+    $app = $lookup.Apps[0]
+    Write-Host "App registration '$($app.DisplayName)' (AppId $($app.AppId)), found by $($lookup.FoundBy)."
+
+    Connect-ExchangeOnline
+
+    $exoSp = @(Get-ExoServicePrincipal -AppId $app.AppId)
+    if ($exoSp.Count -eq 0) {
+        throw "No Exchange Online service principal for AppId $($app.AppId) — nothing to tidy up."
+    }
+    $exoSp = $exoSp[0]
+
+    $assignments = @(Get-OwnRoleAssignments -ServicePrincipalId ([string]$exoSp.ObjectId) `
+                                            -AssigneeName ([string]$exoSp.DisplayName))
+    $removed = Resolve-DuplicateRoleAssignments -Assignments $assignments -Remove
+
+    if ($removed -eq 0) {
+        Write-Host "No duplicate role assignments found." -ForegroundColor Green
+    } else {
+        Write-Host "Removed $removed duplicate role assignment(s)." -ForegroundColor Green
+    }
+    return
 }
 
-Write-Host "== Step 1: Register the app ==" -ForegroundColor Cyan
-Connect-MgGraph -Scopes "Application.ReadWrite.All"
-
-# Abort on duplicates — otherwise later lookups by DisplayName become ambiguous.
-$existingApp = @(Get-MgApplication -Filter "DisplayName eq '$AppDisplayName'")
-if ($existingApp.Count -gt 0) {
-    throw ("An app registration named '$AppDisplayName' already exists (AppIds: " +
-           ($existingApp.AppId -join ', ') + "). Delete it or use a different -AppDisplayName.")
-}
-
-$app = New-MgApplication `
-    -DisplayName    $AppDisplayName `
-    -SignInAudience "AzureADMyOrg"   # Single Tenant
-
-# Service Principal is required for Admin Consent
-$sp = New-MgServicePrincipal -AppId $app.AppId
-
-$tenantId = (Get-MgContext).TenantId
-Write-Host "AppId (Client ID):  $($app.AppId)"
-Write-Host "Object ID (SP):     $($sp.Id)"
-Write-Host "Tenant ID:          $tenantId"
-
 # -----------------------------------------------------------------------
-# Step 2: Grant API permissions + Admin Consent
+# Step 5: remove the Entra Graph permissions again, once the EXO RBAC scope
+# has been successfully tested.
 # -----------------------------------------------------------------------
-Write-Host "`n== Step 2: Grant API permissions + Admin Consent ==" -ForegroundColor Cyan
-Connect-MgGraph -Scopes "Application.ReadWrite.All", "AppRoleAssignment.ReadWrite.All"
+if ($RemoveEntraGraphPermissions) {
+    Write-Host "== Step 5: Remove Entra Graph permissions ==" -ForegroundColor Cyan
+    Connect-MgGraph -Scopes "Application.Read.All", "AppRoleAssignment.ReadWrite.All"
 
-Update-MgApplication -ApplicationId $app.Id `
-    -RequiredResourceAccess @(
-        @{
-            ResourceAppId  = $graphAppId
-            ResourceAccess = @(
-                @{ Id = $mailReadWriteId; Type = "Role" }
-                @{ Id = $mailSendId;      Type = "Role" }
-            )
-        }
-    )
+    $lookup = Resolve-HelpdeskApplication -Tag $ResourceTag -DisplayName $AppDisplayName `
+                  -NameWasGiven:$PSBoundParameters.ContainsKey('AppDisplayName')
 
-$graphSp = Get-MgServicePrincipal -Filter "AppId eq '$graphAppId'"
+    Assert-SingleApplication -Apps $lookup.Apps -FoundBy $lookup.FoundBy
+    if ($lookup.Apps.Count -eq 0) {
+        throw "No app registration found by $($lookup.FoundBy)."
+    }
+    $app = $lookup.Apps[0]
+    Write-Host "App registration '$($app.DisplayName)' (AppId $($app.AppId)), found by $($lookup.FoundBy)."
 
-New-MgServicePrincipalAppRoleAssignment `
-    -ServicePrincipalId $sp.Id `
-    -PrincipalId        $sp.Id `
-    -ResourceId         $graphSp.Id `
-    -AppRoleId          $mailReadWriteId
+    # Resolve the service principal from the AppId — that link is stable, the
+    # display names of the two objects need not agree.
+    $sp = @(Get-MgServicePrincipal -Filter "AppId eq '$($app.AppId)'")
+    if ($sp.Count -eq 0) {
+        throw "No service principal for app '$($app.DisplayName)' (AppId $($app.AppId))."
+    }
+    $sp = $sp[0]
 
-New-MgServicePrincipalAppRoleAssignment `
-    -ServicePrincipalId $sp.Id `
-    -PrincipalId        $sp.Id `
-    -ResourceId         $graphSp.Id `
-    -AppRoleId          $mailSendId
+    $assignments = @(Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id |
+        Where-Object { $_.AppRoleId -in @($mailReadWriteId, $mailSendId) })
 
-Write-Host "Permissions assigned and Admin Consent granted (Mail.ReadWrite, Mail.Send)."
-
-# -----------------------------------------------------------------------
-# Step 3: Create a client secret
-# -----------------------------------------------------------------------
-Write-Host "`n== Step 3: Create a client secret ==" -ForegroundColor Cyan
-$secret = Add-MgApplicationPassword -ApplicationId $app.Id `
-    -PasswordCredential @{
-        DisplayName = "$AppDisplayName-secret"
-        EndDateTime = (Get-Date).AddYears($SecretValidityYears)
+    if ($assignments.Count -eq 0) {
+        Write-Host "Nothing to do — no Mail.ReadWrite/Mail.Send assignments present."
+        return
     }
 
-# Value is shown only once — save it immediately!
-Write-Host "Client Secret: $($secret.SecretText)" -ForegroundColor Yellow
-Write-Host "IMPORTANT: Save this value now (e.g. in the Redmine plugin configuration), it will not be shown again." -ForegroundColor Yellow
+    # Guarded explicitly rather than trusting the Graph SDK to honour -WhatIf:
+    # this is the call that takes the app's mail access away, so a dry run that
+    # silently performed it would be the worst possible surprise.
+    $removed = 0
+    foreach ($assignment in $assignments) {
+        if ($PSCmdlet.ShouldProcess("app role $($assignment.AppRoleId)", "Remove-MgServicePrincipalAppRoleAssignment")) {
+            Remove-MgServicePrincipalAppRoleAssignment `
+                -ServicePrincipalId $sp.Id `
+                -AppRoleAssignmentId $assignment.Id
+            $removed++
+        }
+    }
+
+    if ($removed -eq 0) {
+        Write-Host "Nothing removed." -ForegroundColor Yellow
+    } else {
+        Write-Host "Done. Entra permissions removed. Only the EXO RBAC scope applies from now on." -ForegroundColor Green
+    }
+    return
+}
+
+# -----------------------------------------------------------------------
+# Step 1: Register app and create Service Principal
+# -----------------------------------------------------------------------
+# Validate everything before the first resource is created — aborting
+# halfway leaves orphaned app registrations behind.
+
+# Take the scope option from the parameters actually supplied. Passing
+# -MailboxCustomAttributeValue and getting an error about -MailboxEmailList,
+# because the option still sat at its default, is no way to find that out.
+# @() around the call because PowerShell unwraps a single-element array on the
+# way out of a function — without it a lone result is a string, and [0] indexes
+# into its characters.
+$impliedOptions = @(Get-ImpliedScopeOption -SuppliedParameters @($PSBoundParameters.Keys))
+
+if ($impliedOptions.Count -gt 1) {
+    throw ("The mailbox parameters supplied belong to several scope options (" +
+           ($impliedOptions -join ', ') + "). A scope uses exactly one — pass only the " +
+           "parameters of the option you want.")
+}
+
+if ($PSBoundParameters.ContainsKey('MailboxScopeOption')) {
+    if ($impliedOptions.Count -eq 1 -and $impliedOptions[0] -ne $MailboxScopeOption) {
+        throw ("-MailboxScopeOption $MailboxScopeOption was given, but the other mailbox " +
+               "parameters belong to $($impliedOptions[0]). Drop one of the two so it is " +
+               "clear which scope option is meant.")
+    }
+} elseif ($impliedOptions.Count -eq 1 -and $impliedOptions[0] -ne $MailboxScopeOption) {
+    $MailboxScopeOption = $impliedOptions[0]
+    Write-Host "Scope option: $MailboxScopeOption (taken from the parameters supplied)." -ForegroundColor DarkGray
+}
+
+Confirm-MailboxScopeParameters
+if ((-not $TestMailbox) -and $MailboxScopeOption -ne "EmailList") {
+    throw ("Please provide -TestMailbox — the address of a helpdesk mailbox that the " +
+           "'$MailboxScopeOption' scope should cover, used to verify the RBAC scope. " +
+           "For 'CustomAttribute' the mailbox must already carry the attribute value.")
+}
+
+Write-Host "== Step 1: Register app ==" -ForegroundColor Cyan
+Connect-MgGraph -Scopes "Application.ReadWrite.All"
+
+$lookup = Resolve-HelpdeskApplication -Tag $ResourceTag -DisplayName $AppDisplayName `
+              -NameWasGiven:$PSBoundParameters.ContainsKey('AppDisplayName')
+$existingApp = $lookup.Apps
+Assert-SingleApplication -Apps $existingApp -FoundBy $lookup.FoundBy
+
+if ($existingApp.Count -eq 1) {
+    $isNewApp = $false
+    $app = $existingApp[0]
+
+    # Adopt the name the installation actually carries, so everything below —
+    # the EXO service principal, the messages — refers to it as it exists
+    # rather than to the default this run happened to start from.
+    $AppDisplayName = $app.DisplayName
+    Write-Host "Existing app registration reused: '$AppDisplayName' (AppId $($app.AppId)), found by $($lookup.FoundBy)." -ForegroundColor Green
+
+    # Stamp installations that predate the marker, so the next run finds them
+    # by tag instead of depending on the name being passed in. Existing tags
+    # are merged, never replaced — a service principal's tags can carry
+    # meaning of their own.
+    $missingTags = @($appTags | Where-Object { @($app.Tags) -notcontains $_ })
+    if ($missingTags.Count -gt 0) {
+        $mergedTags = @(@($app.Tags) + $appTags | Where-Object { $_ } | Sort-Object -Unique)
+        if ($PSCmdlet.ShouldProcess($AppDisplayName, "Update-MgApplication -Tags")) {
+            Update-MgApplication -ApplicationId $app.Id -Tags $mergedTags
+            Write-Host "  marked with tag(s) $($missingTags -join ', ') — later runs find it without -AppDisplayName."
+        }
+    }
+
+    $sp = @(Get-MgServicePrincipal -Filter "AppId eq '$($app.AppId)'")
+    if ($sp.Count -eq 0) {
+        # Everything below needs the object ID, so there is nothing to preview.
+        if ($WhatIfPreference) {
+            throw ("The app registration '$AppDisplayName' has no service principal yet. " +
+                   "Run without -WhatIf to complete the setup first.")
+        }
+        Write-Host "No service principal for this app yet — creating it."
+        $sp = New-MgServicePrincipal -AppId $app.AppId
+    } else {
+        $sp = $sp[0]
+    }
+} else {
+    # -WhatIf is meant for re-runs against an existing installation; on a fresh
+    # tenant there is nothing to preview and every later step would run into a
+    # null reference.
+    if ($WhatIfPreference) {
+        throw ("-WhatIf requires an existing app registration named '$AppDisplayName'. " +
+               "Run the initial setup without -WhatIf.")
+    }
+
+    $isNewApp = $true
+    # The tags are what make this installation findable later without knowing
+    # the name it was created under.
+    $app = New-MgApplication -DisplayName $AppDisplayName -SignInAudience "AzureADMyOrg" -Tags $appTags
+    $sp  = New-MgServicePrincipal -AppId $app.AppId
+    Write-Host "App registration created, marked with tags $($appTags -join ', ')." -ForegroundColor Green
+}
+
+Write-Host "AppId (Client ID):        $($app.AppId)"
+Write-Host "Object ID (SP):           $($sp.Id)"
+Write-Host "Tenant ID:                $((Get-MgContext).TenantId)"
+
+# -----------------------------------------------------------------------
+# Step 2: Grant Graph API permissions + Admin Consent
+# -----------------------------------------------------------------------
+Write-Host "`n== Step 2: Grant API permissions + Admin Consent ==" -ForegroundColor Cyan
+
+if ($isNewApp -or $EnsureEntraGraphPermissions) {
+    Connect-MgGraph -Scopes "Application.ReadWrite.All", "AppRoleAssignment.ReadWrite.All"
+
+    # Both calls below are guarded explicitly rather than trusting the Graph SDK
+    # to honour -WhatIf: they widen what the app can reach, tenant-wide, so a
+    # dry run that performed them anyway would be the opposite of harmless.
+    if ($PSCmdlet.ShouldProcess($AppDisplayName, "Update-MgApplication -RequiredResourceAccess")) {
+        Update-MgApplication -ApplicationId $app.Id `
+            -RequiredResourceAccess @(
+                @{
+                    ResourceAppId  = $graphAppId
+                    ResourceAccess = @(
+                        @{ Id = $mailReadWriteId; Type = "Role" }
+                        @{ Id = $mailSendId;      Type = "Role" }
+                    )
+                }
+            )
+    }
+
+    $graphSp = Get-MgServicePrincipal -Filter "AppId eq '$graphAppId'"
+
+    $grantedRoleIds = @(Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id |
+        Select-Object -ExpandProperty AppRoleId)
+
+    foreach ($roleId in @($mailReadWriteId, $mailSendId)) {
+        if ($grantedRoleIds -contains $roleId) {
+            Write-Host "  app role $roleId already granted."
+            continue
+        }
+        if ($PSCmdlet.ShouldProcess("app role $roleId", "New-MgServicePrincipalAppRoleAssignment")) {
+            New-MgServicePrincipalAppRoleAssignment `
+                -ServicePrincipalId $sp.Id `
+                -PrincipalId $sp.Id `
+                -ResourceId $graphSp.Id `
+                -AppRoleId $roleId | Out-Null
+        }
+    }
+
+    Write-Host "Permissions assigned and Admin Consent granted (Mail.ReadWrite, Mail.Send)."
+} else {
+    Write-Host "Skipped — the app registration already exists."
+    Write-Host "  After the initial setup these permissions are removed on purpose (step 5) so"
+    Write-Host "  that only the EXO RBAC scope is in force. Re-granting them here would give the"
+    Write-Host "  app access to every mailbox in the tenant again."
+    Write-Host "  Use -EnsureEntraGraphPermissions if they really have to be (re-)granted."
+}
+
+# Capture this before connecting to Exchange Online: the EXO module loads an
+# older Microsoft.Identity.Client, which breaks Graph calls afterwards.
+# Purely informational for the summary, so a failure here (e.g. a session
+# without a scope that may read app role assignments) must not abort a run that
+# has otherwise done its work — report it as unknown instead.
+$grantedGraphRoles = $null
+try {
+    $grantedGraphRoles = @(Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id |
+        Where-Object { $_.AppRoleId -in @($mailReadWriteId, $mailSendId) })
+} catch {
+    Write-Host "Could not read the current Graph app role assignments: $($_.Exception.Message)" -ForegroundColor DarkGray
+}
+
+# -----------------------------------------------------------------------
+# Step 3: Create client secret
+# -----------------------------------------------------------------------
+Write-Host "`n== Step 3: Create client secret ==" -ForegroundColor Cyan
+
+if ($isNewApp -or $NewClientSecret) {
+    # Guarded explicitly: a secret created by a dry run is a real credential
+    # that nobody wrote down, sitting on the app until someone notices it.
+    if ($PSCmdlet.ShouldProcess($AppDisplayName, "Add-MgApplicationPassword")) {
+        $secret = Add-MgApplicationPassword -ApplicationId $app.Id `
+            -PasswordCredential @{
+                DisplayName = "$AppDisplayName-secret"
+                EndDateTime = (Get-Date).AddYears($SecretValidityYears)
+            }
+
+        # The value is shown only once — save it immediately!
+        Write-Host "Client Secret: $($secret.SecretText)" -ForegroundColor Yellow
+        Write-Host "IMPORTANT: Save this value now (e.g. in the Redmine plugin configuration), it will not be shown again." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Skipped — keeping the existing client secret, the one configured in Redmine stays valid."
+    Write-Host "Use -NewClientSecret to create an additional one (rotation). Existing secrets:"
+    foreach ($credential in @($app.PasswordCredentials)) {
+        Write-Host "  $($credential.DisplayName) — expires $($credential.EndDateTime)"
+    }
+}
 
 # -----------------------------------------------------------------------
 # Step 4: Restrict access via Exchange Online Application RBAC
@@ -269,46 +1395,236 @@ Write-Host "`n== Step 4: Set up Exchange Online Application RBAC ==" -Foreground
 Connect-ExchangeOnline
 
 # 4a. Register the Service Principal in Exchange Online.
-#     AppId    = "Application ID"  from Entra ID -> Enterprise Applications
-#     ObjectId = "Object ID"       from Entra ID -> Enterprise Applications
-#     (NOT the IDs from "App registrations" — they are different!)
-New-ServicePrincipal `
-    -AppId       $app.AppId `
-    -ObjectId    $sp.Id `
-    -DisplayName $AppDisplayName
+#     AppId    = "Application ID" from Entra ID -> Enterprise applications
+#     ObjectId = "Object ID"      from Entra ID -> Enterprise applications
+#     (NOT the IDs from "App registrations" — those are different!)
+$exoSp = @(Get-ServicePrincipal -ErrorAction SilentlyContinue | Where-Object { $_.AppId -eq $app.AppId })
+if ($exoSp.Count -eq 0) {
+    if ($PSCmdlet.ShouldProcess($AppDisplayName, "New-ServicePrincipal")) {
+        New-ServicePrincipal `
+            -AppId $app.AppId `
+            -ObjectId $sp.Id `
+            -DisplayName $AppDisplayName | Out-Null
+    }
+    $exoSp = Get-ServicePrincipal -Identity $sp.Id
+} else {
+    $exoSp = $exoSp[0]
+    Write-Host "EXO service principal already registered (ObjectId $($exoSp.ObjectId))."
+}
+$exoSpId   = [string]$exoSp.ObjectId
+$exoSpName = [string]$exoSp.DisplayName
+
+# The scope name is only a default. Where this app already has role
+# assignments, they say which scope the installation actually uses — that beats
+# a name, and it stops a re-run from building a second scope merely because
+# -RbacScopeName was not passed in.
+if (-not $PSBoundParameters.ContainsKey('RbacScopeName')) {
+    $ownScopes = @(Get-OwnRoleAssignments -ServicePrincipalId $exoSpId -AssigneeName $exoSpName |
+        Where-Object { $_.CustomResourceScope } |
+        ForEach-Object { $_.CustomResourceScope } | Sort-Object -Unique)
+
+    if ($ownScopes.Count -gt 1) {
+        throw ("This app is assigned to several scopes (" + ($ownScopes -join ', ') +
+               "). Pass -RbacScopeName to say which one to extend.")
+    }
+    if ($ownScopes.Count -eq 1 -and $ownScopes[0] -ne $RbacScopeName) {
+        Write-Host "Using the scope this app is already assigned to: '$($ownScopes[0])'." -ForegroundColor Green
+        $RbacScopeName = $ownScopes[0]
+    }
+}
 
 # 4b. Restrict the management scope to the helpdesk mailboxes.
-$recipientFilter = Get-MailboxRecipientFilter
-New-ManagementScope `
-    -Name $rbacScopeName `
-    -RecipientRestrictionFilter $recipientFilter
+$scope = Get-ManagementScope -Identity $RbacScopeName -ErrorAction SilentlyContinue
 
-# 4c. Assign roles.
-#     Look up by ObjectId (unique) — the DisplayName may exist more than once.
-$exoSp   = Get-ServicePrincipal -Identity $sp.Id
-$exoSpId = [string]$exoSp.ObjectId
-New-ManagementRoleAssignment `
-    -App  $exoSpId `
-    -Role "Application Mail.ReadWrite" `
-    -CustomResourceScope $rbacScopeName
-New-ManagementRoleAssignment `
-    -App  $exoSpId `
-    -Role "Application Mail.Send" `
-    -CustomResourceScope $rbacScopeName
+if (-not $scope) {
+    # The one way this script can silently fail to honour an existing setup:
+    # if the initial setup used different names and they were not passed in, it
+    # builds a second, parallel app + scope instead of extending the first.
+    # This cannot be checked before step 1 — connecting to Exchange Online
+    # breaks the Graph SDK for the rest of the session, so the Graph work has to
+    # come first — but saying so here still beats finding out later.
+    $otherScopes = @(Get-ManagementRoleAssignment -ErrorAction SilentlyContinue |
+        Where-Object { $_.Role -in $rbacRoles -and $_.CustomResourceScope -and
+                       $_.CustomResourceScope -ne $RbacScopeName })
 
-Write-Host "EXO RBAC scope '$rbacScopeName' set up (filter: $recipientFilter)."
+    if ($otherScopes.Count -gt 0) {
+        Write-Host ""
+        Write-Host "NOTE: this tenant already has Application Mail.* role assignments on other scopes:" -ForegroundColor Yellow
+        foreach ($assignment in $otherScopes) {
+            Write-Host "  scope '$($assignment.CustomResourceScope)'  <-  app '$($assignment.RoleAssigneeName)'" -ForegroundColor Yellow
+        }
+        Write-Host "  If you meant to EXTEND one of those, stop here and re-run with a matching" -ForegroundColor Yellow
+        Write-Host "  -RbacScopeName and -AppDisplayName; what this run created so far can be" -ForegroundColor Yellow
+        Write-Host "  removed with ./delete-app-registration.ps1 -AppDisplayName '$AppDisplayName'." -ForegroundColor Yellow
+        Write-Host "  Continuing sets up a second, parallel installation." -ForegroundColor Yellow
+        Write-Host ""
+    }
 
-# 4d. Test access (InScope must be true).
-Write-Host "`nTesting authorization for mailbox '$TestMailbox':"
-Test-ServicePrincipalAuthorization `
-    -Identity $exoSpId `
-    -Resource $TestMailbox | Format-Table
+    if ($MailboxScopeOption -eq "EmailList") {
+        $targetAddresses = Merge-MailboxAddressList -Existing @() `
+                                                    -Add $MailboxEmailList `
+                                                    -Remove $RemoveMailboxEmailList
+        $recipientFilter = Get-MailboxRecipientFilter -EmailList $targetAddresses
+        $addedAddresses  = $targetAddresses
+    } else {
+        $recipientFilter = Get-MailboxRecipientFilter
+        $targetAddresses = @()
+        $addedAddresses  = @()
+    }
 
-Write-Host "`n=========================================================================" -ForegroundColor Yellow
-Write-Host "IMPORTANT: As long as the Entra Graph permissions from step 2 (Mail.ReadWrite," -ForegroundColor Yellow
-Write-Host "Mail.Send) remain in place, they are additive to the EXO RBAC scope — the app" -ForegroundColor Yellow
-Write-Host "can then still access ALL mailboxes in the tenant, regardless of the scope" -ForegroundColor Yellow
-Write-Host "defined above. Once the test above confirms 'InScope: True', re-run this" -ForegroundColor Yellow
-Write-Host "script with -RemoveEntraGraphPermissions:" -ForegroundColor Yellow
-Write-Host "  ./setup-azure-app.ps1 -AppDisplayName '$AppDisplayName' -RemoveEntraGraphPermissions" -ForegroundColor Yellow
-Write-Host "=========================================================================" -ForegroundColor Yellow
+    Write-Host "Creating management scope '$RbacScopeName'"
+    Write-Host "  filter: $recipientFilter"
+    if ($PSCmdlet.ShouldProcess($RbacScopeName, "New-ManagementScope")) {
+        New-ManagementScope `
+            -Name $RbacScopeName `
+            -RecipientRestrictionFilter $recipientFilter | Out-Null
+    }
+} else {
+    $addedAddresses   = @()
+    $removedAddresses = @()
+
+    if ($MailboxScopeOption -eq "EmailList") {
+        if ($ReplaceMailboxList) {
+            # Skip parsing entirely — this is also the way out of a scope whose
+            # filter Get-MailboxAddressesFromFilter refuses to merge.
+            $currentAddresses = @()
+        } else {
+            if ([string]::IsNullOrWhiteSpace($scope.RecipientFilter)) {
+                throw ("The existing scope '$RbacScopeName' has no recipient filter to merge " +
+                       "into. Use -ReplaceMailboxList to set it explicitly.")
+            }
+            $currentAddresses = Get-MailboxAddressesFromFilter -Filter $scope.RecipientFilter
+        }
+
+        $targetAddresses = Merge-MailboxAddressList -Existing $currentAddresses `
+                                                    -Add $MailboxEmailList `
+                                                    -Remove $RemoveMailboxEmailList `
+                                                    -Replace:$ReplaceMailboxList
+
+        $addedAddresses   = @($targetAddresses  | Where-Object { $_ -notin $currentAddresses })
+        $removedAddresses = @($currentAddresses | Where-Object { $_ -notin $targetAddresses })
+
+        $recipientFilter = Get-MailboxRecipientFilter -EmailList $targetAddresses
+        $isUnchanged     = ($addedAddresses.Count -eq 0 -and $removedAddresses.Count -eq 0)
+    } else {
+        $targetAddresses = @()
+        $recipientFilter = Get-MailboxRecipientFilter
+        $isUnchanged     = ((ConvertTo-ComparableFilter $scope.RecipientFilter) -ieq
+                            (ConvertTo-ComparableFilter $recipientFilter))
+    }
+
+    Write-Host "Management scope '$RbacScopeName' already exists."
+    Write-Host "  old filter: $($scope.RecipientFilter)"
+    Write-Host "  new filter: $recipientFilter"
+    if ($addedAddresses.Count -gt 0) {
+        Write-Host "  added:   $($addedAddresses -join ', ')" -ForegroundColor Green
+    }
+    if ($removedAddresses.Count -gt 0) {
+        Write-Host "  removed: $($removedAddresses -join ', ')" -ForegroundColor Yellow
+    }
+
+    if ($isUnchanged) {
+        Write-Host "  unchanged — nothing to do."
+    } elseif ($PSCmdlet.ShouldProcess($RbacScopeName, "Set-ManagementScope")) {
+        Set-ManagementScope -Identity $RbacScopeName -RecipientRestrictionFilter $recipientFilter | Out-Null
+        Write-Host "  scope updated." -ForegroundColor Green
+    }
+}
+
+# 4c. Assign the roles to the scope. Look the service principal up by ObjectId,
+#     because DisplayName is ambiguous.
+#     Get-ManagementRoleAssignment has no -CustomResourceScope filter, so filter
+#     client-side.
+$existingAssignments = @(Get-OwnRoleAssignments -ServicePrincipalId $exoSpId -AssigneeName $exoSpName |
+    Where-Object { $_.CustomResourceScope -eq $RbacScopeName })
+
+# Duplicates are left behind by runs that failed to recognise their own
+# assignment. Deal with them before deciding what is missing, so the check
+# below sees a tidied state.
+$removedDuplicates = Resolve-DuplicateRoleAssignments -Assignments $existingAssignments `
+                                                      -Remove:$RemoveDuplicateRoleAssignments
+if ($removedDuplicates -gt 0) {
+    Write-Host "Removed $removedDuplicates duplicate role assignment(s)." -ForegroundColor Green
+    $existingAssignments = @(Get-OwnRoleAssignments -ServicePrincipalId $exoSpId -AssigneeName $exoSpName |
+        Where-Object { $_.CustomResourceScope -eq $RbacScopeName })
+}
+
+foreach ($role in $rbacRoles) {
+    $have = @($existingAssignments | Where-Object { $_.Role -eq $role })
+
+    if ($have.Count -ge 1) {
+        Write-Host "Role assignment '$role' on scope '$RbacScopeName' already exists."
+        continue
+    }
+    if ($PSCmdlet.ShouldProcess("$role -> $RbacScopeName", "New-ManagementRoleAssignment")) {
+        New-ManagementRoleAssignment `
+            -App $exoSpId `
+            -Role $role `
+            -CustomResourceScope $RbacScopeName | Out-Null
+        Write-Host "Role assignment '$role' created." -ForegroundColor Green
+    }
+}
+
+# 4d. Test access (InScope must be True).
+$testMailboxes = @($TestMailbox | Where-Object { $_ })
+if ($testMailboxes.Count -eq 0) {
+    # Nothing given explicitly — verify what this run just added.
+    $testMailboxes = @($addedAddresses)
+}
+
+if ($WhatIfPreference) {
+    Write-Host "`nSkipping the authorization test (-WhatIf)."
+} elseif ($testMailboxes.Count -eq 0) {
+    Write-Host "`nNo mailbox to test — pass -TestMailbox to verify the scope explicitly."
+} else {
+    $notInScope = @()
+    foreach ($mailbox in $testMailboxes) {
+        Write-Host "`nTesting authorization for mailbox '$mailbox':"
+        if (-not (Test-MailboxAuthorization -ServicePrincipalId $exoSpId -Mailbox $mailbox)) {
+            $notInScope += $mailbox
+        }
+    }
+
+    if ($notInScope.Count -gt 0) {
+        Write-Host ("`nNot in scope: " + ($notInScope -join ', ')) -ForegroundColor Red
+        Write-Host "Do NOT run -RemoveEntraGraphPermissions until this is resolved." -ForegroundColor Red
+    } else {
+        Write-Host "`nAll tested mailboxes are in scope." -ForegroundColor Green
+    }
+}
+
+# -----------------------------------------------------------------------
+# Summary
+# -----------------------------------------------------------------------
+Write-Host "`n=========================================================================" -ForegroundColor Cyan
+Write-Host "Environment:              $Environment" -ForegroundColor Cyan
+Write-Host "App registration:         $AppDisplayName (tag '$ResourceTag')" -ForegroundColor Cyan
+Write-Host "AppId (Client ID):        $($app.AppId)" -ForegroundColor Cyan
+Write-Host "Object ID (SP):           $($sp.Id)" -ForegroundColor Cyan
+Write-Host "EXO scope:                $RbacScopeName" -ForegroundColor Cyan
+if ($MailboxScopeOption -eq "EmailList") {
+    Write-Host "Mailboxes in scope:       $(@($targetAddresses) -join ', ')" -ForegroundColor Cyan
+} else {
+    Write-Host "Scope filter:             $recipientFilter" -ForegroundColor Cyan
+}
+# Three states, because "could not read them" must not be reported as "removed".
+$graphPermissionState = if ($null -eq $grantedGraphRoles) {
+    "unknown (could not be read — check in Entra ID)"
+} elseif ($grantedGraphRoles.Count -gt 0) {
+    "granted"
+} else {
+    "removed (only the EXO RBAC scope applies)"
+}
+Write-Host "Entra Graph permissions:  $graphPermissionState" -ForegroundColor Cyan
+Write-Host "=========================================================================" -ForegroundColor Cyan
+
+if ($null -ne $grantedGraphRoles -and $grantedGraphRoles.Count -gt 0) {
+    Write-Host "`n=========================================================================" -ForegroundColor Yellow
+    Write-Host "IMPORTANT: as long as the Entra Graph permissions from step 2 (Mail.ReadWrite," -ForegroundColor Yellow
+    Write-Host "Mail.Send) remain in place, they are additive to the EXO RBAC scope — the app" -ForegroundColor Yellow
+    Write-Host "can still access ALL mailboxes in the tenant, regardless of the scope defined" -ForegroundColor Yellow
+    Write-Host "above. Once the test above confirms 'InScope: True', re-run this script with" -ForegroundColor Yellow
+    Write-Host "-RemoveEntraGraphPermissions:" -ForegroundColor Yellow
+    Write-Host "  ./setup-azure-app.ps1 -AppDisplayName '$AppDisplayName' -RemoveEntraGraphPermissions" -ForegroundColor Yellow
+    Write-Host "=========================================================================" -ForegroundColor Yellow
+}
