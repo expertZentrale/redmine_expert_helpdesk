@@ -241,9 +241,12 @@ module RedmineExpertHelpdesk
     end
 
     # Characters that would end the image syntax early are percent-encoded; Redmine
-    # unescapes the src again before it looks the attachment up.
+    # unescapes the src again before it looks the attachment up. The "%" is in the
+    # set so that the encoding stays unambiguous on its own terms - Redmine's
+    # Attachment#sanitize_filename happens to replace it with "_" already, but that
+    # is its invariant, not ours.
     def escape_target(filename)
-      filename.to_s.gsub(/[\s!()\[\]<>"']/) { |char| format('%%%02X', char.ord) }
+      filename.to_s.gsub(/[\s%!()\[\]<>"']/) { |char| format('%%%02X', char.ord) }
     end
 
     # --- MIME preprocessing ----------------------------------------------------

@@ -114,6 +114,12 @@ class InlineImagesTest < ActiveSupport::TestCase
     end
   end
 
+  # Redmine's own sanitizing keeps "%" out of stored file names; the encoding must
+  # not depend on that to stay unambiguous.
+  def test_percent_in_filename_is_encoded
+    assert_equal 'a%2520b.png', II.escape_target('a%20b.png')
+  end
+
   # -----------------------------------------------------------------------
   # CID map
   # -----------------------------------------------------------------------
