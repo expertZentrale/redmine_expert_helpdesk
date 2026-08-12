@@ -319,20 +319,25 @@ function Confirm-MailboxScopeParameters {
 function Get-MailboxRecipientFilter {
     param([string[]]$EmailList)
 
+    # Every value below lands inside a single-quoted OPATH literal, so all of
+    # them go through the escaper — a group DN or address containing an
+    # apostrophe otherwise changes what the scope matches.
     switch ($MailboxScopeOption) {
         "DomainSuffix" {
-            return "PrimarySmtpAddress -like '*$MailboxDomainSuffix'"
+            return "PrimarySmtpAddress -like '*$(ConvertTo-FilterLiteral $MailboxDomainSuffix)'"
         }
         "SecurityGroup" {
             # Needs an active Exchange Online connection.
             $groupDn = (Get-Group $MailboxSecurityGroup).DistinguishedName
-            return "MemberOfGroup -eq '$groupDn'"
+            return "MemberOfGroup -eq '$(ConvertTo-FilterLiteral $groupDn)'"
         }
         "CustomAttribute" {
-            return "CustomAttribute1 -eq '$MailboxCustomAttributeValue'"
+            return "CustomAttribute1 -eq '$(ConvertTo-FilterLiteral $MailboxCustomAttributeValue)'"
         }
         "EmailList" {
-            $clauses = @($EmailList) | ForEach-Object { "PrimarySmtpAddress -eq '$_'" }
+            $clauses = @($EmailList) | ForEach-Object {
+                "PrimarySmtpAddress -eq '$(ConvertTo-FilterLiteral $_)'"
+            }
             return ($clauses -join " -or ")
         }
     }
@@ -348,7 +353,10 @@ individual clauses instead, which survives the re-parenthesising.
 function Get-MailboxAddressesFromFilter {
     param([Parameter(Mandatory)][AllowEmptyString()][string]$Filter)
 
-    $pattern = "PrimarySmtpAddress\s+-eq\s+'([^']+)'"
+    # The literal may contain doubled quotes (an escaped apostrophe), so the
+    # value is "anything that is not a quote, or a doubled quote" — [^']+ would
+    # stop at the first half of an escaped one and read the address short.
+    $pattern = "PrimarySmtpAddress\s+-eq\s+'((?:[^']|'')*)'"
     $found   = [regex]::Matches($Filter, $pattern)
 
     # Anything left over besides the address clauses, their -or separators,
@@ -364,7 +372,10 @@ function Get-MailboxAddressesFromFilter {
                "Exchange Online directly.")
     }
 
-    return @($found | ForEach-Object { $_.Groups[1].Value })
+    # Unescape, so what comes back out is the address as it is written on the
+    # mailbox. Without this a re-run would escape an already-escaped address
+    # again and corrupt it a little more each time.
+    return @($found | ForEach-Object { $_.Groups[1].Value -replace "''", "'" })
 }
 
 <#
@@ -409,10 +420,17 @@ function Merge-MailboxAddressList {
     return @($result | Sort-Object)
 }
 
-# Single quotes delimit strings in an OData filter and are escaped by doubling
-# them. A display name containing an apostrophe would otherwise break the filter
-# or silently change what it matches.
-function ConvertTo-ODataLiteral {
+<#
+Escapes a value for a single-quoted string literal in a filter.
+
+Both dialects in play delimit strings with single quotes and escape an embedded
+one by doubling it: OData ($filter, Microsoft Graph) and OPATH
+(RecipientFilter, Exchange Online). Apostrophes are not exotic here — O'Brien is
+a legitimate group name and o'brien@example.com a legitimate address —
+and unescaped they either break the filter or silently change what it matches,
+which for a scope filter means the wrong set of mailboxes.
+#>
+function ConvertTo-FilterLiteral {
     param([AllowEmptyString()][string]$Value)
 
     return ($Value -replace "'", "''")
@@ -425,7 +443,7 @@ makes an installation findable without knowing the name it was created under.
 function Find-TaggedApplication {
     param([Parameter(Mandatory)][string]$Tag)
 
-    $literal = ConvertTo-ODataLiteral $Tag
+    $literal = ConvertTo-FilterLiteral $Tag
     try {
         return @(Get-MgApplication -Filter "tags/any(t:t eq '$literal')" -All)
     } catch {
@@ -454,7 +472,7 @@ function Resolve-HelpdeskApplication {
         }
     }
 
-    $literal = ConvertTo-ODataLiteral $DisplayName
+    $literal = ConvertTo-FilterLiteral $DisplayName
     return [pscustomobject]@{
         Apps    = @(Get-MgApplication -Filter "DisplayName eq '$literal'")
         FoundBy = "display name '$DisplayName'"
@@ -917,13 +935,30 @@ if ($SelfTest) {
         if ($lower.AppDisplayName -ne $upper.AppDisplayName) { throw "app name disagrees" }
     }
 
+    # o'brien@example.com is a legal address, and an unescaped apostrophe
+    # silently changes which mailboxes the scope covers.
+    Test-Case "an address with an apostrophe survives the filter round-trip" {
+        $addresses = @("o'brien@example.com", "b@example.com")
+        $filter    = Get-MailboxRecipientFilter -EmailList $addresses
+        if ($filter -notmatch "o''brien@example\.com") { throw "not escaped: $filter" }
+        Assert-Set (Get-MailboxAddressesFromFilter -Filter $filter) $addresses
+    }
+
+    # Escape, read back, escape again must be stable - otherwise every re-run
+    # would add another layer of quotes.
+    Test-Case "escaping an address is idempotent across runs" {
+        $first  = Get-MailboxRecipientFilter -EmailList @("o'brien@example.com")
+        $second = Get-MailboxRecipientFilter -EmailList @(Get-MailboxAddressesFromFilter -Filter $first)
+        if ($first -ne $second) { throw "run 1: $first`nrun 2: $second" }
+    }
+
     Test-Case "an apostrophe in a display name is escaped for the OData filter" {
-        $literal = ConvertTo-ODataLiteral "expert's helpdesk"
+        $literal = ConvertTo-FilterLiteral "expert's helpdesk"
         if ($literal -ne "expert''s helpdesk") { throw "got '$literal'" }
     }
 
     Test-Case "a display name without an apostrophe is left alone" {
-        $literal = ConvertTo-ODataLiteral "redmine-expert-helpdesk-live"
+        $literal = ConvertTo-FilterLiteral "redmine-expert-helpdesk-live"
         if ($literal -ne "redmine-expert-helpdesk-live") { throw "got '$literal'" }
     }
 

@@ -103,6 +103,18 @@
 
 ### Fixed
 
+- **Values were interpolated into Exchange Online recipient filters without escaping apostrophes.**
+  A group DN (`O'Brien`) or an address (`o'brien@example.com`) containing one would have broken the
+  scope filter or silently changed which mailboxes it matched. All four scope options escape now,
+  reading an address list back understands the escaped form, and escaping is idempotent so a re-run
+  cannot add another layer of quotes. The same rule already applied to the Graph `$filter`.
+- **`delete-app-registration.ps1` could describe the wrong app in its deletion prompts.** Having
+  found an app by tag, it still named the `-AppDisplayName` parameter in the confirmation and used it
+  to look up the soft-deleted copy and the Exchange service principal — so for an installation
+  carrying a different name, the prompt described one object while another was deleted, and the
+  follow-up steps found nothing. It now works from the app it actually found (AppId for the Exchange
+  object, real display names elsewhere), and refuses to proceed when several apps share the tag
+  unless `-AppDisplayName` or `-Force` says which is meant.
 - **The authorization test reported success for a mailbox that was not in scope.** Exchange Online
   returns `InScope` as the string `"False"`, and every non-empty string is truthy in PowerShell, so
   the check inverted itself: it announced "All tested mailboxes are in scope" for a mailbox the app

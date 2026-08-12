@@ -111,6 +111,20 @@
 
 ### Behoben
 
+- **Werte wurden ohne Maskierung von Apostrophen in Exchange-Online-Empfängerfilter eingesetzt.**
+  Ein Gruppen-DN (`O'Brien`) oder eine Adresse (`o'brien@example.com`) mit Apostroph hätte den
+  Scope-Filter zerstört oder stillschweigend verändert, welche Postfächer er trifft. Alle vier
+  Varianten maskieren jetzt, das Zurücklesen einer Adressliste versteht die maskierte Form, und die
+  Maskierung ist idempotent – ein erneuter Lauf kann also keine weitere Ebene von Anführungszeichen
+  hinzufügen. Für den Graph-`$filter` galt dieselbe Regel bereits.
+- **`delete-app-registration.ps1` konnte in seinen Löschabfragen die falsche App benennen.** Wurde
+  eine App über das Tag gefunden, nannte die Bestätigung dennoch den Parameter `-AppDisplayName` und
+  suchte damit auch die vorläufig gelöschte Kopie und den Exchange-Service-Principal – bei einer
+  Installation unter abweichendem Namen beschrieb die Abfrage also ein anderes Objekt als das
+  gelöschte, und die Folgeschritte fanden nichts. Gearbeitet wird jetzt mit der tatsächlich
+  gefundenen App (AppId für das Exchange-Objekt, echte Anzeigenamen sonst), und bei mehreren Apps
+  mit demselben Tag bricht das Skript ab, solange nicht `-AppDisplayName` oder `-Force` sagt, welche
+  gemeint ist.
 - **Die Berechtigungsprüfung meldete Erfolg für ein Postfach, das gar nicht im Scope war.** Exchange
   Online liefert `InScope` als Zeichenkette `"False"`, und jede nicht-leere Zeichenkette ist in
   PowerShell wahr – die Prüfung kehrte sich damit um und meldete „All tested mailboxes are in scope“

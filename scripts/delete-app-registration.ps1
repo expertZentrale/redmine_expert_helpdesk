@@ -130,23 +130,43 @@ if ($apps.Count -gt 0) {
 if ($apps.Count -eq 0) {
     Write-Host "No app registration found by tag '$ResourceTag' or name '$AppDisplayName'."
 }
+
+# A tag should identify exactly one installation. Several means the tag was
+# reused, and this script deletes things - so name them and refuse rather than
+# work through them on an assumption.
+if ($apps.Count -gt 1 -and -not $Force -and -not $PSBoundParameters.ContainsKey('AppDisplayName')) {
+    throw ("Several app registrations carry the tag '$ResourceTag':`n" +
+           (($apps | ForEach-Object { "  $($_.DisplayName)  (AppId $($_.AppId))" }) -join "`n") +
+           "`nPass -AppDisplayName to name the one to remove, or -Force to remove all of them.")
+}
+
+# The later steps work off what was actually found, not off the parameter: an
+# app located by tag can carry a completely different display name, and naming
+# the parameter in a deletion prompt would describe the wrong object. Where
+# nothing was found, the parameter remains the only lead - the app may already
+# be gone from the directory while its soft-deleted copy and its Exchange
+# objects are still there.
+$targetNames = @($apps | ForEach-Object { $_.DisplayName } | Where-Object { $_ } | Sort-Object -Unique)
+$targetAppIds = @($apps | ForEach-Object { $_.AppId } | Where-Object { $_ })
+if ($targetNames.Count -eq 0) { $targetNames = @($AppDisplayName) }
+
 foreach ($app in $apps) {
     $appObjectId = $app.Id
     Invoke-Confirmed `
-        -Description "App registration '$AppDisplayName' (AppId $($app.AppId))" `
-        -Details     ($app | Select-Object DisplayName, AppId, Id, CreatedDateTime) `
+        -Description "App registration '$($app.DisplayName)' (AppId $($app.AppId))" `
+        -Details     ($app | Select-Object DisplayName, AppId, Id, Tags, CreatedDateTime) `
         -Action      { Remove-MgApplication -ApplicationId $appObjectId }
 }
 
 # Purge from the 30-day soft-delete bin so the name is truly free.
-$deleted = @(Get-MgDirectoryDeletedItemAsApplication | Where-Object DisplayName -eq $AppDisplayName)
+$deleted = @(Get-MgDirectoryDeletedItemAsApplication | Where-Object { $targetNames -contains $_.DisplayName })
 if ($deleted.Count -eq 0) {
     Write-Host "Nothing to purge from the deleted items bin."
 }
 foreach ($item in $deleted) {
     $deletedId = $item.Id
     Invoke-Confirmed `
-        -Description "PERMANENTLY purge soft-deleted app '$AppDisplayName' (AppId $($item.AppId))" `
+        -Description "PERMANENTLY purge soft-deleted app '$($item.DisplayName)' (AppId $($item.AppId))" `
         -Details     ($item | Select-Object DisplayName, AppId, Id, DeletedDateTime) `
         -Action      { Remove-MgDirectoryDeletedItem -DirectoryObjectId $deletedId }
 }
@@ -159,7 +179,7 @@ Connect-ExchangeOnline
 
 # Get-ManagementRoleAssignment has no -CustomResourceScope filter, so filter client-side.
 $roleAssignments = @(Get-ManagementRoleAssignment -ErrorAction SilentlyContinue |
-    Where-Object { $_.CustomResourceScope -eq $RbacScopeName -or $_.RoleAssigneeName -eq $AppDisplayName })
+    Where-Object { $_.CustomResourceScope -eq $RbacScopeName -or $targetNames -contains $_.RoleAssigneeName })
 if ($roleAssignments.Count -eq 0) {
     Write-Host "No management role assignments on scope '$RbacScopeName'."
 }
@@ -181,14 +201,18 @@ if (-not $scope) {
         -Action      { Remove-ManagementScope -Identity $RbacScopeName -Confirm:$false }
 }
 
-$exoSps = @(Get-ServicePrincipal | Where-Object DisplayName -eq $AppDisplayName)
+# AppId is what ties the Exchange object to the Entra app; the display names of
+# the two need not agree, so it is the better match where we have it.
+$exoSps = @(Get-ServicePrincipal | Where-Object {
+    ($targetAppIds.Count -gt 0 -and $targetAppIds -contains $_.AppId) -or
+    ($targetAppIds.Count -eq 0 -and $targetNames -contains $_.DisplayName) })
 if ($exoSps.Count -eq 0) {
-    Write-Host "No Exchange Online service principal named '$AppDisplayName'."
+    Write-Host "No Exchange Online service principal for $($targetNames -join ', ')."
 }
 foreach ($exoSp in $exoSps) {
     $objectId = $exoSp.ObjectId
     Invoke-Confirmed `
-        -Description "Exchange Online service principal '$AppDisplayName' ($objectId)" `
+        -Description "Exchange Online service principal '$($exoSp.DisplayName)' ($objectId)" `
         -Details     ($exoSp | Select-Object DisplayName, AppId, ObjectId) `
         -Action      { Remove-ServicePrincipal -Identity $objectId -Confirm:$false }
 }
