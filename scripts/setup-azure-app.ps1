@@ -309,6 +309,15 @@ function Merge-MailboxAddressList {
     return @($result | Sort-Object)
 }
 
+# Single quotes delimit strings in an OData filter and are escaped by doubling
+# them. A display name containing an apostrophe would otherwise break the filter
+# or silently change what it matches.
+function ConvertTo-ODataLiteral {
+    param([AllowEmptyString()][string]$Value)
+
+    return ($Value -replace "'", "''")
+}
+
 # Filters only have to be compared loosely — EXO returns its own formatting.
 function ConvertTo-ComparableFilter {
     param([AllowEmptyString()][string]$Filter)
@@ -460,6 +469,16 @@ if ($SelfTest) {
         Assert-Throws { Get-MailboxAddressesFromFilter -Filter "PrimarySmtpAddress -like '*@example.com'" }
     }
 
+    Test-Case "an apostrophe in a display name is escaped for the OData filter" {
+        $literal = ConvertTo-ODataLiteral "expert's helpdesk"
+        if ($literal -ne "expert''s helpdesk") { throw "got '$literal'" }
+    }
+
+    Test-Case "a display name without an apostrophe is left alone" {
+        $literal = ConvertTo-ODataLiteral "redmine-expert-helpdesk-live"
+        if ($literal -ne "redmine-expert-helpdesk-live") { throw "got '$literal'" }
+    }
+
     Test-Case "a mixed filter is not merged blindly" {
         Assert-Throws {
             Get-MailboxAddressesFromFilter `
@@ -484,7 +503,8 @@ if ($RemoveEntraGraphPermissions) {
     Write-Host "== Step 5: Remove Entra Graph permissions ==" -ForegroundColor Cyan
     Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All"
 
-    $sp = @(Get-MgServicePrincipal -Filter "DisplayName eq '$AppDisplayName'")
+    $nameLiteral = ConvertTo-ODataLiteral $AppDisplayName
+    $sp = @(Get-MgServicePrincipal -Filter "DisplayName eq '$nameLiteral'")
     if ($sp.Count -eq 0) {
         throw "Service Principal '$AppDisplayName' not found."
     }
@@ -526,7 +546,8 @@ Write-Host "== Step 1: Register app ==" -ForegroundColor Cyan
 Connect-MgGraph -Scopes "Application.ReadWrite.All"
 
 # More than one match makes every later DisplayName lookup ambiguous.
-$existingApp = @(Get-MgApplication -Filter "DisplayName eq '$AppDisplayName'")
+$nameLiteral = ConvertTo-ODataLiteral $AppDisplayName
+$existingApp = @(Get-MgApplication -Filter "DisplayName eq '$nameLiteral'")
 if ($existingApp.Count -gt 1) {
     throw ("Multiple app registrations named '$AppDisplayName' exist (AppIds: " +
            ($existingApp.AppId -join ', ') + "). Delete the obsolete ones or use a " +
@@ -616,8 +637,16 @@ if ($isNewApp -or $EnsureEntraGraphPermissions) {
 
 # Capture this before connecting to Exchange Online: the EXO module loads an
 # older Microsoft.Identity.Client, which breaks Graph calls afterwards.
-$grantedGraphRoles = @(Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id |
-    Where-Object { $_.AppRoleId -in @($mailReadWriteId, $mailSendId) })
+# Purely informational for the summary, so a failure here (e.g. a session
+# without a scope that may read app role assignments) must not abort a run that
+# has otherwise done its work — report it as unknown instead.
+$grantedGraphRoles = $null
+try {
+    $grantedGraphRoles = @(Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id |
+        Where-Object { $_.AppRoleId -in @($mailReadWriteId, $mailSendId) })
+} catch {
+    Write-Host "Could not read the current Graph app role assignments: $($_.Exception.Message)" -ForegroundColor DarkGray
+}
 
 # -----------------------------------------------------------------------
 # Step 3: Create client secret
@@ -671,6 +700,29 @@ $exoSpId = [string]$exoSp.ObjectId
 $scope = Get-ManagementScope -Identity $RbacScopeName -ErrorAction SilentlyContinue
 
 if (-not $scope) {
+    # The one way this script can silently fail to honour an existing setup:
+    # if the initial setup used different names and they were not passed in, it
+    # builds a second, parallel app + scope instead of extending the first.
+    # This cannot be checked before step 1 — connecting to Exchange Online
+    # breaks the Graph SDK for the rest of the session, so the Graph work has to
+    # come first — but saying so here still beats finding out later.
+    $otherScopes = @(Get-ManagementRoleAssignment -ErrorAction SilentlyContinue |
+        Where-Object { $_.Role -in $rbacRoles -and $_.CustomResourceScope -and
+                       $_.CustomResourceScope -ne $RbacScopeName })
+
+    if ($otherScopes.Count -gt 0) {
+        Write-Host ""
+        Write-Host "NOTE: this tenant already has Application Mail.* role assignments on other scopes:" -ForegroundColor Yellow
+        foreach ($assignment in $otherScopes) {
+            Write-Host "  scope '$($assignment.CustomResourceScope)'  <-  app '$($assignment.RoleAssigneeName)'" -ForegroundColor Yellow
+        }
+        Write-Host "  If you meant to EXTEND one of those, stop here and re-run with a matching" -ForegroundColor Yellow
+        Write-Host "  -RbacScopeName and -AppDisplayName; what this run created so far can be" -ForegroundColor Yellow
+        Write-Host "  removed with ./delete-app-registration.ps1 -AppDisplayName '$AppDisplayName'." -ForegroundColor Yellow
+        Write-Host "  Continuing sets up a second, parallel installation." -ForegroundColor Yellow
+        Write-Host ""
+    }
+
     if ($MailboxScopeOption -eq "EmailList") {
         $targetAddresses = Merge-MailboxAddressList -Existing @() `
                                                     -Add $MailboxEmailList `
@@ -804,10 +856,18 @@ if ($MailboxScopeOption -eq "EmailList") {
 } else {
     Write-Host "Scope filter:             $recipientFilter" -ForegroundColor Cyan
 }
-Write-Host "Entra Graph permissions:  $(if ($grantedGraphRoles.Count -gt 0) { 'granted' } else { 'removed (only the EXO RBAC scope applies)' })" -ForegroundColor Cyan
+# Three states, because "could not read them" must not be reported as "removed".
+$graphPermissionState = if ($null -eq $grantedGraphRoles) {
+    "unknown (could not be read — check in Entra ID)"
+} elseif ($grantedGraphRoles.Count -gt 0) {
+    "granted"
+} else {
+    "removed (only the EXO RBAC scope applies)"
+}
+Write-Host "Entra Graph permissions:  $graphPermissionState" -ForegroundColor Cyan
 Write-Host "=========================================================================" -ForegroundColor Cyan
 
-if ($grantedGraphRoles.Count -gt 0) {
+if ($null -ne $grantedGraphRoles -and $grantedGraphRoles.Count -gt 0) {
     Write-Host "`n=========================================================================" -ForegroundColor Yellow
     Write-Host "IMPORTANT: as long as the Entra Graph permissions from step 2 (Mail.ReadWrite," -ForegroundColor Yellow
     Write-Host "Mail.Send) remain in place, they are additive to the EXO RBAC scope — the app" -ForegroundColor Yellow

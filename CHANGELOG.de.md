@@ -58,6 +58,15 @@
   Das Skript vergibt Zugriff auf Postfächer, es legt sie nicht an – die Postfächer müssen weiterhin
   im Tenant vorhanden sein.
 
+### Behoben
+
+- **Ein Apostroph in `-AppDisplayName` machte die Suche nach der App-Registrierung kaputt** – in
+  beiden Skripten. Einfache Anführungszeichen begrenzen Zeichenketten in einem OData-Filter und
+  müssen zum Maskieren verdoppelt werden; unmaskiert lief ein solcher Name entweder auf einen Fehler
+  oder fragte stillschweigend etwas anderes ab – in `setup-azure-app.ps1` hätte das eine doppelte
+  App-Registrierung bedeutet, in `delete-app-registration.ps1` eine nicht gefundene und damit nicht
+  entfernte App.
+
 ## [0.2.4] - 2026-08-07
 
 ### Behoben

@@ -69,7 +69,10 @@ Write-Host "== Entra ID ==" -ForegroundColor Cyan
 Connect-MgGraph -Scopes "Application.ReadWrite.All"
 
 # Deleting the application also removes its service principal.
-$apps = @(Get-MgApplication -Filter "DisplayName eq '$AppDisplayName'")
+# Single quotes delimit strings in an OData filter and are escaped by doubling
+# them, so a display name containing an apostrophe stays findable here.
+$nameLiteral = $AppDisplayName -replace "'", "''"
+$apps = @(Get-MgApplication -Filter "DisplayName eq '$nameLiteral'")
 if ($apps.Count -eq 0) {
     Write-Host "No app registration named '$AppDisplayName'."
 }

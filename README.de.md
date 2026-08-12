@@ -1120,13 +1120,29 @@ Adresse und lässt alle übrigen Ressourcen unangetastet):
 
 ```powershell
 # Erst die Vorschau: zeigt alten und neuen Filter, schreibt nichts
-./scripts/setup-azure-app.ps1 -MailboxEmailList "sales@example.com" -WhatIf
+./scripts/setup-azure-app.ps1 -AppDisplayName "redmine-helpdesk" `
+    -RbacScopeName "Redmine-Helpdesk-Mailboxes" `
+    -MailboxEmailList "sales@example.com" -WhatIf
 
-./scripts/setup-azure-app.ps1 -MailboxEmailList "sales@example.com"
+./scripts/setup-azure-app.ps1 -AppDisplayName "redmine-helpdesk" `
+    -RbacScopeName "Redmine-Helpdesk-Mailboxes" `
+    -MailboxEmailList "sales@example.com"
 
 # und um den Zugriff auf ein Postfach wieder zu entziehen
-./scripts/setup-azure-app.ps1 -RemoveMailboxEmailList "sales@example.com"
+./scripts/setup-azure-app.ps1 -AppDisplayName "redmine-helpdesk" `
+    -RbacScopeName "Redmine-Helpdesk-Mailboxes" `
+    -RemoveMailboxEmailList "sales@example.com"
 ```
+
+> ⚠️ **`-AppDisplayName` und `-RbacScopeName` müssen zur bestehenden Einrichtung
+> passen.** Über diese beiden Namen findet das Skript, was es erweitern soll, und
+> seine Vorgaben (`redmine-expert-helpdesk-live` /
+> `Redmine-expert-Helpdesk-Mailboxes-LIVE`) sind *nicht* die oben verwendeten
+> Beispielnamen. Lässt man sie bei einer unter anderen Namen angelegten
+> Einrichtung weg, schlägt das nicht fehl – das Skript findet nichts zum
+> Weiterverwenden und legt eine **zweite, parallele App-Registrierung samt Scope**
+> an. Im Zweifel mit `Get-MgApplication | Select-Object DisplayName` und
+> `Get-ManagementScope` prüfen, welche Namen die eigene Installation verwendet.
 
 Von Hand hängt es von der in Schritt 4b gewählten Variante ab: bei
 **Variante A** (Domain-Suffix) ist nichts zu tun, solange das neue Postfach in

@@ -54,6 +54,14 @@
   The script grants access to mailboxes, it does not create them — the mailboxes still have to
   exist in the tenant.
 
+### Fixed
+
+- **An apostrophe in `-AppDisplayName` broke the app registration lookup** in both scripts. Single
+  quotes delimit strings in an OData filter and have to be doubled to be escaped; unescaped, such a
+  name either errored out or silently queried something else — which in `setup-azure-app.ps1` would
+  have meant creating a duplicate app registration, and in `delete-app-registration.ps1` not finding
+  the app to remove.
+
 ## [0.2.4] - 2026-08-07
 
 ### Fixed

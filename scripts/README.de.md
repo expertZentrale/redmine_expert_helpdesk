@@ -28,6 +28,24 @@ Terraform dokumentiert.
 ./setup-azure-app.ps1 -MailboxEmailList "sales@example.com"
 ```
 
+> ⚠️ **Die Beispiele hier verlassen sich auf die Vorgaben `-AppDisplayName
+> redmine-expert-helpdesk-live` und `-RbacScopeName
+> Redmine-expert-Helpdesk-Mailboxes-LIVE`.** Über diese beiden Namen findet das
+> Skript die Installation, die es erweitern soll. Wurde die eigene unter anderen
+> Namen angelegt – die manuellen Rezepte in [`../README.de.md`](../README.de.md)
+> verwenden `redmine-helpdesk` / `Redmine-Helpdesk-Mailboxes` –, müssen sie bei
+> **jedem** Lauf mit angegeben werden. Sie wegzulassen schlägt nicht fehl: das
+> Skript findet nichts zum Weiterverwenden und legt eine **zweite, parallele
+> App-Registrierung samt Scope** an. Es warnt zwar, wenn es einen Scope anlegen
+> will, während bereits andere `Application Mail.*`-Rollenzuweisungen bestehen –
+> die App-Registrierung ist dann aber schon angelegt, aufgeräumt wird also mit
+> `./delete-app-registration.ps1`. Zum Nachsehen, was vorhanden ist:
+>
+> ```powershell
+> Get-MgApplication | Select-Object DisplayName, AppId
+> Get-ManagementScope | Select-Object Name, RecipientFilter
+> ```
+
 ---
 
 ## Wie das Berechtigungsmodell funktioniert

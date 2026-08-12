@@ -26,6 +26,23 @@ equivalents.
 ./setup-azure-app.ps1 -MailboxEmailList "sales@example.com"
 ```
 
+> ⚠️ **The examples here rely on the defaults `-AppDisplayName
+> redmine-expert-helpdesk-live` and `-RbacScopeName
+> Redmine-expert-Helpdesk-Mailboxes-LIVE`.** These two names are how the script
+> finds the installation it should extend. If yours was set up under different
+> names — the manual recipes in [`../README.md`](../README.md) use
+> `redmine-helpdesk` / `Redmine-Helpdesk-Mailboxes` — you must pass them on
+> **every** run. Omitting them does not fail: the script finds nothing to reuse
+> and creates a **second, parallel app registration and scope**. It does warn
+> when it is about to build a scope while other `Application Mail.*` role
+> assignments already exist, but by then the app registration has been created,
+> so the tidy-up is `./delete-app-registration.ps1`. To check what you have:
+>
+> ```powershell
+> Get-MgApplication | Select-Object DisplayName, AppId
+> Get-ManagementScope | Select-Object Name, RecipientFilter
+> ```
+
 ---
 
 ## How the permission model works
