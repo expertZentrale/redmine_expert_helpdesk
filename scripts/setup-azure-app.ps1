@@ -41,14 +41,27 @@
       - Application Administrator (or Cloud Application Administrator) in Entra ID
       - Exchange Administrator (for step 4)
 
+.PARAMETER Environment
+    Which installation to work on — 'LIVE' (default), 'DEV', or any label you
+    like. Several installations can live in one tenant side by side; this is
+    what keeps them apart, and it is normally the only one of the four
+    identifying parameters you need to pass.
+
+    It derives all three of the following, so a DEV stack needs no other names:
+      tag             RedmineExpertHelpdesk:DEV
+      app registration redmine-expert-helpdesk-dev
+      EXO scope        Redmine-expert-Helpdesk-Mailboxes-DEV
+
 .PARAMETER AppDisplayName
-    Display name of the app registration in Entra ID.
+    Display name of the app registration in Entra ID. Defaults to
+    'redmine-expert-helpdesk-<environment>'.
 
     Only needed when the installation cannot be found by its tag — see
     -ResourceTag. When it is found by tag, the name it actually carries is used.
 
 .PARAMETER RbacScopeName
     Name of the Exchange Online management scope that restricts mailbox access.
+    Defaults to 'Redmine-expert-Helpdesk-Mailboxes-<ENVIRONMENT>'.
 
     Only used when creating the scope, or when the app has no role assignments
     yet. On a re-run the scope the app is already assigned to wins, so a
@@ -56,10 +69,11 @@
 
 .PARAMETER ResourceTag
     Marker written to the app registration's Tags so later runs find the
-    installation without knowing the name it was created under. Existing
-    installations are stamped with it on the next run. Only change it to run
-    several independent installations in one tenant — each then needs its own
-    tag, and -AppDisplayName to tell them apart on the first run.
+    installation without knowing the name it was created under. Defaults to
+    'RedmineExpertHelpdesk:<ENVIRONMENT>'; existing installations are stamped
+    with it on the next run. Every installation additionally carries the plain
+    'RedmineExpertHelpdesk' tag, which is how you list all of them in a tenant.
+    Set this only if the environment-derived name does not suit you.
 
 .PARAMETER MailboxScopeOption
     Determines how the mailboxes restricted by the Exchange Online RBAC scope
@@ -133,6 +147,16 @@
     ./setup-azure-app.ps1 -MailboxEmailList "sales@example.com"
 
 .EXAMPLE
+    # A separate installation for the dev stack, alongside the live one.
+    # -Environment derives its own tag, app name and scope name, so the two
+    # never collide; every later dev run just repeats -Environment DEV.
+    ./setup-azure-app.ps1 -Environment DEV `
+        -MailboxEmailList "helpdesk-dev@example.com" `
+        -TestMailbox "helpdesk-dev@example.com"
+
+    ./setup-azure-app.ps1 -Environment DEV -MailboxEmailList "sales-dev@example.com"
+
+.EXAMPLE
     # Dry run first: shows the old and the new scope filter, writes nothing.
     ./setup-azure-app.ps1 -MailboxEmailList "sales@example.com" -WhatIf
 
@@ -152,11 +176,14 @@
 
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$AppDisplayName = "redmine-expert-helpdesk-live",
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')]
+    [string]$Environment = "LIVE",
 
-    [string]$RbacScopeName = "Redmine-expert-Helpdesk-Mailboxes-LIVE",
+    [string]$AppDisplayName,
 
-    [string]$ResourceTag = "RedmineExpertHelpdesk",
+    [string]$RbacScopeName,
+
+    [string]$ResourceTag,
 
     [ValidateSet("DomainSuffix", "SecurityGroup", "CustomAttribute", "EmailList")]
     [string]$MailboxScopeOption = "EmailList",
@@ -195,6 +222,12 @@ $mailSendId      = "b633e1c5-b582-4048-a93e-9f11b44c7e96"
 
 # The two EXO management roles the scope is assigned to.
 $rbacRoles = @("Application Mail.ReadWrite", "Application Mail.Send")
+
+# Every installation carries two tags: the product tag, shared by all of them
+# and useful for taking inventory of a tenant, and the installation tag, which
+# is what identifies THIS one. Keeping them separate is what lets a DEV and a
+# LIVE installation coexist without either shadowing the other.
+$productTag = "RedmineExpertHelpdesk"
 
 function Confirm-MailboxScopeParameters {
     switch ($MailboxScopeOption) {
@@ -423,6 +456,36 @@ function Test-MailboxAuthorization {
     return $false
 }
 
+<#
+The names an -Environment implies. Keeping this in one place is what guarantees
+that setup and teardown, and one run and the next, agree on which installation
+they are talking about.
+#>
+function Get-InstallationNames {
+    param([Parameter(Mandatory)][string]$Environment)
+
+    $upper = $Environment.ToUpperInvariant()
+    $lower = $Environment.ToLowerInvariant()
+
+    return [pscustomobject]@{
+        Tag            = "${productTag}:$upper"
+        AppDisplayName = "redmine-expert-helpdesk-$lower"
+        RbacScopeName  = "Redmine-expert-Helpdesk-Mailboxes-$upper"
+    }
+}
+
+# PowerShell cannot derive one parameter default from another, so the names that
+# follow from -Environment are filled in here. Passing any of them explicitly
+# still wins.
+$defaultNames = Get-InstallationNames -Environment $Environment
+
+if (-not $ResourceTag)    { $ResourceTag    = $defaultNames.Tag }
+if (-not $AppDisplayName) { $AppDisplayName = $defaultNames.AppDisplayName }
+if (-not $RbacScopeName)  { $RbacScopeName  = $defaultNames.RbacScopeName }
+
+# Both tags go on the app; only $ResourceTag is used to find it again.
+$appTags = @($productTag, $ResourceTag)
+
 # -----------------------------------------------------------------------
 # Self-test: exercises the filter helpers offline, connects to nothing.
 # -----------------------------------------------------------------------
@@ -528,6 +591,30 @@ if ($SelfTest) {
         Assert-Throws { Get-MailboxAddressesFromFilter -Filter "PrimarySmtpAddress -like '*@example.com'" }
     }
 
+    # If these drift, an existing LIVE installation stops being found by
+    # default and a re-run builds a second one beside it.
+    Test-Case "the LIVE environment keeps the names installations were created with" {
+        $names = Get-InstallationNames -Environment "LIVE"
+        if ($names.AppDisplayName -ne "redmine-expert-helpdesk-live") { throw "app: $($names.AppDisplayName)" }
+        if ($names.RbacScopeName -ne "Redmine-expert-Helpdesk-Mailboxes-LIVE") { throw "scope: $($names.RbacScopeName)" }
+        if ($names.Tag -ne "RedmineExpertHelpdesk:LIVE") { throw "tag: $($names.Tag)" }
+    }
+
+    Test-Case "a second environment collides with LIVE in no name at all" {
+        $live = Get-InstallationNames -Environment "LIVE"
+        $dev  = Get-InstallationNames -Environment "DEV"
+        foreach ($field in @("Tag", "AppDisplayName", "RbacScopeName")) {
+            if ($live.$field -eq $dev.$field) { throw "$field is shared: $($live.$field)" }
+        }
+    }
+
+    Test-Case "the environment label is case-insensitive" {
+        $lower = Get-InstallationNames -Environment "dev"
+        $upper = Get-InstallationNames -Environment "DEV"
+        if ($lower.Tag -ne $upper.Tag) { throw "'dev' and 'DEV' disagree: $($lower.Tag) vs $($upper.Tag)" }
+        if ($lower.AppDisplayName -ne $upper.AppDisplayName) { throw "app name disagrees" }
+    }
+
     Test-Case "an apostrophe in a display name is escaped for the OData filter" {
         $literal = ConvertTo-ODataLiteral "expert's helpdesk"
         if ($literal -ne "expert''s helpdesk") { throw "got '$literal'" }
@@ -622,7 +709,8 @@ $existingApp = $lookup.Apps
 if ($existingApp.Count -gt 1) {
     throw ("Several app registrations match the $($lookup.FoundBy):`n" +
            (($existingApp | ForEach-Object { "  $($_.DisplayName)  (AppId $($_.AppId))" }) -join "`n") +
-           "`nPass -AppDisplayName to say which one to extend, or delete the obsolete ones.")
+           "`nGive each installation its own -Environment (which derives its own tag and names), " +
+           "or pass -AppDisplayName to say which one to extend.")
 }
 
 if ($existingApp.Count -eq 1) {
@@ -636,12 +724,15 @@ if ($existingApp.Count -eq 1) {
     Write-Host "Existing app registration reused: '$AppDisplayName' (AppId $($app.AppId)), found by $($lookup.FoundBy)." -ForegroundColor Green
 
     # Stamp installations that predate the marker, so the next run finds them
-    # by tag instead of depending on the name being passed in.
-    if (@($app.Tags) -notcontains $ResourceTag) {
-        $mergedTags = @(@($app.Tags) + $ResourceTag | Where-Object { $_ } | Sort-Object -Unique)
+    # by tag instead of depending on the name being passed in. Existing tags
+    # are merged, never replaced — a service principal's tags can carry
+    # meaning of their own.
+    $missingTags = @($appTags | Where-Object { @($app.Tags) -notcontains $_ })
+    if ($missingTags.Count -gt 0) {
+        $mergedTags = @(@($app.Tags) + $appTags | Where-Object { $_ } | Sort-Object -Unique)
         if ($PSCmdlet.ShouldProcess($AppDisplayName, "Update-MgApplication -Tags")) {
             Update-MgApplication -ApplicationId $app.Id -Tags $mergedTags
-            Write-Host "  marked with tag '$ResourceTag' — later runs find it without -AppDisplayName."
+            Write-Host "  marked with tag(s) $($missingTags -join ', ') — later runs find it without -AppDisplayName."
         }
     }
 
@@ -667,11 +758,11 @@ if ($existingApp.Count -eq 1) {
     }
 
     $isNewApp = $true
-    # The tag is what makes this installation findable later without knowing
+    # The tags are what make this installation findable later without knowing
     # the name it was created under.
-    $app = New-MgApplication -DisplayName $AppDisplayName -SignInAudience "AzureADMyOrg" -Tags @($ResourceTag)
+    $app = New-MgApplication -DisplayName $AppDisplayName -SignInAudience "AzureADMyOrg" -Tags $appTags
     $sp  = New-MgServicePrincipal -AppId $app.AppId
-    Write-Host "App registration created, marked with tag '$ResourceTag'." -ForegroundColor Green
+    Write-Host "App registration created, marked with tags $($appTags -join ', ')." -ForegroundColor Green
 }
 
 Write-Host "AppId (Client ID):        $($app.AppId)"
@@ -956,6 +1047,7 @@ if ($WhatIfPreference) {
 # Summary
 # -----------------------------------------------------------------------
 Write-Host "`n=========================================================================" -ForegroundColor Cyan
+Write-Host "Environment:              $Environment" -ForegroundColor Cyan
 Write-Host "App registration:         $AppDisplayName (tag '$ResourceTag')" -ForegroundColor Cyan
 Write-Host "AppId (Client ID):        $($app.AppId)" -ForegroundColor Cyan
 Write-Host "Object ID (SP):           $($sp.Id)" -ForegroundColor Cyan

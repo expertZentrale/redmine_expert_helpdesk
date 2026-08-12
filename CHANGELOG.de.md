@@ -69,9 +69,21 @@
   erweitert statt verdoppelt. Installationen aus der Zeit vor dem Tag werden beim nächsten Lauf
   nachträglich markiert, das repariert sich also von selbst. `-AppDisplayName` und `-RbacScopeName`
   braucht es damit nur noch für die Ersteinrichtung oder zur Abgrenzung, und
-  `delete-app-registration.ps1` findet sein Ziel auf demselben Weg. Mehrere unabhängige
-  Installationen in einem Tenant brauchen je ein eigenes `-ResourceTag`; teilen sie sich eines,
-  listet das Skript die Kandidaten auf und fragt nach, statt zu raten.
+  `delete-app-registration.ps1` findet sein Ziel auf demselben Weg. Mehrere Installationen in einem
+  Tenant hält `-Environment` auseinander (siehe unten).
+- **`-Environment` richtet eine Dev-Installation neben der Live-Installation ein.** Ein Dev-Stack
+  braucht eine eigene App-Registrierung, damit seine Plugin-Instanz nicht an die
+  Live-Helpdesk-Postfächer kommt – die beiden auseinanderzuhalten hieß bisher, bei jedem einzelnen
+  Lauf passenden Anzeigenamen und Scope-Namen mitzugeben. `-Environment DEV` leitet jetzt alle drei
+  Kennungen auf einmal ab – Tag `RedmineExpertHelpdesk:DEV`, App `redmine-expert-helpdesk-dev`,
+  Scope `Redmine-expert-Helpdesk-Mailboxes-DEV` –, damit nichts kollidiert und ein Dev-Lauf nur noch
+  `-Environment DEV` ist. Die Bezeichnung ist frei wählbar (`TEST`, `STAGING`, …) und
+  Groß-/Kleinschreibung spielt keine Rolle; `delete-app-registration.ps1` nimmt sie ebenfalls, das
+  Abräumen allein der Dev-Seite ist also `-Environment DEV`. Die Vorgabe `LIVE` erzeugt exakt die
+  bisher verwendeten Namen, abgesichert durch einen Selbsttest, damit bestehende Installationen
+  weiterhin gefunden werden. Jede Installation trägt zusätzlich das schlichte Tag
+  `RedmineExpertHelpdesk`, über das sich unabhängig von der Umgebung alle Installationen eines
+  Tenants auflisten lassen.
 
 ### Behoben
 

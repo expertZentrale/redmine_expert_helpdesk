@@ -54,10 +54,51 @@ Get-ManagementRoleAssignment |
     Select-Object Role, RoleAssigneeName, CustomResourceScope
 ```
 
-> ⚠️ Running **several independent installations in one tenant** (a LIVE and a
-> TEST one, say) means giving each its own `-ResourceTag`. Sharing a tag makes
-> both match, and the script refuses to guess — it lists the candidates and asks
-> for `-AppDisplayName`.
+### Several installations in one tenant (dev alongside live)
+
+A dev stack needs its own app registration, so that its plugin instance cannot
+reach the live helpdesk mailboxes. `-Environment` is what keeps the two apart —
+it derives the tag *and* both names, so nothing collides and no other parameter
+has to be repeated:
+
+| | `-Environment LIVE` (default) | `-Environment DEV` |
+|---|---|---|
+| Tag | `RedmineExpertHelpdesk:LIVE` | `RedmineExpertHelpdesk:DEV` |
+| App registration | `redmine-expert-helpdesk-live` | `redmine-expert-helpdesk-dev` |
+| EXO scope | `Redmine-expert-Helpdesk-Mailboxes-LIVE` | `Redmine-expert-Helpdesk-Mailboxes-DEV` |
+
+```powershell
+# Set the dev installation up once
+./setup-azure-app.ps1 -Environment DEV `
+    -MailboxEmailList "helpdesk-dev@example.com" -TestMailbox "helpdesk-dev@example.com"
+./setup-azure-app.ps1 -Environment DEV -RemoveEntraGraphPermissions
+
+# From then on, -Environment DEV is the only thing that distinguishes a dev run
+./setup-azure-app.ps1 -Environment DEV -MailboxEmailList "sales-dev@example.com"
+
+# ...and the live one is untouched by all of it
+./setup-azure-app.ps1 -MailboxEmailList "sales@example.com"
+
+# Tear down only the dev side
+./delete-app-registration.ps1 -Environment DEV
+```
+
+Both installations also carry the plain `RedmineExpertHelpdesk` tag, which is
+how you list every one of them in a tenant regardless of environment:
+
+```powershell
+Get-MgApplication -Filter "tags/any(t:t eq 'RedmineExpertHelpdesk')" |
+    Select-Object DisplayName, AppId, Tags
+```
+
+The label is free-form (`DEV`, `TEST`, `STAGING`, `kunde-x`) and
+case-insensitive. Give the mailboxes of each environment their own addresses:
+the scopes are separate, but two scopes *can* name the same mailbox, and then
+both installations reach it.
+
+> ⚠️ Only if you override `-ResourceTag` by hand can two installations end up
+> sharing a tag. Then both match, and the script refuses to guess — it lists the
+> candidates and asks for `-AppDisplayName`.
 
 ---
 

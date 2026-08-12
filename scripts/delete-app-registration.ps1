@@ -11,6 +11,11 @@
       - the Exchange Online management scope
       - the Exchange Online service principal(s)
 
+.PARAMETER Environment
+    Which installation to remove — 'LIVE' (default), 'DEV', or whatever label
+    it was set up with. Derives the tag and both names, so removing the dev
+    installation is '-Environment DEV' and nothing else.
+
 .PARAMETER AppDisplayName
     Display name of the app registration / service principal to remove. Only
     needed when the installation cannot be found by its tag — see -ResourceTag.
@@ -18,7 +23,8 @@
 .PARAMETER ResourceTag
     Marker that setup-azure-app.ps1 writes to the app registration's Tags. It is
     what finds the installation when it was created under a different name;
-    -AppDisplayName is the fallback.
+    -AppDisplayName is the fallback. Defaults to
+    'RedmineExpertHelpdesk:<ENVIRONMENT>'.
 
 .PARAMETER RbacScopeName
     Name of the Exchange Online management scope to remove.
@@ -28,20 +34,43 @@
 
 .EXAMPLE
     ./delete-app-registration.ps1
+
+.EXAMPLE
+    # Remove only the dev installation, leaving the live one alone
+    ./delete-app-registration.ps1 -Environment DEV
 #>
 
 [CmdletBinding()]
 param(
-    [string]$AppDisplayName = "redmine-expert-helpdesk-live",
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')]
+    [string]$Environment = "LIVE",
 
-    [string]$ResourceTag = "RedmineExpertHelpdesk",
+    [string]$AppDisplayName,
 
-    [string]$RbacScopeName = "Redmine-expert-Helpdesk-Mailboxes-LIVE",
+    [string]$ResourceTag,
+
+    [string]$RbacScopeName,
 
     [switch]$Force
 )
 
 $ErrorActionPreference = "Stop"
+
+# Mirrors setup-azure-app.ps1: PowerShell cannot derive one parameter default
+# from another, so the names that follow from -Environment are filled in here.
+$productTag = "RedmineExpertHelpdesk"
+$envUpper   = $Environment.ToUpperInvariant()
+$envLower   = $Environment.ToLowerInvariant()
+
+if (-not $ResourceTag)    { $ResourceTag    = "${productTag}:$envUpper" }
+if (-not $AppDisplayName) { $AppDisplayName = "redmine-expert-helpdesk-$envLower" }
+if (-not $RbacScopeName)  { $RbacScopeName  = "Redmine-expert-Helpdesk-Mailboxes-$envUpper" }
+
+Write-Host "Removing the '$Environment' installation:" -ForegroundColor Cyan
+Write-Host "  tag   $ResourceTag"
+Write-Host "  app   $AppDisplayName"
+Write-Host "  scope $RbacScopeName"
+Write-Host ""
 
 function Invoke-Confirmed {
     param(

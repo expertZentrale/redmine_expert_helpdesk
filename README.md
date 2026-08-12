@@ -1085,6 +1085,16 @@ recipes above is stamped with the tag the first time the script runs against it
 — pass `-AppDisplayName` on that first run so it knows which app is yours. See
 [`scripts/README.md`](scripts/README.md#how-a-re-run-finds-the-installation).
 
+A separate installation for a dev stack (its own app registration, so the dev
+plugin cannot reach the live mailboxes) is `-Environment DEV`, which derives its
+own tag, app name and scope name — nothing collides, and the live installation
+is untouched:
+
+```powershell
+./scripts/setup-azure-app.ps1 -Environment DEV `
+    -MailboxEmailList "helpdesk-dev@example.com" -TestMailbox "helpdesk-dev@example.com"
+```
+
 By hand it depends on the scope option chosen in step 4b. With **option A**
 (domain suffix) nothing has to be done at all as long as the new mailbox lives
 in that domain. With **option B** (security group) or **option C**

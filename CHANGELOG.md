@@ -64,8 +64,19 @@
   extended rather than duplicated. Installations predating the tag are stamped on the next run, so
   it heals itself. `-AppDisplayName` and `-RbacScopeName` are therefore only needed for the initial
   setup or to disambiguate, and `delete-app-registration.ps1` finds its target the same way. Several
-  independent installations in one tenant need one `-ResourceTag` each; sharing one makes the script
-  list the candidates and ask rather than guess.
+  installations in one tenant are kept apart by `-Environment` (see below).
+- **`-Environment` sets up a dev installation alongside the live one.** A dev stack needs its own
+  app registration so that its plugin instance cannot reach the live helpdesk mailboxes, and
+  keeping the two apart previously meant passing a matching display name and scope name on every
+  single run. `-Environment DEV` now derives all three identities at once — tag
+  `RedmineExpertHelpdesk:DEV`, app `redmine-expert-helpdesk-dev`, scope
+  `Redmine-expert-Helpdesk-Mailboxes-DEV` — so nothing collides and a dev run is just
+  `-Environment DEV`. The label is free-form (`TEST`, `STAGING`, …) and case-insensitive;
+  `delete-app-registration.ps1` takes it too, so tearing down only the dev side is
+  `-Environment DEV`. The default `LIVE` reproduces exactly the names used until now, which is
+  locked down by a self-test so existing installations keep being found. Every installation also
+  carries the plain `RedmineExpertHelpdesk` tag, which lists all of them in a tenant regardless of
+  environment.
 
 ### Fixed
 

@@ -1138,6 +1138,16 @@ dafür bei diesem ersten Lauf `-AppDisplayName` mitgeben, damit klar ist, welche
 App gemeint ist. Siehe
 [`scripts/README.de.md`](scripts/README.de.md#wie-ein-erneuter-lauf-die-installation-findet).
 
+Eine eigene Installation für einen Dev-Stack (mit eigener App-Registrierung,
+damit das Dev-Plugin nicht an die Live-Postfächer kommt) ist `-Environment DEV`:
+daraus leiten sich eigenes Tag, eigener App-Name und eigener Scope-Name ab –
+nichts kollidiert, und die Live-Installation bleibt unberührt:
+
+```powershell
+./scripts/setup-azure-app.ps1 -Environment DEV `
+    -MailboxEmailList "helpdesk-dev@example.com" -TestMailbox "helpdesk-dev@example.com"
+```
+
 Von Hand hängt es von der in Schritt 4b gewählten Variante ab: bei
 **Variante A** (Domain-Suffix) ist nichts zu tun, solange das neue Postfach in
 dieser Domain liegt. Bei **Variante B** (Sicherheitsgruppe) oder **Variante C**

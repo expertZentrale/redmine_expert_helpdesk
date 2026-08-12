@@ -59,10 +59,52 @@ Get-ManagementRoleAssignment |
     Select-Object Role, RoleAssigneeName, CustomResourceScope
 ```
 
-> ⚠️ **Mehrere unabhängige Installationen in einem Tenant** (etwa eine LIVE- und
-> eine TEST-Installation) brauchen je einen eigenen `-ResourceTag`. Teilen sie
-> sich einen, passen beide, und das Skript rät nicht – es listet die Kandidaten
-> auf und verlangt `-AppDisplayName`.
+### Mehrere Installationen in einem Tenant (Dev neben Live)
+
+Ein Dev-Stack braucht eine eigene App-Registrierung, damit seine
+Plugin-Instanz nicht an die Live-Helpdesk-Postfächer kommt. `-Environment`
+trennt die beiden – der Parameter leitet das Tag *und* beide Namen ab, damit
+nichts kollidiert und kein weiterer Parameter wiederholt werden muss:
+
+| | `-Environment LIVE` (Vorgabe) | `-Environment DEV` |
+|---|---|---|
+| Tag | `RedmineExpertHelpdesk:LIVE` | `RedmineExpertHelpdesk:DEV` |
+| App-Registrierung | `redmine-expert-helpdesk-live` | `redmine-expert-helpdesk-dev` |
+| EXO-Scope | `Redmine-expert-Helpdesk-Mailboxes-LIVE` | `Redmine-expert-Helpdesk-Mailboxes-DEV` |
+
+```powershell
+# Die Dev-Installation einmal einrichten
+./setup-azure-app.ps1 -Environment DEV `
+    -MailboxEmailList "helpdesk-dev@example.com" -TestMailbox "helpdesk-dev@example.com"
+./setup-azure-app.ps1 -Environment DEV -RemoveEntraGraphPermissions
+
+# Danach unterscheidet allein -Environment DEV einen Dev-Lauf
+./setup-azure-app.ps1 -Environment DEV -MailboxEmailList "sales-dev@example.com"
+
+# ... und die Live-Installation bleibt davon unberührt
+./setup-azure-app.ps1 -MailboxEmailList "sales@example.com"
+
+# Nur die Dev-Seite wieder abräumen
+./delete-app-registration.ps1 -Environment DEV
+```
+
+Beide Installationen tragen zusätzlich das schlichte Tag
+`RedmineExpertHelpdesk` – damit lassen sich unabhängig von der Umgebung alle
+Installationen eines Tenants auflisten:
+
+```powershell
+Get-MgApplication -Filter "tags/any(t:t eq 'RedmineExpertHelpdesk')" |
+    Select-Object DisplayName, AppId, Tags
+```
+
+Die Bezeichnung ist frei wählbar (`DEV`, `TEST`, `STAGING`, `kunde-x`) und
+Groß-/Kleinschreibung spielt keine Rolle. Den Umgebungen jeweils eigene
+Postfachadressen geben: die Scopes sind zwar getrennt, zwei Scopes *dürfen*
+aber dasselbe Postfach nennen – dann erreichen es beide Installationen.
+
+> ⚠️ Nur wenn `-ResourceTag` von Hand überschrieben wird, können sich zwei
+> Installationen ein Tag teilen. Dann passen beide, und das Skript rät nicht –
+> es listet die Kandidaten auf und verlangt `-AppDisplayName`.
 
 ---
 
