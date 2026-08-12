@@ -15,6 +15,11 @@
   into a ticket. **Copy message** puts the full text on the clipboard; where the clipboard API is
   unavailable — an internal Redmine over plain http is not a secure context — it selects the text
   instead of failing silently.
+- **Mails sent to the customer now carry their send time in the journal header**, the same way
+  received mails already did. The badge on an outgoing note ends with `HelpdeskMessage.sent_at`
+  (tooltip *Sent on*), so an agent can follow the whole correspondence on one time axis instead
+  of reading the outgoing side off the journal's own timestamp, which is when the note was saved
+  rather than when the mail left.
 
 ### Fixed
 
@@ -24,14 +29,6 @@
   soft-deleted or hosted on-premises) look identical that way and need opposite fixes. Graph puts the
   reason in the response body, which the exception already carried but never showed; the code and
   message are now part of it. Unparsable, empty or HTML bodies add nothing rather than raising.
-
-### Added
-
-- **Mails sent to the customer now carry their send time in the journal header**, the same way
-  received mails already did. The badge on an outgoing note ends with `HelpdeskMessage.sent_at`
-  (tooltip *Sent on*), so an agent can follow the whole correspondence on one time axis instead
-  of reading the outgoing side off the journal's own timestamp, which is when the note was saved
-  rather than when the mail left.
 
 ## [0.2.4] - 2026-08-07
 

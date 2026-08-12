@@ -15,6 +15,11 @@
   vollständigen Text in die Zwischenablage; wo die Zwischenablage-API nicht zur Verfügung steht – ein
   internes Redmine über einfaches http ist kein sicherer Kontext –, wird der Text stattdessen
   markiert, statt stillschweigend nichts zu tun.
+- **An Kunden gesendete Mails zeigen ihren Sendezeitpunkt jetzt auch in der Journalüberschrift** –
+  so wie eingehende Mails das bereits taten. Das Badge einer ausgehenden Notiz endet mit
+  `HelpdeskMessage.sent_at` (Tooltip *Gesendet am*), womit sich der gesamte Schriftwechsel auf
+  einer Zeitachse verfolgen lässt, statt die ausgehende Seite am Zeitstempel des Journaleintrags
+  ablesen zu müssen – der sagt, wann die Notiz gespeichert wurde, nicht wann die Mail rausging.
 
 ### Behoben
 
@@ -25,14 +30,6 @@
   on-premises) sehen so gleich aus und erfordern gegensätzliche Maßnahmen. Graph nennt den Grund im
   Antwortkörper, den die Ausnahme bereits mitführte, aber nie zeigte; Code und Meldung stehen jetzt
   darin. Nicht lesbare, leere oder HTML-Antworten ergänzen nichts, statt einen Fehler auszulösen.
-
-### Hinzugefügt
-
-- **An Kunden gesendete Mails zeigen ihren Sendezeitpunkt jetzt auch in der Journalüberschrift** –
-  so wie eingehende Mails das bereits taten. Das Badge einer ausgehenden Notiz endet mit
-  `HelpdeskMessage.sent_at` (Tooltip *Gesendet am*), womit sich der gesamte Schriftwechsel auf
-  einer Zeitachse verfolgen lässt, statt die ausgehende Seite am Zeitstempel des Journaleintrags
-  ablesen zu müssen – der sagt, wann die Notiz gespeichert wurde, nicht wann die Mail rausging.
 
 ## [0.2.4] - 2026-08-07
 
