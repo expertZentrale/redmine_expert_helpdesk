@@ -149,6 +149,13 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     (which does ticket creation / reply matching via `In-Reply-To`/`[#id]` / attachments /
     user creation), then applies rules, links contact, autoresponder, phishing check, stores
     `.eml`, moves the mail. Reply-vs-new matching is delegated entirely to `MailHandler`.
+  - `inline_images.rb` — embedded images. `MailHandler` saves them as attachments but leaves the
+    client's reference in the text (`[cid:…]`, `[image: …]`, `<img src="cid:…">`), so
+    `rewrite!` points those markers at the stored attachment using the image syntax of
+    `Setting.text_formatting`. `prepare_mime` runs *before* `MailHandler` and only for bodies
+    Redmine builds from the HTML part (its HTML-to-text parser has no `img` rule and would drop
+    the reference); it edits only the copy handed to `MailHandler`, never the archived `.eml`.
+    Off switch: plugin setting `inline_images_enabled`.
   - `init_mailer.rb` — outbound "initial" mail (contact-assign / "New Helpdesk Ticket" flow).
   - `mail_logger.rb` — one log line per outgoing mail incl. the transport used. Every send site
     wraps its send in `MailLogger.track` (replies, init mail, autoresponder, SLA mail); success at

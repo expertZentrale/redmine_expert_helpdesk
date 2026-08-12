@@ -202,6 +202,16 @@ nested registration would never fire in production.
   rules → link contact → autoresponder → phishing check → attach `.eml` → move to target
   folder. Reply-vs-new-ticket matching is delegated entirely to `MailHandler`; the plugin
   only supplies MIME and reacts to the result. Returns a `Result` struct.
+- **`inline_images.rb`** — embedded images of incoming mail. `MailHandler` saves them as
+  attachments but keeps the client's reference in the text (`[cid:…]` from Outlook,
+  `[image: …]` from Gmail, `<img src="cid:…">`), so the ticket showed markers instead of
+  pictures. `rewrite!` points those markers at the attachment that was just stored, in the
+  image syntax of `Setting.text_formatting` (`!name.png!` vs `![](name.png)`), for the issue
+  description and for journal notes alike. `prepare_mime` runs **before** `MailHandler` and only
+  when Redmine builds the body from the HTML part (its HTML-to-text parser has no `img` rule, so
+  the reference would vanish) — it rewrites `<img>` to the same `[cid:…]` marker and touches only
+  the copy handed to `MailHandler`, never the `.eml` archived on the ticket. Unknown references
+  are left in place; the plugin setting `inline_images_enabled` switches the whole thing off.
 - **`init_mailer.rb`** — outbound "initial" mail when an agent assigns a contact to a ticket
   and opts to email them (also used by the "New Helpdesk Ticket" flow).
 - **`mail_logger.rb`** — one log line per outgoing mail, naming the transport it took.

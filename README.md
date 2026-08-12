@@ -47,6 +47,9 @@ see [Tests](#tests).
 - **Email to ticket**: Mails from Microsoft 365 or any IMAP mailbox are created as tickets;
   replies are matched to existing tickets via `In-Reply-To` / `[#id]` subject
   patterns (uses Redmine's standard `MailHandler`, including attachments).
+- **Embedded images in the ticket**: The inline images of a mail (signature logos,
+  screenshots) are shown where the mail showed them instead of leaving a
+  `[cid:…]` marker behind — see [Embedded images](#embedded-images).
 - **Per-project mailboxes**: Each project configures its mailboxes under the
   *Helpdesk* tab in project settings (source/target folder, defaults for
   tracker/priority/status, handling of unknown senders).
@@ -326,13 +329,18 @@ Provider (source folder) — Graph API or IMAP
     │  the mailbox's reopen_max_age_days  →  forces a NEW ticket
     ├─ strip the Auto-Submitted header on NDR/bounce mails
     │  (MailHandler would otherwise reject them as auto-replies)
-    └─ ensure In-Reply-To/References point at the ticket thread, so replies
-       match even when the subject carries no [#id] tag
+    ├─ ensure In-Reply-To/References point at the ticket thread, so replies
+    │  match even when the subject carries no [#id] tag
+    └─ mark <img src="cid:…"> as [cid:…] when the body comes from the HTML part
+       (only that copy — the .eml archived below stays the original mail)
         │
         ▼
   Redmine MailHandler ────── rejected ───────▶ skipped folder
     (create ticket or         (e.g. own address)
      append journal)
+        │
+        ▼
+  Point the [cid:…] markers at the embedded images MailHandler stored
         │
         ├─ new ticket:  apply rules
         └─ reply:       reopen the ticket if closed (per-mailbox reopen status)
@@ -429,6 +437,34 @@ Two things worth knowing:
   mail sets it again.
 
 Turn the feature off under *Administration → Plugins → Redmine expert Helpdesk*.
+
+### Embedded images
+
+Mail clients do not put pictures into the body, they put a reference to an attached image there —
+`[cid:image001.png@01DD2980.37ED1560]` in Outlook, `[image: logo.png]` in Gmail, `<img
+src="cid:…">` in HTML. Redmine's `MailHandler` stores the image as a ticket attachment but keeps
+the text as it is, so a mail signature used to arrive as a row of `[cid:…]` markers.
+
+The plugin points those markers at the attachment that was just stored, using the image syntax of
+the configured text formatting (`!image001.png!` for textile, `![](image001.png)` for
+markdown/CommonMark) — the ticket then reads like the original mail. This covers the description of
+a new ticket as well as the note of a reply.
+
+Worth knowing:
+
+- Only image files Redmine can display inline are linked (`bmp`, `gif`, `jpg`, `jpe`, `jpeg`,
+  `png`, `webp`). A marker whose image is missing — excluded by
+  *Administration → Settings → Incoming emails → Excluded attachment file names*, for instance —
+  is left in place rather than silently dropped.
+- If Redmine builds the ticket text from the **HTML part** (no plain-text alternative, or
+  *Preferred body part* set to `html`), the `<img>` tags are converted to the same marker before
+  the mail reaches `MailHandler` — Redmine's HTML-to-text conversion would otherwise drop images
+  without a trace. Only the copy handed to `MailHandler` is touched; the `.eml` archived on the
+  ticket is always the untouched original mail.
+- The images stay regular attachments of the ticket, so nothing changes for downloads or the
+  attachment list.
+
+Turn the feature off under *Administration → Plugins → Redmine expert Helpdesk → Embedded images*.
 
 ### EML attachment and journal link
 
@@ -610,6 +646,7 @@ Under *Administration → Plugins → Redmine expert Helpdesk* — or, as a shor
 | Default credentials for IMAP/SMTP mailboxes | Preset, flow, tenant/client/secret, authorization and token URL, scope, and default IMAP/SMTP hosts, ports and encryption. Used by every mailbox whose *Credentials* is set to *From plugin settings* — see [Mail providers](#mail-providers). |
 | API Key (mail fetch) | Secures the global fetch endpoint |
 | API Key (SLA check) | Secures the `helpdesk/sla_check` endpoint |
+| Show embedded images in the ticket | Replaces the `[cid:…]` markers of an incoming mail with the image itself (default: on) — see [Embedded images](#embedded-images) |
 | Entries per page | Default page size of the customer list (default: 25) |
 | Max. tickets in customer profile | Tickets shown in the customer detail view (default: 10) |
 

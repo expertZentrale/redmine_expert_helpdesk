@@ -15,6 +15,20 @@
   into a ticket. **Copy message** puts the full text on the clipboard; where the clipboard API is
   unavailable — an internal Redmine over plain http is not a secure context — it selects the text
   instead of failing silently.
+
+- **Embedded images of an incoming mail are now shown in the ticket instead of their `[cid:…]`
+  marker.** Redmine's `MailHandler` saved every inline image as an attachment but left the
+  reference the mail client had written into the body, so a signature arrived as
+  `[cid:image001.png@01DD2980.37ED1560]` where the mail showed a logo. The new
+  `RedmineExpertHelpdesk::InlineImages` rewrites those markers — Outlook's `[cid:…]`, Gmail's
+  `[image: …]`, `<img src="cid:…">` and the textile/markdown variants — into the image syntax of
+  the configured formatting (`!name.png!` resp. `![](name.png)`), pointing at the attachment that
+  was just stored. Mails whose body Redmine builds from the HTML part get their `<img>` tags
+  turned into the same marker beforehand, because Redmine's HTML-to-text parser drops images
+  without a trace. The `.eml` archived on the ticket keeps the untouched original either way, and
+  markers without a matching attachment are left alone. Can be switched off under
+  *Administration → Plugins → Redmine expert Helpdesk → Embedded images*.
+
 - **Mails sent to the customer now carry their send time in the journal header**, the same way
   received mails already did. The badge on an outgoing note ends with `HelpdeskMessage.sent_at`
   (tooltip *Sent on*), so an agent can follow the whole correspondence on one time axis instead

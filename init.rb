@@ -30,6 +30,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/ai_client', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_store', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_extractor', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/template_renderer', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/inline_images', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mail_processor', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/init_mailer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/hooks', __FILE__)
@@ -83,6 +84,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'default_smtp_port'     => '587',
              'default_smtp_security' => 'starttls',
              'awaiting_agent_enabled'   => '1',
+             'inline_images_enabled'    => '1',
              'contacts_per_page'        => '25',
              'contact_ticket_limit'     => '10',
              'phishtank_enabled'        => '0',

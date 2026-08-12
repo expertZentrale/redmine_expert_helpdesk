@@ -131,6 +131,19 @@
 </fieldset>
 
 <fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_inline_images) %></legend>
+  <p>
+    <%# Same id-less hidden companion as above: it carries the unchecked value. %>
+    <%= hidden_field_tag 'settings[inline_images_enabled]', '0', :id => nil %>
+    <%= check_box_tag 'settings[inline_images_enabled]', '1',
+                      @settings['inline_images_enabled'].to_s != '0',
+                      :id => 'settings_inline_images_enabled' %>
+    <%= label_tag 'settings_inline_images_enabled', l(:field_helpdesk_inline_images_enabled) %>
+    <em class="info"><%= l(:text_helpdesk_inline_images_enabled_info) %></em>
+  </p>
+</fieldset>
+
+<fieldset class="box tabular">
   <legend><%= l(:label_helpdesk_logging) %></legend>
   <p>
     <label><%= l(:label_helpdesk_mail_log_level) %></label>
