@@ -229,6 +229,28 @@ $rbacRoles = @("Application Mail.ReadWrite", "Application Mail.Send")
 # LIVE installation coexist without either shadowing the other.
 $productTag = "RedmineExpertHelpdesk"
 
+<#
+Which scope option the supplied mailbox parameters belong to. Each option has
+its own parameter, so supplying one says which option was meant — that beats
+silently ignoring it in favour of the default.
+#>
+function Get-ImpliedScopeOption {
+    param([string[]]$SuppliedParameters)
+
+    $optionOf = @{
+        MailboxDomainSuffix         = "DomainSuffix"
+        MailboxSecurityGroup        = "SecurityGroup"
+        MailboxCustomAttributeValue = "CustomAttribute"
+        MailboxEmailList            = "EmailList"
+        RemoveMailboxEmailList      = "EmailList"
+    }
+
+    return @(@($SuppliedParameters) |
+        Where-Object { $optionOf.ContainsKey($_) } |
+        ForEach-Object { $optionOf[$_] } |
+        Sort-Object -Unique)
+}
+
 function Confirm-MailboxScopeParameters {
     switch ($MailboxScopeOption) {
         "DomainSuffix" {
@@ -249,7 +271,12 @@ function Confirm-MailboxScopeParameters {
         "EmailList" {
             if ((-not $MailboxEmailList -or $MailboxEmailList.Count -eq 0) -and
                 (-not $RemoveMailboxEmailList -or $RemoveMailboxEmailList.Count -eq 0)) {
-                throw "Please provide -MailboxEmailList and/or -RemoveMailboxEmailList."
+                throw ("Please provide -MailboxEmailList and/or -RemoveMailboxEmailList.`n" +
+                       "  'EmailList' is the default scope option. For a different one, pass its`n" +
+                       "  parameter and the option is taken from it:`n" +
+                       "    -MailboxDomainSuffix '@helpdesk.example.com'   (DomainSuffix)`n" +
+                       "    -MailboxSecurityGroup 'helpdesk-mailboxes'     (SecurityGroup)`n" +
+                       "    -MailboxCustomAttributeValue 'Redmine'         (CustomAttribute)")
             }
         }
     }
@@ -591,6 +618,35 @@ if ($SelfTest) {
         Assert-Throws { Get-MailboxAddressesFromFilter -Filter "PrimarySmtpAddress -like '*@example.com'" }
     }
 
+    Test-Case "each mailbox parameter names its own scope option" {
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("MailboxCustomAttributeValue")) @("CustomAttribute")
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("MailboxDomainSuffix")) @("DomainSuffix")
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("MailboxSecurityGroup")) @("SecurityGroup")
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("MailboxEmailList")) @("EmailList")
+    }
+
+    # The call site must wrap this in @(): PowerShell unwraps a single-element
+    # array on the way out of a function, and indexing the resulting string
+    # yields its first character instead of the option name.
+    Test-Case "a lone implied option indexes as a whole option name" {
+        $implied = @(Get-ImpliedScopeOption -SuppliedParameters @("MailboxCustomAttributeValue"))
+        if ($implied[0] -ne "CustomAttribute") { throw "[0] gave '$($implied[0])'" }
+    }
+
+    Test-Case "add and remove both mean the EmailList option" {
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("MailboxEmailList", "RemoveMailboxEmailList")) `
+                   @("EmailList")
+    }
+
+    Test-Case "unrelated parameters imply no scope option" {
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("Environment", "AppDisplayName", "TestMailbox")) @()
+    }
+
+    Test-Case "parameters of two options are detectable as a conflict" {
+        Assert-Set (Get-ImpliedScopeOption -SuppliedParameters @("MailboxEmailList", "MailboxDomainSuffix")) `
+                   @("DomainSuffix", "EmailList")
+    }
+
     # If these drift, an existing LIVE installation stops being found by
     # default and a re-run builds a second one beside it.
     Test-Case "the LIVE environment keeps the names installations were created with" {
@@ -694,9 +750,37 @@ if ($RemoveEntraGraphPermissions) {
 # -----------------------------------------------------------------------
 # Validate everything before the first resource is created — aborting
 # halfway leaves orphaned app registrations behind.
+
+# Take the scope option from the parameters actually supplied. Passing
+# -MailboxCustomAttributeValue and getting an error about -MailboxEmailList,
+# because the option still sat at its default, is no way to find that out.
+# @() around the call because PowerShell unwraps a single-element array on the
+# way out of a function — without it a lone result is a string, and [0] indexes
+# into its characters.
+$impliedOptions = @(Get-ImpliedScopeOption -SuppliedParameters @($PSBoundParameters.Keys))
+
+if ($impliedOptions.Count -gt 1) {
+    throw ("The mailbox parameters supplied belong to several scope options (" +
+           ($impliedOptions -join ', ') + "). A scope uses exactly one — pass only the " +
+           "parameters of the option you want.")
+}
+
+if ($PSBoundParameters.ContainsKey('MailboxScopeOption')) {
+    if ($impliedOptions.Count -eq 1 -and $impliedOptions[0] -ne $MailboxScopeOption) {
+        throw ("-MailboxScopeOption $MailboxScopeOption was given, but the other mailbox " +
+               "parameters belong to $($impliedOptions[0]). Drop one of the two so it is " +
+               "clear which scope option is meant.")
+    }
+} elseif ($impliedOptions.Count -eq 1 -and $impliedOptions[0] -ne $MailboxScopeOption) {
+    $MailboxScopeOption = $impliedOptions[0]
+    Write-Host "Scope option: $MailboxScopeOption (taken from the parameters supplied)." -ForegroundColor DarkGray
+}
+
 Confirm-MailboxScopeParameters
 if ((-not $TestMailbox) -and $MailboxScopeOption -ne "EmailList") {
-    throw "Please provide -TestMailbox (address of a helpdesk mailbox used to verify the RBAC scope)."
+    throw ("Please provide -TestMailbox — the address of a helpdesk mailbox that the " +
+           "'$MailboxScopeOption' scope should cover, used to verify the RBAC scope. " +
+           "For 'CustomAttribute' the mailbox must already carry the attribute value.")
 }
 
 Write-Host "== Step 1: Register app ==" -ForegroundColor Cyan

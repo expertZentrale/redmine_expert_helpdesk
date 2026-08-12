@@ -87,6 +87,14 @@
 
 ### Behoben
 
+- **Den Parameter einer Scope-Variante anzugeben, ohne die Variante zu nennen, wurde stillschweigend
+  ignoriert.** `-MailboxCustomAttributeValue "…"` ließ `-MailboxScopeOption` auf der Vorgabe
+  `EmailList` stehen, der Parameter blieb also wirkungslos und der Lauf brach mit der Aufforderung
+  nach `-MailboxEmailList` ab – dem Parameter einer anderen als der offensichtlich gemeinten
+  Variante. Die Variante ergibt sich jetzt aus dem angegebenen Postfach-Parameter; Parameter zweier
+  Varianten anzugeben oder einen, der einem ausdrücklichen `-MailboxScopeOption` widerspricht, ist
+  ein Fehler statt einer stillschweigenden Entscheidung. Die `EmailList`-Meldung nennt außerdem die
+  Parameter der übrigen Varianten, und die `-TestMailbox`-Meldung sagt, welchen Scope sie prüft.
 - **Ein Apostroph in `-AppDisplayName` machte die Suche nach der App-Registrierung kaputt** – in
   beiden Skripten. Einfache Anführungszeichen begrenzen Zeichenketten in einem OData-Filter und
   müssen zum Maskieren verdoppelt werden; unmaskiert lief ein solcher Name entweder auf einen Fehler

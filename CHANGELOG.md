@@ -80,6 +80,13 @@
 
 ### Fixed
 
+- **Supplying a scope option's parameter without also naming the option was silently ignored.**
+  `-MailboxCustomAttributeValue "…"` left `-MailboxScopeOption` at its `EmailList` default, so the
+  parameter did nothing and the run aborted asking for `-MailboxEmailList` — a parameter of a
+  different option than the one plainly intended. The option is now taken from whichever mailbox
+  parameter was supplied; supplying parameters of two options, or one that contradicts an explicit
+  `-MailboxScopeOption`, is an error rather than a silent choice. The `EmailList` message also lists
+  the other options' parameters now, and the `-TestMailbox` message says which scope it verifies.
 - **An apostrophe in `-AppDisplayName` broke the app registration lookup** in both scripts. Single
   quotes delimit strings in an OData filter and have to be doubled to be escaped; unescaped, such a
   name either errored out or silently queried something else — which in `setup-azure-app.ps1` would

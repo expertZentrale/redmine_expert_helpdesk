@@ -145,6 +145,11 @@ tenant-wide access. Use `-EnsureEntraGraphPermissions` if they genuinely have to
 equally restrictive at runtime — **what differs is who can onboard the next mailbox, and what
 they need in order to do it.** That is the decision, not security strength.
 
+Each option has its own parameter, and supplying it selects the option — so
+`-MailboxCustomAttributeValue "Redmine"` implies `-MailboxScopeOption CustomAttribute` and
+you need not pass both. Supplying parameters of two different options, or one that
+contradicts an explicit `-MailboxScopeOption`, is an error rather than a silent choice.
+
 | Option | Who can add a mailbox | What that takes | Best when |
 |---|---|---|---|
 | `EmailList` (default) | Only an **Exchange Administrator** | Re-run this script (or `Set-ManagementScope` by hand) | Few, stable mailboxes; every addition should be a deliberate, audited act |

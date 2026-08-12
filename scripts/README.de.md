@@ -153,6 +153,12 @@ alle vier gleich restriktiv – **der Unterschied liegt darin, wer das nächste 
 kann und was er oder sie dafür braucht.** Das ist die Entscheidung, nicht die Stärke der
 Absicherung.
 
+Jede Variante hat ihren eigenen Parameter, und ihn anzugeben wählt die Variante aus –
+`-MailboxCustomAttributeValue "Redmine"` bedeutet also `-MailboxScopeOption CustomAttribute`,
+beides zusammen ist nicht nötig. Parameter zweier verschiedener Varianten anzugeben oder einen,
+der einem ausdrücklichen `-MailboxScopeOption` widerspricht, ist ein Fehler und keine
+stillschweigende Entscheidung.
+
 | Variante | Wer ein Postfach aufnehmen kann | Was dafür nötig ist | Passt, wenn |
 |---|---|---|---|
 | `EmailList` (Vorgabe) | Nur eine **Exchange-Administratorin** | Skript erneut ausführen (oder `Set-ManagementScope` von Hand) | Wenige, stabile Postfächer; jede Aufnahme soll ein bewusster, nachvollziehbarer Akt sein |
