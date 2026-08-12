@@ -103,6 +103,13 @@
 
 ### Fixed
 
+- **`-WhatIf` did not stop the Entra ID writes.** It was documented as a dry run and guarded the
+  Exchange Online calls, but the Microsoft Graph ones ran regardless — so
+  `-RemoveEntraGraphPermissions -WhatIf` really removed the permissions, `-NewClientSecret -WhatIf`
+  really minted a secret nobody wrote down, and `-EnsureEntraGraphPermissions -WhatIf` really
+  re-granted tenant-wide mail access. Every write is now guarded explicitly rather than trusting the
+  Graph SDK to honour the preference, and the remaining creates are unreachable under `-WhatIf`
+  because the run stops earlier.
 - **Values were interpolated into Exchange Online recipient filters without escaping apostrophes.**
   A group DN (`O'Brien`) or an address (`o'brien@example.com`) containing one would have broken the
   scope filter or silently changed which mailboxes it matched. All four scope options escape now,

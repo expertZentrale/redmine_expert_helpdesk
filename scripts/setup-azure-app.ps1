@@ -1173,13 +1173,24 @@ if ($RemoveEntraGraphPermissions) {
         return
     }
 
+    # Guarded explicitly rather than trusting the Graph SDK to honour -WhatIf:
+    # this is the call that takes the app's mail access away, so a dry run that
+    # silently performed it would be the worst possible surprise.
+    $removed = 0
     foreach ($assignment in $assignments) {
-        Remove-MgServicePrincipalAppRoleAssignment `
-            -ServicePrincipalId $sp.Id `
-            -AppRoleAssignmentId $assignment.Id
+        if ($PSCmdlet.ShouldProcess("app role $($assignment.AppRoleId)", "Remove-MgServicePrincipalAppRoleAssignment")) {
+            Remove-MgServicePrincipalAppRoleAssignment `
+                -ServicePrincipalId $sp.Id `
+                -AppRoleAssignmentId $assignment.Id
+            $removed++
+        }
     }
 
-    Write-Host "Done. Entra permissions removed. Only the EXO RBAC scope applies from now on." -ForegroundColor Green
+    if ($removed -eq 0) {
+        Write-Host "Nothing removed." -ForegroundColor Yellow
+    } else {
+        Write-Host "Done. Entra permissions removed. Only the EXO RBAC scope applies from now on." -ForegroundColor Green
+    }
     return
 }
 
@@ -1293,16 +1304,21 @@ Write-Host "`n== Step 2: Grant API permissions + Admin Consent ==" -ForegroundCo
 if ($isNewApp -or $EnsureEntraGraphPermissions) {
     Connect-MgGraph -Scopes "Application.ReadWrite.All", "AppRoleAssignment.ReadWrite.All"
 
-    Update-MgApplication -ApplicationId $app.Id `
-        -RequiredResourceAccess @(
-            @{
-                ResourceAppId  = $graphAppId
-                ResourceAccess = @(
-                    @{ Id = $mailReadWriteId; Type = "Role" }
-                    @{ Id = $mailSendId;      Type = "Role" }
-                )
-            }
-        )
+    # Both calls below are guarded explicitly rather than trusting the Graph SDK
+    # to honour -WhatIf: they widen what the app can reach, tenant-wide, so a
+    # dry run that performed them anyway would be the opposite of harmless.
+    if ($PSCmdlet.ShouldProcess($AppDisplayName, "Update-MgApplication -RequiredResourceAccess")) {
+        Update-MgApplication -ApplicationId $app.Id `
+            -RequiredResourceAccess @(
+                @{
+                    ResourceAppId  = $graphAppId
+                    ResourceAccess = @(
+                        @{ Id = $mailReadWriteId; Type = "Role" }
+                        @{ Id = $mailSendId;      Type = "Role" }
+                    )
+                }
+            )
+    }
 
     $graphSp = Get-MgServicePrincipal -Filter "AppId eq '$graphAppId'"
 
@@ -1314,11 +1330,13 @@ if ($isNewApp -or $EnsureEntraGraphPermissions) {
             Write-Host "  app role $roleId already granted."
             continue
         }
-        New-MgServicePrincipalAppRoleAssignment `
-            -ServicePrincipalId $sp.Id `
-            -PrincipalId $sp.Id `
-            -ResourceId $graphSp.Id `
-            -AppRoleId $roleId | Out-Null
+        if ($PSCmdlet.ShouldProcess("app role $roleId", "New-MgServicePrincipalAppRoleAssignment")) {
+            New-MgServicePrincipalAppRoleAssignment `
+                -ServicePrincipalId $sp.Id `
+                -PrincipalId $sp.Id `
+                -ResourceId $graphSp.Id `
+                -AppRoleId $roleId | Out-Null
+        }
     }
 
     Write-Host "Permissions assigned and Admin Consent granted (Mail.ReadWrite, Mail.Send)."
@@ -1349,15 +1367,19 @@ try {
 Write-Host "`n== Step 3: Create client secret ==" -ForegroundColor Cyan
 
 if ($isNewApp -or $NewClientSecret) {
-    $secret = Add-MgApplicationPassword -ApplicationId $app.Id `
-        -PasswordCredential @{
-            DisplayName = "$AppDisplayName-secret"
-            EndDateTime = (Get-Date).AddYears($SecretValidityYears)
-        }
+    # Guarded explicitly: a secret created by a dry run is a real credential
+    # that nobody wrote down, sitting on the app until someone notices it.
+    if ($PSCmdlet.ShouldProcess($AppDisplayName, "Add-MgApplicationPassword")) {
+        $secret = Add-MgApplicationPassword -ApplicationId $app.Id `
+            -PasswordCredential @{
+                DisplayName = "$AppDisplayName-secret"
+                EndDateTime = (Get-Date).AddYears($SecretValidityYears)
+            }
 
-    # The value is shown only once — save it immediately!
-    Write-Host "Client Secret: $($secret.SecretText)" -ForegroundColor Yellow
-    Write-Host "IMPORTANT: Save this value now (e.g. in the Redmine plugin configuration), it will not be shown again." -ForegroundColor Yellow
+        # The value is shown only once — save it immediately!
+        Write-Host "Client Secret: $($secret.SecretText)" -ForegroundColor Yellow
+        Write-Host "IMPORTANT: Save this value now (e.g. in the Redmine plugin configuration), it will not be shown again." -ForegroundColor Yellow
+    }
 } else {
     Write-Host "Skipped — keeping the existing client secret, the one configured in Redmine stays valid."
     Write-Host "Use -NewClientSecret to create an additional one (rotation). Existing secrets:"

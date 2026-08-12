@@ -111,6 +111,14 @@
 
 ### Behoben
 
+- **`-WhatIf` hielt die Entra-ID-Schreibzugriffe nicht auf.** Der Parameter war als Probelauf
+  dokumentiert und sicherte die Exchange-Online-Aufrufe ab, die Microsoft-Graph-Aufrufe liefen aber
+  trotzdem – `-RemoveEntraGraphPermissions -WhatIf` entfernte die Berechtigungen also wirklich,
+  `-NewClientSecret -WhatIf` legte wirklich ein Secret an, das niemand notiert hat, und
+  `-EnsureEntraGraphPermissions -WhatIf` vergab wirklich wieder tenantweiten Mailzugriff. Jeder
+  Schreibzugriff ist jetzt ausdrücklich abgesichert, statt sich darauf zu verlassen, dass das
+  Graph-SDK die Einstellung beachtet; die übrigen Anlagevorgänge sind unter `-WhatIf` gar nicht
+  erreichbar, weil der Lauf vorher abbricht.
 - **Werte wurden ohne Maskierung von Apostrophen in Exchange-Online-Empfängerfilter eingesetzt.**
   Ein Gruppen-DN (`O'Brien`) oder eine Adresse (`o'brien@example.com`) mit Apostroph hätte den
   Scope-Filter zerstört oder stillschweigend verändert, welche Postfächer er trifft. Alle vier
