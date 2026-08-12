@@ -309,6 +309,10 @@ Benötigte PowerShell-Module: `Microsoft.Graph` und `ExchangeOnlineManagement`.
 # Client-Secret erneuern (der neue Wert muss in Redmine eingetragen werden)
 ./setup-azure-app.ps1 -NewClientSecret
 
+# Je Rolle und Scope eine Zuweisung behalten, die übrigen entfernen
+./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments -WhatIf   # erst auflisten
+./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments
+
 # Die Filter-Zusammenführung offline prüfen – ohne Verbindung, ohne Änderung
 ./setup-azure-app.ps1 -SelfTest
 
@@ -335,6 +339,18 @@ anderen `-MailboxScopeOption` angelegt (oder von Hand bearbeitet); eine Adresse 
 würde diesen Filter zerstören. Entweder das Postfach so aufnehmen, wie es die gewählte Variante
 vorsieht (Attribut, Gruppenmitgliedschaft, Domain), oder mit `-ReplaceMailboxList` den Filter
 bewusst überschreiben.
+
+**`Test-ServicePrincipalAuthorization` gibt jede Rolle mehrfach aus.** Der Scope hat doppelte
+Rollenzuweisungen – unschädlich, der Zugriff ist derselbe, aber die Ausgabe sieht dadurch falsch
+aus. Auflisten und entfernen:
+
+```powershell
+./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments -WhatIf
+./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments
+```
+
+Für sich allein angegeben macht das Skript nichts weiter; zusammen mit einem normalen Lauf
+passiert das Aufräumen als Teil davon.
 
 **„Multiple app registrations named …“.** Jede spätere Suche über den Anzeigenamen wäre mehrdeutig.
 Die überzähligen Registrierungen mit `delete-app-registration.ps1` entfernen oder einen anderen

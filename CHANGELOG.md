@@ -25,6 +25,12 @@
 
 ### Changed
 
+- **`-RemoveDuplicateRoleAssignments` tidies up duplicate role assignments.** Keeps one assignment
+  per role and scope and removes the rest, so `Test-ServicePrincipalAuthorization` stops printing
+  each role several times. Given on its own the script does only this and stops; given alongside a
+  normal run the tidy-up happens as part of it, and `-WhatIf` lists what would go without removing
+  anything. Assignments on different scopes are never treated as duplicates, so a DEV and a LIVE
+  installation are safe from each other.
 - **`scripts/setup-azure-app.ps1` can now add mailboxes to an existing setup.** The script used
   to abort as soon as an app registration with the given name existed, so onboarding one more
   project meant either tearing the whole tenant setup down and rebuilding it — which mints a new

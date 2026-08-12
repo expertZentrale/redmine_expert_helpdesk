@@ -130,6 +130,14 @@
     only AFTER the EXO RBAC test in step 4 succeeded (InScope True) — otherwise
     the app loses all mail access beforehand.
 
+.PARAMETER RemoveDuplicateRoleAssignments
+    Keep one role assignment per role and scope and remove the rest. Duplicates
+    are harmless — access is identical — but Test-ServicePrincipalAuthorization
+    prints a row per assignment, which makes its output hard to read.
+
+    Given on its own (no mailbox parameters), the script does only this and
+    stops. Given alongside a normal run, the tidy-up happens as part of it.
+
 .PARAMETER SelfTest
     Run the offline assertions for the mailbox scope filter helpers and exit.
     Connects to nothing and changes nothing.
@@ -172,6 +180,12 @@
 .EXAMPLE
     # Second run, once the RBAC scope has been successfully tested:
     ./setup-azure-app.ps1 -RemoveEntraGraphPermissions
+
+.EXAMPLE
+    # Tidy up duplicate role assignments left by earlier runs and stop.
+    # -WhatIf lists what would go without removing anything.
+    ./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments -WhatIf
+    ./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -209,6 +223,8 @@ param(
     [string[]]$TestMailbox,
 
     [switch]$RemoveEntraGraphPermissions,
+
+    [switch]$RemoveDuplicateRoleAssignments,
 
     [switch]$SelfTest
 )
@@ -444,6 +460,77 @@ function ConvertTo-ComparableFilter {
     return ((($Filter -replace '[()]', ' ') -replace '\s+', ' ').Trim())
 }
 
+# More than one match makes every later lookup ambiguous, and picking one would
+# be a guess about which installation the operator meant.
+function Assert-SingleApplication {
+    param(
+        [object[]]$Apps,
+        [Parameter(Mandatory)][string]$FoundBy
+    )
+
+    if (@($Apps).Count -le 1) { return }
+
+    throw ("Several app registrations match the $FoundBy" + ":`n" +
+           ((@($Apps) | ForEach-Object { "  $($_.DisplayName)  (AppId $($_.AppId))" }) -join "`n") +
+           "`nGive each installation its own -Environment (which derives its own tag and names), " +
+           "or pass -AppDisplayName to say which one to use.")
+}
+
+# The Exchange Online service principal for an app, matched on AppId — the one
+# field guaranteed to agree between Entra ID and Exchange Online.
+function Get-ExoServicePrincipal {
+    param([Parameter(Mandatory)][string]$AppId)
+
+    return @(Get-ServicePrincipal -ErrorAction SilentlyContinue | Where-Object { $_.AppId -eq $AppId })
+}
+
+<#
+Reports — and with -Remove, tidies up — role assignments that duplicate another
+with the same role and scope. Duplicates grant nothing extra, but
+Test-ServicePrincipalAuthorization prints one row per assignment, so they make
+its output look like something is wrong when it is not.
+
+Returns the number removed.
+#>
+function Resolve-DuplicateRoleAssignments {
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [object[]]$Assignments,
+        [switch]$Remove
+    )
+
+    $duplicated = @(@($Assignments) | Group-Object -Property Role, CustomResourceScope |
+                    Where-Object { $_.Count -gt 1 })
+    if ($duplicated.Count -eq 0) { return 0 }
+
+    $removed = 0
+    foreach ($group in $duplicated) {
+        $role  = $group.Group[0].Role
+        $scope = $group.Group[0].CustomResourceScope
+
+        Write-Host "Role '$role' is assigned to scope '$scope' $($group.Count) times:" -ForegroundColor Yellow
+        foreach ($assignment in $group.Group) {
+            Write-Host "    $($assignment.Identity)" -ForegroundColor Yellow
+        }
+
+        if (-not $Remove) {
+            Write-Host "    Pass -RemoveDuplicateRoleAssignments to keep one and remove the rest." -ForegroundColor Yellow
+            continue
+        }
+
+        # The assignments are interchangeable, so keep the first and drop the rest.
+        foreach ($assignment in @($group.Group | Select-Object -Skip 1)) {
+            if ($PSCmdlet.ShouldProcess([string]$assignment.Identity, "Remove-ManagementRoleAssignment")) {
+                Remove-ManagementRoleAssignment -Identity $assignment.Identity -Confirm:$false | Out-Null
+                Write-Host "    removed $($assignment.Identity)" -ForegroundColor Green
+                $removed++
+            }
+        }
+    }
+
+    return $removed
+}
+
 <#
 The Application Mail.* role assignments belonging to this service principal.
 
@@ -669,6 +756,30 @@ if ($SelfTest) {
         Assert-Throws { Get-MailboxAddressesFromFilter -Filter "PrimarySmtpAddress -like '*@example.com'" }
     }
 
+    Test-Case "duplicate role assignments are detected per role and scope" {
+        $assignments = @(
+            [pscustomobject]@{ Identity = "a1"; Role = "Application Mail.ReadWrite"; CustomResourceScope = "S" }
+            [pscustomobject]@{ Identity = "a2"; Role = "Application Mail.Send";      CustomResourceScope = "S" }
+            [pscustomobject]@{ Identity = "a3"; Role = "Application Mail.ReadWrite"; CustomResourceScope = "S" }
+            [pscustomobject]@{ Identity = "a4"; Role = "Application Mail.Send";      CustomResourceScope = "S" }
+        )
+        $groups = @($assignments | Group-Object -Property Role, CustomResourceScope |
+                    Where-Object { $_.Count -gt 1 })
+        if ($groups.Count -ne 2) { throw "expected 2 duplicated roles, got $($groups.Count)" }
+        $extra = @($groups | ForEach-Object { $_.Group | Select-Object -Skip 1 })
+        if ($extra.Count -ne 2) { throw "expected 2 assignments to remove, got $($extra.Count)" }
+    }
+
+    Test-Case "the same role on different scopes is not a duplicate" {
+        $assignments = @(
+            [pscustomobject]@{ Identity = "a1"; Role = "Application Mail.Send"; CustomResourceScope = "LIVE" }
+            [pscustomobject]@{ Identity = "a2"; Role = "Application Mail.Send"; CustomResourceScope = "DEV" }
+        )
+        $groups = @($assignments | Group-Object -Property Role, CustomResourceScope |
+                    Where-Object { $_.Count -gt 1 })
+        if ($groups.Count -ne 0) { throw "two environments were treated as duplicates" }
+    }
+
     # Exchange Online returns InScope as a string, and every non-empty string is
     # truthy — the reason a previous version announced success for a mailbox
     # that was not in scope at all.
@@ -781,6 +892,46 @@ if ($SelfTest) {
 }
 
 # -----------------------------------------------------------------------
+# Maintenance: remove duplicate role assignments and stop.
+# Mailbox parameters are what ask for a scope change, so their absence means
+# this run is only meant to tidy up.
+# -----------------------------------------------------------------------
+if ($RemoveDuplicateRoleAssignments -and
+    @(Get-ImpliedScopeOption -SuppliedParameters @($PSBoundParameters.Keys)).Count -eq 0) {
+
+    Write-Host "== Removing duplicate role assignments ==" -ForegroundColor Cyan
+    Connect-MgGraph -Scopes "Application.Read.All"
+
+    $lookup = Resolve-HelpdeskApplication -Tag $ResourceTag -DisplayName $AppDisplayName `
+                  -NameWasGiven:$PSBoundParameters.ContainsKey('AppDisplayName')
+    Assert-SingleApplication -Apps $lookup.Apps -FoundBy $lookup.FoundBy
+    if ($lookup.Apps.Count -eq 0) {
+        throw "No app registration found by $($lookup.FoundBy)."
+    }
+    $app = $lookup.Apps[0]
+    Write-Host "App registration '$($app.DisplayName)' (AppId $($app.AppId)), found by $($lookup.FoundBy)."
+
+    Connect-ExchangeOnline
+
+    $exoSp = @(Get-ExoServicePrincipal -AppId $app.AppId)
+    if ($exoSp.Count -eq 0) {
+        throw "No Exchange Online service principal for AppId $($app.AppId) — nothing to tidy up."
+    }
+    $exoSp = $exoSp[0]
+
+    $assignments = @(Get-OwnRoleAssignments -ServicePrincipalId ([string]$exoSp.ObjectId) `
+                                            -AssigneeName ([string]$exoSp.DisplayName))
+    $removed = Resolve-DuplicateRoleAssignments -Assignments $assignments -Remove
+
+    if ($removed -eq 0) {
+        Write-Host "No duplicate role assignments found." -ForegroundColor Green
+    } else {
+        Write-Host "Removed $removed duplicate role assignment(s)." -ForegroundColor Green
+    }
+    return
+}
+
+# -----------------------------------------------------------------------
 # Step 5: remove the Entra Graph permissions again, once the EXO RBAC scope
 # has been successfully tested.
 # -----------------------------------------------------------------------
@@ -791,13 +942,9 @@ if ($RemoveEntraGraphPermissions) {
     $lookup = Resolve-HelpdeskApplication -Tag $ResourceTag -DisplayName $AppDisplayName `
                   -NameWasGiven:$PSBoundParameters.ContainsKey('AppDisplayName')
 
+    Assert-SingleApplication -Apps $lookup.Apps -FoundBy $lookup.FoundBy
     if ($lookup.Apps.Count -eq 0) {
         throw "No app registration found by $($lookup.FoundBy)."
-    }
-    if ($lookup.Apps.Count -gt 1) {
-        throw ("Several app registrations match the $($lookup.FoundBy):`n" +
-               (($lookup.Apps | ForEach-Object { "  $($_.DisplayName)  (AppId $($_.AppId))" }) -join "`n") +
-               "`nPass -AppDisplayName to say which one to use.")
     }
     $app = $lookup.Apps[0]
     Write-Host "App registration '$($app.DisplayName)' (AppId $($app.AppId)), found by $($lookup.FoundBy)."
@@ -872,13 +1019,7 @@ Connect-MgGraph -Scopes "Application.ReadWrite.All"
 $lookup = Resolve-HelpdeskApplication -Tag $ResourceTag -DisplayName $AppDisplayName `
               -NameWasGiven:$PSBoundParameters.ContainsKey('AppDisplayName')
 $existingApp = $lookup.Apps
-
-if ($existingApp.Count -gt 1) {
-    throw ("Several app registrations match the $($lookup.FoundBy):`n" +
-           (($existingApp | ForEach-Object { "  $($_.DisplayName)  (AppId $($_.AppId))" }) -join "`n") +
-           "`nGive each installation its own -Environment (which derives its own tag and names), " +
-           "or pass -AppDisplayName to say which one to extend.")
-}
+Assert-SingleApplication -Apps $existingApp -FoundBy $lookup.FoundBy
 
 if ($existingApp.Count -eq 1) {
     $isNewApp = $false
@@ -1167,22 +1308,21 @@ if (-not $scope) {
 $existingAssignments = @(Get-OwnRoleAssignments -ServicePrincipalId $exoSpId -AssigneeName $exoSpName |
     Where-Object { $_.CustomResourceScope -eq $RbacScopeName })
 
+# Duplicates are left behind by runs that failed to recognise their own
+# assignment. Deal with them before deciding what is missing, so the check
+# below sees a tidied state.
+$removedDuplicates = Resolve-DuplicateRoleAssignments -Assignments $existingAssignments `
+                                                      -Remove:$RemoveDuplicateRoleAssignments
+if ($removedDuplicates -gt 0) {
+    Write-Host "Removed $removedDuplicates duplicate role assignment(s)." -ForegroundColor Green
+    $existingAssignments = @(Get-OwnRoleAssignments -ServicePrincipalId $exoSpId -AssigneeName $exoSpName |
+        Where-Object { $_.CustomResourceScope -eq $RbacScopeName })
+}
+
 foreach ($role in $rbacRoles) {
     $have = @($existingAssignments | Where-Object { $_.Role -eq $role })
 
-    if ($have.Count -gt 1) {
-        # Left behind by runs that failed to recognise their own assignment.
-        # Harmless but confusing — Test-ServicePrincipalAuthorization reports a
-        # row per assignment, so the same role shows up several times.
-        Write-Host "Role '$role' is assigned to scope '$RbacScopeName' $($have.Count) times (duplicates from earlier runs):" -ForegroundColor Yellow
-        foreach ($duplicate in $have) {
-            Write-Host "    $($duplicate.Identity)" -ForegroundColor Yellow
-        }
-        Write-Host "    Remove the extras with: Remove-ManagementRoleAssignment -Identity '<identity>'" -ForegroundColor Yellow
-        continue
-    }
-
-    if ($have.Count -eq 1) {
+    if ($have.Count -ge 1) {
         Write-Host "Role assignment '$role' on scope '$RbacScopeName' already exists."
         continue
     }

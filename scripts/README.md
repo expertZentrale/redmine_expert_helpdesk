@@ -296,6 +296,10 @@ Required PowerShell modules: `Microsoft.Graph` and `ExchangeOnlineManagement`.
 # Rotate the client secret (the new value must be entered in Redmine)
 ./setup-azure-app.ps1 -NewClientSecret
 
+# Keep one role assignment per role and scope, remove the rest
+./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments -WhatIf   # list them first
+./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments
+
 # Verify the filter-merge logic offline — connects to nothing, changes nothing
 ./setup-azure-app.ps1 -SelfTest
 
@@ -320,6 +324,18 @@ Do not run `-RemoveEntraGraphPermissions` until it reports `True`.
 different `-MailboxScopeOption` (or edited by hand), so merging an address into it would destroy
 that filter. Either add the mailbox the way that option expects (attribute, group membership,
 domain), or pass `-ReplaceMailboxList` to overwrite the filter deliberately.
+
+**`Test-ServicePrincipalAuthorization` prints each role more than once.** The scope has duplicate
+role assignments — harmless, since access is identical, but it makes the output look wrong. List
+and remove them with:
+
+```powershell
+./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments -WhatIf
+./setup-azure-app.ps1 -RemoveDuplicateRoleAssignments
+```
+
+On its own like that the script does nothing else; given alongside a normal run, the tidy-up
+happens as part of it.
 
 **"Multiple app registrations named …".** Every later lookup by display name would be ambiguous.
 Remove the obsolete registrations with `delete-app-registration.ps1`, or use a different

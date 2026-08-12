@@ -26,6 +26,12 @@
 
 ### Geändert
 
+- **`-RemoveDuplicateRoleAssignments` räumt doppelte Rollenzuweisungen auf.** Behält je Rolle und
+  Scope eine Zuweisung und entfernt die übrigen, damit `Test-ServicePrincipalAuthorization` jede
+  Rolle nicht mehr mehrfach ausgibt. Für sich allein angegeben macht das Skript nur das und hört
+  auf; zusammen mit einem normalen Lauf passiert das Aufräumen als Teil davon, und `-WhatIf` listet
+  auf, was entfernt würde, ohne etwas zu entfernen. Zuweisungen auf verschiedenen Scopes gelten nie
+  als Duplikate, eine DEV- und eine LIVE-Installation sind also voreinander sicher.
 - **`scripts/setup-azure-app.ps1` kann Postfächer in ein bestehendes Setup aufnehmen.** Bisher
   brach das Skript ab, sobald eine App-Registrierung mit dem angegebenen Namen existierte – ein
   weiteres Projekt anzubinden hieß deshalb, entweder das gesamte Tenant-Setup abzuräumen und neu
