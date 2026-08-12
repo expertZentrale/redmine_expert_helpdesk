@@ -1069,28 +1069,21 @@ address in and leaves every other resource untouched):
 
 ```powershell
 # Preview first: prints the old and the new filter, writes nothing
-./scripts/setup-azure-app.ps1 -AppDisplayName "redmine-helpdesk" `
-    -RbacScopeName "Redmine-Helpdesk-Mailboxes" `
-    -MailboxEmailList "sales@example.com" -WhatIf
+./scripts/setup-azure-app.ps1 -MailboxEmailList "sales@example.com" -WhatIf
 
-./scripts/setup-azure-app.ps1 -AppDisplayName "redmine-helpdesk" `
-    -RbacScopeName "Redmine-Helpdesk-Mailboxes" `
-    -MailboxEmailList "sales@example.com"
+./scripts/setup-azure-app.ps1 -MailboxEmailList "sales@example.com"
 
 # and to revoke access to a mailbox again
-./scripts/setup-azure-app.ps1 -AppDisplayName "redmine-helpdesk" `
-    -RbacScopeName "Redmine-Helpdesk-Mailboxes" `
-    -RemoveMailboxEmailList "sales@example.com"
+./scripts/setup-azure-app.ps1 -RemoveMailboxEmailList "sales@example.com"
 ```
 
-> ⚠️ **`-AppDisplayName` and `-RbacScopeName` must match the existing setup.**
-> The script finds what to extend by those two names, and its defaults
-> (`redmine-expert-helpdesk-live` / `Redmine-expert-Helpdesk-Mailboxes-LIVE`)
-> are *not* the example names used above. Omitting them against a setup created
-> under different names does not fail — the script finds nothing to reuse and
-> builds a **second, parallel app registration and scope**. Check with
-> `Get-MgApplication | Select-Object DisplayName` and `Get-ManagementScope` if
-> you are unsure which names your installation uses.
+No names are needed here even if your setup was created under different ones:
+the script tags the app registration (`RedmineExpertHelpdesk`) and finds it by
+that tag, resolves the service principal from the AppId, and reads the scope to
+extend off the app's existing role assignments. A setup made by hand from the
+recipes above is stamped with the tag the first time the script runs against it
+— pass `-AppDisplayName` on that first run so it knows which app is yours. See
+[`scripts/README.md`](scripts/README.md#how-a-re-run-finds-the-installation).
 
 By hand it depends on the scope option chosen in step 4b. With **option A**
 (domain suffix) nothing has to be done at all as long as the new mailbox lives

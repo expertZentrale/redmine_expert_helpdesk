@@ -12,7 +12,13 @@
       - the Exchange Online service principal(s)
 
 .PARAMETER AppDisplayName
-    Display name of the app registration / service principal to remove.
+    Display name of the app registration / service principal to remove. Only
+    needed when the installation cannot be found by its tag — see -ResourceTag.
+
+.PARAMETER ResourceTag
+    Marker that setup-azure-app.ps1 writes to the app registration's Tags. It is
+    what finds the installation when it was created under a different name;
+    -AppDisplayName is the fallback.
 
 .PARAMETER RbacScopeName
     Name of the Exchange Online management scope to remove.
@@ -27,6 +33,8 @@
 [CmdletBinding()]
 param(
     [string]$AppDisplayName = "redmine-expert-helpdesk-live",
+
+    [string]$ResourceTag = "RedmineExpertHelpdesk",
 
     [string]$RbacScopeName = "Redmine-expert-Helpdesk-Mailboxes-LIVE",
 
@@ -70,11 +78,25 @@ Connect-MgGraph -Scopes "Application.ReadWrite.All"
 
 # Deleting the application also removes its service principal.
 # Single quotes delimit strings in an OData filter and are escaped by doubling
-# them, so a display name containing an apostrophe stays findable here.
-$nameLiteral = $AppDisplayName -replace "'", "''"
-$apps = @(Get-MgApplication -Filter "DisplayName eq '$nameLiteral'")
+# them, so a name or tag containing an apostrophe stays findable here.
+# The tag finds installations created under a different name; the display name
+# stays the fallback for anything not stamped with it.
+$tagLiteral = $ResourceTag -replace "'", "''"
+try {
+    $apps = @(Get-MgApplication -Filter "tags/any(t:t eq '$tagLiteral')" -All)
+} catch {
+    $apps = @(Get-MgApplication -All | Where-Object { @($_.Tags) -contains $ResourceTag })
+}
+
+if ($apps.Count -gt 0) {
+    Write-Host "Found $($apps.Count) app registration(s) by tag '$ResourceTag'."
+} else {
+    $nameLiteral = $AppDisplayName -replace "'", "''"
+    $apps = @(Get-MgApplication -Filter "DisplayName eq '$nameLiteral'")
+}
+
 if ($apps.Count -eq 0) {
-    Write-Host "No app registration named '$AppDisplayName'."
+    Write-Host "No app registration found by tag '$ResourceTag' or name '$AppDisplayName'."
 }
 foreach ($app in $apps) {
     $appObjectId = $app.Id

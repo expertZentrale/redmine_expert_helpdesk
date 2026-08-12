@@ -26,22 +26,38 @@ equivalents.
 ./setup-azure-app.ps1 -MailboxEmailList "sales@example.com"
 ```
 
-> ⚠️ **The examples here rely on the defaults `-AppDisplayName
-> redmine-expert-helpdesk-live` and `-RbacScopeName
-> Redmine-expert-Helpdesk-Mailboxes-LIVE`.** These two names are how the script
-> finds the installation it should extend. If yours was set up under different
-> names — the manual recipes in [`../README.md`](../README.md) use
-> `redmine-helpdesk` / `Redmine-Helpdesk-Mailboxes` — you must pass them on
-> **every** run. Omitting them does not fail: the script finds nothing to reuse
-> and creates a **second, parallel app registration and scope**. It does warn
-> when it is about to build a scope while other `Application Mail.*` role
-> assignments already exist, but by then the app registration has been created,
-> so the tidy-up is `./delete-app-registration.ps1`. To check what you have:
->
-> ```powershell
-> Get-MgApplication | Select-Object DisplayName, AppId
-> Get-ManagementScope | Select-Object Name, RecipientFilter
-> ```
+### How a re-run finds the installation
+
+Names are a poor handle — an installation set up by hand under
+`redmine-helpdesk` would not be found by a script defaulting to
+`redmine-expert-helpdesk-live`, and the script would build a second, parallel
+installation instead of extending the first. So the resources carry a marker:
+
+- **The app registration is tagged** (`Tags` contains `RedmineExpertHelpdesk`,
+  `-ResourceTag`). That tag, not the display name, is what a re-run looks for.
+  Installations created before tagging existed are stamped on the next run, so
+  this heals itself the first time you run the updated script.
+- **The service principal is resolved from the AppId**, never from a name.
+- **The management scope is read off the app's role assignments** — whatever
+  scope the app is actually assigned to is the one that gets extended, whatever
+  it is called.
+
+In practice that means `-AppDisplayName` and `-RbacScopeName` are only needed
+for the initial setup, or to disambiguate. To see what a run would target:
+
+```powershell
+Get-MgApplication -Filter "tags/any(t:t eq 'RedmineExpertHelpdesk')" |
+    Select-Object DisplayName, AppId, Tags
+
+Get-ManagementRoleAssignment |
+    Where-Object { $_.Role -like "Application Mail.*" } |
+    Select-Object Role, RoleAssigneeName, CustomResourceScope
+```
+
+> ⚠️ Running **several independent installations in one tenant** (a LIVE and a
+> TEST one, say) means giving each its own `-ResourceTag`. Sharing a tag makes
+> both match, and the script refuses to guess — it lists the candidates and asks
+> for `-AppDisplayName`.
 
 ---
 

@@ -54,6 +54,19 @@
   The script grants access to mailboxes, it does not create them — the mailboxes still have to
   exist in the tenant.
 
+- **The setup scripts find their resources by a marker, not by name.** Display names were the only
+  handle on an installation, so a setup created by hand under a different name than the script's
+  default was not found at all — and the script would then build a second, parallel app
+  registration and scope instead of extending the first, silently. `setup-azure-app.ps1` now tags
+  the app registration (`Tags` contains `RedmineExpertHelpdesk`, configurable via `-ResourceTag`)
+  and looks it up by that tag; the service principal is resolved from the AppId; and the management
+  scope to extend is read off the app's existing role assignments, so a differently named scope is
+  extended rather than duplicated. Installations predating the tag are stamped on the next run, so
+  it heals itself. `-AppDisplayName` and `-RbacScopeName` are therefore only needed for the initial
+  setup or to disambiguate, and `delete-app-registration.ps1` finds its target the same way. Several
+  independent installations in one tenant need one `-ResourceTag` each; sharing one makes the script
+  list the candidates and ask rather than guess.
+
 ### Fixed
 
 - **An apostrophe in `-AppDisplayName` broke the app registration lookup** in both scripts. Single

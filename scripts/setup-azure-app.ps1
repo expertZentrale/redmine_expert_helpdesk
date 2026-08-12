@@ -44,8 +44,22 @@
 .PARAMETER AppDisplayName
     Display name of the app registration in Entra ID.
 
+    Only needed when the installation cannot be found by its tag — see
+    -ResourceTag. When it is found by tag, the name it actually carries is used.
+
 .PARAMETER RbacScopeName
     Name of the Exchange Online management scope that restricts mailbox access.
+
+    Only used when creating the scope, or when the app has no role assignments
+    yet. On a re-run the scope the app is already assigned to wins, so a
+    differently named scope is extended rather than duplicated.
+
+.PARAMETER ResourceTag
+    Marker written to the app registration's Tags so later runs find the
+    installation without knowing the name it was created under. Existing
+    installations are stamped with it on the next run. Only change it to run
+    several independent installations in one tenant — each then needs its own
+    tag, and -AppDisplayName to tell them apart on the first run.
 
 .PARAMETER MailboxScopeOption
     Determines how the mailboxes restricted by the Exchange Online RBAC scope
@@ -141,6 +155,8 @@ param(
     [string]$AppDisplayName = "redmine-expert-helpdesk-live",
 
     [string]$RbacScopeName = "Redmine-expert-Helpdesk-Mailboxes-LIVE",
+
+    [string]$ResourceTag = "RedmineExpertHelpdesk",
 
     [ValidateSet("DomainSuffix", "SecurityGroup", "CustomAttribute", "EmailList")]
     [string]$MailboxScopeOption = "EmailList",
@@ -316,6 +332,49 @@ function ConvertTo-ODataLiteral {
     param([AllowEmptyString()][string]$Value)
 
     return ($Value -replace "'", "''")
+}
+
+<#
+Finds the app registrations carrying the installation marker. The tag is what
+makes an installation findable without knowing the name it was created under.
+#>
+function Find-TaggedApplication {
+    param([Parameter(Mandatory)][string]$Tag)
+
+    $literal = ConvertTo-ODataLiteral $Tag
+    try {
+        return @(Get-MgApplication -Filter "tags/any(t:t eq '$literal')" -All)
+    } catch {
+        # Some SDK/tenant combinations reject the lambda filter. Scanning
+        # client-side is slower but returns the same thing.
+        return @(Get-MgApplication -All | Where-Object { @($_.Tags) -contains $Tag })
+    }
+}
+
+<#
+Locates the installation to work on. An explicitly passed display name always
+wins; otherwise the marker tag decides, and the display name remains the
+fallback so installations created before the tag existed are still found.
+#>
+function Resolve-HelpdeskApplication {
+    param(
+        [Parameter(Mandatory)][string]$Tag,
+        [Parameter(Mandatory)][string]$DisplayName,
+        [switch]$NameWasGiven
+    )
+
+    if (-not $NameWasGiven) {
+        $tagged = @(Find-TaggedApplication -Tag $Tag)
+        if ($tagged.Count -gt 0) {
+            return [pscustomobject]@{ Apps = $tagged; FoundBy = "tag '$Tag'" }
+        }
+    }
+
+    $literal = ConvertTo-ODataLiteral $DisplayName
+    return [pscustomobject]@{
+        Apps    = @(Get-MgApplication -Filter "DisplayName eq '$literal'")
+        FoundBy = "display name '$DisplayName'"
+    }
 }
 
 # Filters only have to be compared loosely — EXO returns its own formatting.
@@ -501,16 +560,27 @@ if ($SelfTest) {
 # -----------------------------------------------------------------------
 if ($RemoveEntraGraphPermissions) {
     Write-Host "== Step 5: Remove Entra Graph permissions ==" -ForegroundColor Cyan
-    Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All"
+    Connect-MgGraph -Scopes "Application.Read.All", "AppRoleAssignment.ReadWrite.All"
 
-    $nameLiteral = ConvertTo-ODataLiteral $AppDisplayName
-    $sp = @(Get-MgServicePrincipal -Filter "DisplayName eq '$nameLiteral'")
-    if ($sp.Count -eq 0) {
-        throw "Service Principal '$AppDisplayName' not found."
+    $lookup = Resolve-HelpdeskApplication -Tag $ResourceTag -DisplayName $AppDisplayName `
+                  -NameWasGiven:$PSBoundParameters.ContainsKey('AppDisplayName')
+
+    if ($lookup.Apps.Count -eq 0) {
+        throw "No app registration found by $($lookup.FoundBy)."
     }
-    if ($sp.Count -gt 1) {
-        throw ("Multiple Service Principals named '$AppDisplayName' found (AppIds: " +
-               ($sp.AppId -join ', ') + "). Delete obsolete ones first.")
+    if ($lookup.Apps.Count -gt 1) {
+        throw ("Several app registrations match the $($lookup.FoundBy):`n" +
+               (($lookup.Apps | ForEach-Object { "  $($_.DisplayName)  (AppId $($_.AppId))" }) -join "`n") +
+               "`nPass -AppDisplayName to say which one to use.")
+    }
+    $app = $lookup.Apps[0]
+    Write-Host "App registration '$($app.DisplayName)' (AppId $($app.AppId)), found by $($lookup.FoundBy)."
+
+    # Resolve the service principal from the AppId — that link is stable, the
+    # display names of the two objects need not agree.
+    $sp = @(Get-MgServicePrincipal -Filter "AppId eq '$($app.AppId)'")
+    if ($sp.Count -eq 0) {
+        throw "No service principal for app '$($app.DisplayName)' (AppId $($app.AppId))."
     }
     $sp = $sp[0]
 
@@ -545,19 +615,35 @@ if ((-not $TestMailbox) -and $MailboxScopeOption -ne "EmailList") {
 Write-Host "== Step 1: Register app ==" -ForegroundColor Cyan
 Connect-MgGraph -Scopes "Application.ReadWrite.All"
 
-# More than one match makes every later DisplayName lookup ambiguous.
-$nameLiteral = ConvertTo-ODataLiteral $AppDisplayName
-$existingApp = @(Get-MgApplication -Filter "DisplayName eq '$nameLiteral'")
+$lookup = Resolve-HelpdeskApplication -Tag $ResourceTag -DisplayName $AppDisplayName `
+              -NameWasGiven:$PSBoundParameters.ContainsKey('AppDisplayName')
+$existingApp = $lookup.Apps
+
 if ($existingApp.Count -gt 1) {
-    throw ("Multiple app registrations named '$AppDisplayName' exist (AppIds: " +
-           ($existingApp.AppId -join ', ') + "). Delete the obsolete ones or use a " +
-           "different -AppDisplayName.")
+    throw ("Several app registrations match the $($lookup.FoundBy):`n" +
+           (($existingApp | ForEach-Object { "  $($_.DisplayName)  (AppId $($_.AppId))" }) -join "`n") +
+           "`nPass -AppDisplayName to say which one to extend, or delete the obsolete ones.")
 }
 
 if ($existingApp.Count -eq 1) {
     $isNewApp = $false
     $app = $existingApp[0]
-    Write-Host "Existing app registration reused (AppId $($app.AppId))." -ForegroundColor Green
+
+    # Adopt the name the installation actually carries, so everything below —
+    # the EXO service principal, the messages — refers to it as it exists
+    # rather than to the default this run happened to start from.
+    $AppDisplayName = $app.DisplayName
+    Write-Host "Existing app registration reused: '$AppDisplayName' (AppId $($app.AppId)), found by $($lookup.FoundBy)." -ForegroundColor Green
+
+    # Stamp installations that predate the marker, so the next run finds them
+    # by tag instead of depending on the name being passed in.
+    if (@($app.Tags) -notcontains $ResourceTag) {
+        $mergedTags = @(@($app.Tags) + $ResourceTag | Where-Object { $_ } | Sort-Object -Unique)
+        if ($PSCmdlet.ShouldProcess($AppDisplayName, "Update-MgApplication -Tags")) {
+            Update-MgApplication -ApplicationId $app.Id -Tags $mergedTags
+            Write-Host "  marked with tag '$ResourceTag' — later runs find it without -AppDisplayName."
+        }
+    }
 
     $sp = @(Get-MgServicePrincipal -Filter "AppId eq '$($app.AppId)'")
     if ($sp.Count -eq 0) {
@@ -581,9 +667,11 @@ if ($existingApp.Count -eq 1) {
     }
 
     $isNewApp = $true
-    $app = New-MgApplication -DisplayName $AppDisplayName -SignInAudience "AzureADMyOrg"
+    # The tag is what makes this installation findable later without knowing
+    # the name it was created under.
+    $app = New-MgApplication -DisplayName $AppDisplayName -SignInAudience "AzureADMyOrg" -Tags @($ResourceTag)
     $sp  = New-MgServicePrincipal -AppId $app.AppId
-    Write-Host "App registration created." -ForegroundColor Green
+    Write-Host "App registration created, marked with tag '$ResourceTag'." -ForegroundColor Green
 }
 
 Write-Host "AppId (Client ID):        $($app.AppId)"
@@ -694,7 +782,28 @@ if ($exoSp.Count -eq 0) {
     $exoSp = $exoSp[0]
     Write-Host "EXO service principal already registered (ObjectId $($exoSp.ObjectId))."
 }
-$exoSpId = [string]$exoSp.ObjectId
+$exoSpId   = [string]$exoSp.ObjectId
+$exoSpName = [string]$exoSp.DisplayName
+
+# The scope name is only a default. Where this app already has role
+# assignments, they say which scope the installation actually uses — that beats
+# a name, and it stops a re-run from building a second scope merely because
+# -RbacScopeName was not passed in.
+if (-not $PSBoundParameters.ContainsKey('RbacScopeName')) {
+    $ownScopes = @(Get-ManagementRoleAssignment -ErrorAction SilentlyContinue |
+        Where-Object { $_.Role -in $rbacRoles -and $_.CustomResourceScope -and
+                       $_.RoleAssigneeName -eq $exoSpName } |
+        ForEach-Object { $_.CustomResourceScope } | Sort-Object -Unique)
+
+    if ($ownScopes.Count -gt 1) {
+        throw ("This app is assigned to several scopes (" + ($ownScopes -join ', ') +
+               "). Pass -RbacScopeName to say which one to extend.")
+    }
+    if ($ownScopes.Count -eq 1 -and $ownScopes[0] -ne $RbacScopeName) {
+        Write-Host "Using the scope this app is already assigned to: '$($ownScopes[0])'." -ForegroundColor Green
+        $RbacScopeName = $ownScopes[0]
+    }
+}
 
 # 4b. Restrict the management scope to the helpdesk mailboxes.
 $scope = Get-ManagementScope -Identity $RbacScopeName -ErrorAction SilentlyContinue
@@ -798,7 +907,6 @@ if (-not $scope) {
 #     because DisplayName is ambiguous.
 #     Get-ManagementRoleAssignment has no -CustomResourceScope filter, so filter
 #     client-side.
-$exoSpName = [string]$exoSp.DisplayName
 $existingAssignments = @(Get-ManagementRoleAssignment -ErrorAction SilentlyContinue |
     Where-Object { $_.CustomResourceScope -eq $RbacScopeName -and $_.RoleAssigneeName -eq $exoSpName })
 
@@ -848,6 +956,7 @@ if ($WhatIfPreference) {
 # Summary
 # -----------------------------------------------------------------------
 Write-Host "`n=========================================================================" -ForegroundColor Cyan
+Write-Host "App registration:         $AppDisplayName (tag '$ResourceTag')" -ForegroundColor Cyan
 Write-Host "AppId (Client ID):        $($app.AppId)" -ForegroundColor Cyan
 Write-Host "Object ID (SP):           $($sp.Id)" -ForegroundColor Cyan
 Write-Host "EXO scope:                $RbacScopeName" -ForegroundColor Cyan

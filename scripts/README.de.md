@@ -28,23 +28,41 @@ Terraform dokumentiert.
 ./setup-azure-app.ps1 -MailboxEmailList "sales@example.com"
 ```
 
-> ⚠️ **Die Beispiele hier verlassen sich auf die Vorgaben `-AppDisplayName
-> redmine-expert-helpdesk-live` und `-RbacScopeName
-> Redmine-expert-Helpdesk-Mailboxes-LIVE`.** Über diese beiden Namen findet das
-> Skript die Installation, die es erweitern soll. Wurde die eigene unter anderen
-> Namen angelegt – die manuellen Rezepte in [`../README.de.md`](../README.de.md)
-> verwenden `redmine-helpdesk` / `Redmine-Helpdesk-Mailboxes` –, müssen sie bei
-> **jedem** Lauf mit angegeben werden. Sie wegzulassen schlägt nicht fehl: das
-> Skript findet nichts zum Weiterverwenden und legt eine **zweite, parallele
-> App-Registrierung samt Scope** an. Es warnt zwar, wenn es einen Scope anlegen
-> will, während bereits andere `Application Mail.*`-Rollenzuweisungen bestehen –
-> die App-Registrierung ist dann aber schon angelegt, aufgeräumt wird also mit
-> `./delete-app-registration.ps1`. Zum Nachsehen, was vorhanden ist:
->
-> ```powershell
-> Get-MgApplication | Select-Object DisplayName, AppId
-> Get-ManagementScope | Select-Object Name, RecipientFilter
-> ```
+### Wie ein erneuter Lauf die Installation findet
+
+Namen taugen schlecht als Anker – eine von Hand unter `redmine-helpdesk`
+angelegte Installation fände ein Skript mit der Vorgabe
+`redmine-expert-helpdesk-live` nicht, und es legte eine zweite, parallele
+Installation an, statt die erste zu erweitern. Die Ressourcen tragen deshalb
+eine Markierung:
+
+- **Die App-Registrierung ist getaggt** (`Tags` enthält
+  `RedmineExpertHelpdesk`, `-ResourceTag`). Nach diesem Tag sucht ein erneuter
+  Lauf, nicht nach dem Anzeigenamen. Installationen aus der Zeit vor dem Tag
+  werden beim nächsten Lauf nachträglich markiert – das repariert sich also beim
+  ersten Lauf des aktualisierten Skripts von selbst.
+- **Der Service Principal wird über die AppId aufgelöst**, nie über einen Namen.
+- **Der Management-Scope wird aus den Rollenzuweisungen der App gelesen** –
+  erweitert wird der Scope, dem die App tatsächlich zugewiesen ist, wie immer er
+  heißt.
+
+In der Praxis heißt das: `-AppDisplayName` und `-RbacScopeName` braucht es nur
+für die Ersteinrichtung oder zur Abgrenzung. Um zu sehen, worauf ein Lauf zielen
+würde:
+
+```powershell
+Get-MgApplication -Filter "tags/any(t:t eq 'RedmineExpertHelpdesk')" |
+    Select-Object DisplayName, AppId, Tags
+
+Get-ManagementRoleAssignment |
+    Where-Object { $_.Role -like "Application Mail.*" } |
+    Select-Object Role, RoleAssigneeName, CustomResourceScope
+```
+
+> ⚠️ **Mehrere unabhängige Installationen in einem Tenant** (etwa eine LIVE- und
+> eine TEST-Installation) brauchen je einen eigenen `-ResourceTag`. Teilen sie
+> sich einen, passen beide, und das Skript rät nicht – es listet die Kandidaten
+> auf und verlangt `-AppDisplayName`.
 
 ---
 

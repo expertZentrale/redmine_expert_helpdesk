@@ -58,6 +58,21 @@
   Das Skript vergibt Zugriff auf Postfächer, es legt sie nicht an – die Postfächer müssen weiterhin
   im Tenant vorhanden sein.
 
+- **Die Einrichtungsskripte finden ihre Ressourcen über eine Markierung statt über Namen.**
+  Anzeigenamen waren der einzige Anker an einer Installation – eine von Hand unter einem anderen
+  Namen als der Skriptvorgabe angelegte Einrichtung wurde damit gar nicht gefunden, und das Skript
+  legte dann stillschweigend eine zweite, parallele App-Registrierung samt Scope an, statt die erste
+  zu erweitern. `setup-azure-app.ps1` taggt die App-Registrierung jetzt (`Tags` enthält
+  `RedmineExpertHelpdesk`, über `-ResourceTag` einstellbar) und sucht sie über dieses Tag; der
+  Service Principal wird über die AppId aufgelöst; und welcher Management-Scope erweitert wird,
+  steht in den vorhandenen Rollenzuweisungen der App – ein anders benannter Scope wird also
+  erweitert statt verdoppelt. Installationen aus der Zeit vor dem Tag werden beim nächsten Lauf
+  nachträglich markiert, das repariert sich also von selbst. `-AppDisplayName` und `-RbacScopeName`
+  braucht es damit nur noch für die Ersteinrichtung oder zur Abgrenzung, und
+  `delete-app-registration.ps1` findet sein Ziel auf demselben Weg. Mehrere unabhängige
+  Installationen in einem Tenant brauchen je ein eigenes `-ResourceTag`; teilen sie sich eines,
+  listet das Skript die Kandidaten auf und fragt nach, statt zu raten.
+
 ### Behoben
 
 - **Ein Apostroph in `-AppDisplayName` machte die Suche nach der App-Registrierung kaputt** – in
