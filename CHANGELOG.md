@@ -8,6 +8,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Mails sent to the customer now carry their send time in the journal header**, the same way
+  received mails already did. The badge on an outgoing note ends with `HelpdeskMessage.sent_at`
+  (tooltip *Sent on*), so an agent can follow the whole correspondence on one time axis instead
+  of reading the outgoing side off the journal's own timestamp, which is when the note was saved
+  rather than when the mail left.
+- **`scripts/README.md` (+ its German mirror) documents the Microsoft 365 permission model.** How
+  the tenant-wide Entra application permissions and the Exchange Online RBAC scope interact (and
+  why the setup is only complete once the former are removed), plus a comparison of the four
+  mailbox scope options along the axis that actually decides between them: who can onboard the
+  next mailbox, and what they need in order to do it — from "an Exchange Administrator runs the
+  script" (`EmailList`) to "whoever creates the shared mailbox sets one attribute"
+  (`CustomAttribute`). Includes the migration path between options and a troubleshooting section.
+
 ### Changed
 
 - **`scripts/setup-azure-app.ps1` can now add mailboxes to an existing setup.** The script used
@@ -38,16 +53,6 @@
 
   The script grants access to mailboxes, it does not create them — the mailboxes still have to
   exist in the tenant.
-
-### Added
-
-- **`scripts/README.md` (+ its German mirror) documents the Microsoft 365 permission model.** How the tenant-wide Entra
-  application permissions and the Exchange Online RBAC scope interact (and why the setup is only
-  complete once the former are removed), plus a comparison of the four mailbox scope options along
-  the axis that actually decides between them: who can onboard the next mailbox, and what they
-  need in order to do it — from "an Exchange Administrator runs the script" (`EmailList`) to
-  "whoever creates the shared mailbox sets one attribute" (`CustomAttribute`). Includes the
-  migration path between options and a troubleshooting section.
 
 ## [0.2.4] - 2026-08-07
 

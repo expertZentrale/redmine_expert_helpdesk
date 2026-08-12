@@ -214,7 +214,8 @@
       :to          => m.recipient_to.to_s,
       :cc          => m.recipient_cc.to_s,
       :bcc         => m.recipient_bcc.to_s,
-      :attachments => m.sent_attachments.to_s
+      :attachments => m.sent_attachments.to_s,
+      :sentAt      => (m.sent_at ? format_time(m.sent_at) : nil)
     }
   }.to_json %>;
 
@@ -269,7 +270,7 @@
   function injectBadges() {
     hdMessages.forEach(function(msg) {
       var h4 = noteHeaderFor(msg.journalId);
-      if (h4) badgeTarget(h4).appendChild(buildBadge(msg.to, msg.cc, msg.bcc, msg.attachments));
+      if (h4) badgeTarget(h4).appendChild(buildBadge(msg.to, msg.cc, msg.bcc, msg.attachments, msg.sentAt));
     });
 
     hdIncoming.forEach(function(msg) {
@@ -370,7 +371,11 @@
     return wrap;
   }
 
-  function buildBadge(to, cc, bcc, attachments) {
+  // Badge for outgoing mails: ✉ recipient(s) 📎 attachments <send time>.
+  // The send time mirrors the incoming badge so both directions of the
+  // conversation can be followed on the same time axis (the journal header's
+  // own time is when the note was saved, not when the mail left).
+  function buildBadge(to, cc, bcc, attachments, sentAt) {
     var toAddrs = (to || '').split(/[,;]+/).map(function(a){return a.trim();}).filter(Boolean);
     var wrap = document.createElement('span');
     wrap.className = 'helpdesk-mail-header';
@@ -425,6 +430,14 @@
         attSpan.textContent = attFiles.length === 1 ? attFiles[0] : attFiles.length + ' Anh\u00e4nge';
         wrap.appendChild(attSpan);
       }
+    }
+
+    if (sentAt) {
+      var time = document.createElement('span');
+      time.className = 'hd-recipient';
+      time.title = '<%= j l(:label_helpdesk_sent_on) %>';
+      time.textContent = sentAt;
+      wrap.appendChild(time);
     }
 
     return wrap;

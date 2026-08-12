@@ -505,8 +505,11 @@ configurable under *Administration → Plugins → Redmine expert Helpdesk → L
 production log, which by default records `info` and above.
 
 Stored recipient addresses are shown as badges in the journal headers after
-page load (client-side, by comparing `HelpdeskMessage.sent_at` with
-`Journal.created_on`, tolerance 30 seconds).
+page load (client-side, matched through the journal link stored in
+`helpdesk_messages.journal_id`). The badge ends with the **send time**
+(`HelpdeskMessage.sent_at`), just like the badge on received mails shows their
+send time — so both directions of the conversation can be followed on one time
+axis, independently of when the journal entry itself was saved.
 
 **Automatic field update after sending**: Optionally, a target status and
 automatic assignment to the sender can be configured in the project settings

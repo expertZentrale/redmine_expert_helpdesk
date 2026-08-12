@@ -7,6 +7,23 @@
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **An Kunden gesendete Mails zeigen ihren Sendezeitpunkt jetzt auch in der Journalüberschrift** –
+  so wie eingehende Mails das bereits taten. Das Badge einer ausgehenden Notiz endet mit
+  `HelpdeskMessage.sent_at` (Tooltip *Gesendet am*), womit sich der gesamte Schriftwechsel auf
+  einer Zeitachse verfolgen lässt, statt die ausgehende Seite am Zeitstempel des Journaleintrags
+  ablesen zu müssen – der sagt, wann die Notiz gespeichert wurde, nicht wann die Mail rausging.
+- **`scripts/README.md` + `scripts/README.de.md` beschreiben das Berechtigungsmodell in
+  Microsoft 365.** Wie die tenantweiten Entra-Anwendungsberechtigungen und der
+  Exchange-Online-RBAC-Scope zusammenwirken (und warum das Setup erst vollständig ist, wenn
+  Erstere wieder entfernt sind), dazu ein Vergleich der vier Varianten der Postfach-Auswahl
+  entlang der Frage, die tatsächlich zwischen ihnen entscheidet: wer das nächste Postfach
+  aufnehmen kann und was er oder sie dafür braucht – von „eine Exchange-Administratorin führt
+  das Skript aus“ (`EmailList`) bis „wer das freigegebene Postfach anlegt, setzt ein Attribut
+  mit“ (`CustomAttribute`). Mit Migrationspfad zwischen den Varianten und einem Abschnitt zur
+  Fehlersuche.
+
 ### Geändert
 
 - **`scripts/setup-azure-app.ps1` kann Postfächer in ein bestehendes Setup aufnehmen.** Bisher
@@ -40,18 +57,6 @@
 
   Das Skript vergibt Zugriff auf Postfächer, es legt sie nicht an – die Postfächer müssen weiterhin
   im Tenant vorhanden sein.
-
-### Hinzugefügt
-
-- **`scripts/README.md` + `scripts/README.de.md` beschreiben das Berechtigungsmodell in
-  Microsoft 365.** Wie die
-  tenantweiten Entra-Anwendungsberechtigungen und der Exchange-Online-RBAC-Scope zusammenwirken
-  (und warum das Setup erst vollständig ist, wenn Erstere wieder entfernt sind), dazu ein Vergleich
-  der vier Varianten der Postfach-Auswahl entlang der Frage, die tatsächlich zwischen ihnen
-  entscheidet: wer das nächste Postfach aufnehmen kann und was er oder sie dafür braucht – von
-  „eine Exchange-Administratorin führt das Skript aus“ (`EmailList`) bis „wer das freigegebene
-  Postfach anlegt, setzt ein Attribut mit“ (`CustomAttribute`). Mit Migrationspfad zwischen den
-  Varianten und einem Abschnitt zur Fehlersuche.
 
 ## [0.2.4] - 2026-08-07
 

@@ -526,9 +526,12 @@ konfigurierbar (`debug` / `info` / `warn` / `error`, Standard `info`) — mit `d
 einem Produktiv-Log heraus, das standardmäßig ab `info` schreibt.
 
 Die gespeicherten Empfängeradressen werden nach dem Seitenaufruf in den
-Journalüberschriften als Badge eingeblendet (clientseitig per Timestamp-
-Abgleich zwischen `HelpdeskMessage.sent_at` und `Journal.created_on`,
-Toleranz 30 Sekunden).
+Journalüberschriften als Badge eingeblendet (clientseitig über die in
+`helpdesk_messages.journal_id` gespeicherte Journal-Verknüpfung). Am Ende des
+Badges steht der **Sendezeitpunkt** (`HelpdeskMessage.sent_at`) – genau wie
+beim Badge eingehender Mails deren Sendezeitpunkt angezeigt wird. So lässt sich
+der Schriftwechsel in beide Richtungen auf einer Zeitachse verfolgen,
+unabhängig davon, wann der Journaleintrag selbst gespeichert wurde.
 
 **Automatische Feldaktualisierung nach dem Senden**: Optional können in den
 Projekteinstellungen (*expert Helpdesk → Antwort-Einstellungen*) ein Ziel-Status
