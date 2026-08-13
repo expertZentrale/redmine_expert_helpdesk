@@ -33,7 +33,7 @@ class HelpdeskReplyTemplatesTest < Redmine::IntegrationTest
       post "/projects/#{@project.identifier}/helpdesk_reply_templates", :params => valid_params
     end
     template = HelpdeskReplyTemplate.order(:id).last
-    assert_redirected_to "/projects/#{@project.identifier}/settings/expert_helpdesk"
+    assert_redirected_to settings_project_path(@project, :tab => 'expert_helpdesk')
     assert_equal @project.id, template.project_id
 
     get "/projects/#{@project.identifier}/helpdesk_reply_templates/#{template.id}/edit"
@@ -41,7 +41,7 @@ class HelpdeskReplyTemplatesTest < Redmine::IntegrationTest
 
     put "/projects/#{@project.identifier}/helpdesk_reply_templates/#{template.id}",
         :params => valid_params(:name => 'Umbenannt')
-    assert_redirected_to "/projects/#{@project.identifier}/settings/expert_helpdesk"
+    assert_redirected_to settings_project_path(@project, :tab => 'expert_helpdesk')
     assert_equal 'Umbenannt', template.reload.name
 
     assert_difference 'HelpdeskReplyTemplate.count', -1 do
@@ -108,7 +108,7 @@ class HelpdeskReplyTemplatesTest < Redmine::IntegrationTest
     HelpdeskReplyTemplate.create!(:project_id => @project.id, :name => 'Projektvorlage', :content => 'p')
     log_user('jsmith', 'jsmith')
 
-    get "/projects/#{@project.identifier}/settings/expert_helpdesk"
+    get settings_project_path(@project, :tab => 'expert_helpdesk')
 
     assert_response :success
     assert_select 'td', :text => /Projektvorlage/
