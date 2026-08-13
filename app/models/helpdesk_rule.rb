@@ -63,12 +63,15 @@ class HelpdeskRule < HelpdeskApplicationRecord
   end
 
   # Human-readable action value for the rules table: resolves the stored
-  # principal, falling back to the raw value when it no longer exists.
+  # principal, falling back to the raw value when it no longer exists. Login
+  # first, in the same order as assignee_from_action_value - a login may consist
+  # of digits only and must not be read as a principal id.
   def action_value_label
     return action_value unless action_type == 'set_assignee'
 
-    principal = action_value.to_s.match?(/\A\d+\z/) ? Principal.find_by(:id => action_value) : nil
-    (principal || User.find_by(:login => action_value))&.name || action_value
+    principal   = User.find_by(:login => action_value)
+    principal ||= Principal.find_by(:id => action_value) if action_value.to_s.match?(/\A\d+\z/)
+    principal&.name || action_value
   end
 
   private

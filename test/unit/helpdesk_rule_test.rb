@@ -236,6 +236,14 @@ class HelpdeskRuleTest < ActiveSupport::TestCase
     assert_equal user.name, rule.action_value_label
   end
 
+  # Redmine allows a login made of digits only - it must not be read as an id.
+  def test_action_value_label_prefers_a_numeric_login_over_the_principal_id
+    group = Group.generate!(:name => 'Second Level')
+    user  = User.generate!(:login => group.id.to_s)
+    rule  = build_rule(:action_type => 'set_assignee', :action_value => group.id.to_s)
+    assert_equal user.name, rule.action_value_label
+  end
+
   def test_action_value_label_falls_back_to_raw_value
     rule = build_rule(:action_type => 'set_assignee', :action_value => 'ghost')
     assert_equal 'ghost', rule.action_value_label
