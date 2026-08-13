@@ -49,6 +49,9 @@ RedmineApp::Application.routes.draw do
     # Projekt-spezifische Helpdesk-Einstellungen (Antwort-Standardwerte)
     resource :helpdesk_project_setting, :only => [:update]
 
+    # Answer templates of this project (tab "expert Helpdesk")
+    resources :helpdesk_reply_templates, :except => [:show]
+
     # SLA-Statistik je Projekt (nur sichtbar/erreichbar bei aktivem SLA)
     resources :helpdesk_sla_statistics, :only => [:index]
 
@@ -84,8 +87,17 @@ RedmineApp::Application.routes.draw do
     resources :helpdesk_rules, :only => [:create, :destroy]
   end
 
+  # Global answer templates (Administration -> Plugins). Own route name,
+  # because the project-scoped templates above serve the same resource.
+  resources :helpdesk_reply_templates, :except => [:show],
+            :as => :global_helpdesk_reply_templates
+
   # Antwort an den Kunden aus dem Ticket heraus
   post 'issues/:issue_id/helpdesk_reply', :to => 'helpdesk_replies#create', :as => 'issue_helpdesk_reply'
+
+  # Quotes and answer templates for the note field (toolbar of the edit form)
+  post 'issues/:issue_id/helpdesk_note_content', :to => 'helpdesk_note_content#create',
+       :as => 'issue_helpdesk_note_content'
 
   # KI-Zusammenfassung manuell (neu) erzeugen (Button in der Ticket-Seitenleiste)
   post 'issues/:issue_id/helpdesk_ai_summary', :to => 'helpdesk_ai#regenerate', :as => 'issue_helpdesk_regenerate_ai'

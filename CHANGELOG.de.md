@@ -9,6 +9,36 @@
 
 ### Hinzugefügt
 
+- **Bisheriger Ticketinhalt lässt sich mit einem Klick in das Notizfeld zitieren.** Wer einem Kunden
+  antwortete, kopierte den Verlauf bislang von Hand zusammen – dabei geht die `>`-Kennzeichnung
+  verloren, mit der Mailprogramme ein Zitat einklappen, und schlimmer: es wandert mit, was gerade
+  markiert war. Neben den Formatierungsicons des Notizfeldes steht jetzt ein **Zitieren**-Button mit
+  drei Einträgen: *Originale Mail* zitiert die Ticketbeschreibung (die Mail, aus der `MailHandler`
+  das Ticket gemacht hat, inklusive bereits aufgelöster Inline-Bilder), *Kompletter Verlauf* nimmt
+  zusätzlich alle öffentlichen Journal-Notizen auf, *Mail-Verlauf* nur diejenigen, zu denen es eine
+  tatsächlich mit dem Kunden ausgetauschte Mail gibt. **Private Notizen bleiben in allen drei Fällen
+  außen vor, auch bei Bearbeitern, die sie lesen dürfen** – der Text ist für einen Kunden bestimmt,
+  also zählt allein die Frage, ob der Kunde ihn sehen darf. Ebenso entfallen die Buchungsnotizen des
+  Plugins (Autoresponder versendet, Phishing-Links entfernt): sie sind öffentlich und vom anonymen
+  Benutzer verfasst, tragen aber keine `HelpdeskMessage` – genau daran unterscheiden sie sich von
+  einer Kundenmail, die unter demselben Benutzer abgelegt wurde. Sehr lange Verläufe werden gekürzt,
+  damit das Notizfeld bedienbar bleibt, und die Werkzeugleiste sagt das, statt es zu verschweigen.
+  Zwischen den Einträgen steht eine Trennlinie, damit sich ein langer Verlauf beim Scrollen
+  überblicken lässt, statt zu einer einzigen Wand aus zitiertem Text zu verschmelzen.
+
+- **Antwortvorlagen sind jetzt eigenständige Objekte – global und je Projekt.** Supportfälle
+  wiederholen sich, trotzdem wurde bisher jede Eingangsbestätigung, jede Rückfrage und jeder
+  Abschlusstext neu getippt. Vorlagen liegen nun in einer eigenen Tabelle, der Button
+  **Antwortvorlagen** steht neben dem Zitieren-Button; die Vorlagen des Projekts erscheinen zuerst,
+  danach die globalen aus *Administration → Plugins* – ein Projekt kann eine zentrale Formulierung
+  also überschreiben, indem es denselben Namen verwendet. Der Inhalt versteht dieselben
+  `{{…}}`-Makros wie Autoresponder-, Kopf-/Fußzeilen- und Betreffvorlagen; ausgewertet werden sie
+  **beim Einfügen auf dem Server**, denn ein Makro braucht das Ticket, dessen Kunden und den
+  handelnden Benutzer – nichts davon kennt der Browser. Bewusst eine echte Tabelle statt eines Werts
+  in den Plugin-Einstellungen: dieser Hash wird immer als Ganzes geschrieben, zwei gleichzeitig
+  speichernde Administratoren würden sich die Vorlagenliste gegenseitig überschreiben, und es gäbe
+  weder Validierung noch Reihenfolge noch projektbezogene Einträge.
+
 - **Der Verbindungstest im Postfach-Formular kann die vollständige Meldung kopieren.** Meldungen von
   Anbietern sind lang und die Statuszeile bricht um – was auf dem Bildschirm lesbar ist, ist also
   nicht unbedingt das, was man in ein Ticket einfügen möchte. **Meldung kopieren** legt den
@@ -130,6 +160,18 @@
   Tenants auflisten lassen.
 
 ### Behoben
+
+- **Bereits am Ticket hängende Bilder kamen beim Kunden nie an.** Zu Inline-Teilen der Mail wurden
+  nur Bilder gemacht, die ein Bearbeiter gerade erst eingefügt oder hineingezogen hatte; alles, was
+  schon am Ticket gespeichert war, blieb als `<img src="image001.png">` stehen – ein relativer Pfad,
+  der in einem Mailprogramm nichts bedeutet, der Kunde sah also ein leeres Kästchen. Solange man ein
+  Bild nur durch Einfügen in eine Antwort bekam, fiel das nicht auf; mit dem Zitieren, das die Bilder
+  der Ursprungsmail mit einem Klick übernimmt, wurde es offensichtlich. Berücksichtigt werden jetzt
+  auch die Bild-Anhänge des Tickets selbst; ein frisch eingefügtes Bild schlägt weiterhin ein
+  gleichnamiges älteres, und Anhänge, deren Dateiname im Text gar nicht vorkommt, wandern nach wie
+  vor nicht in die Mail. Die Auflösung liegt jetzt in `RedmineExpertHelpdesk::ReplyImages`, dem
+  Gegenstück zu `InlineImages` für die ausgehende Richtung, und ist damit durch Tests abgedeckt,
+  statt privat im Antwort-Controller zu stecken.
 
 - **`-WhatIf` hielt die Entra-ID-Schreibzugriffe nicht auf.** Der Parameter war als Probelauf
   dokumentiert und sicherte die Exchange-Online-Aufrufe ab, die Microsoft-Graph-Aufrufe liefen aber

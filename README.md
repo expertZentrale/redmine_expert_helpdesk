@@ -27,6 +27,8 @@ see [Tests](#tests).
   - [Recipe: self-hosted server (Dovecot, Zimbra, hoster)](#recipe-self-hosted-server-dovecot-zimbra-hoster)
 - [Email Processing](#email-processing) — fetch flow, reply matching, sending replies
 - [Contacts / Customer List](#contacts--customer-list)
+- [Quoting prior content](#quoting-prior-content)
+- [Answer templates](#answer-templates)
 - [Triggering a Mail Fetch](#triggering-a-mail-fetch)
 - [Triggering the SLA Check](#triggering-the-sla-check)
 - [Plugin Settings](#plugin-settings)
@@ -68,6 +70,12 @@ see [Tests](#tests).
   whichever backend it uses — Graph or its own SMTP server — and filed in its
   "Sent Items" either way. Supports inline images (CID method), regular
   attachments and multiple recipients in CC/BCC.
+- **Quoting and answer templates**: A **Quote** button next to the formatting
+  icons of the note field inserts the original email, the complete conversation
+  or only the mail exchange — private notes never among them. A **Templates**
+  button inserts a canned response, macros already resolved. See
+  [Quoting prior content](#quoting-prior-content) and
+  [Answer templates](#answer-templates).
 - **Address field autocomplete**: Typing in To/CC/BCC fields suggests matching
   project contacts (from 2 characters, dropdown with keyboard and mouse
   navigation, comma-separated multi-value). Display names containing commas
@@ -556,6 +564,64 @@ axis, independently of when the journal entry itself was saved.
 automatic assignment to the sender can be configured in the project settings
 (*Helpdesk → Reply settings*). Both are applied after a successful send,
 before the ticket form is submitted.
+
+### Quoting prior content
+
+Next to the formatting icons of the note editor sits a **Quote** button with
+three entries. Each appends its text at the end of the note field, separated by
+a blank line — nothing you already typed is overwritten.
+
+| Entry | What it quotes |
+|-------|----------------|
+| Original email | The ticket description, i.e. the mail `MailHandler` turned into the ticket. Inline images have already been resolved by then, so the quote matches what you see on the ticket. |
+| Complete conversation | The description plus every public journal note, oldest first, each with its author and timestamp. |
+| Email conversation | The description plus only those notes that belong to a mail actually received from or sent to the customer. |
+
+Three rules worth knowing:
+
+- **Private notes are never quoted**, not even for agents who hold
+  `view_private_notes`. The result is meant for a customer, so the only relevant
+  question is whether the customer may see it. Private AI summaries drop out for
+  the same reason.
+- **The plugin's own bookkeeping notes are skipped** in *Complete conversation* —
+  "autoresponder sent", "phishing links removed". They are public and written by
+  the anonymous user, but carry no `HelpdeskMessage`; a real customer mail always
+  does, even when `MailHandler` files it under the anonymous user.
+- **An outgoing mail whose journal link was never established cannot be quoted**
+  in *Email conversation*. `helpdesk_messages` stores no message body, so a row
+  without `journal_id` — the autoresponder and the initial mail of an outgoing
+  ticket — has no text of its own. For those tickets the description *is* the
+  mail that was sent, and it is always included.
+
+Entries are separated by a horizontal rule (`---`), so a long history stays
+skimmable while scrolling. Very long histories are capped (50 entries / 60 000
+characters) so the note field stays editable; the toolbar reports that entries
+were left out.
+
+Images referenced in the note — including the ones a quote brings along from the
+original mail — are sent as inline parts, so the customer sees the pictures and
+not an empty box.
+
+### Answer templates
+
+Since support cases repeat, standard answers can be stored as templates and
+inserted from a **Templates** button next to the Quote button. A project's own
+templates are listed first, then the global ones, each ordered by position and
+name; a project can therefore override a central wording by reusing its name.
+
+- **Global templates**: *Administration → Plugins → Redmine expert Helpdesk →
+  Answer templates*. Admins only.
+- **Project templates**: project settings, tab *expert Helpdesk*, section
+  *Answer templates*. Requires `manage_helpdesk`.
+
+The content understands the same macros as autoresponder, header/footer and
+subject templates (see [Template Macros](#template-macros)). They are expanded on
+the server at insertion time, because a macro needs the ticket, its customer and
+the acting user. On a ticket without a linked customer the contact macros simply
+render empty — templates still work there, as does quoting.
+
+Inserting a quote or a template requires the `send_helpdesk_reply` permission,
+the same one that gates the reply form.
 
 ## Contacts / Customer List
 

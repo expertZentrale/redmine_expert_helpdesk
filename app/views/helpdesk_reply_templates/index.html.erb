@@ -1,0 +1,9 @@
+<h2><%= @project ? l(:label_helpdesk_reply_templates_project) : l(:label_helpdesk_reply_templates_global) %></h2>
+
+<div class="contextual">
+  <%= link_to hd_icon_label('add', l(:label_helpdesk_reply_template_new)),
+              hd_new_reply_template_path(@project), :class => 'icon icon-add' %>
+</div>
+
+<%= render :partial => 'helpdesk_reply_templates/list',
+           :locals  => { :templates => @templates, :project => @project } %>

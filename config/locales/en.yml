@@ -316,7 +316,7 @@ en:
   mail_subject_helpdesk_sla_breach: 'SLA breached'
   mail_body_helpdesk_sla_breach: 'The SLA target for issue #%{id} "%{subject}" has been breached:'
 
-  label_helpdesk_reply_templates: Reply templates
+  label_helpdesk_reply_header_footer: Header and footer
   field_helpdesk_reply_header: Header
   field_helpdesk_reply_footer: Footer
   label_helpdesk_global_footer: 'Central signature'
@@ -329,6 +329,37 @@ en:
   text_helpdesk_footer_mode_info: 'Controls how this mailbox footer is combined with the central signature (Administration → Plugins). As long as no central signature is configured, "Use central signature" falls back to the mailbox footer.'
   label_helpdesk_footer_preview: 'Effective footer preview'
   text_helpdesk_footer_preview_info: 'Combination of mailbox footer and central signature according to the footer mode; macros are replaced on sending.'
+
+  # --- Quotes and answer templates (note field toolbar) ---------------------
+  label_helpdesk_quote: 'Quote'
+  label_helpdesk_quote_original_mail: 'Original email'
+  label_helpdesk_quote_conversation: 'Complete conversation'
+  label_helpdesk_quote_mail_conversation: 'Email conversation'
+  text_helpdesk_quote_wrote_on: '%{user} wrote on %{date}:'
+  text_helpdesk_quote_truncated: 'Conversation truncated – not every entry was inserted.'
+  label_helpdesk_note_content_loading: 'Loading …'
+  error_helpdesk_note_content_failed: 'Insert failed:'
+  error_helpdesk_note_content_unknown_source: 'Unknown source for the note content.'
+  error_helpdesk_note_content_empty: 'There is nothing to insert.'
+
+  label_helpdesk_reply_templates: 'Answer templates'
+  label_helpdesk_reply_templates_project: 'Answer templates of this project'
+  label_helpdesk_reply_templates_global: 'Global answer templates'
+  label_helpdesk_reply_templates_empty: 'No templates available'
+  label_helpdesk_reply_templates_manage: 'Manage templates …'
+  label_helpdesk_reply_template_new: 'New answer template'
+  label_helpdesk_reply_template_edit: 'Edit answer template'
+  label_helpdesk_reply_template_global_suffix: '(global)'
+  field_helpdesk_reply_template_name: 'Name'
+  field_helpdesk_reply_template_content: 'Content'
+  field_helpdesk_reply_template_position: 'Position'
+  field_helpdesk_reply_template_enabled: 'Enabled'
+  text_helpdesk_reply_template_position_info: 'Determines the order in the picker.'
+  text_helpdesk_reply_template_enabled_info: 'Only enabled templates appear in the picker.'
+  text_helpdesk_reply_templates_info: 'Canned responses agents can insert into the note field. Macros are expanded on insertion with the current ticket, customer and user.'
+  text_helpdesk_reply_templates_global_info: 'Global templates are offered in every helpdesk project in addition to that project''s own ones.'
+  text_helpdesk_reply_templates_global_hint: 'In addition, the global templates from the plugin settings are offered on the ticket.'
+  error_helpdesk_reply_template_not_found: 'This answer template is not available for the ticket.'
 
   label_helpdesk_rules: Automation rules
   label_helpdesk_rule_new: New rule

@@ -27,6 +27,8 @@ siehe [Tests](#tests).
   - [Rezept: Google Workspace / Gmail (einmalige Zustimmung)](#rezept-google-workspace--gmail-einmalige-zustimmung)
   - [Rezept: selbst gehosteter Server (Dovecot, Zimbra, Hoster)](#rezept-selbst-gehosteter-server-dovecot-zimbra-hoster)
 - [E-Mail-Verarbeitung](#e-mail-verarbeitung) — Abrufablauf, Antwortzuordnung, Antwortversand
+- [Bisherigen Inhalt zitieren](#bisherigen-inhalt-zitieren)
+- [Antwortvorlagen](#antwortvorlagen)
 - [Kontakte / Kundenliste](#kontakte--kundenliste)
 - [Mailabruf auslösen](#mailabruf-auslösen)
 - [SLA-Prüfung auslösen](#sla-prüfung-auslösen)
@@ -69,6 +71,12 @@ siehe [Tests](#tests).
   über dessen jeweiliges Backend — Graph oder der eigene SMTP-Server — und in beiden
   Fällen abgelegt in „Gesendete Elemente". Unterstützt Inline-Bilder (via CID),
   normale Anhänge sowie mehrere Empfänger in CC/BCC.
+- **Zitieren und Antwortvorlagen**: Ein **Zitieren**-Button neben den
+  Formatierungsicons des Notizfeldes fügt die originale Mail, den kompletten
+  Verlauf oder nur den Mailwechsel ein — private Notizen nie. Ein
+  **Antwortvorlagen**-Button fügt einen Textbaustein mit bereits ausgewerteten
+  Makros ein. Siehe [Bisherigen Inhalt zitieren](#bisherigen-inhalt-zitieren)
+  und [Antwortvorlagen](#antwortvorlagen).
 - **Autocomplete in Adressfeldern**: Beim Tippen in An/CC/BCC werden passende
   Kontakte des Projekts vorgeschlagen (ab 2 Zeichen, Dropdown mit Tastatur-
   und Mausnavigation, kommagetrennte Mehrfacheingabe). Display-Namen mit
@@ -581,6 +589,66 @@ Projekteinstellungen (*expert Helpdesk → Antwort-Einstellungen*) ein Ziel-Stat
 und die automatische Zuweisung an den Absender konfiguriert werden. Beide
 werden nach erfolgreichem Versand gesetzt, bevor das Ticket-Formular
 abgesendet wird.
+
+### Bisherigen Inhalt zitieren
+
+Neben den Formatierungsicons des Notizfeldes steht ein **Zitieren**-Button mit
+drei Einträgen. Jeder hängt seinen Text unten an das Notizfeld an, getrennt
+durch eine Leerzeile — bereits Getipptes wird nicht überschrieben.
+
+| Eintrag | Was zitiert wird |
+|---------|------------------|
+| Originale Mail | Die Ticketbeschreibung, also die Mail, aus der `MailHandler` das Ticket gemacht hat. Inline-Bilder sind zu diesem Zeitpunkt bereits aufgelöst, das Zitat entspricht also dem, was im Ticket steht. |
+| Kompletter Verlauf | Die Beschreibung sowie alle öffentlichen Journal-Notizen, älteste zuerst, jeweils mit Verfasser und Zeitstempel. |
+| Mail-Verlauf | Die Beschreibung sowie nur die Notizen, zu denen es eine tatsächlich vom oder an den Kunden gesendete Mail gibt. |
+
+Drei Regeln, die man kennen sollte:
+
+- **Private Notizen werden nie zitiert**, auch nicht für Bearbeiter mit
+  `view_private_notes`. Das Ergebnis ist für einen Kunden bestimmt, also zählt
+  allein, ob der Kunde es sehen darf. Private KI-Zusammenfassungen entfallen aus
+  demselben Grund.
+- **Die Buchungsnotizen des Plugins bleiben außen vor** — „Autoresponder
+  versendet", „Phishing-Links entfernt". Sie sind öffentlich und vom anonymen
+  Benutzer verfasst, tragen aber keine `HelpdeskMessage`; eine echte Kundenmail
+  tut das immer, auch wenn `MailHandler` sie unter dem anonymen Benutzer ablegt.
+- **Eine ausgehende Mail ohne Journal-Verknüpfung lässt sich nicht zitieren.**
+  `helpdesk_messages` speichert keinen Nachrichtentext, ein Eintrag ohne
+  `journal_id` — der Autoresponder und die initiale Mail eines ausgehenden
+  Tickets — hat also keinen eigenen Text. Bei diesen Tickets *ist* die
+  Beschreibung die versendete Mail, und die ist immer enthalten.
+
+Zwischen den Einträgen steht eine Trennlinie (`---`), damit ein langer Verlauf
+beim Scrollen überblickbar bleibt. Sehr lange Verläufe werden gekürzt
+(50 Einträge / 60 000 Zeichen), damit das Notizfeld bedienbar bleibt; die
+Werkzeugleiste weist darauf hin.
+
+Im Text referenzierte Bilder – auch die, die ein Zitat aus der Ursprungsmail
+mitbringt – werden als Inline-Teile der Mail versendet, der Kunde sieht also die
+Bilder und kein leeres Kästchen.
+
+### Antwortvorlagen
+
+Da sich Supportfälle wiederholen, lassen sich Standardantworten als Vorlagen
+hinterlegen und über einen **Antwortvorlagen**-Button neben dem Zitieren-Button
+einfügen. Zuerst erscheinen die Vorlagen des Projekts, dann die globalen, jeweils
+nach Position und Name; ein Projekt kann eine zentrale Formulierung also
+überschreiben, indem es denselben Namen verwendet.
+
+- **Globale Vorlagen**: *Administration → Plugins → Redmine expert Helpdesk →
+  Antwortvorlagen*. Nur für Administratoren.
+- **Projektvorlagen**: Projekteinstellungen, Reiter *expert Helpdesk*, Abschnitt
+  *Antwortvorlagen*. Erfordert `manage_helpdesk`.
+
+Der Inhalt versteht dieselben Makros wie Autoresponder-, Kopf-/Fußzeilen- und
+Betreffvorlagen (siehe [Makros für Vorlagen](#makros-für-vorlagen)). Ausgewertet werden
+sie beim Einfügen auf dem Server, denn ein Makro braucht das Ticket, dessen
+Kunden und den handelnden Benutzer. Bei einem Ticket ohne zugeordneten Kunden
+bleiben die Kontakt-Makros einfach leer — Vorlagen funktionieren dort trotzdem,
+ebenso das Zitieren.
+
+Zitate und Vorlagen einzufügen erfordert die Berechtigung `send_helpdesk_reply`,
+dieselbe, die auch das Antwortformular schützt.
 
 ## Kontakte / Kundenliste
 

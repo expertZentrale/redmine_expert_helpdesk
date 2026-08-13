@@ -55,6 +55,24 @@
   <% end %>
 </fieldset>
 
+<%# --- Answer templates of this project --- %>
+<fieldset class="tabular" style="margin-bottom: 14px;">
+  <legend><%= l(:label_helpdesk_reply_templates) %></legend>
+  <p><em class="info"><%= l(:text_helpdesk_reply_templates_info) %></em></p>
+  <p>
+    <%= link_to hd_icon_label('add', l(:label_helpdesk_reply_template_new)),
+                new_helpdesk_reply_template_path(:project_id => @project),
+                :class => 'icon icon-add' %>
+  </p>
+  <%= render :partial => 'helpdesk_reply_templates/list',
+             :locals  => { :templates => HelpdeskReplyTemplate.for_project(@project)
+                                                              .order(:position => :asc, :name => :asc),
+                           :project   => @project } %>
+  <% if HelpdeskReplyTemplate.global.active.exists? %>
+    <p><em class="info"><%= l(:text_helpdesk_reply_templates_global_hint) %></em></p>
+  <% end %>
+</fieldset>
+
 <%# --- SLA-Einstellungen --- %>
 <fieldset class="tabular" style="margin-bottom: 14px;">
   <legend><%= l(:label_helpdesk_sla) %></legend>

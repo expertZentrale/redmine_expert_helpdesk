@@ -71,3 +71,71 @@ tr.issue.hd-awaiting td:first-child { box-shadow: inset 3px 0 0 #e0a800; }
 div#activity dt.icon-helpdesk-message-in   svg.icon-svg { color: #2e7d32; fill: currentColor; stroke: none; }
 div#activity dt.icon-helpdesk-message-out  svg.icon-svg { color: #4a90c7; fill: currentColor; stroke: none; }
 div#activity dt.icon-helpdesk-message-init svg.icon-svg { color: #777;    fill: currentColor; stroke: none; }
+
+/* --- Note field toolbar: quoting and answer templates --------------------
+ * The buttons are attached by JavaScript to the div.jstElements drawn by
+ * jsToolBar; the menu hangs off <body> so no overflow can clip it and so it
+ * sits outside #issue-form.
+ */
+/* Size, border and hover state come from Redmine's own rule for
+ * .jstElements button — the buttons are meant to be indistinguishable from the
+ * formatting icons. Own size or spacing rules would have no effect here anyway,
+ * because the core rules are more specific; only the icon and the open state
+ * come from here. */
+.jstElements button.hd-tb-btn[aria-expanded="true"] { background-color: #d4e0ff; }
+
+/* Icons as data URIs rather than an SVG sprite: depending on the Redmine
+ * version plugin images live under different URLs (digested on top of that
+ * under Propshaft), while a background-image in the stylesheet is reachable
+ * the same way everywhere.
+ * Both icons: Bootstrap Icons v1.11 (MIT), "quote" and "card-text". */
+.jstb_hd_quote {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23333'%3E%3Cpath d='M12 12a1 1 0 0 0 1-1V8.558a1 1 0 0 0-1-1h-1.388q0-.527.062-1.054.093-.558.31-.992t.559-.683q.34-.279.868-.279V3q-.868 0-1.52.372a3.3 3.3 0 0 0-1.085.992 4.9 4.9 0 0 0-.62 1.458A7.7 7.7 0 0 0 9 7.558V11a1 1 0 0 0 1 1zm-6 0a1 1 0 0 0 1-1V8.558a1 1 0 0 0-1-1H4.612q0-.527.062-1.054.094-.558.31-.992.217-.434.559-.683.34-.279.868-.279V3q-.868 0-1.52.372a3.3 3.3 0 0 0-1.085.992 4.9 4.9 0 0 0-.62 1.458A7.7 7.7 0 0 0 3 7.558V11a1 1 0 0 0 1 1z'/%3E%3C/svg%3E");
+}
+.jstb_hd_templates {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23333'%3E%3Cpath d='M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2z'/%3E%3Cpath d='M3 5.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M3 8a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 8m0 2.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5'/%3E%3C/svg%3E");
+}
+/* Fallback bar for when no jsToolBar is drawn at all (text formatting off) */
+.hd-tb-standalone { margin-bottom: 4px; }
+
+.hd-tb-menu {
+  position: absolute;
+  z-index: 10000;
+  background: #fff;
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+  min-width: 220px;
+  max-width: 420px;
+  padding: 2px 0;
+}
+.hd-tb-item {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 5px 12px;
+  font-size: 0.9em;
+  color: #333;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hd-tb-item:hover, .hd-tb-item:focus { background: #e8f0fc; outline: none; }
+.hd-tb-item[disabled] { color: #999; cursor: default; background: none; }
+.hd-tb-item-suffix { color: #888; font-size: 0.85em; }
+.hd-tb-sep { border-top: 1px solid #ddd; margin: 3px 0; }
+
+.hd-tb-flash {
+  margin: 4px 0;
+  padding: 4px 8px;
+  font-size: 0.9em;
+  border-radius: 3px;
+  background: #eef2fa;
+  color: #445;
+}
+.hd-tb-flash-error { background: #fdecea; color: #7f1313; border: 1px solid #e57373; }

@@ -1,0 +1,34 @@
+<%# Table of the answer templates of one scope.
+    Locals: templates (Enumerable), project (Project or nil for global) %>
+<% if templates.any? %>
+<table class="list">
+  <thead>
+    <tr>
+      <th><%= l(:field_helpdesk_reply_template_position) %></th>
+      <th><%= l(:field_helpdesk_reply_template_name) %></th>
+      <th><%= l(:field_helpdesk_reply_template_enabled) %></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% templates.each do |template| %>
+    <tr>
+      <td><%= template.position %></td>
+      <td><%= link_to h(template.name), hd_edit_reply_template_path(template, project) %></td>
+      <td><%= template.enabled? ? l(:general_text_Yes) : l(:general_text_No) %></td>
+      <td class="buttons">
+        <%= link_to hd_icon_label('edit', l(:button_edit)),
+                    hd_edit_reply_template_path(template, project), :class => 'icon icon-edit' %>
+        <%= link_to hd_icon_label('del', l(:button_delete)),
+                    hd_reply_template_path(template, project),
+                    :method => :delete,
+                    :data => { :confirm => l(:text_are_you_sure) },
+                    :class => 'icon icon-del' %>
+      </td>
+    </tr>
+    <% end %>
+  </tbody>
+</table>
+<% else %>
+<p class="nodata"><%= l(:label_no_data) %></p>
+<% end %>

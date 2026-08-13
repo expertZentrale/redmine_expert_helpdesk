@@ -1,0 +1,30 @@
+<%# Form fields of an answer template. Expects @template and @project (nil = global). %>
+<%= error_messages_for 'template' %>
+
+<div class="box tabular">
+  <p>
+    <label for="helpdesk_reply_template_name"><%= l(:field_helpdesk_reply_template_name) %> <span class="required">*</span></label>
+    <%= text_field_tag 'helpdesk_reply_template[name]', @template.name, :size => 60,
+                       :id => 'helpdesk_reply_template_name' %>
+  </p>
+  <p>
+    <label for="helpdesk_reply_template_position"><%= l(:field_helpdesk_reply_template_position) %></label>
+    <%= number_field_tag 'helpdesk_reply_template[position]', @template.position || 1, :size => 4,
+                         :id => 'helpdesk_reply_template_position' %>
+    <em class="info"><%= l(:text_helpdesk_reply_template_position_info) %></em>
+  </p>
+  <p>
+    <label for="helpdesk_reply_template_enabled"><%= l(:field_helpdesk_reply_template_enabled) %></label>
+    <%= hidden_field_tag 'helpdesk_reply_template[enabled]', '0', :id => nil %>
+    <%= check_box_tag 'helpdesk_reply_template[enabled]', '1', @template.enabled?,
+                      :id => 'helpdesk_reply_template_enabled' %>
+    <em class="info"><%= l(:text_helpdesk_reply_template_enabled_info) %></em>
+  </p>
+  <p>
+    <label for="helpdesk_reply_template_content"><%= l(:field_helpdesk_reply_template_content) %> <span class="required">*</span></label>
+    <%= text_area_tag 'helpdesk_reply_template[content]', @template.content, :cols => 70, :rows => 12,
+                      :id => 'helpdesk_reply_template_content' %>
+    <%= render :partial => 'helpdesk/macro_chips',
+               :locals  => { :field_id => 'helpdesk_reply_template_content' } %>
+  </p>
+</div>

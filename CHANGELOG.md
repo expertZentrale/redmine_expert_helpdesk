@@ -10,6 +10,33 @@
 
 ### Added
 
+- **Prior ticket content can be quoted into the note field with one click.** Agents answering a
+  customer were copy-pasting out of the ticket history by hand, which loses the `>` prefixing mail
+  clients need to fold a quote — and, worse, silently drags along whatever was selected. A
+  **Quote** button now sits next to the formatting icons of the note editor with three entries:
+  *Original email* quotes the ticket description (the mail `MailHandler` turned into the ticket,
+  with inline images already resolved), *Complete conversation* adds every public journal note,
+  and *Email conversation* adds only the notes that belong to a mail actually exchanged with the
+  customer. **Private notes are excluded from all three, including for agents who are allowed to
+  read them** — the text is destined for a customer, so "may the customer see it" is the only
+  question that matters. The plugin's own bookkeeping notes (autoresponder sent, phishing links
+  removed) are dropped as well: they are public and authored by the anonymous user, but carry no
+  `HelpdeskMessage`, which is exactly what distinguishes them from a customer mail filed under the
+  same user. Very long histories are capped so the note field stays editable, and the toolbar says
+  so instead of truncating silently. Entries are separated by a horizontal rule, so a long history
+  can be skimmed while scrolling instead of running together into one wall of quoted text.
+
+- **Answer templates are now first-class objects, globally and per project.** Support cases repeat,
+  and until now every acknowledgement, follow-up question and closing text was retyped. Templates
+  live in their own table with a **Templates** button next to the Quote button; a project's own
+  templates are offered first, then the global ones from *Administration → Plugins*, so a project
+  can override a central wording by using the same name. The content understands the same `{{…}}`
+  macros as autoresponder, header/footer and subject templates, and they are expanded **on the
+  server at insertion time** — a macro needs the ticket, its customer and the acting user, none of
+  which the browser has. A real table rather than a value in the plugin settings hash, because that
+  hash is written atomically: two admins saving the settings page would clobber each other's
+  template list, and there would be no validation, ordering or per-project rows.
+
 - **The mailbox form's connection test can copy the whole message.** Provider errors are long and
   the status line wraps, so what is readable on screen is not necessarily what you want to paste
   into a ticket. **Copy message** puts the full text on the clipboard; where the clipboard API is
@@ -121,6 +148,17 @@
   environment.
 
 ### Fixed
+
+- **Images already attached to the ticket never reached the customer.** Only images an agent had
+  just pasted or dropped into the form were turned into inline mail parts; anything already stored
+  on the ticket was left as `<img src="image001.png">`, a relative path that means nothing in a
+  mail client, so the customer received an empty box. This was invisible while the only way to get
+  an image into a reply was to paste it, and became obvious the moment quoting made it easy to
+  reference the pictures of the original mail. The candidate set now covers the ticket's own image
+  attachments as well; a freshly pasted image still wins over an older one of the same name, and
+  attachments whose filename does not actually occur in the body are still left out of the mail.
+  The resolution moved into `RedmineExpertHelpdesk::ReplyImages`, the outgoing counterpart of
+  `InlineImages`, so it is covered by tests instead of living privately in the reply controller.
 
 - **`-WhatIf` did not stop the Entra ID writes.** It was documented as a dry run and guarded the
   Exchange Online calls, but the Microsoft Graph ones ran regardless — so
