@@ -1,0 +1,7 @@
+<h2><%= l(:label_helpdesk_reply_template_new) %></h2>
+
+<%= form_tag hd_reply_templates_path(@project) do %>
+  <%= render :partial => 'form' %>
+  <%= submit_tag l(:button_create) %>
+  <%= link_to l(:button_cancel), hd_reply_templates_path(@project) %>
+<% end %>

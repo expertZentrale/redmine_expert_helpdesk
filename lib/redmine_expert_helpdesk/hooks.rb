@@ -118,8 +118,10 @@ module RedmineExpertHelpdesk
       })
     end
 
-    # Antwortformular ("Als Mail an Kunden senden") im Bearbeitungsformular.
-    # Kein Kontakt zugeordnet: Zuordnungsformular erscheint in der Seitenleiste (view_issues_sidebar_queries_bottom).
+    # Erweiterungen des Bearbeitungsformulars: Werkzeugleiste (Zitieren und
+    # Antwortvorlagen) und darunter das Antwortformular. Die Werkzeugleiste
+    # haengt nicht am Kundenkontakt — den Verlauf zitiert man gerade dann, wenn
+    # noch kein Kontakt zugeordnet ist.
     def view_issues_edit_notes_bottom(context = {})
       issue = context[:issue]
       project = issue.project
@@ -128,31 +130,10 @@ module RedmineExpertHelpdesk
 
       info    = HelpdeskTicketInfo.for_issue(issue)
       contact = info&.helpdesk_contact
-      return '' if contact.nil?  # Zuordnungsformular wird in der Seitenleiste angezeigt
 
-      # Kontakt gefunden: Antwortformular rendern
-      mailbox = info.helpdesk_mailbox&.enabled? ? info.helpdesk_mailbox : nil
-      mailbox ||= project.helpdesk_mailboxes.enabled.first
-
-      ctx = { :issue => issue, :contact => contact, :user => User.current }
-      footer_text = mailbox ?
-        RedmineExpertHelpdesk::TemplateRenderer.render(mailbox.effective_footer_template, ctx) : ''
-
-      project_setting  = HelpdeskProjectSetting.for_project(project)
-      send_by_default  = project_setting.send_reply_by_default
-
-      context[:controller].send(:render_to_string, {
-        :partial => 'helpdesk/reply_in_edit',
-        :locals  => {
-          :issue                  => issue,
-          :contact                => contact,
-          :project                => project,
-          :footer_text            => footer_text.to_s,
-          :send_by_default        => send_by_default,
-          :reply_status_id        => project_setting.reply_status_id,
-          :reply_assign_to_sender => project_setting.reply_assign_to_sender
-        }
-      })
+      parts = [note_toolbar(context, issue, project)]
+      parts << reply_form(context, issue, project, info, contact) if contact
+      parts.join.html_safe
     end
 
     # "Helpdesk-Ticket erstellen"-Sektion im neuen Ticket-Formular.
@@ -270,6 +251,52 @@ module RedmineExpertHelpdesk
     end
 
     private
+
+    # Zitier- und Vorlagen-Buttons in der Werkzeugleiste des Notizfeldes.
+    def note_toolbar(context, issue, project)
+      manage_url = nil
+      if User.current.allowed_to?(:manage_helpdesk, project)
+        manage_url = context[:controller].send(:settings_project_path, project, :tab => 'expert_helpdesk')
+      end
+
+      context[:controller].send(:render_to_string, {
+        :partial => 'helpdesk/note_toolbar',
+        :locals  => {
+          :issue      => issue,
+          :project    => project,
+          :templates  => HelpdeskReplyTemplate.active.available_for(project).to_a,
+          :manage_url => manage_url
+        }
+      })
+    end
+
+    # Antwortformular ("Als Mail an Kunden senden"). Ohne Kundenkontakt wird
+    # stattdessen das Zuordnungsformular in der Seitenleiste angezeigt
+    # (view_issues_sidebar_queries_bottom).
+    def reply_form(context, issue, project, info, contact)
+      mailbox = info.helpdesk_mailbox&.enabled? ? info.helpdesk_mailbox : nil
+      mailbox ||= project.helpdesk_mailboxes.enabled.first
+
+      ctx = { :issue => issue, :contact => contact, :user => User.current }
+      footer_text = mailbox ?
+        RedmineExpertHelpdesk::TemplateRenderer.render(mailbox.effective_footer_template, ctx) : ''
+
+      project_setting  = HelpdeskProjectSetting.for_project(project)
+      send_by_default  = project_setting.send_reply_by_default
+
+      context[:controller].send(:render_to_string, {
+        :partial => 'helpdesk/reply_in_edit',
+        :locals  => {
+          :issue                  => issue,
+          :contact                => contact,
+          :project                => project,
+          :footer_text            => footer_text.to_s,
+          :send_by_default        => send_by_default,
+          :reply_status_id        => project_setting.reply_status_id,
+          :reply_assign_to_sender => project_setting.reply_assign_to_sender
+        }
+      })
+    end
 
     # Zaehler "Wartet auf Bearbeitung" fuer die Seitenleiste der Ticket-Liste.
     # Verlinkt auf denselben Filter wie die Query-Spalte, damit Zaehler und Liste

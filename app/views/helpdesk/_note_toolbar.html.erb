@@ -1,0 +1,27 @@
+<%# Werkzeugleisten-Erweiterungen des Notizfeldes: Zitieren und Antwortvorlagen.
+    Wird via view_issues_edit_notes_bottom-Hook eingebunden, unabhaengig davon,
+    ob dem Ticket ein Kunde zugeordnet ist.
+    Gibt nur eine JSON-Insel aus, kein inline ausfuehrbares Script (CSP-freundlich).
+    Locals: issue, project, templates, manage_url %>
+<div id="hd-tb-flash" class="hd-tb-flash" style="display:none;"></div>
+
+<script type="application/json" id="hd-note-toolbar-data"><%= raw({
+  :textareaId => 'issue_notes',
+  :postUrl    => issue_helpdesk_note_content_path(issue),
+  :manageUrl  => manage_url,
+  :templates  => templates.map { |t| { :id => t.id, :name => t.name, :global => t.global? } },
+  :labels     => {
+    :quote                => l(:label_helpdesk_quote),
+    :quoteDescription     => l(:label_helpdesk_quote_original_mail),
+    :quoteConversation    => l(:label_helpdesk_quote_conversation),
+    :quoteMailConversation => l(:label_helpdesk_quote_mail_conversation),
+    :templates            => l(:label_helpdesk_reply_templates),
+    :templatesEmpty       => l(:label_helpdesk_reply_templates_empty),
+    :templatesManage      => l(:label_helpdesk_reply_templates_manage),
+    :globalSuffix         => l(:label_helpdesk_reply_template_global_suffix),
+    :loading              => l(:label_helpdesk_note_content_loading),
+    :truncated            => l(:text_helpdesk_quote_truncated),
+    :failed               => l(:error_helpdesk_note_content_failed)
+  }
+}.to_json) %></script>
+<%= javascript_include_tag 'helpdesk_note_toolbar', :plugin => 'redmine_expert_helpdesk' %>

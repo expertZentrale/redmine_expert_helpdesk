@@ -316,7 +316,7 @@ de:
   mail_subject_helpdesk_sla_breach: 'SLA überschritten'
   mail_body_helpdesk_sla_breach: 'Für Ticket #%{id} „%{subject}“ wurde die SLA-Zielzeit überschritten:'
 
-  label_helpdesk_reply_templates: Antwortvorlagen
+  label_helpdesk_reply_header_footer: Kopf- und Fußzeile
   field_helpdesk_reply_header: Kopfzeile
   field_helpdesk_reply_footer: Fußzeile
   label_helpdesk_global_footer: 'Zentrale Signatur'
@@ -329,6 +329,37 @@ de:
   text_helpdesk_footer_mode_info: 'Bestimmt, wie die Fußzeile dieses Postfachs mit der zentralen Signatur (Administration → Plugins) kombiniert wird. Solange keine zentrale Signatur gepflegt ist, wird bei "Zentrale Signatur verwenden" die Postfach-Fußzeile genutzt.'
   label_helpdesk_footer_preview: 'Vorschau effektive Fußzeile'
   text_helpdesk_footer_preview_info: 'Kombination aus Postfach-Fußzeile und zentraler Signatur gemäß Fußzeilen-Modus; Makros werden beim Versand ersetzt.'
+
+  # --- Zitate und Antwortvorlagen (Werkzeugleiste des Notizfeldes) ----------
+  label_helpdesk_quote: 'Zitieren'
+  label_helpdesk_quote_original_mail: 'Originale Mail'
+  label_helpdesk_quote_conversation: 'Kompletter Verlauf'
+  label_helpdesk_quote_mail_conversation: 'Mail-Verlauf'
+  text_helpdesk_quote_wrote_on: '%{user} schrieb am %{date}:'
+  text_helpdesk_quote_truncated: 'Verlauf gekürzt – es wurden nicht alle Einträge eingefügt.'
+  label_helpdesk_note_content_loading: 'Wird geladen …'
+  error_helpdesk_note_content_failed: 'Einfügen fehlgeschlagen:'
+  error_helpdesk_note_content_unknown_source: 'Unbekannte Quelle für den Notizinhalt.'
+  error_helpdesk_note_content_empty: 'Es gibt nichts einzufügen.'
+
+  label_helpdesk_reply_templates: 'Antwortvorlagen'
+  label_helpdesk_reply_templates_project: 'Antwortvorlagen des Projekts'
+  label_helpdesk_reply_templates_global: 'Globale Antwortvorlagen'
+  label_helpdesk_reply_templates_empty: 'Keine Vorlagen vorhanden'
+  label_helpdesk_reply_templates_manage: 'Vorlagen verwalten …'
+  label_helpdesk_reply_template_new: 'Neue Antwortvorlage'
+  label_helpdesk_reply_template_edit: 'Antwortvorlage bearbeiten'
+  label_helpdesk_reply_template_global_suffix: '(global)'
+  field_helpdesk_reply_template_name: 'Name'
+  field_helpdesk_reply_template_content: 'Inhalt'
+  field_helpdesk_reply_template_position: 'Position'
+  field_helpdesk_reply_template_enabled: 'Aktiv'
+  text_helpdesk_reply_template_position_info: 'Bestimmt die Reihenfolge im Auswahlmenü.'
+  text_helpdesk_reply_template_enabled_info: 'Nur aktive Vorlagen erscheinen im Auswahlmenü.'
+  text_helpdesk_reply_templates_info: 'Textbausteine, die Bearbeiter im Notizfeld einfügen können. Makros werden beim Einfügen mit dem aktuellen Ticket, Kunden und Benutzer ersetzt.'
+  text_helpdesk_reply_templates_global_info: 'Globale Vorlagen werden in jedem Helpdesk-Projekt zusätzlich zu dessen eigenen Vorlagen angeboten.'
+  text_helpdesk_reply_templates_global_hint: 'Zusätzlich werden am Ticket die globalen Vorlagen aus den Plugin-Einstellungen angeboten.'
+  error_helpdesk_reply_template_not_found: 'Diese Antwortvorlage ist für das Ticket nicht verfügbar.'
 
   label_helpdesk_rules: Automatisierungsregeln
   label_helpdesk_rule_new: Neue Regel

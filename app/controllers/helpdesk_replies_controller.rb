@@ -62,8 +62,13 @@ class HelpdeskRepliesController < ApplicationController
 
     message_id = nil
 
+    # Kandidaten fuer Inline-Bilder: frisch eingefuegte Uploads UND die
+    # Bild-Anhaenge des Tickets — ein Zitat der urspruenglichen Mail verweist
+    # auf letztere.
+    image_atts = RedmineExpertHelpdesk::ReplyImages.candidates(@issue, inline_atts)
+
     if mailbox.outgoing_route == 'smtp'
-      processed_html, embedded_atts = embed_inline_images(body_html, inline_atts)
+      processed_html, embedded_atts = RedmineExpertHelpdesk::ReplyImages.to_data_uri(body_html, image_atts)
       message_id = send_reply_smtp(mailbox, reply_to, reply_cc, reply_bcc, subject, processed_html,
                                    valid_att_ids, embedded_atts, sent_filenames)
     else
@@ -74,7 +79,7 @@ class HelpdeskRepliesController < ApplicationController
       # Mit Content-Type: text/plain + base64-MIME bleibt die MIME-Struktur erhalten.
       message_id             = generate_message_id(mailbox.mailbox_address)
       regular_atts           = Attachment.where(:id => valid_att_ids).to_a
-      cid_map, html_with_cid = build_cid_map(body_html, inline_atts)
+      cid_map, html_with_cid = RedmineExpertHelpdesk::ReplyImages.to_cid(body_html, image_atts)
       mime_msg = build_cid_mime(mailbox.mailbox_address, reply_to, reply_cc, reply_bcc,
                                 subject, html_with_cid, cid_map, regular_atts, message_id)
       RedmineExpertHelpdesk::MailLogger.track(
@@ -169,53 +174,6 @@ class HelpdeskRepliesController < ApplicationController
     # can still put the copy where the agents look. No-op for Graph mailboxes.
     RedmineExpertHelpdesk::MailProvider.for(mailbox).archive_sent(mail_obj.to_s)
     mail_obj.message_id
-  end
-
-  # Bettet eingefuegte Bilder als Base64-Data-URI direkt in den HTML-Body ein (fuer SMTP).
-  # Gibt [processed_html, [embedded_attachment_objects]] zurueck.
-  def embed_inline_images(body_html, inline_atts)
-    return [body_html, []] if inline_atts.blank?
-
-    processed = body_html.dup
-    embedded  = []
-
-    inline_atts.each do |att|
-      next unless att.diskfile && File.exist?(att.diskfile)
-
-      safe_fn  = Regexp.escape(att.filename)
-      mime     = att.content_type.presence ||
-                 Redmine::MimeType.of(att.filename) || 'application/octet-stream'
-      data_uri = "data:#{mime};base64,#{Base64.strict_encode64(File.binread(att.diskfile))}"
-
-      replaced = processed.gsub(/(src=)(["'])([^"']*#{safe_fn}[^"']*)\2/i) do
-        "#{$1}#{$2}#{data_uri}#{$2}"
-      end
-
-      next if replaced == processed
-
-      processed = replaced
-      embedded << att
-    end
-
-    [processed, embedded]
-  end
-
-  # Baut eine CID-Map auf: ersetzt src="filename" im HTML durch cid:... und gibt
-  # [{att => cid}, processed_html] zurueck.
-  def build_cid_map(body_html, inline_atts)
-    cid_map   = {}
-    processed = body_html.dup
-    inline_atts.each_with_index do |att, i|
-      cid     = "img#{att.id}x#{i}@helpdesk.local"
-      safe_fn = Regexp.escape(att.filename)
-      replaced = processed.gsub(/(src=)(["'])([^"']*#{safe_fn}[^"']*)\2/i) do
-        "#{$1}#{$2}cid:#{cid}#{$2}"
-      end
-      next if replaced == processed
-      cid_map[att] = cid
-      processed = replaced
-    end
-    [cid_map, processed]
   end
 
   # Erstellt eine vollstaendige RFC-2822-MIME-Nachricht mit CID-Inline-Bildern.

@@ -31,6 +31,8 @@ require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_store', __FIL
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_extractor', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/template_renderer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/inline_images', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/reply_images', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/note_quoter', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mail_processor', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/init_mailer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/hooks', __FILE__)
@@ -127,7 +129,8 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
       :helpdesk_mailboxes => [:new, :create, :edit, :update, :destroy,
                               :folders, :create_folder, :test_connection, :oauth_authorize],
       :helpdesk_oauth => [:authorize, :callback],
-      :helpdesk_rules     => [:create, :destroy]
+      :helpdesk_rules     => [:create, :destroy],
+      :helpdesk_reply_templates => [:index, :new, :create, :edit, :update, :destroy]
     }, :require => :member
     permission :fetch_helpdesk_mail, {
       :helpdesk_fetch => [:fetch]
@@ -135,7 +138,8 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
     permission :send_helpdesk_reply, {
       :helpdesk_replies  => [:create],
       :helpdesk_contacts => [:autocomplete],
-      :helpdesk_init     => [:create]
+      :helpdesk_init     => [:create],
+      :helpdesk_note_content => [:create]
     }, :require => :member
     permission :view_helpdesk_info, {}, :read => true
     permission :manage_helpdesk_contacts, {
@@ -245,6 +249,12 @@ end
 # ApplicationHelper ist in allen Views verfuegbar.
 unless ApplicationHelper.included_modules.include?(HelpdeskIconsHelper)
   ApplicationHelper.include(HelpdeskIconsHelper)
+end
+
+# Dito fuer die Pfad-Helfer der Antwortvorlagen: sie werden auch aus den
+# Projekt- und Plugin-Einstellungen heraus benoetigt, also aus Kern-Views.
+unless ApplicationHelper.included_modules.include?(HelpdeskReplyTemplatesHelper)
+  ApplicationHelper.include(HelpdeskReplyTemplatesHelper)
 end
 
 # Aktivitaets-Feed: eingehende, ausgehende und initiale Helpdesk-Nachrichten registrieren.

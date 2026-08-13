@@ -216,6 +216,16 @@
 </p>
 
 <hr />
+<%# Nur ein Link, kein Formular: dieses Partial wird innerhalb des form_tag von
+    settings/plugin.html.erb gerendert, ein verschachteltes <form> waere ungueltig. %>
+<h3 style="margin-top:1em;"><%= l(:label_helpdesk_reply_templates) %></h3>
+<p>
+  <%= link_to l(:label_helpdesk_reply_templates_global), global_helpdesk_reply_templates_path %>
+  (<%= HelpdeskReplyTemplate.global.count %>)
+  <em class="info"><%= l(:text_helpdesk_reply_templates_global_info) %></em>
+</p>
+
+<hr />
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_ai_settings) %></h3>
 <p>
   <%= hidden_field_tag 'settings[ai_enabled]', '0', :id => nil %>
