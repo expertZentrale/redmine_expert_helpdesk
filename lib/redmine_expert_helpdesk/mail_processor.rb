@@ -163,7 +163,7 @@ module RedmineExpertHelpdesk
         # the ticket shows the pictures instead of the markers.
         InlineImages.rewrite!(object, mime)
 
-        apply_rules(issue, subject, sender) if new_issue
+        apply_new_issue_defaults(issue, subject, sender) if new_issue
         reopened = new_issue ? false : reopen_if_closed(issue, (object.is_a?(Journal) ? object : nil))
         contact = HelpdeskContact.find_or_create_for(sender, sender_name, @mailbox.project)
         HelpdeskTicketInfo.link!(issue, contact, @mailbox)
@@ -522,18 +522,33 @@ module RedmineExpertHelpdesk
       end
     end
 
-    def apply_rules(issue, subject, sender)
+    # New tickets only: first the project's default assignee, then the mailbox
+    # rules - a matching rule is the more specific statement and may override
+    # the default.
+    def apply_new_issue_defaults(issue, subject, sender)
       # Ticket neu laden, damit lock_version aktuell ist (MailHandler speichert das
       # Ticket mehrfach, was zu StaleObjectError fuehrt, wenn wir die veraltete
       # In-Memory-Instanz speichern wuerden).
       issue.reload
-      changed = false
+      changed = apply_default_assignee(issue)
       @mailbox.helpdesk_rules.where.not(:action_type => 'ignore').order(:position).each do |rule|
         next unless rule.matches?(subject, sender)
 
         changed = true if rule.apply_to(issue)
       end
       issue.save(:validate => false) if changed
+    end
+
+    # Only when nobody is assigned yet: MailHandler may already have honoured an
+    # "Assigned to:" keyword from the mail, and that wins over the project default.
+    def apply_default_assignee(issue)
+      return false if issue.assigned_to_id.present?
+
+      assignee = project_setting.default_assignee
+      return false unless assignee
+
+      issue.assigned_to = assignee
+      true
     end
 
     # --- Phishing-Pruefung ----------------------------------------------------

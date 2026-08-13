@@ -1,6 +1,9 @@
 require File.expand_path('../../test_helper', __FILE__)
 
 class HelpdeskRuleTest < ActiveSupport::TestCase
+  # action_value_label resolves principals from the database.
+  fixtures :users
+
   # Minimal issue stand-in for apply_to tests (no DB required).
   IssueStub = Struct.new(:priority, :tracker, :category, :assigned_to, :project)
 
@@ -12,6 +15,25 @@ class HelpdeskRuleTest < ActiveSupport::TestCase
       :action_type     => 'set_priority',
       :action_value    => 'Hoch'
     }.merge(attrs))
+  end
+
+  # Unsaved principals are enough: the resolver only reads id, login and class.
+  def build_user(id, login)
+    user = User.new(:login => login)
+    user.id = id
+    user
+  end
+
+  def build_group(id, name)
+    group = Group.new(:lastname => name)
+    group.id = id
+    group
+  end
+
+  def issue_with_assignables(principals)
+    project = mock('project')
+    project.stubs(:assignable_users).returns(principals)
+    IssueStub.new(nil, nil, nil, nil, project)
   end
 
   # -----------------------------------------------------------------------
@@ -157,25 +179,41 @@ class HelpdeskRuleTest < ActiveSupport::TestCase
     assert_equal category, issue.category
   end
 
-  def test_apply_to_set_assignee_found
-    # stubs: bei Treffer ueber den Login wird u.id dank Kurzschluss nie gelesen —
-    # deshalb keine feste Aufrufanzahl erwarten.
-    user    = mock('user')
-    user.stubs(:login).returns('john')
-    user.stubs(:id).returns(5)
-    user.stubs(:present?).returns(true)
-    project = mock('project')
-    project.stubs(:users).returns([user])
-    issue   = IssueStub.new(nil, nil, nil, nil, project)
-    rule    = build_rule(:action_type => 'set_assignee', :action_value => 'john')
+  # Legacy rows store the login, so that lookup has to keep working.
+  def test_apply_to_set_assignee_by_login
+    user  = build_user(5, 'john')
+    issue = issue_with_assignables([user])
+    rule  = build_rule(:action_type => 'set_assignee', :action_value => 'john')
     assert rule.apply_to(issue)
     assert_equal user, issue.assigned_to
   end
 
+  def test_apply_to_set_assignee_by_principal_id
+    user  = build_user(5, 'john')
+    issue = issue_with_assignables([user])
+    rule  = build_rule(:action_type => 'set_assignee', :action_value => '5')
+    assert rule.apply_to(issue)
+    assert_equal user, issue.assigned_to
+  end
+
+  def test_apply_to_set_assignee_resolves_group
+    group = build_group(7, 'Support')
+    issue = issue_with_assignables([build_user(5, 'john'), group])
+    rule  = build_rule(:action_type => 'set_assignee', :action_value => '7')
+    assert rule.apply_to(issue)
+    assert_equal group, issue.assigned_to
+  end
+
+  def test_apply_to_set_assignee_ignores_non_assignable_principal
+    issue = issue_with_assignables([build_user(5, 'john')])
+    rule  = build_rule(:action_type => 'set_assignee', :action_value => '99')
+    assert_not rule.apply_to(issue)
+    assert_nil issue.assigned_to
+  end
+
   def test_apply_to_set_assignee_not_found
-    project = mock('project', :users => [])
-    issue   = IssueStub.new(nil, nil, nil, nil, project)
-    rule    = build_rule(:action_type => 'set_assignee', :action_value => 'nobody')
+    issue = issue_with_assignables([])
+    rule  = build_rule(:action_type => 'set_assignee', :action_value => 'nobody')
     assert_not rule.apply_to(issue)
     assert_nil issue.assigned_to
   end
@@ -184,5 +222,27 @@ class HelpdeskRuleTest < ActiveSupport::TestCase
     issue = IssueStub.new
     rule  = build_rule(:action_type => 'ignore', :action_value => nil)
     assert_not rule.apply_to(issue)
+  end
+
+  def test_action_value_label_resolves_principal_id
+    group = Group.generate!(:name => 'Second Level')
+    rule  = build_rule(:action_type => 'set_assignee', :action_value => group.id.to_s)
+    assert_equal group.name, rule.action_value_label
+  end
+
+  def test_action_value_label_resolves_legacy_login
+    user = User.generate!(:login => 'hd_agent')
+    rule = build_rule(:action_type => 'set_assignee', :action_value => 'hd_agent')
+    assert_equal user.name, rule.action_value_label
+  end
+
+  def test_action_value_label_falls_back_to_raw_value
+    rule = build_rule(:action_type => 'set_assignee', :action_value => 'ghost')
+    assert_equal 'ghost', rule.action_value_label
+  end
+
+  def test_action_value_label_passes_other_actions_through
+    rule = build_rule(:action_type => 'set_priority', :action_value => 'Hoch')
+    assert_equal 'Hoch', rule.action_value_label
   end
 end

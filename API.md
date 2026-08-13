@@ -517,6 +517,7 @@ Response `200`:
     "reply_subject_template": "Re: [#{{issue.id}}] {{issue.subject}}",
     "reply_status_id": 2,
     "reply_assign_to_sender": false,
+    "default_assigned_to_id": 7,
     "phishing_check_enabled": true,
     "phishing_action": "neutralize",
     "sla_enabled": true,
@@ -559,7 +560,8 @@ A **partial** update — only the keys you send are changed. Body key
 | `send_reply_by_default` | boolean | |
 | `reply_subject_template` | string | |
 | `reply_status_id` | integer \| null | Default status applied after a reply. |
-| `reply_assign_to_sender` | boolean | |
+| `reply_assign_to_sender` | boolean | Assigns the replying agent, but only while the ticket is still unassigned. |
+| `default_assigned_to_id` | integer \| null | Principal (user **or** group) that new tickets from incoming mail are assigned to. `null` = do not assign. Not validated on write; a principal that is not assignable in the project is skipped when the ticket is created. |
 | `phishing_check_enabled` | boolean | |
 | `phishing_action` | string | `neutralize` or `quarantine`. |
 | `sla_enabled` | boolean | Turning it on stamps `sla_enabled_at` (SLA then applies to tickets created from that moment). |

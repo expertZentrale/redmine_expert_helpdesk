@@ -563,7 +563,31 @@ axis, independently of when the journal entry itself was saved.
 **Automatic field update after sending**: Optionally, a target status and
 automatic assignment to the sender can be configured in the project settings
 (*Helpdesk → Reply settings*). Both are applied after a successful send,
-before the ticket form is submitted.
+before the ticket form is submitted. The assignment only takes effect while the
+ticket is still **unassigned** — neither stored (user or group) nor picked in
+the form you are about to submit — so it never overrides a routing decision
+somebody has already made.
+
+### Assigning tickets
+
+Three settings decide who owns a ticket, in this order of precedence:
+
+| Setting | Where | Applies |
+|---------|-------|---------|
+| `Assigned to:` keyword in the mail | the mail itself | Handled by Redmine's own `MailHandler`; wins over everything below. |
+| Mailbox rule *Assign to* | *Helpdesk → Mailbox → Rules* | Only when the rule's condition matches subject or sender. Can target a user **or** a group. |
+| **Assign new tickets to** | *Project settings → expert Helpdesk → Reply settings* | Every new ticket the mailboxes of this project create. Default: do not assign. |
+
+**Assign new tickets to** offers the project's assignable members, split into
+*Users* and *Groups*. Groups appear only while *Allow issue assignment to
+groups* is enabled under *Administration → Settings → Issue tracking* — that is
+the same list the ticket form itself offers, so a selectable assignee is always
+one Redmine accepts. If the selected user or group later loses its role or
+leaves the project, it is silently skipped instead of producing invalid tickets.
+
+All three apply to **new** tickets only. A reply never re-assigns a ticket,
+except through *Assign ticket to me after reply* above, and that one only fires
+while the ticket is unassigned.
 
 ### Quoting prior content
 

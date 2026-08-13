@@ -216,6 +216,7 @@ module RedmineExpertHelpdesk
         api.reply_subject_template  s.reply_subject_template
         api.reply_status_id         s.reply_status_id
         api.reply_assign_to_sender  s.reply_assign_to_sender
+        api.default_assigned_to_id  s.default_assigned_to_id
         api.phishing_check_enabled  s.phishing_check_enabled
         api.phishing_action         s.phishing_action
         api.sla_enabled             s.sla_enabled

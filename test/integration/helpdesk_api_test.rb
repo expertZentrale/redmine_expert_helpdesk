@@ -124,12 +124,13 @@ class HelpdeskApiTest < Redmine::IntegrationTest
     body = ActiveSupport::JSON.decode(@response.body)['helpdesk_project_setting']
     assert_equal @project.id, body['project']['id']
     assert body.key?('sla_priorities')
+    assert body.key?('default_assigned_to_id')
 
     # partielles Update: SLA aktivieren + Zielzeiten
     put "/projects/#{@project.id}/helpdesk/settings.json",
         :params => { :helpdesk_project_setting => {
           :sla_enabled => true, :sla_reaction_minutes => 60, :sla_solution_minutes => 480,
-          :sla_work_days => [1, 2, 3, 4, 5]
+          :sla_work_days => [1, 2, 3, 4, 5], :default_assigned_to_id => 2
         } }, :headers => auth
     assert_response :success
 
@@ -137,6 +138,7 @@ class HelpdeskApiTest < Redmine::IntegrationTest
     assert setting.sla_enabled?
     assert_equal 60, setting.sla_reaction_minutes
     assert_equal '1,2,3,4,5', setting.sla_work_days
+    assert_equal 2, setting.default_assigned_to_id
     assert_not_nil setting.sla_enabled_at, 'activation timestamp stamped'
 
     # Schreiben ohne manage_helpdesk -> 403

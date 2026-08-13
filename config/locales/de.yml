@@ -405,7 +405,9 @@ de:
   label_helpdesk_reply_subject_template: Betreff-Vorlage
   label_helpdesk_reply_status: "Status nach Antwort"
   text_helpdesk_reply_status_info: "Wird nach dem Versand einer Antwort automatisch gesetzt. Leer lassen um den Status nicht zu ändern."
-  label_helpdesk_reply_assign_to_sender: "Ticket nach Antwort mir zuweisen"
+  label_helpdesk_default_assignee: "Neue Tickets zuweisen an"
+  text_helpdesk_default_assignee_info: "Tickets, die aus eingehenden E-Mails entstehen, werden diesem Benutzer oder dieser Gruppe zugewiesen. Eine passende Postfach-Regel hat Vorrang. Gruppen erscheinen nur, wenn in den Redmine-Einstellungen \"Zuweisung von Tickets an Gruppen erlauben\" aktiviert ist."
+  label_helpdesk_reply_assign_to_sender: "Ticket nach Antwort mir zuweisen, wenn es noch nicht zugewiesen ist"
   text_helpdesk_subject_template_hint: "Verfügbare Makros: {{issue.id}}, {{issue.subject}}, {{contact.name}}, {{contact.email}}, {{project.name}}"
   label_helpdesk_mail_footer_preview: Signatur-Vorschau
   label_helpdesk_reply_addresses_hint: "Mehrere Adressen mit Komma trennen"

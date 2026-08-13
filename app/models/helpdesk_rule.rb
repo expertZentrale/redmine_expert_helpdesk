@@ -54,11 +54,31 @@ class HelpdeskRule < HelpdeskApplicationRecord
       issue.category = category if category
       category.present?
     when 'set_assignee'
-      user = issue.project.users.detect { |u| u.login == action_value || u.id.to_s == action_value.to_s }
-      issue.assigned_to = user if user
-      user.present?
+      principal = assignee_from_action_value(issue)
+      issue.assigned_to = principal if principal
+      principal.present?
     else
       false
     end
+  end
+
+  # Human-readable action value for the rules table: resolves the stored
+  # principal, falling back to the raw value when it no longer exists.
+  def action_value_label
+    return action_value unless action_type == 'set_assignee'
+
+    principal = action_value.to_s.match?(/\A\d+\z/) ? Principal.find_by(:id => action_value) : nil
+    (principal || User.find_by(:login => action_value))&.name || action_value
+  end
+
+  private
+
+  # Rules created before groups were supported store the user's login; newer
+  # rules store the principal id, which is the only way to address a group.
+  # Login first, so legacy rows keep resolving exactly as they did before.
+  def assignee_from_action_value(issue)
+    assignables = issue.project.assignable_users
+    assignables.detect { |p| p.is_a?(User) && p.login == action_value } ||
+      assignables.detect { |p| p.id.to_s == action_value.to_s }
   end
 end

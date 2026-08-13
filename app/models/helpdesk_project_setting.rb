@@ -3,6 +3,8 @@
 class HelpdeskProjectSetting < HelpdeskApplicationRecord
   belongs_to :project
   belongs_to :reply_status, :class_name => 'IssueStatus', :optional => true
+  # Default assignee for new tickets: a user *or* a group, hence Principal.
+  belongs_to :default_assigned_to, :class_name => 'Principal', :optional => true
 
   DEFAULT_SUBJECT_TEMPLATE = 'Re: [#{{issue.id}}] {{issue.subject}}'.freeze
 
@@ -44,6 +46,15 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
 
   def effective_phishing_action
     PHISHING_ACTIONS.include?(phishing_action) ? phishing_action : 'neutralize'
+  end
+
+  # Configured default assignee, but only if it is still assignable in the
+  # project - membership, role or the global group-assignment switch may have
+  # changed since the setting was saved. A stale id simply resolves to nil.
+  def default_assignee
+    return nil if default_assigned_to_id.blank?
+
+    project&.assignable_users&.detect { |p| p.id == default_assigned_to_id }
   end
 
   # KI-Zusammenfassung auch fuer Journal-Antworten (nicht nur die Erstmail)?

@@ -147,8 +147,11 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
   - `graph_client.rb` — Microsoft Graph REST client (OAuth2 client-credentials, token cached).
   - `mail_processor.rb` — the heart: per mailbox, hands raw MIME to Redmine's own `MailHandler`
     (which does ticket creation / reply matching via `In-Reply-To`/`[#id]` / attachments /
-    user creation), then applies rules, links contact, autoresponder, phishing check, stores
-    `.eml`, moves the mail. Reply-vs-new matching is delegated entirely to `MailHandler`.
+    user creation), then applies the new-ticket defaults, links contact, autoresponder, phishing
+    check, stores `.eml`, moves the mail. Reply-vs-new matching is delegated entirely to
+    `MailHandler`. `apply_new_issue_defaults` runs for new tickets only: project
+    `default_assigned_to_id` (a `Principal` — user **or** group) first, mailbox rules second
+    (they win); an `Assigned to:` keyword already honoured by `MailHandler` beats both.
   - `inline_images.rb` — embedded images. `MailHandler` saves them as attachments but leaves the
     client's reference in the text (`[cid:…]`, `[image: …]`, `<img src="cid:…">`), so
     `rewrite!` points those markers at the stored attachment using the image syntax of
