@@ -216,8 +216,8 @@
 </p>
 
 <hr />
-<%# Nur ein Link, kein Formular: dieses Partial wird innerhalb des form_tag von
-    settings/plugin.html.erb gerendert, ein verschachteltes <form> waere ungueltig. %>
+<%# A link, not a form: this partial is rendered inside the form_tag of
+    settings/plugin.html.erb, so a nested <form> would be invalid. %>
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_reply_templates) %></h3>
 <p>
   <%= link_to l(:label_helpdesk_reply_templates_global), global_helpdesk_reply_templates_path %>

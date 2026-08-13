@@ -62,9 +62,8 @@ class HelpdeskRepliesController < ApplicationController
 
     message_id = nil
 
-    # Kandidaten fuer Inline-Bilder: frisch eingefuegte Uploads UND die
-    # Bild-Anhaenge des Tickets — ein Zitat der urspruenglichen Mail verweist
-    # auf letztere.
+    # Inline image candidates: freshly inserted uploads AND the ticket's own
+    # image attachments — a quote of the original mail refers to the latter.
     image_atts = RedmineExpertHelpdesk::ReplyImages.candidates(@issue, inline_atts)
 
     if mailbox.outgoing_route == 'smtp'

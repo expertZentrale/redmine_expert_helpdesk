@@ -1,29 +1,28 @@
-# Bilder einer ausgehenden Kundenantwort im HTML-Body aufloesen.
+# Resolves the images of an outgoing customer reply in the HTML body.
 #
-# Das Notizfeld enthaelt Wiki-Markup; der Formatter macht daraus ein
-# <img src="dateiname.png"> mit einem *relativen* Pfad. In einer E-Mail bedeutet
-# ein solcher Pfad nichts — das Bild muss entweder als CID-Teil mitgeschickt
-# (Graph/eigener SMTP-Server) oder als data:-URI eingebettet werden (globaler
-# SMTP-Versand). Diese Klasse macht beides und bestimmt vor allem, *welche*
-# Anhaenge dafuer ueberhaupt in Frage kommen.
+# The note field holds wiki markup, and the formatter turns it into an
+# <img src="filename.png"> with a *relative* path. That path means nothing in an
+# email, so the image has to be either sent as a CID part (Graph / the mailbox's
+# own SMTP server) or embedded as a data: URI (global SMTP delivery). This class
+# does both, and above all decides *which* attachments are eligible.
 #
-# Gegenstueck fuer die eingehende Richtung: RedmineExpertHelpdesk::InlineImages.
+# Counterpart for the incoming direction: RedmineExpertHelpdesk::InlineImages.
 module RedmineExpertHelpdesk
   class ReplyImages
     class << self
-      # Anhaenge, deren Dateiname im HTML auftauchen darf.
+      # Attachments whose filename may appear in the HTML.
       #
-      # pending sind frisch eingefuegte, noch nicht gespeicherte Uploads; sie
-      # stehen vorn, damit ein gerade eingefuegtes Bild einen gleichnamigen
-      # aelteren Ticket-Anhang schlaegt. Dazu kommen die Bild-Anhaenge des
-      # Tickets selbst — genau die referenziert ein Zitat der urspruenglichen
-      # Mail (`![](image001.png)`), und ohne sie blieb das Bild beim Kunden leer.
+      # `pending` are freshly inserted, not yet saved uploads; they come first so
+      # a just-pasted image beats an older ticket attachment of the same name.
+      # Added to those are the ticket's own image attachments — exactly what a
+      # quote of the original mail refers to (`![](image001.png)`), and without
+      # them the customer received an empty box.
       def candidates(issue, pending)
         list = Array(pending) + issue.attachments.select { |a| image?(a) }
         list.uniq { |a| a.id || a.object_id }
       end
 
-      # Ersetzt src="dateiname" durch cid:... und liefert [{att => cid}, html].
+      # Replaces src="filename" with cid:... and returns [{att => cid}, html].
       def to_cid(html, candidates)
         cid_map   = {}
         processed = html.to_s.dup
@@ -39,8 +38,8 @@ module RedmineExpertHelpdesk
         [cid_map, processed]
       end
 
-      # Ersetzt src="dateiname" durch eine data:-URI und liefert
-      # [html, eingebettete_anhaenge].
+      # Replaces src="filename" with a data: URI and returns
+      # [html, embedded_attachments].
       def to_data_uri(html, candidates)
         processed = html.to_s.dup
         embedded  = []
@@ -48,8 +47,14 @@ module RedmineExpertHelpdesk
         Array(candidates).each do |att|
           next unless att.diskfile && File.exist?(att.diskfile)
 
-          data_uri = "data:#{mime_type(att)};base64,#{Base64.strict_encode64(File.binread(att.diskfile))}"
-          replaced = replace_src(processed, att) { data_uri }
+          # Read and encode inside the block: it only runs on an actual match, so
+          # an attachment the body never references is not loaded from disk at
+          # all. Memoized because the block runs once per occurrence.
+          data_uri = nil
+          replaced = replace_src(processed, att) do
+            data_uri ||= "data:#{mime_type(att)};base64," \
+                         "#{Base64.strict_encode64(File.binread(att.diskfile))}"
+          end
           next if replaced == processed
 
           processed = replaced
@@ -60,8 +65,8 @@ module RedmineExpertHelpdesk
 
       private
 
-      # Nur src-Attribute anfassen, die den Dateinamen enthalten, und niemals
-      # bereits aufgeloeste Verweise (cid:, data:, http:) erneut ersetzen.
+      # Only touch src attributes containing the filename, and never rewrite an
+      # already resolved reference (cid:, data:, http:) a second time.
       def replace_src(html, att)
         safe_fn = Regexp.escape(att.filename.to_s)
         return html if safe_fn.empty?

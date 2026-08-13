@@ -60,8 +60,7 @@ class NoteQuoterTest < ActiveSupport::TestCase
     assert_include '> Oeffentliche Antwort', content
   end
 
-  # Trennlinie zwischen den Eintraegen: erleichtert das Ueberfliegen eines
-  # langen Verlaufs.
+  # Rule between the entries: makes a long history easier to skim.
   def test_entries_are_separated_by_a_horizontal_rule
     add_note('Zweiter Eintrag', User.find(2))
     content = RedmineExpertHelpdesk::NoteQuoter.conversation(@issue).content
@@ -70,8 +69,8 @@ class NoteQuoterTest < ActiveSupport::TestCase
     assert_equal 1, content.scan(/^---$/).size
   end
 
-  # Die Linie muss auf einer Leerzeile stehen, sonst macht CommonMark aus
-  # "Absatz + ---" eine Ueberschrift statt einer Trennlinie.
+  # The rule must sit on a blank line, otherwise CommonMark turns
+  # "paragraph + ---" into a heading rather than a rule.
   def test_separator_is_preceded_by_a_blank_line
     add_note('Zweiter Eintrag', User.find(2))
     lines = RedmineExpertHelpdesk::NoteQuoter.conversation(@issue).content.split("\n", -1)
@@ -161,7 +160,10 @@ class NoteQuoterTest < ActiveSupport::TestCase
     result = RedmineExpertHelpdesk::NoteQuoter.conversation(@issue)
 
     assert result.truncated?
-    assert_equal 6, result.omitted # 5 extra notes + the description pushed out
+    # 1 description + 55 notes = 56 entries, MAX_ENTRIES of which are kept. The
+    # description counts towards the cap, so 6 entries fall off the end — it is
+    # itself still included (asserted below).
+    assert_equal 6, result.omitted
     assert_include '> Erste Zeile', result.content
   end
 end

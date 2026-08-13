@@ -251,8 +251,8 @@ unless ApplicationHelper.included_modules.include?(HelpdeskIconsHelper)
   ApplicationHelper.include(HelpdeskIconsHelper)
 end
 
-# Dito fuer die Pfad-Helfer der Antwortvorlagen: sie werden auch aus den
-# Projekt- und Plugin-Einstellungen heraus benoetigt, also aus Kern-Views.
+# Same for the answer template path helpers: they are needed from the project
+# and plugin settings as well, i.e. from core views.
 unless ApplicationHelper.included_modules.include?(HelpdeskReplyTemplatesHelper)
   ApplicationHelper.include(HelpdeskReplyTemplatesHelper)
 end

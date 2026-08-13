@@ -1,7 +1,7 @@
 require File.expand_path('../../test_helper', __FILE__)
 
-# Verwaltung der Antwortvorlagen: projektbezogen (manage_helpdesk) und global
-# (nur Administratoren), plus die Einbindung in die Einstellungsseiten.
+# Managing answer templates: per project (manage_helpdesk) and globally
+# (administrators only), plus how they slot into the settings pages.
 class HelpdeskReplyTemplatesTest < Redmine::IntegrationTest
   fixtures :projects, :users, :email_addresses, :members, :member_roles, :roles,
            :enabled_modules, :trackers, :projects_trackers, :issue_statuses,
@@ -19,7 +19,7 @@ class HelpdeskReplyTemplatesTest < Redmine::IntegrationTest
         { :name => 'Eingangsbestaetigung', :content => 'Danke fuer Ihre Anfrage.' }.merge(overrides) }
   end
 
-  # --- Projektbezogene Vorlagen ------------------------------------------
+  # --- Project templates -------------------------------------------------
 
   def test_project_crud_lifecycle
     log_user('jsmith', 'jsmith') # Manager in Projekt 1
@@ -68,7 +68,7 @@ class HelpdeskReplyTemplatesTest < Redmine::IntegrationTest
     assert_response :forbidden
   end
 
-  # Eine Projektroute darf keine globale Vorlage erwischen.
+  # A project route must never reach a global template.
   def test_project_route_cannot_reach_a_global_template
     global = HelpdeskReplyTemplate.create!(:project_id => nil, :name => 'Global', :content => 'g')
     log_user('jsmith', 'jsmith')
@@ -77,7 +77,7 @@ class HelpdeskReplyTemplatesTest < Redmine::IntegrationTest
     assert_response :missing
   end
 
-  # --- Globale Vorlagen ---------------------------------------------------
+  # --- Global templates ---------------------------------------------------
 
   def test_global_templates_require_admin
     log_user('jsmith', 'jsmith')
@@ -102,7 +102,7 @@ class HelpdeskReplyTemplatesTest < Redmine::IntegrationTest
     assert_response :success
   end
 
-  # --- Einbindung in die Einstellungsseiten -------------------------------
+  # --- Integration into the settings pages --------------------------------
 
   def test_project_settings_tab_lists_the_templates
     HelpdeskReplyTemplate.create!(:project_id => @project.id, :name => 'Projektvorlage', :content => 'p')

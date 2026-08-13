@@ -1,9 +1,9 @@
-# CRUD fuer Antwortvorlagen ("Textbausteine").
+# CRUD for answer templates ("canned responses").
 #
-# Zwei Geltungsbereiche ueber denselben Controller: mit project_id gehoert die
-# Vorlage dem Projekt (Reiter "expert Helpdesk" in den Projekteinstellungen,
-# Berechtigung manage_helpdesk), ohne project_id ist sie global und wird in der
-# Plugin-Verwaltung gepflegt (nur Administratoren).
+# Two scopes through one controller: with a project_id the template belongs to
+# that project (tab "expert Helpdesk" in the project settings, permission
+# manage_helpdesk); without one it is global and maintained in the plugin
+# settings (administrators only).
 class HelpdeskReplyTemplatesController < ApplicationController
   before_action :find_project_scope
   before_action :authorize_templates
@@ -54,7 +54,7 @@ class HelpdeskReplyTemplatesController < ApplicationController
 
   private
 
-  # project_id ist optional: fehlt er, verwaltet der Aufruf globale Vorlagen.
+  # project_id is optional: without it the request manages global templates.
   def find_project_scope
     return if params[:project_id].blank?
 
@@ -79,7 +79,7 @@ class HelpdeskReplyTemplatesController < ApplicationController
     render_404
   end
 
-  # Zurueck dorthin, wo die Vorlagen gepflegt werden.
+  # Back to wherever the templates are maintained.
   def back_path
     if @project
       settings_project_path(@project, :tab => 'expert_helpdesk')

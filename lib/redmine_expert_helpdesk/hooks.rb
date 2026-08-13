@@ -118,10 +118,10 @@ module RedmineExpertHelpdesk
       })
     end
 
-    # Erweiterungen des Bearbeitungsformulars: Werkzeugleiste (Zitieren und
-    # Antwortvorlagen) und darunter das Antwortformular. Die Werkzeugleiste
-    # haengt nicht am Kundenkontakt — den Verlauf zitiert man gerade dann, wenn
-    # noch kein Kontakt zugeordnet ist.
+    # Additions to the edit form: the toolbar (quoting and answer templates)
+    # and below it the reply form. The toolbar does not depend on a customer
+    # contact — quoting the conversation is exactly what you do before one is
+    # linked.
     def view_issues_edit_notes_bottom(context = {})
       issue = context[:issue]
       project = issue.project
@@ -252,7 +252,7 @@ module RedmineExpertHelpdesk
 
     private
 
-    # Zitier- und Vorlagen-Buttons in der Werkzeugleiste des Notizfeldes.
+    # Quote and template buttons in the toolbar of the note field.
     def note_toolbar(context, issue, project)
       manage_url = nil
       if User.current.allowed_to?(:manage_helpdesk, project)
@@ -270,8 +270,8 @@ module RedmineExpertHelpdesk
       })
     end
 
-    # Antwortformular ("Als Mail an Kunden senden"). Ohne Kundenkontakt wird
-    # stattdessen das Zuordnungsformular in der Seitenleiste angezeigt
+    # Reply form ("send as mail to the customer"). Without a customer contact
+    # the assignment form is shown in the sidebar instead
     # (view_issues_sidebar_queries_bottom).
     def reply_form(context, issue, project, info, contact)
       mailbox = info.helpdesk_mailbox&.enabled? ? info.helpdesk_mailbox : nil

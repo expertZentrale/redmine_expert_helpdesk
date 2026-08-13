@@ -15,7 +15,7 @@ class HelpdeskReplyTemplateTest < ActiveSupport::TestCase
     HelpdeskReplyTemplate.new({ :name => 'Vorlage', :content => 'Inhalt' }.merge(attrs))
   end
 
-  # --- Validierung -------------------------------------------------------
+  # --- Validation --------------------------------------------------------
 
   def test_name_and_content_are_required
     assert_not build_template(:name => '').valid?
@@ -30,7 +30,7 @@ class HelpdeskReplyTemplateTest < ActiveSupport::TestCase
     assert_not build_template(:project_id => @project.id).valid?
   end
 
-  # --- Geltungsbereich ---------------------------------------------------
+  # --- Scope -------------------------------------------------------------
 
   def test_available_for_returns_project_templates_before_global
     build_template(:name => 'Global',  :project_id => nil).save!
@@ -79,7 +79,7 @@ class HelpdeskReplyTemplateTest < ActiveSupport::TestCase
     assert_not build_template(:project_id => @project.id).global?
   end
 
-  # --- Makros ------------------------------------------------------------
+  # --- Macros ------------------------------------------------------------
 
   def test_render_for_expands_macros
     issue    = Issue.find(1)
@@ -97,7 +97,7 @@ class HelpdeskReplyTemplateTest < ActiveSupport::TestCase
     assert_equal 'Hallo !', template.render_for(issue, nil, User.find(1))
   end
 
-  # --- Aufraeumen --------------------------------------------------------
+  # --- Cleanup -----------------------------------------------------------
 
   def test_project_destroy_removes_its_templates_but_not_global_ones
     build_template(:name => 'Projekt', :project_id => @other.id).save!

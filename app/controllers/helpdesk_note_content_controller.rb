@@ -1,10 +1,10 @@
-# Liefert Text fuer das Notizfeld des Tickets: Zitate (Originalmail, kompletter
-# Verlauf, Mail-Verlauf) und ausgewertete Antwortvorlagen.
+# Delivers text for the ticket's note field: quotes (original mail, complete
+# conversation, mail conversation) and expanded answer templates.
 #
-# Antwortet immer mit JSON; das Einfuegen uebernimmt die Werkzeugleiste im
-# Bearbeitungsformular (helpdesk/_note_toolbar). JSON statt einer .js.erb, weil
-# Redmine 7 Skript-Antworten ueber @rails/request.js einbindet und Redmine 5.1
-# ueber jQuery-UJS — ein fetch() mit JSON verhaelt sich auf beiden gleich.
+# Always answers with JSON; the insertion is done by the toolbar of the edit
+# form (helpdesk/_note_toolbar). JSON rather than a .js.erb, because Redmine 7
+# runs script responses through @rails/request.js and Redmine 5.1 through
+# jQuery UJS — a fetch() returning JSON behaves identically on both.
 class HelpdeskNoteContentController < ApplicationController
   before_action :find_issue
   before_action :authorize_note_content
@@ -50,17 +50,16 @@ class HelpdeskNoteContentController < ApplicationController
     )
   end
 
-  # Fehler werden bewusst selbst gerendert statt ueber render_404/deny_access:
-  # deren Huelle unterscheidet sich zwischen den unterstuetzten Redmine-Versionen
-  # (Redmine 7 verpackt sie fuer JSON in eine 422-Antwort). Die Werkzeugleiste
-  # braucht hier verlaessliche Statuscodes und ein flaches { "error": "..." }.
+  # Errors are rendered here rather than via render_404/deny_access on purpose:
+  # their envelope differs between the supported Redmine versions (Redmine 7
+  # wraps them into a 422 response for JSON). The toolbar needs dependable
+  # status codes and a flat { "error": "..." }.
   def render_error(message, status = :unprocessable_entity)
     render :json => { :error => message }, :status => status
   end
 
-  # Issue.visible statt Issue.find: dieser Endpunkt gibt Journaltext heraus,
-  # die Sichtbarkeit muss also schon beim Laden greifen, nicht erst ueber die
-  # Berechtigung.
+  # Issue.visible rather than Issue.find: this endpoint hands out journal text,
+  # so visibility has to apply at load time, not only through the permission.
   def find_issue
     @issue = Issue.visible.find(params[:issue_id])
     @project = @issue.project
@@ -68,9 +67,9 @@ class HelpdeskNoteContentController < ApplicationController
     render_error(l(:notice_file_not_found), :not_found)
   end
 
-  # send_helpdesk_reply wie beim Antwortformular: der Text entsteht, um eine
-  # Kundenantwort zu verfassen. view_helpdesk_info waere eine :read-Berechtigung,
-  # die in oeffentlichen Projekten auch Nichtmitglieder haben.
+  # send_helpdesk_reply as for the reply form: the text exists to compose a
+  # customer reply. view_helpdesk_info would be a :read permission that
+  # non-members hold in public projects too.
   def authorize_note_content
     return render_error(l(:notice_file_not_found), :not_found) unless @project.module_enabled?(:helpdesk)
     return if User.current.allowed_to?(:send_helpdesk_reply, @project)

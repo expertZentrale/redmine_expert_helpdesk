@@ -1,7 +1,7 @@
 require File.expand_path('../../test_helper', __FILE__)
 
-# Endpunkt, der Zitate und ausgewertete Antwortvorlagen fuer das Notizfeld
-# liefert. Session-authentifiziert (kein API-Key), Antwort immer JSON.
+# Endpoint delivering quotes and expanded answer templates for the note field.
+# Session-authenticated (no API key), always answers with JSON.
 class HelpdeskNoteContentTest < Redmine::IntegrationTest
   fixtures :projects, :users, :email_addresses, :members, :member_roles, :roles,
            :enabled_modules, :trackers, :projects_trackers, :issue_statuses,
@@ -26,7 +26,7 @@ class HelpdeskNoteContentTest < Redmine::IntegrationTest
     JSON.parse(response.body)
   end
 
-  # --- Zitate ------------------------------------------------------------
+  # --- Quotes ------------------------------------------------------------
 
   def test_description_returns_the_quoted_description
     post_content(:source => 'description')
@@ -59,8 +59,8 @@ class HelpdeskNoteContentTest < Redmine::IntegrationTest
     assert json['error'].present?
   end
 
-  # Der Endpunkt gibt Journaltext heraus — private Notizen duerfen auch fuer
-  # Berechtigte nicht auftauchen.
+  # The endpoint hands out journal text — private notes must not show up even
+  # for users allowed to read them.
   def test_private_notes_are_not_quoted
     Role.find(1).add_permission!(:view_private_notes)
     Journal.create!(:journalized => @issue, :user => User.find(2),
@@ -71,7 +71,7 @@ class HelpdeskNoteContentTest < Redmine::IntegrationTest
     assert_not_include 'Streng interne Notiz', json['content']
   end
 
-  # --- Antwortvorlagen ---------------------------------------------------
+  # --- Answer templates --------------------------------------------------
 
   def test_template_is_returned_with_macros_expanded
     template = HelpdeskReplyTemplate.create!(:project_id => @project.id,
@@ -108,7 +108,7 @@ class HelpdeskNoteContentTest < Redmine::IntegrationTest
     assert_response :not_found
   end
 
-  # --- Werkzeugleiste im Bearbeitungsformular ----------------------------
+  # --- Toolbar in the edit form ------------------------------------------
 
   def toolbar_island
     node = css_select('script#hd-note-toolbar-data').first
@@ -139,8 +139,23 @@ class HelpdeskNoteContentTest < Redmine::IntegrationTest
     assert_equal [false, true], templates.map { |t| t['global'] }
   end
 
-  # Ohne Kundenkontakt entfaellt das Antwortformular, die Werkzeugleiste nicht:
-  # gerade dann zitiert man den Verlauf.
+  # Template names are user input rendered into a <script> block, so a name
+  # containing "</script>" must not be able to break out of the island.
+  def test_toolbar_island_escapes_a_template_name_that_closes_the_script_tag
+    HelpdeskReplyTemplate.create!(:project_id => @project.id,
+                                  :name => '</script><script>alert(1)</script>',
+                                  :content => 'x')
+
+    get "/issues/#{@issue.id}/edit"
+
+    assert_response :success
+    island = css_select('script#hd-note-toolbar-data').first.text
+    assert_not_include '</script>', island
+    assert_include 'alert(1)', JSON.parse(island)['templates'].first['name']
+  end
+
+  # Without a customer contact the reply form is gone but the toolbar is not:
+  # that is exactly when you quote the conversation.
   def test_toolbar_is_rendered_without_a_linked_contact
     assert_nil HelpdeskTicketInfo.for_issue(@issue)
     get "/issues/#{@issue.id}/edit"
@@ -157,7 +172,7 @@ class HelpdeskNoteContentTest < Redmine::IntegrationTest
     assert_nil toolbar_island
   end
 
-  # --- Zugriffsschutz ----------------------------------------------------
+  # --- Access control ----------------------------------------------------
 
   def test_forbidden_without_send_helpdesk_reply
     Role.find(1).remove_permission!(:send_helpdesk_reply)

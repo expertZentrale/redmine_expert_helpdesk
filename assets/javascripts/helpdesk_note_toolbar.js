@@ -1,17 +1,16 @@
 /*
- * Werkzeugleisten-Erweiterungen des Notizfeldes: Zitieren und Antwortvorlagen.
+ * Toolbar additions for the note field: quoting and answer templates.
  *
- * Konfiguration kommt aus einem JSON-Insel-Element (#hd-note-toolbar-data), es
- * wird kein inline ausfuehrbares Script benoetigt (CSP-freundlich) - dasselbe
- * Muster wie helpdesk_sla_stats.js.
+ * The configuration comes from a JSON island (#hd-note-toolbar-data), so no
+ * inline executable script is needed (CSP-friendly) - the same pattern as
+ * helpdesk_sla_stats.js.
  *
- * Warum die Buttons per DOM eingehaengt und nicht ueber
- * jsToolBar.prototype.elements registriert werden: wikitoolbar_for gibt ein
- * inline-Script aus, das die Leiste schon waehrend des Parsens zeichnet. Der
- * Hook view_issues_edit_notes_bottom wird erst danach gerendert - eine
- * Registrierung am Prototyp kaeme also zu spaet, wuerde global auf jede
- * Werkzeugleiste der Seite wirken und muesste sich mit der Einfuegereihenfolge
- * von draw() herumschlagen.
+ * Why the buttons are attached to the DOM instead of being registered through
+ * jsToolBar.prototype.elements: wikitoolbar_for emits an inline script that
+ * draws the toolbar while the page is still being parsed. The hook
+ * view_issues_edit_notes_bottom renders only afterwards, so registering on the
+ * prototype would come too late, would affect every toolbar on the page, and
+ * would have to fight the insertion order of draw().
  */
 (function () {
   'use strict';
@@ -20,7 +19,7 @@
   var open = null; // { btn: HTMLElement, menu: HTMLElement }
   var busy = false;
 
-  // --- Hilfsfunktionen -----------------------------------------------------
+  // --- Helpers -------------------------------------------------------------
 
   function readConfig() {
     var el = document.getElementById('hd-note-toolbar-data');
@@ -32,15 +31,15 @@
     return (CONF && CONF.labels && CONF.labels[key]) || key;
   }
 
-  // --- Text anfuegen -------------------------------------------------------
+  // --- Appending text ------------------------------------------------------
 
-  // Haengt den Text unten an das Notizfeld an - wie Redmines eigener
-  // Zitieren-Button (journals/new.js.erb), getrennt durch eine Leerzeile.
+  // Appends the text at the end of the note field - like Redmine's own quote
+  // button (journals/new.js.erb), separated by a blank line.
   function appendToNotes(textarea, text) {
     if (!text) { return; }
 
-    // Bei aktiver Vorschau ist das Textfeld ausgeblendet; erst zurueck auf
-    // "Bearbeiten" schalten, sonst sieht der Bearbeiter das Eingefuegte nicht.
+    // With the preview tab active the textarea is hidden; switch back to
+    // "Edit" first, otherwise the agent never sees what was inserted.
     if (textarea.offsetParent === null) {
       var block   = textarea.closest ? textarea.closest('.jstBlock') : null;
       var editTab = block ? block.querySelector('.jstTabs a') : null;
@@ -57,16 +56,16 @@
 
     textarea.focus();
     var end = textarea.value.length;
-    try { textarea.setSelectionRange(end, end); } catch (e) { /* verborgen */ }
+    try { textarea.setSelectionRange(end, end); } catch (e) { /* hidden */ }
     textarea.scrollTop = textarea.scrollHeight;
 
-    // input: Konvention des Plugins (_macro_chips) und Ausloeser fuer Redmines
-    // Warnung ueber ungespeicherte Aenderungen. change: dasselbe fuer Redmine 5.
+    // input: the plugin's own convention (_macro_chips) and the trigger for
+    // Redmine's unsaved-changes warning. change: the same for Redmine 5.
     textarea.dispatchEvent(new Event('input',  { bubbles: true }));
     textarea.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  // --- Statuszeile ---------------------------------------------------------
+  // --- Status line ---------------------------------------------------------
 
   function flash(message, isError) {
     var box = document.getElementById('hd-tb-flash');
@@ -76,7 +75,7 @@
     box.style.display = message ? 'block' : 'none';
   }
 
-  // --- Inhalt vom Server holen --------------------------------------------
+  // --- Fetching content from the server ------------------------------------
 
   function loadContent(textarea, params) {
     if (busy) { return; }
@@ -108,7 +107,7 @@
     });
   }
 
-  // --- Menue ---------------------------------------------------------------
+  // --- Menu ----------------------------------------------------------------
 
   function closeMenu() {
     if (!open) { return; }
@@ -121,10 +120,10 @@
     window.removeEventListener('scroll', reposition, true);
   }
 
-  // Scrollen und Groessenaenderung schliessen das Menue NICHT, sie ruecken es
-  // nach: ein echter Mausklick fokussiert den Button, und ein Button unterhalb
-  // des sichtbaren Bereichs wird dabei vom Browser hereingescrollt — das Menue
-  // waere also genau dann sofort wieder weg, wenn man es am noetigsten braucht.
+  // Scrolling and resizing do NOT close the menu, they move it along: a real
+  // mouse click focuses the button, and a button below the fold is scrolled
+  // into view by the browser as a result — the menu would vanish immediately in
+  // exactly the case where it is needed most.
   function reposition() {
     if (open) { placeMenu(open.menu, open.btn); }
   }
@@ -151,9 +150,9 @@
     var list = items();
     var at   = list.indexOf(document.activeElement);
 
-    // Die behandelten Tasten hier stoppen: sonst erreicht z. B. ArrowDown noch
-    // den Keydown-Handler des Buttons, der das gerade geoeffnete Menue wieder
-    // zuklappen wuerde.
+    // Stop the keys handled here: otherwise ArrowDown, for instance, would
+    // still reach the button's own keydown handler, which would close the menu
+    // that was just opened.
     if (['Escape', 'ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(ev.key) !== -1) {
       ev.stopPropagation();
     }
@@ -202,9 +201,9 @@
 
   // entries: [{ label, run } | { label, disabled } | { label, href } | { separator: true }]
   function buildMenu(entries) {
-    // Am <body> statt in der Werkzeugleiste: dort kann kein overflow das Menue
-    // abschneiden, und es liegt ausserhalb von #issue-form, kann das Formular
-    // also nicht versehentlich absenden.
+    // On <body> rather than inside the toolbar: there no overflow can clip the
+    // menu, and it sits outside #issue-form, so it cannot submit the form by
+    // accident.
     var menu = document.createElement('div');
     menu.className = 'hd-tb-menu';
     menu.setAttribute('role', 'menu');
@@ -264,8 +263,8 @@
     btn.setAttribute('aria-expanded', 'true');
     open = { btn: btn, menu: menu };
 
-    // mousedown in der Capture-Phase: schliesst, bevor das darunterliegende
-    // Element reagiert, sonst flackert das Menue beim Klick auf den Button.
+    // mousedown in the capture phase: closes before the element underneath
+    // reacts, otherwise the menu flickers when clicking the button.
     document.addEventListener('mousedown', onOutside, true);
     document.addEventListener('keydown', onKeydown, true);
     window.addEventListener('resize', reposition);
@@ -276,11 +275,11 @@
 
   // --- Buttons -------------------------------------------------------------
 
-  // Das Icon liefert die CSS-Klasse jstb_hd_<key> als background-image;
-  // so ist kein Sprite-Pfad noetig, der sich zwischen Redmine 5 und 7 unterscheidet.
+  // The icon comes from the CSS class jstb_hd_<key> as a background-image, so no
+  // sprite path is needed - that path differs between Redmine 5 and 7.
   function makeButton(key, title, entriesFn) {
     var btn = document.createElement('button');
-    // type=button ist Pflicht: ein nacktes <button> in #issue-form sendet ab.
+    // type=button is mandatory: a bare <button> inside #issue-form submits it.
     btn.type      = 'button';
     btn.className = 'jstb_hd_' + key + ' hd-tb-btn';
     btn.title     = title;
@@ -294,8 +293,8 @@
       toggleMenu(btn, entriesFn, false);
     });
     btn.addEventListener('keydown', function (ev) {
-      // Nur oeffnen, nie umschalten: bei offenem Menue gehoert ArrowDown der
-      // Navigation zwischen den Eintraegen (siehe onKeydown).
+      // Only open, never toggle: while the menu is open ArrowDown belongs to
+      // navigating between the entries (see onKeydown).
       if (ev.key === 'ArrowDown' && !(open && open.btn === btn)) {
         ev.preventDefault();
         toggleMenu(btn, entriesFn, true);
@@ -334,17 +333,17 @@
     };
   }
 
-  // --- Einhaengen ----------------------------------------------------------
+  // --- Mounting ------------------------------------------------------------
 
   function findToolbar(textarea) {
-    // jsToolBar umschliesst das Textfeld mit div.jstBlock; darin liegt
-    // div.jstElements - in Redmine 5 direkt, ab Redmine 6 unter li.tab-elements.
+    // jsToolBar wraps the textarea in div.jstBlock, which contains
+    // div.jstElements - directly in Redmine 5, under li.tab-elements from 6 on.
     var block = textarea.closest ? textarea.closest('.jstBlock') : null;
     return block ? block.querySelector('.jstElements') : null;
   }
 
-  // Ohne Textformatierung zeichnet wikitoolbar_for gar nichts; dann bauen wir
-  // eine eigene kleine Leiste ueber dem Textfeld, statt stumm auszusteigen.
+  // Without text formatting wikitoolbar_for draws nothing at all; build our own
+  // small bar above the textarea instead of bailing out silently.
   function makeStandaloneToolbar(textarea) {
     var bar = document.createElement('div');
     bar.className = 'jstElements hd-tb-standalone';
@@ -353,8 +352,8 @@
   }
 
   function mount(toolbar, buttons) {
-    // jstoolbar.css schiebt den Hilfe-Button ans Ende der Leiste; davor
-    // einhaengen, damit die neuen Buttons bei den Formatierungsicons stehen.
+    // jstoolbar.css pushes the help button to the end of the bar; insert before
+    // it so the new buttons sit with the formatting icons.
     var anchor = toolbar.querySelector('.jstb_help') || toolbar.querySelector('.help');
     var group  = document.createDocumentFragment();
 

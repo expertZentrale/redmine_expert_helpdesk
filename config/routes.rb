@@ -49,7 +49,7 @@ RedmineApp::Application.routes.draw do
     # Projekt-spezifische Helpdesk-Einstellungen (Antwort-Standardwerte)
     resource :helpdesk_project_setting, :only => [:update]
 
-    # Antwortvorlagen des Projekts (Reiter "expert Helpdesk")
+    # Answer templates of this project (tab "expert Helpdesk")
     resources :helpdesk_reply_templates, :except => [:show]
 
     # SLA-Statistik je Projekt (nur sichtbar/erreichbar bei aktivem SLA)
@@ -87,15 +87,15 @@ RedmineApp::Application.routes.draw do
     resources :helpdesk_rules, :only => [:create, :destroy]
   end
 
-  # Globale Antwortvorlagen (Administration -> Plugins). Eigener Routenname,
-  # weil die projektbezogenen Vorlagen oben dieselbe Ressource bedienen.
+  # Global answer templates (Administration -> Plugins). Own route name,
+  # because the project-scoped templates above serve the same resource.
   resources :helpdesk_reply_templates, :except => [:show],
             :as => :global_helpdesk_reply_templates
 
   # Antwort an den Kunden aus dem Ticket heraus
   post 'issues/:issue_id/helpdesk_reply', :to => 'helpdesk_replies#create', :as => 'issue_helpdesk_reply'
 
-  # Zitate und Antwortvorlagen fuer das Notizfeld (Werkzeugleiste im Bearbeitungsformular)
+  # Quotes and answer templates for the note field (toolbar of the edit form)
   post 'issues/:issue_id/helpdesk_note_content', :to => 'helpdesk_note_content#create',
        :as => 'issue_helpdesk_note_content'
 

@@ -12,16 +12,15 @@ module RedmineExpertHelpdesk
     MAX_ENTRIES = 50
     MAX_CHARS   = 60_000
 
-    # Trennlinie zwischen den Eintraegen, damit sich ein langer Verlauf beim
-    # Scrollen ueberblicken laesst. Eine Zeile aus Bindestrichen ist in
-    # CommonMark wie in Textile eine horizontale Linie und bleibt selbst ohne
-    # Textformatierung als Trenner lesbar. Die Leerzeile davor ist Pflicht:
-    # direkt unter einem Absatz wuerde CommonMark daraus eine Ueberschrift
-    # machen statt einer Linie.
+    # Rule between entries so a long history stays skimmable while scrolling.
+    # A line of dashes is a horizontal rule in CommonMark as well as Textile and
+    # still reads as a separator with text formatting switched off. The blank
+    # line in front of it is mandatory: directly below a paragraph CommonMark
+    # would turn it into a heading instead of a rule.
     SEPARATOR = "---\n\n"
 
     # content: the text to append. omitted: how many entries were dropped by
-    # MAX_ENTRIES/MAX_CHARS, so the UI can say so instead of silently truncating.
+    # MAX_ENTRIES/MAX_CHARS, so the UI can say so instead of truncating silently.
     Result = Struct.new(:content, :omitted) do
       def truncated?
         omitted.to_i.positive?
@@ -51,9 +50,10 @@ module RedmineExpertHelpdesk
 
       private
 
-      # Joins the entries, dropping the oldest-last ones that do not fit. The
-      # description always survives: it is the first entry and MAX_ENTRIES is
-      # never zero.
+      # Joins the entries in chronological order and keeps as many as fit;
+      # whatever exceeds MAX_ENTRIES or MAX_CHARS is dropped from the end, so
+      # truncation removes the newest entries. The description always survives:
+      # it is the first entry and MAX_ENTRIES is never zero.
       def assemble(entries)
         entries = entries.reject(&:blank?)
         omitted = [entries.size - MAX_ENTRIES, 0].max

@@ -31,9 +31,9 @@ class ReplyImagesTest < ActiveSupport::TestCase
     file
   end
 
-  # Der eigentliche Fehler: ein Zitat der urspruenglichen Mail verweist auf einen
-  # Anhang des Tickets, nicht auf einen frisch eingefuegten Upload. Fehlte der in
-  # den Kandidaten, blieb das Bild beim Kunden leer.
+  # The actual bug: a quote of the original mail refers to an attachment of the
+  # ticket, not to a freshly inserted upload. With that missing from the
+  # candidates the image stayed empty for the customer.
   def test_ticket_attachments_are_candidates_without_any_pending_upload
     candidates = RedmineExpertHelpdesk::ReplyImages.candidates(@issue, [])
 
@@ -57,8 +57,8 @@ class ReplyImagesTest < ActiveSupport::TestCase
     assert_not_includes candidates, doc
   end
 
-  # Gegen den echten Formatter, damit der Test nicht auf einer Annahme darueber
-  # beruht, welches HTML aus dem Wiki-Markup entsteht.
+  # Against the real formatter, so the test does not rest on an assumption
+  # about which HTML the wiki markup turns into.
   def test_wiki_image_reference_becomes_a_cid_reference
     note = RedmineExpertHelpdesk::NoteQuoter.description(@issue).content
     html = Redmine::WikiFormatting.formatter.new("![](image001.png)").to_html.to_s
@@ -82,7 +82,7 @@ class ReplyImagesTest < ActiveSupport::TestCase
     assert_include 'src="data:image/png;base64,', out
   end
 
-  # Ein bereits aufgeloester Verweis darf nicht ein zweites Mal ersetzt werden.
+  # An already resolved reference must not be replaced a second time.
   def test_already_resolved_sources_are_left_alone
     %w[cid:abc@x data:image/png;base64,AAAA https://example.com/image001.png].each do |src|
       html = %(<img src="#{src}" />)
