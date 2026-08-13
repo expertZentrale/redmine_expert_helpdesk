@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-13
+
 ### Added
 
 - **New tickets can be assigned to a fixed user or group per project.** Until now the plugin could

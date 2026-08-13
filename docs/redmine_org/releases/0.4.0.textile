@@ -1,0 +1,25 @@
+h3. Added
+
+* *New tickets can be assigned to a fixed user or group, per project.* Until now the plugin could only put a ticket on the agent who happened to answer it: a ticket arriving by mail was created unassigned, and the only way to route it anywhere was a mailbox rule matching subject or sender. Teams working out of a shared queue — 2nd level, an on-call group, a dispatcher — could not express that at all, because nothing in the plugin could address a *group*. *Project settings → expert Helpdesk → Reply settings* now carries *Assign new tickets to*, a dropdown of the project's assignable principals split into Users and Groups, preset to "none" so nothing changes for existing projects. It applies when incoming mail creates a ticket, and only then — replies never re-assign, so an agent's manual decision always stands.
+
+* *Mailbox rules can assign to a group.* The rule action *Assign to* resolved its value against the project's members and could therefore only ever find a user, which left the rules engine unable to express the same routing the new project default supports. The dropdown is built from the project's assignable principals, groups marked as such, and stores the principal id. Rules created before this release store a login and keep resolving unchanged.
+
+h3. Changed
+
+* *"Assign ticket to me after reply" only takes effect while the ticket is still unassigned.* The option overwrote the assignee on every single reply, so a ticket a dispatcher had just routed to 2nd level was silently taken over by the first agent who answered — and an assignee picked in the very same form was discarded on send. It now claims the ticket only when nobody holds it, which is what the option was meant to do; existing assignments, to a user or a group, are left alone.
+
+* *Rules assigning a ticket now use the project's assignable members* rather than all members. A member whose role is not assignable could previously be set as assignee by a rule, which the ticket form itself would refuse.
+
+h3. Upgrade notes
+
+*This release runs a migration.* One column is added to the per-project settings:
+
+<pre>
+bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=production
+</pre>
+
+No new permission is introduced, and no existing project changes behaviour on upgrade: *Assign new tickets to* starts empty, which means "do not assign" — exactly what happened before.
+
+*The reply option behaves differently after the upgrade.* If you relied on *Assign ticket to me after reply* to move a ticket to whoever answered last, it no longer does that once somebody is assigned. Clear the assignee to hand a ticket back to the pool, or set a project default so tickets start on a group and agents claim them from there.
+
+Three settings now decide who owns a new ticket, in this order: an @Assigned to:@ keyword in the mail, which Redmine's own @MailHandler@ has already honoured before the plugin looks; a matching mailbox rule; and the project default. The option list comes from the same source as the ticket form, so *Groups* appear only while *Allow issue assignment to groups* is enabled under *Administration → Settings → Issue tracking*. A user or group that later loses its role or leaves the project is silently skipped instead of producing invalid tickets — the setting is not cleared, so restoring the membership restores the routing.

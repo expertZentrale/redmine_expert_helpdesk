@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-13
+
 ### Hinzugefügt
 
 - **Neue Tickets lassen sich pro Projekt einem festen Benutzer oder einer Gruppe zuweisen.** Bislang
