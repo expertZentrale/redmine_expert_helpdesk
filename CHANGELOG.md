@@ -8,6 +8,44 @@
 
 ## [Unreleased]
 
+### Added
+
+- **New tickets can be assigned to a fixed user or group per project.** Until now the plugin could
+  only put a ticket on the agent who happened to answer it: a ticket arriving by mail was created
+  unassigned, and the only way to route it anywhere was a mailbox rule matching subject or sender.
+  Teams that work out of a shared queue — 2nd level, an on-call group, a dispatcher — had no way to
+  express that at all, because nothing in the plugin could address a **group**. *Project settings →
+  expert Helpdesk → Reply settings* now carries **Assign new tickets to**, a dropdown of the
+  project's assignable principals split into Users and Groups, defaulting to "none" so nothing
+  changes for existing projects. It is applied when incoming mail creates a ticket, and only then —
+  replies never re-assign, so an agent's manual decision always stands. Two things deliberately win
+  over it: an `Assigned to:` keyword in the mail body, which Redmine's own `MailHandler` has already
+  honoured by the time we look, and a matching mailbox rule, which is the more specific statement.
+  The option list comes from `Project#assignable_users`, the same source the issue form uses, so we
+  can never offer an assignee Redmine would reject; groups therefore appear only while *Allow issue
+  assignment to groups* is enabled in the Redmine settings. The configured principal is re-checked
+  against that list at assignment time, so a member who later loses the role or leaves the project
+  silently stops being used instead of producing invalid tickets.
+
+- **Mailbox rules can assign to a group.** The rule action *Assign to* resolved its value against
+  the project's members and could only ever find a user, which left the rules engine unable to
+  express the same routing the new project default now supports. The dropdown is built from the
+  project's assignable principals, groups marked as such in the label, and stores the principal id.
+  Rules created before this release store a login and keep resolving unchanged — the login is still
+  tried first.
+
+### Changed
+
+- **"Assign ticket to me after reply" only takes effect while the ticket is still unassigned.** The
+  option overwrote the assignee on every single reply, so a ticket a dispatcher had just routed to
+  2nd level was silently taken over by the first agent who answered — and an assignee picked in the
+  very same form was discarded on send. It now claims the ticket only when nobody holds it, which is
+  what the option was meant to do; existing assignments, to a user or a group, are left alone.
+
+- **Mailbox rules assigning a ticket now use the project's assignable members** (`assignable_users`)
+  instead of all members (`users`). A member whose role is not assignable could previously be set as
+  assignee by a rule, which the issue form itself would refuse.
+
 ## [0.3.0] - 2026-08-13
 
 ### Added

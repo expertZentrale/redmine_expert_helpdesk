@@ -588,7 +588,33 @@ unabhängig davon, wann der Journaleintrag selbst gespeichert wurde.
 Projekteinstellungen (*expert Helpdesk → Antwort-Einstellungen*) ein Ziel-Status
 und die automatische Zuweisung an den Absender konfiguriert werden. Beide
 werden nach erfolgreichem Versand gesetzt, bevor das Ticket-Formular
-abgesendet wird.
+abgesendet wird. Die Zuweisung greift nur, solange das Ticket **niemandem
+gehört** — weder gespeichert (Benutzer oder Gruppe) noch im gerade abzusendenden
+Formular ausgewählt —, überschreibt also nie eine bereits getroffene
+Zuordnung.
+
+### Tickets zuweisen
+
+Wer ein Ticket bekommt, entscheiden drei Einstellungen in dieser Reihenfolge:
+
+| Einstellung | Wo | Gilt für |
+|-------------|----|----------|
+| `Assigned to:`-Schlüsselwort in der Mail | die Mail selbst | Wird von Redmines eigenem `MailHandler` ausgewertet und hat Vorrang vor allem Folgenden. |
+| Postfach-Regel *Zuweisen an* | *expert Helpdesk → Postfach → Regeln* | Nur wenn die Bedingung auf Betreff oder Absender passt. Ziel kann ein Benutzer **oder** eine Gruppe sein. |
+| **Neue Tickets zuweisen an** | *Projekteinstellungen → expert Helpdesk → Antwort-Einstellungen* | Jedes neue Ticket, das die Postfächer dieses Projekts erzeugen. Voreinstellung: nicht zuweisen. |
+
+**Neue Tickets zuweisen an** bietet die zuweisbaren Projektmitglieder an,
+getrennt nach *Benutzern* und *Gruppen*. Gruppen erscheinen nur, solange unter
+*Administration → Konfiguration → Ticket-Verfolgung* die Option *Zuweisung von
+Tickets an Gruppen erlauben* aktiv ist — es ist dieselbe Liste wie im
+Ticketformular, auswählbar ist also immer nur ein Bearbeiter, den Redmine auch
+akzeptiert. Verliert der gewählte Benutzer bzw. die Gruppe später die Rolle oder
+das Projekt, wird die Vorgabe still übersprungen, statt ungültige Tickets zu
+erzeugen.
+
+Alle drei gelten nur für **neue** Tickets. Eine Antwort weist ein Ticket nie neu
+zu — außer über *Ticket nach Antwort mir zuweisen* (siehe oben), und das auch nur,
+solange das Ticket niemandem gehört.
 
 ### Bisherigen Inhalt zitieren
 

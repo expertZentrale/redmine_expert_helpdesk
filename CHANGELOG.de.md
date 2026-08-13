@@ -7,6 +7,48 @@
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Neue Tickets lassen sich pro Projekt einem festen Benutzer oder einer Gruppe zuweisen.** Bislang
+  konnte das Plugin ein Ticket nur demjenigen Bearbeiter geben, der zufällig geantwortet hat: Ein per
+  Mail eingegangenes Ticket entstand ohne Bearbeiter, und der einzige Weg, es irgendwohin zu lenken,
+  war eine Postfach-Regel auf Betreff oder Absender. Teams, die aus einer gemeinsamen Warteschlange
+  arbeiten – 2nd Level, eine Rufbereitschaft, eine Dispatch-Gruppe –, konnten das überhaupt nicht
+  abbilden, weil nichts im Plugin eine **Gruppe** ansprechen konnte. Unter *Projekteinstellungen →
+  expert Helpdesk → Antworteinstellungen* steht jetzt **Neue Tickets zuweisen an**, eine Auswahl der
+  zuweisbaren Projektmitglieder, getrennt nach Benutzern und Gruppen und mit „Nichts“ vorbelegt – für
+  bestehende Projekte ändert sich also nichts. Angewendet wird sie, wenn eine eingehende Mail ein
+  Ticket erzeugt, und nur dann: Antworten weisen nie neu zu, die manuelle Entscheidung eines
+  Bearbeiters bleibt damit immer bestehen. Zwei Dinge haben bewusst Vorrang: ein `Assigned to:`
+  im Mailtext, das Redmines eigener `MailHandler` bereits berücksichtigt hat, bevor wir hinsehen,
+  und eine passende Postfach-Regel, weil sie die spezifischere Aussage ist. Die Auswahlliste kommt
+  aus `Project#assignable_users`, derselben Quelle wie im Ticketformular – wir können also gar
+  keinen Bearbeiter anbieten, den Redmine ablehnen würde; Gruppen erscheinen entsprechend nur,
+  solange in den Redmine-Einstellungen „Zuweisung von Tickets an Gruppen erlauben“ aktiv ist. Beim
+  Zuweisen wird erneut gegen diese Liste geprüft: Wer später die Rolle verliert oder das Projekt
+  verlässt, wird still nicht mehr verwendet, statt ungültige Tickets zu erzeugen.
+
+- **Postfach-Regeln können an eine Gruppe zuweisen.** Die Regelaktion *Zuweisen an* löste ihren Wert
+  gegen die Projektmitglieder auf und konnte damit immer nur einen Benutzer finden – die Regel-Engine
+  konnte also nicht dasselbe ausdrücken wie die neue Projektvorgabe. Die Auswahl wird jetzt aus den
+  zuweisbaren Projektmitgliedern gebaut, Gruppen sind in der Beschriftung als solche gekennzeichnet,
+  und gespeichert wird die Principal-ID. Regeln aus früheren Versionen enthalten einen Login und
+  lösen unverändert auf – der Login wird weiterhin zuerst probiert.
+
+### Geändert
+
+- **„Ticket nach Antwort mir zuweisen“ greift nur noch, solange das Ticket niemandem gehört.** Die
+  Option überschrieb den Bearbeiter bei jeder einzelnen Antwort: Ein Ticket, das ein Dispatcher
+  gerade an das 2nd Level gegeben hatte, übernahm still der erste Bearbeiter, der antwortete – und
+  ein im selben Formular ausgewählter Bearbeiter ging beim Senden verloren. Übernommen wird das
+  Ticket jetzt nur, wenn es niemand hält; genau das war der Zweck der Option. Bestehende
+  Zuweisungen an Benutzer oder Gruppen bleiben unangetastet.
+
+- **Regeln, die ein Ticket zuweisen, verwenden jetzt die zuweisbaren Projektmitglieder**
+  (`assignable_users`) statt aller Mitglieder (`users`). Bisher konnte eine Regel ein Mitglied als
+  Bearbeiter setzen, dessen Rolle gar nicht zuweisbar ist – im Ticketformular wäre das abgelehnt
+  worden.
+
 ## [0.3.0] - 2026-08-13
 
 ### Hinzugefügt

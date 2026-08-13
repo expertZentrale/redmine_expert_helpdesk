@@ -405,7 +405,9 @@ en:
   label_helpdesk_reply_subject_template: Subject template
   label_helpdesk_reply_status: "Status after reply"
   text_helpdesk_reply_status_info: "Automatically set after sending a reply. Leave empty to keep the current status."
-  label_helpdesk_reply_assign_to_sender: "Assign ticket to me after reply"
+  label_helpdesk_default_assignee: "Assign new tickets to"
+  text_helpdesk_default_assignee_info: "Tickets created from incoming mail are assigned to this user or group. A matching mailbox rule overrides it. Groups are only offered when \"Allow issue assignment to groups\" is enabled in the Redmine settings."
+  label_helpdesk_reply_assign_to_sender: "Assign ticket to me after reply, if it is still unassigned"
   text_helpdesk_subject_template_hint: "Available macros: {{issue.id}}, {{issue.subject}}, {{contact.name}}, {{contact.email}}, {{project.name}}"
   label_helpdesk_mail_footer_preview: Signature preview
   label_helpdesk_reply_addresses_hint: "Separate multiple addresses with a comma"

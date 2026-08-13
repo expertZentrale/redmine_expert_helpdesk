@@ -29,6 +29,19 @@
       <em class="info"><%= l(:text_helpdesk_reply_status_info) %></em>
     </p>
     <p>
+      <label for="hd_default_assigned_to"><%= l(:label_helpdesk_default_assignee) %></label>
+      <%# assignable_users covers users and - if Redmine allows group assignment - groups. %>
+      <% hd_assignables = @project.assignable_users %>
+      <%= select_tag 'helpdesk_project_setting[default_assigned_to_id]',
+          grouped_options_for_select(
+            [[l(:label_user_plural),  hd_assignables.reject { |p| p.is_a?(Group) }.sort.map { |u| [u.name, u.id] }],
+             [l(:label_group_plural), hd_assignables.select { |p| p.is_a?(Group) }.sort.map { |g| [g.name, g.id] }]
+            ].reject { |_label, opts| opts.empty? },
+            hd_setting.default_assigned_to_id),
+          :include_blank => l(:label_none), :id => 'hd_default_assigned_to' %>
+      <em class="info"><%= l(:text_helpdesk_default_assignee_info) %></em>
+    </p>
+    <p>
       <%= check_box_tag 'helpdesk_project_setting[reply_assign_to_sender]', '1',
                         hd_setting.reply_assign_to_sender?,
                         :id => 'hd_reply_assign_to_sender' %>

@@ -199,9 +199,13 @@ nested registration would never fire in production.
 - **`mail_processor.rb`** — the heart. Per mailbox: load from source folder → black/whitelist
   → ignore rules → hand raw MIME to **Redmine's own `MailHandler`** (which does ticket
   creation, reply matching via `In-Reply-To`/`[#id]`, attachments, user creation) → apply
-  rules → link contact → autoresponder → phishing check → attach `.eml` → move to target
-  folder. Reply-vs-new-ticket matching is delegated entirely to `MailHandler`; the plugin
-  only supplies MIME and reacts to the result. Returns a `Result` struct.
+  new-ticket defaults → link contact → autoresponder → phishing check → attach `.eml` → move
+  to target folder. Reply-vs-new-ticket matching is delegated entirely to `MailHandler`; the
+  plugin only supplies MIME and reacts to the result. Returns a `Result` struct.
+  `apply_new_issue_defaults` runs **for new tickets only** and in this order: the project's
+  `default_assigned_to_id` (a `Principal`, so a user **or** a group — skipped when `MailHandler`
+  already honoured an `Assigned to:` keyword), then the mailbox rules, which are the more
+  specific statement and may override it. One `reload`, one `save(:validate => false)`.
 - **`inline_images.rb`** — embedded images of incoming mail. `MailHandler` saves them as
   attachments but keeps the client's reference in the text (`[cid:…]` from Outlook,
   `[image: …]` from Gmail, `<img src="cid:…">`), so the ticket showed markers instead of

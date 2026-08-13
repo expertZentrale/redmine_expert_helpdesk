@@ -32,6 +32,7 @@ class HelpdeskProjectSettingsApiController < ApplicationController
 
     @setting.reply_subject_template = hp[:reply_subject_template].to_s if hp.key?(:reply_subject_template)
     @setting.reply_status_id        = hp[:reply_status_id].presence   if hp.key?(:reply_status_id)
+    @setting.default_assigned_to_id = hp[:default_assigned_to_id].presence if hp.key?(:default_assigned_to_id)
     @setting.phishing_action        = hp[:phishing_action]            if hp.key?(:phishing_action)
     @setting.sla_reaction_minutes   = hp[:sla_reaction_minutes].presence if hp.key?(:sla_reaction_minutes)
     @setting.sla_solution_minutes   = hp[:sla_solution_minutes].presence if hp.key?(:sla_solution_minutes)

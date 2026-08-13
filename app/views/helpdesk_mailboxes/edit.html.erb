@@ -29,13 +29,7 @@
           <td>
             <%= l("label_helpdesk_action_#{rule.action_type}") %>
             <% if rule.action_value.present? %>
-              "<%=
-                if rule.action_type == 'set_assignee'
-                  User.find_by(:login => rule.action_value)&.name || rule.action_value
-                else
-                  rule.action_value
-                end
-              %>"
+              "<%= rule.action_value_label %>"
             <% end %>
           </td>
           <td class="buttons">
@@ -57,7 +51,11 @@
     'set_priority' => IssuePriority.active.map { |p| [p.name, p.name] },
     'set_tracker'  => @project.trackers.map    { |t| [t.name, t.name] },
     'set_category' => @project.issue_categories.map { |c| [c.name, c.name] },
-    'set_assignee' => @project.users.sort_by(&:name).map { |u| [u.name, u.login] },
+    # The value field is a flat select (built in JS below), so groups are marked
+    # in the label instead of in an optgroup. Values are principal ids.
+    'set_assignee' => @project.assignable_users.sort.map { |p|
+      [p.is_a?(Group) ? "#{p.name} (#{l(:label_group)})" : p.name, p.id]
+    },
     'ignore'       => []
   }
 %>

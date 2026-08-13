@@ -347,8 +347,10 @@
         if (statusSel) statusSel.value = '<%= reply_status_id.to_i %>';
         <% end %>
         <% if reply_assign_to_sender %>
+        // Claim the ticket only while it is still unassigned - neither stored
+        // (user or group) nor just picked in this form.
         var assignSel = issueForm.querySelector('select[name="issue[assigned_to_id]"]');
-        if (assignSel) assignSel.value = '<%= User.current.id %>';
+        if (assignSel && !assignSel.value) assignSel.value = '<%= User.current.id %>';
         <% end %>
 
         issueForm.submit(); // normaler Submit, bypasses event listener

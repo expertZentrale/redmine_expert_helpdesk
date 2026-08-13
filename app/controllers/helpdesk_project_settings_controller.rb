@@ -43,6 +43,8 @@ class HelpdeskProjectSettingsController < ApplicationController
       subject.presence || HelpdeskProjectSetting::DEFAULT_SUBJECT_TEMPLATE
     setting.reply_status_id =
       params.dig(:helpdesk_project_setting, :reply_status_id).presence
+    setting.default_assigned_to_id =
+      params.dig(:helpdesk_project_setting, :default_assigned_to_id).presence
     setting.reply_assign_to_sender =
       params.dig(:helpdesk_project_setting, :reply_assign_to_sender) == '1'
     setting.phishing_check_enabled =
