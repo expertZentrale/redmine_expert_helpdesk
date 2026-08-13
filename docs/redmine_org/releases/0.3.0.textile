@@ -1,0 +1,37 @@
+h3. Added
+
+* *Prior ticket content can be quoted into the reply with one click.* Agents answering a customer were copy-pasting out of the ticket history by hand, which loses the @>@ prefixing mail clients need to fold a quote — and silently drags along whatever happened to be selected. A *Quote* button now sits next to the formatting icons of the note editor with three entries: *Original email* quotes the ticket description (the mail that became the ticket, embedded images already resolved), *Complete conversation* adds every public journal note, and *Email conversation* adds only the notes belonging to a mail actually exchanged with the customer. Entries carry author and timestamp and are separated by a horizontal rule, so a long history stays readable while scrolling. Private notes are excluded from all three — including for agents who are allowed to read them, because the text is destined for a customer.
+
+* *Answer templates, globally and per project.* Support cases repeat, and until now every acknowledgement, follow-up question and closing text was retyped. A *Templates* button next to the Quote button inserts a stored answer. Global templates are maintained under *Administration → Plugins → Redmine expert Helpdesk*, project templates in the project settings tab *expert Helpdesk*; a project's own templates are offered first, so it can override a central wording by reusing its name. Templates understand the same macros as autoresponder, header/footer and subject templates, and the macros are expanded at insertion time against the ticket, its customer and the acting agent.
+
+* *Embedded images of an incoming mail are shown in the ticket* instead of the @[cid:…]@ marker the mail client left behind, so a signature arrives as a logo rather than as @[cid:image001.png@01DD2980.37ED1560]@. Outlook's @[cid:…]@, Gmail's @[image: …]@ and @<img src="cid:…">@ are all recognised and rewritten to the image syntax of the configured formatting, pointing at the attachment that was just stored. The archived @.eml@ keeps the untouched original, and markers without a matching attachment are left alone.
+
+* *Outgoing mails carry their send time in the journal header,* the same way received mails already did, so the correspondence can be followed on one time axis instead of reading the outgoing side off the journal's own timestamp — which is when the note was saved, not when the mail left.
+
+* *The mailbox connection test can copy the whole message.* Provider errors are long and the status line wraps; *Copy message* puts the full text on the clipboard, and where the clipboard API is unavailable — an internal Redmine over plain http is not a secure context — it selects the text instead of failing silently.
+
+h3. Fixed
+
+* *Images already attached to the ticket never reached the customer.* Only images an agent had just pasted or dropped into the form were sent as inline mail parts; anything already stored on the ticket stayed a relative reference that means nothing in a mail client, so the customer received an empty box. This was invisible while pasting was the only way to get an image into a reply, and became obvious once quoting made it easy to reference the pictures of the original mail.
+
+* *@-WhatIf@ did not stop the Entra ID writes* in @setup-azure-app.ps1@. It was documented as a dry run and guarded the Exchange Online calls, but the Microsoft Graph ones ran regardless.
+
+h3. Changed
+
+* *@setup-azure-app.ps1@ can add mailboxes to an existing setup* instead of aborting as soon as an app registration with the given name exists. Onboarding one more project no longer means tearing the tenant setup down and rebuilding it — which would mint a new client secret and force a Redmine config change.
+
+* *@-ListRoleAssignments@ shows which mailboxes a scope actually covers,* by asking Exchange Online to evaluate the filter rather than reading it by eye — the only way to answer that for a @CustomAttribute@, domain or group filter.
+
+h3. Upgrade notes
+
+*This release runs a migration.* One table is added for the answer templates:
+
+<pre>
+bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=production
+</pre>
+
+No new permission is introduced. Quoting and inserting a template require the existing *Send customer replies* permission, the same one that governs the reply form; maintaining a project's templates requires *Manage helpdesk mailboxes*, and the global templates are administrators only.
+
+Quoting deliberately never includes private notes, not even for agents holding *View private notes* — the result is meant for a customer. For the same reason the plugin's own bookkeeping notes (autoresponder sent, phishing links removed) stay out of the quoted conversation. Very long histories are capped so the note field stays usable, and the toolbar says so rather than truncating silently.
+
+Embedded images can be switched off under *Administration → Plugins → Redmine expert Helpdesk → Embedded images* if the previous behaviour is preferred.

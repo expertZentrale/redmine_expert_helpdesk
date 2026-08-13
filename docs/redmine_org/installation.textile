@@ -60,6 +60,8 @@ Under *Administration → Plugins → Redmine expert Helpdesk*, or via the *expe
 | Entries per page | Page size of the customer list (default 25) |
 | Max. tickets in customer profile | Tickets shown in the customer detail view (default 10) |
 | Mark tickets awaiting a response | Flags tickets whose customer replied by mail and clears the flag when an agent answers (on by default) |
+| Answer templates | Global canned responses offered in every helpdesk project, in addition to a project's own ones |
+| Embedded images | Rewrites the @[cid:…]@ markers of incoming mails to the stored image attachment (on by default) |
 
 Nothing here is required for a mailbox that carries its own credentials — see the next step.
 

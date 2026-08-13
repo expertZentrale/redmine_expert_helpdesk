@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-13
+
 ### Added
 
 - **Prior ticket content can be quoted into the note field with one click.** Agents answering a

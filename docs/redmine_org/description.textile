@@ -19,6 +19,8 @@ h3. Features
 * *Autoresponder* — configurable confirmation mail for new tickets.
 * *Customer replies* from the ticket page, with header/footer templates, inline images (CID), attachments and CC/BCC. Sent through the mailbox itself, so a copy lands in its Sent folder.
 * *Address autocomplete* — To/CC/BCC suggest matching project contacts.
+* *Quoting and answer templates* — next to the formatting icons of the note field, a *Quote* button inserts the original mail, the complete conversation or only the mail exchange (private notes never among them), and a *Templates* button inserts a stored answer with its macros already resolved. Templates are maintained globally and per project.
+* *Embedded images* — inline images of an incoming mail are shown in the ticket where the mail showed them, instead of leaving a @[cid:…]@ marker behind, and images referenced in a reply are sent to the customer as inline parts.
 * *Contacts* — senders are saved automatically; customer list per project and a customer panel with previous tickets on the ticket page.
 * *Black-/whitelists* — sender and domain filters per mailbox.
 * *SLA* — reaction and solution targets in business minutes, per-priority overrides, traffic-light display, sortable and filterable SLA columns in the issue list, breach notification via a cron endpoint, plus an "SLA statistics" tab with charts.

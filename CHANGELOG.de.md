@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-13
+
 ### Hinzugefügt
 
 - **Bisheriger Ticketinhalt lässt sich mit einem Klick in das Notizfeld zitieren.** Wer einem Kunden
