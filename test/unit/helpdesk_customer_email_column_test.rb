@@ -86,6 +86,33 @@ class HelpdeskCustomerEmailColumnTest < ActiveSupport::TestCase
     assert_includes query.issues.map(&:id), @issue.id
   end
 
+  # Legacy dangling rows: a ticket info whose contact was hard-deleted must
+  # not mask a valid message sender -- in Ruby and in the SQL mirror alike.
+  def test_dangling_ticket_info_contact_falls_back_to_message
+    gone   = create_contact('gone@example.org', 'Deleted Later')
+    sender = create_contact('still-here@example.org', 'Still Here')
+    HelpdeskTicketInfo.link!(@issue, gone)
+    incoming_message(@issue, sender)
+    gone.delete # raw delete: simulates rows from before the dependent-nullify
+
+    assert_equal 'still-here@example.org', Issue.find(@issue.id).helpdesk_kunde_email
+
+    query = IssueQuery.new(:name => '_')
+    query.add_filter('helpdesk_kunde', '~', ['still-here'])
+    assert_includes query.issues.map(&:id), @issue.id
+  end
+
+  # Destroying a contact nullifies its ticket-info links instead of leaving
+  # dangling ids behind.
+  def test_destroying_a_contact_nullifies_ticket_infos
+    contact = create_contact('to-destroy@example.org', 'To Destroy')
+    info = HelpdeskTicketInfo.link!(@issue, contact)
+
+    contact.destroy
+
+    assert_nil info.reload.helpdesk_contact_id
+  end
+
   # Outgoing/init messages are agent mails, never the customer.
   def test_out_and_init_messages_are_ignored
     agent    = create_contact('agent-only@example.org', 'Agent Only')

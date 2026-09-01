@@ -7,6 +7,10 @@ class HelpdeskContact < HelpdeskApplicationRecord
 
   belongs_to :project, :optional => true
   has_many :helpdesk_messages, :dependent => :nullify
+  # Nullify like the messages: without it a destroyed contact leaves a
+  # dangling helpdesk_contact_id behind (the customer columns/filter guard
+  # against legacy dangling rows, but new ones should not be created).
+  has_many :helpdesk_ticket_infos, :dependent => :nullify
 
   validates :email, :presence => true
   validates :email, :uniqueness => { :scope => :project_id, :case_sensitive => false }

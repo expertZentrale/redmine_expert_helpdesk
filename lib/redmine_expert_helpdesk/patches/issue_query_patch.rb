@@ -12,18 +12,20 @@ module RedmineExpertHelpdesk
   module Patches
     module IssueQueryPatch
       # SQL mirror of Issue#helpdesk_customer_contact: the authoritative
-      # helpdesk_ticket_infos link first (a NULL helpdesk_contact_id falls
-      # through COALESCE, same as the Ruby fallback), then the sender of the
-      # first incoming mail WITH a contact -- the IS NOT NULL matches the Ruby
-      # joins(:helpdesk_contact), which skips contactless incoming messages.
+      # helpdesk_ticket_infos link first, then the sender of the first
+      # incoming mail WITH a contact. Both subqueries JOIN helpdesk_contacts
+      # so only existing contacts participate in the COALESCE -- a NULL or
+      # dangling helpdesk_contact_id falls through to the fallback exactly
+      # like the Ruby resolver (nil association resp. joins(:helpdesk_contact)).
       # Shared by the customer sort SQLs and the filter.
       HELPDESK_CUSTOMER_CONTACT_ID_SQL =
         "COALESCE(" \
-        "(SELECT ti.helpdesk_contact_id FROM helpdesk_ticket_infos ti" \
+        "(SELECT hc.id FROM helpdesk_contacts hc" \
+        " INNER JOIN helpdesk_ticket_infos ti ON ti.helpdesk_contact_id = hc.id" \
         " WHERE ti.issue_id = #{Issue.quoted_table_name}.id)," \
-        " (SELECT hm.helpdesk_contact_id FROM helpdesk_messages hm" \
+        " (SELECT hc.id FROM helpdesk_contacts hc" \
+        " INNER JOIN helpdesk_messages hm ON hm.helpdesk_contact_id = hc.id" \
         " WHERE hm.issue_id = #{Issue.quoted_table_name}.id AND hm.direction = 'in'" \
-        " AND hm.helpdesk_contact_id IS NOT NULL" \
         " ORDER BY hm.id ASC LIMIT 1))".freeze
 
       HELPDESK_KUNDE_SORT_SQL =

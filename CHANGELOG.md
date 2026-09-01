@@ -26,7 +26,9 @@
   replies — its customer was invisible in the list and unfindable through the filter, although the
   ticket sidebar showed it. Column, sorting and filter now resolve the customer the way the rest of
   the plugin does: the authoritative ticket link (`helpdesk_ticket_infos`) first, the first incoming
-  sender as fallback for legacy tickets without one.
+  sender as fallback for legacy tickets without one. Deleting a contact also nullifies its ticket
+  links now (as it always did for messages), and the resolution skips dangling links from earlier
+  deletions instead of showing a blank customer.
 
 ## [0.4.0] - 2026-08-13
 

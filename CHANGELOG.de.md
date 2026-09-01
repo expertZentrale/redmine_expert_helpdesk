@@ -27,7 +27,9 @@
   Filter nicht auffindbar, obwohl die Ticket-Sidebar ihn zeigte. Spalte, Sortierung und Filter
   lösen den Kunden jetzt so auf wie der Rest des Plugins: zuerst die autoritative
   Ticket-Verknüpfung (`helpdesk_ticket_infos`), als Fallback für Alt-Tickets der erste eingehende
-  Absender.
+  Absender. Das Löschen eines Kontakts nullt jetzt auch seine Ticket-Verknüpfungen (wie schon
+  immer bei den Nachrichten), und die Auflösung überspringt verwaiste Verknüpfungen aus früheren
+  Löschungen, statt einen leeren Kunden anzuzeigen.
 
 ## [0.4.0] - 2026-08-13
 
