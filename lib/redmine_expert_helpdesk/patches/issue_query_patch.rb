@@ -1,5 +1,6 @@
 # Erweitert IssueQuery um:
-# - Spalte "Kunde" (sortierbar, via Subquery auf helpdesk_contacts)
+# - Spalten "Kunde" und "Kunden-E-Mail" (sortierbar, via Subquery auf
+#   helpdesk_contacts)
 # - Filter "Kunde" (Textsuche auf Name oder E-Mail-Adresse)
 # - Spalten/Filter "SLA Reaktion" und "SLA Loesung": Status je SLA-Uhr, aus den
 #   vorberechneten Faelligkeiten (helpdesk_ticket_infos) per reinem Zeitstempel-
@@ -10,12 +11,25 @@
 module RedmineExpertHelpdesk
   module Patches
     module IssueQueryPatch
-      HELPDESK_KUNDE_SORT_SQL =
-        "(SELECT COALESCE(hc.name, hc.email)" \
-        " FROM helpdesk_contacts hc" \
-        " INNER JOIN helpdesk_messages hm ON hm.helpdesk_contact_id = hc.id" \
+      # SQL mirror of Issue#helpdesk_customer_contact: the authoritative
+      # helpdesk_ticket_infos link first (a NULL helpdesk_contact_id falls
+      # through COALESCE, same as the Ruby fallback), then the sender of the
+      # first incoming mail. Shared by the customer sort SQLs and the filter.
+      HELPDESK_CUSTOMER_CONTACT_ID_SQL =
+        "COALESCE(" \
+        "(SELECT ti.helpdesk_contact_id FROM helpdesk_ticket_infos ti" \
+        " WHERE ti.issue_id = #{Issue.quoted_table_name}.id)," \
+        " (SELECT hm.helpdesk_contact_id FROM helpdesk_messages hm" \
         " WHERE hm.issue_id = #{Issue.quoted_table_name}.id AND hm.direction = 'in'" \
-        " ORDER BY hm.id ASC LIMIT 1)".freeze
+        " ORDER BY hm.id ASC LIMIT 1))".freeze
+
+      HELPDESK_KUNDE_SORT_SQL =
+        "(SELECT COALESCE(hc.name, hc.email) FROM helpdesk_contacts hc" \
+        " WHERE hc.id = #{HELPDESK_CUSTOMER_CONTACT_ID_SQL})".freeze
+
+      HELPDESK_KUNDE_EMAIL_SORT_SQL =
+        "(SELECT hc.email FROM helpdesk_contacts hc" \
+        " WHERE hc.id = #{HELPDESK_CUSTOMER_CONTACT_ID_SQL})".freeze
 
       # Schweregrad-Rang je Uhr (0 kein SLA .. 5 ueberschritten). done_at ist bei
       # der Reaktion first_response_at, bei der Loesung issues.closed_on.
@@ -71,6 +85,16 @@ module RedmineExpertHelpdesk
             :helpdesk_kunde,
             :sortable => HELPDESK_KUNDE_SORT_SQL,
             :caption  => :label_helpdesk_customer
+          )
+        end
+
+        # Email-only sibling of "Kunde": display names can be long and unclear.
+        # Plain text on purpose (no mailto -- accidental clicks in dense lists).
+        unless base.available_columns.any? { |c| c.name == :helpdesk_kunde_email }
+          base.available_columns << QueryColumn.new(
+            :helpdesk_kunde_email,
+            :sortable => HELPDESK_KUNDE_EMAIL_SORT_SQL,
+            :caption  => :label_helpdesk_customer_email
           )
         end
 
@@ -161,6 +185,8 @@ module RedmineExpertHelpdesk
       # SQL-Bedingung fuer den Kunden-Textfilter
       # Unterstuetzte Operatoren: ~ (enthaelt), !~ (enthaelt nicht),
       #                           = (ist gleich), ! (ist nicht gleich)
+      # Matcht Name ODER E-Mail des aufgeloesten Kundenkontakts (deckt damit
+      # auch die Spalte "Kunden-E-Mail" ab, kein eigener E-Mail-Filter noetig).
       def sql_for_helpdesk_kunde_field(field, operator, value)
         conn   = ActiveRecord::Base.connection
         search = value.first.to_s
@@ -173,10 +199,8 @@ module RedmineExpertHelpdesk
 
         exists = <<~SQL.strip
           EXISTS (
-            SELECT 1 FROM helpdesk_messages hm
-            INNER JOIN helpdesk_contacts hc ON hc.id = hm.helpdesk_contact_id
-            WHERE hm.issue_id = #{Issue.quoted_table_name}.id
-              AND hm.direction = 'in'
+            SELECT 1 FROM helpdesk_contacts hc
+            WHERE hc.id = #{HELPDESK_CUSTOMER_CONTACT_ID_SQL}
               AND (LOWER(COALESCE(hc.name, '')) #{like_op} LOWER(#{pattern})
                 OR LOWER(hc.email) #{like_op} LOWER(#{pattern}))
           )

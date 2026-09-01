@@ -82,7 +82,9 @@ see [Tests](#tests).
   are automatically quoted per RFC 2822.
 - **Contacts**: Senders are automatically saved as contacts; customer list in
   the project (paginated, configurable entries per page), customer info panel
-  with previous tickets on the ticket page.
+  with previous tickets on the ticket page. The issue list offers sortable
+  **"Customer" and "Customer email" columns** plus a customer filter matching
+  name or email.
 - **Black-/whitelist**: Sender and domain filters per mailbox.
 - **SLA**: Per-project reaction and solution time targets in business minutes
   (working days + time range configurable per project), optional per-priority
@@ -651,6 +653,16 @@ the same one that gates the reply form.
 
 Senders are automatically saved as `HelpdeskContact` records on the first
 mailbox fetch and assigned to the project.
+
+### Ticket list columns
+
+The issue list offers two optional, sortable columns: **Customer** (the
+contact's display name) and **Customer email** (the plain email address —
+useful where display names are long or unclear). Both show the ticket's
+customer: the contact linked on mail ingest, or the one an agent assigned.
+The **Customer** filter matches name or email and covers both columns.
+Tickets without a customer (e.g. created by an agent without assigning one)
+stay blank.
 
 ### Customer list (project tab "Kunden")
 

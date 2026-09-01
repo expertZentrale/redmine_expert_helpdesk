@@ -8,6 +8,26 @@
 
 ## [Unreleased]
 
+### Added
+
+- **The issue list can show a "Customer email" column.** The existing "Customer" column renders the
+  contact's display name, which for many senders is long or unclear — a "Firstname Lastname |
+  Company | Department" display name tells an agent less at a glance than the plain address. The new
+  optional column shows only the contact's email address and is sortable like its sibling; the
+  existing "Customer" filter (which matches name **or** email) covers it too, so no second filter is
+  needed. The value is deliberately plain text, not a `mailto:` link — links in dense lists get
+  clicked by accident.
+
+### Fixed
+
+- **The "Customer" column and filter now also work for agent-created tickets with an assigned
+  customer.** Both used to read the sender of the first *incoming* mail only, but a ticket an agent
+  creates and assigns a customer to (initial-mail flow) has no incoming mail until the customer
+  replies — its customer was invisible in the list and unfindable through the filter, although the
+  ticket sidebar showed it. Column, sorting and filter now resolve the customer the way the rest of
+  the plugin does: the authoritative ticket link (`helpdesk_ticket_infos`) first, the first incoming
+  sender as fallback for legacy tickets without one.
+
 ## [0.4.0] - 2026-08-13
 
 ### Added

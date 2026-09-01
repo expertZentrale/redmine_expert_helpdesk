@@ -83,7 +83,9 @@ siehe [Tests](#tests).
   Komma werden automatisch RFC 2822-konform gequotet.
 - **Kontakte**: Absender werden automatisch als Kontakte gespeichert;
   Kundenliste im Projekt (paginiert, konfigurierbare Einträge pro Seite),
-  Kundeninfo-Panel mit früheren Tickets auf der Ticketseite.
+  Kundeninfo-Panel mit früheren Tickets auf der Ticketseite. Die Ticketliste
+  bietet sortierbare Spalten **„Kunde" und „Kunden-E-Mail"** sowie einen
+  Kundenfilter auf Name oder E-Mail.
 - **Black-/Whitelist**: Absender- und Domainfilter je Postfach.
 - **SLA**: Reaktions- und Lösungszeit-Ziele in Geschäftsminuten pro Projekt
   (Arbeitstage + Zeitspanne je Projekt konfigurierbar), optional je Priorität
@@ -680,6 +682,16 @@ dieselbe, die auch das Antwortformular schützt.
 
 Absender werden beim ersten Postfachabruf automatisch als `HelpdeskContact`
 gespeichert und dem Projekt zugeordnet.
+
+### Ticketlisten-Spalten
+
+Die Ticketliste bietet zwei optionale, sortierbare Spalten: **Kunde**
+(Anzeigename des Kontakts) und **Kunden-E-Mail** (nur die E-Mail-Adresse —
+nützlich, wenn Anzeigenamen lang oder unklar sind). Beide zeigen den Kunden
+des Tickets: den beim Mail-Eingang verknüpften oder den vom Agenten
+zugewiesenen Kontakt. Der Filter **Kunde** durchsucht Name oder E-Mail und
+deckt beide Spalten ab. Tickets ohne Kunden (z. B. von Agenten ohne
+Zuweisung erstellt) bleiben leer.
 
 ### Kundenliste (Projekt-Reiter „Kunden")
 

@@ -383,6 +383,7 @@ en:
   error_helpdesk_fetch_failed: "Mail fetch failed: %{message}"
 
   label_helpdesk_customer: Customer
+  label_helpdesk_customer_email: Customer email
   label_helpdesk_customers: Customers
   label_helpdesk_edit_customer: Edit customer
   label_helpdesk_email: Email address

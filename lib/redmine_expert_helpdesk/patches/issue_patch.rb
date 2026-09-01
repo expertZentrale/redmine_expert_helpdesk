@@ -1,5 +1,6 @@
 # Erweitert Issue um:
-# - helpdesk_kunde: zugehoeriger Kundenkontakt (Name/E-Mail); Grid-Spalte "Kunde"
+# - helpdesk_kunde / helpdesk_kunde_email: the ticket's customer contact
+#   (display name resp. email only); grid columns "Kunde" / "Kunden-E-Mail"
 # - helpdesk_sla_reaction / helpdesk_sla_solution: SLA-Status je Uhr aus den
 #   vorberechneten Faelligkeiten; Grid-Spalten/-Filter "SLA Reaktion/Loesung"
 # - after_save: haelt die vorberechneten SLA-Faelligkeiten aktuell
@@ -12,15 +13,35 @@ module RedmineExpertHelpdesk
         base.after_save :helpdesk_clear_awaiting_on_close
       end
 
-      # Gibt den Anzeigenamen des ersten eingehenden Absenderkontakts zurueck
-      # oder nil, wenn kein Helpdesk-Kontakt vorhanden ist.
+      # The ticket's customer contact: the authoritative HelpdeskTicketInfo link
+      # first (set on mail ingest, manual init assignment and legacy import),
+      # falling back to the sender of the first incoming mail for legacy tickets
+      # without a ticket-info row. nil when the ticket has no customer (e.g.
+      # agent-created without an assigned contact) -- that is expected.
+      # Wrapped in an array so a nil result is memoized too; both customer grid
+      # columns hit this once per row (mirrors helpdesk_awaiting_agent).
+      def helpdesk_customer_contact
+        @helpdesk_customer_contact ||= begin
+          contact = HelpdeskTicketInfo.for_issue(self)&.helpdesk_contact
+          contact ||= HelpdeskMessage
+                        .joins(:helpdesk_contact)
+                        .where(:issue_id => id, :direction => 'in')
+                        .order(:id => :asc)
+                        .first&.helpdesk_contact
+          [contact]
+        end
+        @helpdesk_customer_contact.first
+      end
+
+      # Display name of the customer contact (grid column "Kunde"), or nil.
       def helpdesk_kunde
-        msg = HelpdeskMessage
-                .joins(:helpdesk_contact)
-                .where(:issue_id => id, :direction => 'in')
-                .order(:id => :asc)
-                .first
-        msg&.helpdesk_contact&.display_name
+        helpdesk_customer_contact&.display_name
+      end
+
+      # Email address of the customer contact (grid column "Kunden-E-Mail"), or
+      # nil. Separate column because display names can be long and unclear.
+      def helpdesk_kunde_email
+        helpdesk_customer_contact&.email
       end
 
       # SLA-Status der Reaktionsuhr (nil, wenn kein SLA greift). Ohne erfasste
