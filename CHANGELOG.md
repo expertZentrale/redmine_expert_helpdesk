@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-01
+
 ### Added
 
 - **The issue list can show a "Customer email" column.** The existing "Customer" column renders the

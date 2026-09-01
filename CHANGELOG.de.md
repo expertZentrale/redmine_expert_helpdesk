@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-01
+
 ### Hinzugefügt
 
 - **Die Ticketliste kann eine Spalte „Kunden-E-Mail" anzeigen.** Die bestehende Spalte „Kunde"

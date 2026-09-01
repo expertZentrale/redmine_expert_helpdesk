@@ -1,0 +1,13 @@
+h3. Added
+
+* *The issue list can show a "Customer email" column.* The existing *Customer* column renders the contact's display name, which for many senders is long or unclear — a "Firstname Lastname | Company | Department" display name tells an agent less at a glance than the plain address. The new optional column shows only the contact's email address and is sortable like its sibling. The existing *Customer* filter matches name *or* email, so it covers the new column too and no second filter is needed. The value is deliberately plain text, not a @mailto:@ link — links in dense lists get clicked by accident.
+
+h3. Fixed
+
+* *The Customer column and filter now also work for agent-created tickets with an assigned customer.* Both used to read the sender of the first *incoming* mail only, but a ticket an agent creates and assigns a customer to (initial-mail flow) has no incoming mail until the customer replies — its customer was invisible in the list and unfindable through the filter, although the ticket sidebar showed it. Columns, sorting and filter now resolve the customer the way the rest of the plugin does: the authoritative ticket link first, the first incoming sender as fallback for legacy tickets.
+
+* *Deleting a contact no longer leaves broken ticket links behind.* The ticket-to-customer link now clears when its contact is deleted (as it always did for the message log), and the customer columns and filter skip stale links from earlier deletions instead of showing a blank customer although a valid sender is on record.
+
+h3. Upgrade notes
+
+No migration and no new permission or setting. One visible change: tickets whose customer was assigned by an agent now show that customer in the *Customer* column and are found by the *Customer* filter — before this release those cells were empty and the filter missed them.
