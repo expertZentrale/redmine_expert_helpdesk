@@ -1,9 +1,9 @@
-# Erweitert Issue um:
+# Extends Issue with:
 # - helpdesk_kunde / helpdesk_kunde_email: the ticket's customer contact
 #   (display name resp. email only); grid columns "Kunde" / "Kunden-E-Mail"
-# - helpdesk_sla_reaction / helpdesk_sla_solution: SLA-Status je Uhr aus den
-#   vorberechneten Faelligkeiten; Grid-Spalten/-Filter "SLA Reaktion/Loesung"
-# - after_save: haelt die vorberechneten SLA-Faelligkeiten aktuell
+# - helpdesk_sla_reaction / helpdesk_sla_solution: SLA status per clock, from
+#   the precomputed deadlines; grid columns/filters "SLA reaction/solution"
+# - after_save: keeps the precomputed SLA deadlines current
 module RedmineExpertHelpdesk
   module Patches
     module IssuePatch

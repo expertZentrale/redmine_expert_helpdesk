@@ -71,6 +71,21 @@ class HelpdeskCustomerEmailColumnTest < ActiveSupport::TestCase
     assert_equal 'maskfree@example.org', Issue.find(@issue.id).helpdesk_kunde_email
   end
 
+  # A contactless first incoming message (unknown sender) must be skipped in
+  # favor of the first incoming message WITH a contact -- in the Ruby resolver
+  # and in the SQL mirror (filter/sort) alike.
+  def test_contactless_first_incoming_message_is_skipped
+    contact = create_contact('second-sender@example.org', 'Second Sender')
+    HelpdeskMessage.create!(:issue => @issue, :direction => 'in')
+    incoming_message(@issue, contact)
+
+    assert_equal 'second-sender@example.org', Issue.find(@issue.id).helpdesk_kunde_email
+
+    query = IssueQuery.new(:name => '_')
+    query.add_filter('helpdesk_kunde', '~', ['second-sender'])
+    assert_includes query.issues.map(&:id), @issue.id
+  end
+
   # Outgoing/init messages are agent mails, never the customer.
   def test_out_and_init_messages_are_ignored
     agent    = create_contact('agent-only@example.org', 'Agent Only')

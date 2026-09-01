@@ -1,26 +1,29 @@
-# Erweitert IssueQuery um:
-# - Spalten "Kunde" und "Kunden-E-Mail" (sortierbar, via Subquery auf
+# Extends IssueQuery with:
+# - columns "Kunde" and "Kunden-E-Mail" (sortable via subquery on
 #   helpdesk_contacts)
-# - Filter "Kunde" (Textsuche auf Name oder E-Mail-Adresse)
-# - Spalten/Filter "SLA Reaktion" und "SLA Loesung": Status je SLA-Uhr, aus den
-#   vorberechneten Faelligkeiten (helpdesk_ticket_infos) per reinem Zeitstempel-
-#   Vergleich gegen UTC_TIMESTAMP() (MariaDB; AR speichert datetimes als UTC).
+# - filter "Kunde" (text search on name or email address)
+# - columns/filters "SLA reaction" and "SLA solution": status per SLA clock,
+#   from the precomputed deadlines (helpdesk_ticket_infos) by plain timestamp
+#   comparison against UTC_TIMESTAMP() (MariaDB; AR stores datetimes as UTC).
 #
-# Verwendet prepend, damit initialize_available_filters mit super aufgerufen
-# werden kann (include wuerde die Klassenmethode nicht ueberschreiben).
+# Uses prepend so initialize_available_filters can call super (include would
+# not override the class method).
 module RedmineExpertHelpdesk
   module Patches
     module IssueQueryPatch
       # SQL mirror of Issue#helpdesk_customer_contact: the authoritative
       # helpdesk_ticket_infos link first (a NULL helpdesk_contact_id falls
       # through COALESCE, same as the Ruby fallback), then the sender of the
-      # first incoming mail. Shared by the customer sort SQLs and the filter.
+      # first incoming mail WITH a contact -- the IS NOT NULL matches the Ruby
+      # joins(:helpdesk_contact), which skips contactless incoming messages.
+      # Shared by the customer sort SQLs and the filter.
       HELPDESK_CUSTOMER_CONTACT_ID_SQL =
         "COALESCE(" \
         "(SELECT ti.helpdesk_contact_id FROM helpdesk_ticket_infos ti" \
         " WHERE ti.issue_id = #{Issue.quoted_table_name}.id)," \
         " (SELECT hm.helpdesk_contact_id FROM helpdesk_messages hm" \
         " WHERE hm.issue_id = #{Issue.quoted_table_name}.id AND hm.direction = 'in'" \
+        " AND hm.helpdesk_contact_id IS NOT NULL" \
         " ORDER BY hm.id ASC LIMIT 1))".freeze
 
       HELPDESK_KUNDE_SORT_SQL =
@@ -182,11 +185,11 @@ module RedmineExpertHelpdesk
         operator == '!' ? "NOT (#{cond})" : cond
       end
 
-      # SQL-Bedingung fuer den Kunden-Textfilter
-      # Unterstuetzte Operatoren: ~ (enthaelt), !~ (enthaelt nicht),
-      #                           = (ist gleich), ! (ist nicht gleich)
-      # Matcht Name ODER E-Mail des aufgeloesten Kundenkontakts (deckt damit
-      # auch die Spalte "Kunden-E-Mail" ab, kein eigener E-Mail-Filter noetig).
+      # SQL condition for the customer text filter.
+      # Supported operators: ~ (contains), !~ (does not contain),
+      #                      = (equals), ! (does not equal)
+      # Matches name OR email of the resolved customer contact (also covers
+      # the "Kunden-E-Mail" column, so no separate email filter is needed).
       def sql_for_helpdesk_kunde_field(field, operator, value)
         conn   = ActiveRecord::Base.connection
         search = value.first.to_s
