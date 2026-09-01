@@ -6,8 +6,9 @@
 #   from the precomputed deadlines (helpdesk_ticket_infos) by plain timestamp
 #   comparison against UTC_TIMESTAMP() (MariaDB; AR stores datetimes as UTC).
 #
-# Uses prepend so initialize_available_filters can call super (include would
-# not override the class method).
+# Uses prepend so initialize_available_filters can call super (include sits
+# below the class in the ancestor chain, so it could not override the method
+# IssueQuery defines itself).
 module RedmineExpertHelpdesk
   module Patches
     module IssueQueryPatch
