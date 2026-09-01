@@ -7,6 +7,30 @@
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Die Ticketliste kann eine Spalte „Kunden-E-Mail" anzeigen.** Die bestehende Spalte „Kunde"
+  zeigt den Anzeigenamen des Kontakts, der bei vielen Absendern lang oder unklar ist — ein
+  Anzeigename wie „Vorname Nachname | Firma | Abteilung" sagt einem Bearbeiter auf einen Blick
+  weniger als die reine Adresse. Die neue optionale Spalte zeigt nur die E-Mail-Adresse des
+  Kontakts und ist wie ihre Schwesterspalte sortierbar; der bestehende Filter „Kunde" (der Name
+  **oder** E-Mail durchsucht) deckt sie mit ab, ein zweiter Filter ist nicht nötig. Der Wert ist
+  bewusst reiner Text und kein `mailto:`-Link — Links in dichten Listen werden versehentlich
+  angeklickt.
+
+### Behoben
+
+- **Spalte und Filter „Kunde" funktionieren jetzt auch für von Agenten erstellte Tickets mit
+  zugewiesenem Kunden.** Beide lasen bisher nur den Absender der ersten *eingehenden* Mail, aber
+  ein Ticket, das ein Agent anlegt und einem Kunden zuweist (Initial-Mail-Flow), hat bis zur
+  Antwort des Kunden keine eingehende Mail — sein Kunde war in der Liste unsichtbar und über den
+  Filter nicht auffindbar, obwohl die Ticket-Sidebar ihn zeigte. Spalte, Sortierung und Filter
+  lösen den Kunden jetzt so auf wie der Rest des Plugins: zuerst die autoritative
+  Ticket-Verknüpfung (`helpdesk_ticket_infos`), als Fallback für Alt-Tickets der erste eingehende
+  Absender. Das Löschen eines Kontakts nullt jetzt auch seine Ticket-Verknüpfungen (wie schon
+  immer bei den Nachrichten), und die Auflösung überspringt verwaiste Verknüpfungen aus früheren
+  Löschungen, statt einen leeren Kunden anzuzeigen.
+
 ## [0.4.0] - 2026-08-13
 
 ### Hinzugefügt

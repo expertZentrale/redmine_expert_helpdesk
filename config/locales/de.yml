@@ -383,6 +383,7 @@ de:
   error_helpdesk_fetch_failed: "Mailabruf fehlgeschlagen: %{message}"
 
   label_helpdesk_customer: Kunde
+  label_helpdesk_customer_email: Kunden-E-Mail
   label_helpdesk_customers: Kunden
   label_helpdesk_edit_customer: Kunde bearbeiten
   label_helpdesk_email: E-Mail-Adresse
