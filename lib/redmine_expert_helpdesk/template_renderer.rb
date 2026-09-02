@@ -84,19 +84,26 @@ module RedmineExpertHelpdesk
       # Keyed by the normalised name so {{user.name}} and {{user_name}} share
       # one entry.
       memo = {}
+      # Separate from the memo and from the caller's context hash: distinct
+      # {{issue.cf.*}} macros have distinct names, so the memo never spares
+      # them the enabled-field lookup. Held here it happens once per render,
+      # and the caller's hash is never written to.
+      shared = {}
       template.gsub(MACRO_PATTERN) do
         name = LEGACY_ALIASES.fetch(Regexp.last_match(1), Regexp.last_match(1))
-        memo.fetch(name) { memo[name] = resolve(name, context) }.to_s
+        memo.fetch(name) { memo[name] = resolve(name, context, shared) }.to_s
       end
     end
 
     # Resolves a single macro name. Returns nil for anything unknown, which the
     # caller turns into an empty string.
-    def self.resolve(name, context)
+    # +shared+ is an optional per-render scratch hash; see .render. Callers
+    # outside render may omit it and pay one query per custom-field macro.
+    def self.resolve(name, context, shared = nil)
       name = LEGACY_ALIASES.fetch(name, name)
 
       if (cf_key = name[/\Aissue\.cf\.(.+)\z/, 1])
-        return custom_field_value(context, cf_key)
+        return custom_field_value(context, cf_key, shared)
       end
 
       resolver = RESOLVERS[name]
@@ -149,11 +156,15 @@ module RedmineExpertHelpdesk
       slug.gsub(/[^a-z0-9]+/, '_').gsub(/\A_+|_+\z/, '')
     end
 
-    def self.custom_field_value(context, key)
+    def self.custom_field_value(context, key, shared = nil)
       issue = context[:issue]
       return nil if issue.nil?
 
-      fields = macro_custom_fields
+      fields = if shared
+                 shared.fetch(:macro_custom_fields) { shared[:macro_custom_fields] = macro_custom_fields }
+               else
+                 macro_custom_fields
+               end
       return nil if fields.empty?
 
       # Numeric key addresses by id, anything else by slugified name. An id

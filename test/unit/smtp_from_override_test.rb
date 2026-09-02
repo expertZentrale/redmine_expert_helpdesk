@@ -27,7 +27,7 @@ class SmtpFromOverrideTest < ActiveSupport::TestCase
     ActionMailer::Base.deliveries.clear
   end
 
-  # --- Postfach-Varianten -------------------------------------------------
+  # --- Mailbox variants ---------------------------------------------------
 
   def mailbox(attrs = {})
     HelpdeskMailbox.new({ :mailbox_address => MAILBOX_ADDRESS,
@@ -46,7 +46,7 @@ class SmtpFromOverrideTest < ActiveSupport::TestCase
     mailbox(:smtp_from_address => LIST_ADDRESS, :smtp_reply_to_mailbox => true)
   end
 
-  # --- 1) Antwort an den Kunden (HelpdeskRepliesController) ---------------
+  # --- 1) Reply to the customer (HelpdeskRepliesController) ---------------
 
   def send_reply(mbx)
     controller = HelpdeskRepliesController.new
@@ -74,7 +74,7 @@ class SmtpFromOverrideTest < ActiveSupport::TestCase
     assert_equal [MAILBOX_ADDRESS], mail.reply_to
   end
 
-  # --- 2) Erstmail (InitMailer) -------------------------------------------
+  # --- 2) Initial mail (InitMailer) ---------------------------------------
 
   def send_initial(mbx)
     mailer = RedmineExpertHelpdesk::InitMailer.new(
@@ -135,7 +135,7 @@ class SmtpFromOverrideTest < ActiveSupport::TestCase
     assert_equal [MAILBOX_ADDRESS], mail.reply_to
   end
 
-  # --- Weg-Abhaengigkeit --------------------------------------------------
+  # --- Route dependency ---------------------------------------------------
 
   # Graph and the mailbox's own SMTP server authenticate as the mailbox; the
   # override must not leak into a message built for them. 'graph' never

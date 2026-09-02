@@ -50,10 +50,10 @@
     <em class="info"><%= l(:text_helpdesk_reply_transport_info) %></em>
   </p>
 
-  <%# Nur fuer den Weg ueber Redmines eigenen Relay: dort ist der Absender ein
-      freies Kopffeld. Graph und das eigene SMTP-Postfach authentifizieren sich
-      als das Postfach selbst und lehnen einen fremden Absender ab - deshalb
-      blendet das JS unten die Zeile fuer diese Wege aus. %>
+  <%# Only for the route through Redmine's own relay, where the sender is a free
+      header field. Graph and the mailbox's own SMTP server authenticate as the
+      mailbox itself and reject a foreign sender — hence the JS below hides this
+      row for those routes. %>
   <p id="hd_smtp_from_row">
     <label><%= l(:field_helpdesk_smtp_from_address) %></label>
     <%= text_field_tag 'helpdesk_mailbox[smtp_from_address]', @mailbox.smtp_from_address,
@@ -63,8 +63,8 @@
   </p>
 
   <p id="hd_smtp_reply_to_row">
-    <%# Id-loser Hidden-Partner traegt den Aus-Wert, wie bei den uebrigen
-        Checkboxen dieses Plugins. %>
+    <%# Id-less hidden companion carries the unchecked value, as with the
+        other checkboxes in this plugin. %>
     <%= hidden_field_tag 'helpdesk_mailbox[smtp_reply_to_mailbox]', '0', :id => nil %>
     <%= check_box_tag 'helpdesk_mailbox[smtp_reply_to_mailbox]', '1',
                       @mailbox.smtp_reply_to_mailbox?,
@@ -857,12 +857,12 @@
       own.textContent = isImap ? transportSel.dataset.labelSmtp : transportSel.dataset.labelGraph;
     }
 
-    // Absender-Override gilt ausschliesslich fuer Redmines eigenen Relay.
+    // The sender override applies only to Redmine's own relay.
     var isRedmineSmtp = transportSel.value === 'smtp';
     var fromRow = document.getElementById('hd_smtp_from_row');
     if (fromRow) fromRow.style.display = isRedmineSmtp ? '' : 'none';
-    // Reply-To haengt am Override: ohne abweichenden Absender gibt es nichts
-    // umzubiegen, die Option waere dort nur verwirrend.
+    // Reply-To depends on the override: with no differing sender there is
+    // nothing to redirect, and the option would only confuse.
     var replyRow = document.getElementById('hd_smtp_reply_to_row');
     var fromInput = document.getElementById('hd_smtp_from_address');
     if (replyRow) {
@@ -897,12 +897,12 @@
   }
 
   syncVisibility();
-  // transportSel gehoert dazu: die Absender-Zeile haengt allein an seinem Wert,
-  // ohne ihn wuerde sie erst beim Aendern eines anderen Feldes umschalten.
+  // transportSel belongs here: the sender row depends on its value alone, and
+  // without it the row would only toggle once some other field changed.
   [providerSel, authMethodSel, grantSel, sourceSel, presetSel, transportSel].forEach(function (el) {
     if (el) el.addEventListener('change', syncVisibility);
   });
-  // Die Reply-To-Zeile haengt am Inhalt des Absender-Feldes, nicht nur an einer Auswahl.
+  // The Reply-To row depends on the sender field's content, not just on a selection.
   var smtpFromInput = document.getElementById('hd_smtp_from_address');
   if (smtpFromInput) smtpFromInput.addEventListener('input', syncVisibility);
   if (presetSel) presetSel.addEventListener('change', applyPreset);

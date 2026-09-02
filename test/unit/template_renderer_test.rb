@@ -1,9 +1,8 @@
 require File.expand_path('../../test_helper', __FILE__)
 
 class TemplateRendererTest < ActiveSupport::TestCase
-  # Kernfixtures von Redmine: die Makro-Tests lesen echte Issues, Benutzer
-  # und benutzerdefinierte Felder statt Mocks, damit Sichtbarkeit und
-  # Feldformate mitgetestet werden.
+  # Redmine's core fixtures: the macro tests read real issues, users and custom
+  # fields instead of mocks, so visibility and field formats are covered too.
   fixtures :projects, :users, :email_addresses, :roles, :members, :member_roles,
            :issues, :issue_statuses, :issue_categories, :trackers, :enumerations,
            :versions, :enabled_modules, :workflows,
@@ -95,7 +94,7 @@ class TemplateRendererTest < ActiveSupport::TestCase
     assert_equal legacy, dot
   end
 
-  # --- Erweiterte Issue-Makros -------------------------------------------
+  # --- Extended issue macros ----------------------------------------------
 
   def test_renders_extended_issue_macros
     issue = Issue.find(1)
@@ -125,7 +124,7 @@ class TemplateRendererTest < ActiveSupport::TestCase
     assert_equal '5', RedmineExpertHelpdesk::TemplateRenderer.render('{{issue.id}}', :issue => issue)
   end
 
-  # --- Agent-Makros -------------------------------------------------------
+  # --- Agent macros -------------------------------------------------------
 
   def test_renders_agent_macros
     user = User.find(2)
@@ -136,7 +135,7 @@ class TemplateRendererTest < ActiveSupport::TestCase
     assert_equal "#{user.firstname} #{user.lastname} <#{user.mail}> (#{user.login})", result
   end
 
-  # --- Benutzerdefinierte Felder -----------------------------------------
+  # --- Custom fields ------------------------------------------------------
 
   def test_custom_field_macro_requires_admin_opt_in
     issue = Issue.find(1)
@@ -195,8 +194,8 @@ class TemplateRendererTest < ActiveSupport::TestCase
     assert_equal 'a_b', RedmineExpertHelpdesk::TemplateRenderer.slugify('  A / B  ')
   end
 
-  # Deutsche Feldnamen sind der Regelfall; ein Umlaut darf nicht als
-  # Unterstrich enden ("zust_ndigkeit").
+  # German field names are the norm here; an umlaut must not end up as an
+  # underscore ("zust_ndigkeit").
   def test_slugify_spells_out_umlauts
     r = RedmineExpertHelpdesk::TemplateRenderer
     assert_equal 'zustaendigkeit', r.slugify('Zuständigkeit')
@@ -206,8 +205,8 @@ class TemplateRendererTest < ActiveSupport::TestCase
     assert_equal 'strasse',        r.slugify('Straße')
   end
 
-  # Ein doppelt verwendeter Wert darf den Accessor nur einmal treffen —
-  # sonst kostet jede Wiederholung im Template einen weiteren DB-Zugriff.
+  # A value used twice must hit the accessor only once — otherwise every
+  # repetition in the template costs another DB round trip.
   def test_repeated_macro_resolves_value_only_once
     user = mock('user')
     user.expects(:name).once.returns('Julia Meier')
@@ -217,10 +216,40 @@ class TemplateRendererTest < ActiveSupport::TestCase
     assert_equal 'Julia Meier / Julia Meier / Julia Meier', result
   end
 
-  # --- Katalog ------------------------------------------------------------
+  # Several distinct {{issue.cf.*}} macros have distinct names, so the name memo
+  # does not cover them; without the shared per-render cache each one would
+  # re-query the enabled fields.
+  def test_enabled_custom_fields_are_looked_up_once_per_render
+    issue = Issue.find(1)
+    cfs = issue.available_custom_fields.first(2)
+    skip 'fixture issue 1 needs two custom fields' if cfs.size < 2
 
-  # Chips und Settings-Hinweis lesen den Katalog, der Renderer muss also jedes
-  # angebotene Makro auch wirklich aufloesen koennen.
+    with_macro_custom_fields(cfs.map(&:id).join(',')) do
+      RedmineExpertHelpdesk::TemplateRenderer.expects(:macro_custom_fields)
+                                             .once
+                                             .returns(cfs.index_by(&:id))
+      template = cfs.map { |cf| "{{issue.cf.#{cf.id}}}" }.join(' ') +
+                 " {{issue.cf.#{RedmineExpertHelpdesk::TemplateRenderer.slugify(cfs.first.name)}}}"
+      RedmineExpertHelpdesk::TemplateRenderer.render(template, :issue => issue, :user => User.find(1))
+    end
+  end
+
+  # The caller's context hash must come back untouched — it belongs to the
+  # caller, and the per-render cache lives beside it, not inside it.
+  def test_render_does_not_mutate_the_caller_context
+    issue = Issue.find(1)
+    context = { :issue => issue, :user => User.find(1) }
+    before = context.keys.dup
+    with_macro_custom_fields('') do
+      RedmineExpertHelpdesk::TemplateRenderer.render('{{issue.id}} {{issue.cf.egal}}', context)
+    end
+    assert_equal before, context.keys
+  end
+
+  # --- Catalogue ----------------------------------------------------------
+
+  # Chips and the settings hint read the catalogue, so the renderer must be
+  # able to resolve every macro it offers.
   def test_catalogue_entries_are_all_resolvable
     RedmineExpertHelpdesk::TemplateRenderer.catalogue.each do |macro|
       assert_nothing_raised do

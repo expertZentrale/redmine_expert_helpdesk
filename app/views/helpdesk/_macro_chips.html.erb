@@ -1,10 +1,9 @@
-<%# Clickbare Makro-Chips: Klick fuegt das Makro an der Cursor-Position im Zielfeld ein.
-    Locals: field_id (String) — HTML-id des Ziel-Inputs/Textareas
+<%# Clickable macro chips: a click inserts the macro at the cursor position in the target field.
+    Locals: field_id (String) — HTML id of the target input/textarea
 
-    Die Makro-Liste kommt aus RedmineExpertHelpdesk::TemplateRenderer.catalogue,
-    damit Chips und Renderer nicht auseinanderlaufen. Haeufige Makros stehen
-    direkt in der Leiste, der Rest liegt hinter "mehr", sonst ueberdeckt die
-    Chipleiste das Formular. %>
+    The macro list comes from RedmineExpertHelpdesk::TemplateRenderer.catalogue so
+    chips and renderer cannot drift apart. Common macros sit directly in the bar,
+    the rest lives behind "more" — otherwise the chip bar swamps the form. %>
 <% unless @hd_macro_chips_assets_loaded
      @hd_macro_chips_assets_loaded = true %>
   <% content_for :header_tags do %>
@@ -50,8 +49,8 @@
 <%
   common = %w[issue.id issue.subject issue.url contact.name contact.email user.name project.name]
   catalogue = RedmineExpertHelpdesk::TemplateRenderer.catalogue
-  # Freigeschaltete Ticket-Benutzerdefinierten-Felder als {{issue.cf.<slug>}};
-  # der Slug ist lesbarer als die Id, beide Schreibweisen rendern gleich.
+  # Enabled issue custom fields as {{issue.cf.<slug>}}; the slug reads better
+  # than the id, and both notations render the same value.
   cf_macros = RedmineExpertHelpdesk::TemplateRenderer.macro_custom_fields.values.map do |cf|
     ["issue.cf.#{RedmineExpertHelpdesk::TemplateRenderer.slugify(cf.name)}", cf.name]
   end

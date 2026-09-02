@@ -263,7 +263,7 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
   end
 
 
-  # --- Absender-Override (nur Weg 'smtp') ---------------------------------
+  # --- Sender override (route 'smtp' only) --------------------------------
 
   def test_from_address_defaults_to_mailbox_address
     mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com', :reply_transport => 'smtp')
@@ -279,8 +279,8 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
     assert mailbox.from_address_overridden?
   end
 
-  # Graph und das eigene SMTP-Postfach authentifizieren sich als das Postfach
-  # selbst und wuerden einen fremden Absender ablehnen.
+  # Graph and the mailbox's own SMTP server authenticate as the mailbox itself
+  # and would reject a foreign sender.
   def test_from_address_override_ignored_on_other_transports
     %w[graph provider].each do |transport|
       mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
@@ -305,8 +305,8 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
     assert_equal 'service@example.com', mailbox.from_address
   end
 
-  # Reply-To ist bewusst optional: der Regelfall ist ein Verteiler, dessen
-  # einziges Mitglied dieses Postfach ist - dorthin kommt die Antwort ohnehin.
+  # Reply-To is deliberately optional: the usual case is a distribution list
+  # whose only member is this mailbox, so the answer arrives here anyway.
   def test_reply_to_address_nil_by_default
     mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
                                   :reply_transport => 'smtp',
@@ -322,7 +322,7 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
     assert_equal 'hd@example.com', mailbox.reply_to_address
   end
 
-  # Ohne abweichenden Absender gibt es nichts umzubiegen.
+  # With no differing sender there is nothing to redirect.
   def test_reply_to_address_nil_without_override
     mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
                                   :reply_transport => 'smtp',
