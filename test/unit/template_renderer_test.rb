@@ -259,8 +259,8 @@ class TemplateRendererTest < ActiveSupport::TestCase
     end
   end
 
-  # {{missing_info}} kommt nicht aus dem Ticket, sondern aus dem Kontext, den die
-  # Vollstaendigkeitspruefung uebergibt.
+  # {{missing_info}} does not come from the ticket but from the context the
+  # completeness check passes in.
   def test_missing_info_macro_renders_context_value
     assert_equal "- A\n- B",
                  RedmineExpertHelpdesk::TemplateRenderer.render('{{missing_info}}',
@@ -271,8 +271,8 @@ class TemplateRendererTest < ActiveSupport::TestCase
     assert_equal '', RedmineExpertHelpdesk::TemplateRenderer.render('{{missing_info}}', {})
   end
 
-  # Bewusst nicht in den Chips: ausserhalb der Rueckfrage-Vorlage ist das Makro
-  # wirkungslos und wuerde die Chip-Leiste nur zumuellen.
+  # Deliberately not in the chips: outside the follow-up template the macro has no
+  # effect and would only clutter the chip bar.
   def test_missing_info_is_not_in_the_chip_catalogue
     assert_not_includes RedmineExpertHelpdesk::TemplateRenderer.catalogue, 'missing_info'
   end

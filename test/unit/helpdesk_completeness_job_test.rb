@@ -1,8 +1,8 @@
 require File.expand_path('../../test_helper', __FILE__)
 
-# Tests fuer die Gate-Kette der Vollstaendigkeitspruefung. Der teure Teil ist
-# nicht die Auswertung, sondern der Versand: keine dieser Konstellationen darf
-# eine Mail an einen Kunden ausloesen.
+# Tests for the gate chain of the completeness check. The expensive part is not
+# the evaluation but the sending: none of these constellations may trigger a mail
+# to a customer.
 class HelpdeskCompletenessJobTest < ActiveSupport::TestCase
   fixtures :projects, :issues, :issue_statuses, :users, :trackers,
            :enumerations, :roles, :members, :member_roles
@@ -15,7 +15,7 @@ class HelpdeskCompletenessJobTest < ActiveSupport::TestCase
     @ps.info_request_min_words = 0
     @ps.info_request_threshold = 1
     @ps.save!
-    # Kurze Beschreibung -> die Regel wuerde greifen, wenn der Job laeuft.
+    # Short description -> the rule would fire if the job ran.
     @issue.update_columns(:description => 'kaputt')
   end
 
@@ -44,14 +44,14 @@ class HelpdeskCompletenessJobTest < ActiveSupport::TestCase
     HelpdeskCompletenessJob.perform_now(@issue.id)
   end
 
-  # Ohne verknuepften Kontakt/Postfach gibt es niemanden zum Anschreiben.
+  # Without a linked contact/mailbox there is nobody to write to.
   def test_skips_without_contact
     enable_globally
     RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).never
     HelpdeskCompletenessJob.perform_now(@issue.id)
   end
 
-  # Wiederholungssperre: eine bereits gestellte Rueckfrage wird nicht wiederholt.
+  # Repeat guard: a follow-up that already went out is not repeated.
   def test_repeat_guard_blocks_second_run
     enable_globally
     info = link_contact!
@@ -69,7 +69,7 @@ class HelpdeskCompletenessJobTest < ActiveSupport::TestCase
     HelpdeskCompletenessJob.perform_now(@issue.id)
   end
 
-  # Der Job darf niemals werfen - die Mailverarbeitung ist da schon abgeschlossen.
+  # The job must never raise - mail processing is already finished by then.
   def test_never_raises
     enable_globally
     assert_nothing_raised { HelpdeskCompletenessJob.perform_now(-1) }

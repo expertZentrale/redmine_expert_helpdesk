@@ -59,8 +59,9 @@ class HelpdeskTicketInfo < HelpdeskApplicationRecord
     info_request_count.to_i.positive?
   end
 
-  # Records that a request for more information went out. update_columns keeps the
-  # Issue callbacks (and the awaiting-agent bookkeeping) out of it.
+  # Records that a request for more information went out. Uses find_or_initialize_by
+  # + save!, not update_columns: the row may not exist yet for a brand-new ticket,
+  # and update_columns cannot create one.
   def self.record_info_request!(issue, at = Time.current)
     info = find_or_initialize_by(:issue_id => issue.id)
     info.info_request_sent_at = at

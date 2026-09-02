@@ -1,7 +1,7 @@
 require File.expand_path('../../test_helper', __FILE__)
 
-# Rendert und speichert das Rueckfrage-Formular im Projekt-Tab und prueft die
-# Admin-Seite. Fasst damit genau das ab, was ein Syntaxcheck der ERB nicht kann.
+# Renders and saves the follow-up form in the project tab and checks the admin
+# page - exactly what an ERB syntax check cannot cover.
 class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
   fixtures :projects, :users, :email_addresses, :members, :member_roles, :roles,
            :enabled_modules, :trackers, :projects_trackers, :issue_statuses,
@@ -39,7 +39,7 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
     end
   end
 
-  # Der Hinweis erscheint genau dann, wenn der zentrale Schalter aus ist.
+  # The hint appears exactly when the central switch is off.
   def test_tab_warns_when_globally_disabled
     log_user('jsmith', 'jsmith')
 
@@ -91,7 +91,7 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
     assert ps.info_request_note_private?
   end
 
-  # Ein unbekannter Wert darf die gespeicherte Sichtbarkeit nicht ueberschreiben.
+  # An unknown value must not overwrite the stored visibility.
   def test_invalid_note_visibility_is_ignored
     log_user('jsmith', 'jsmith')
     HelpdeskProjectSetting.for_project(@project).update!(:info_request_note_visibility => 'private')
@@ -103,7 +103,7 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
     assert HelpdeskProjectSetting.for_project(@project).reload.info_request_note_private?
   end
 
-  # Ein unbekannter Modus darf den gespeicherten Wert nicht ueberschreiben.
+  # An unknown mode must not overwrite the stored value.
   def test_invalid_mode_is_ignored
     log_user('jsmith', 'jsmith')
     HelpdeskProjectSetting.for_project(@project).update!(:info_request_mode => 'heuristic')
@@ -115,7 +115,7 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
     assert_equal 'heuristic', HelpdeskProjectSetting.for_project(@project).reload.info_request_mode
   end
 
-  # Schwelle 0 wuerde bei jeder Mail ausloesen - der Controller haelt sie bei 1.
+  # A threshold of 0 would fire on every mail - the controller keeps it at 1.
   def test_threshold_zero_is_clamped
     log_user('jsmith', 'jsmith')
     put helpdesk_project_setting_path(:project_id => @project),

@@ -1,7 +1,7 @@
 require File.expand_path('../../test_helper', __FILE__)
 
-# Tests fuer die Regelauswertung und das Parsen der KI-Antwort. Beides ist frei
-# von DB/HTTP, daher genuegt hier ein Struct als Einstellungsobjekt.
+# Tests for the rule evaluation and for parsing the AI answer. Both are free of
+# DB/HTTP, so a Struct is enough as the settings object here.
 class CompletenessCheckTest < ActiveSupport::TestCase
   Check = RedmineExpertHelpdesk::CompletenessCheck
 
@@ -14,7 +14,7 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     end
   end
 
-  # Standard: nur die Laengenregel aktiv, Schwelle 1.
+  # Default: only the length rule is active, threshold 1.
   def setting(**overrides)
     FakeSetting.new({
       :info_request_min_chars => 100,
@@ -50,7 +50,7 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert Check.evaluate(:text => 'eins zwei drei vier fuenf sechs', :setting => s).complete?
   end
 
-  # Satzzeichen sind keine Woerter - sonst haette "a. b. c. d. e." fuenf Woerter.
+  # Punctuation is not a word - otherwise "a. b. c. d. e." would have five words.
   def test_word_rule_ignores_punctuation_only_tokens
     s = setting(:info_request_min_chars => 0, :info_request_min_words => 4)
     assert Check.evaluate(:text => 'Hilfe ! ? - :', :setting => s).incomplete?
@@ -73,7 +73,7 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert_equal %w[drucker sap], Check.keyword_list(s)
   end
 
-  # Schwelle 2: eine einzelne verletzte Regel darf noch keine Mail ausloesen.
+  # Threshold 2: a single failed rule must not trigger a mail yet.
   def test_threshold_requires_multiple_failures
     s = setting(:info_request_min_chars => 100, :info_request_require_attachment => true,
                 :info_request_threshold => 2)
@@ -81,14 +81,14 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert Check.evaluate(:text => 'kurz', :attachments => [], :setting => s).incomplete?
   end
 
-  # 0 oder negativ wuerde sonst bei jeder Mail ausloesen.
+  # 0 or negative would otherwise fire on every mail.
   def test_threshold_zero_behaves_like_one
     s = setting(:info_request_threshold => 0)
     assert Check.evaluate(:text => 'x' * 200, :setting => s).complete?
     assert Check.evaluate(:text => 'kurz', :setting => s).incomplete?
   end
 
-  # --- Zitierte Verlaeufe zaehlen nicht als eigene Information ---
+  # --- Quoted history does not count as information of its own ---
 
   def test_quoted_history_is_stripped
     text = "Geht immer noch nicht.\n\n" + ('> alter Verlauf ' * 100)
@@ -109,7 +109,7 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert_equal 'a b c', Check.meaningful_text("a\r\n  b\t\tc  ")
   end
 
-  # --- Anhang-Inventar fuer den KI-Modus ---
+  # --- Attachment inventory for the AI mode ---
 
   FakeAttachment = Struct.new(:filename, :content_type, :filesize)
 
@@ -117,8 +117,8 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     FakeAttachment.new('bild.png', 'image/png', kb * 1024)
   end
 
-  # Ohne diese Liste wuerde das Modell einen Screenshot verlangen, den der Kunde
-  # laengst mitgeschickt hat.
+  # Without this list the model would demand a screenshot the customer has long
+  # since sent along.
   def test_inventory_lists_name_and_type
     inv = Check.attachment_inventory([FakeAttachment.new('fehler.png', 'image/png', 400 * 1024),
                                       FakeAttachment.new('log.txt', 'text/plain', 900)])
@@ -145,13 +145,13 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert_not_includes inv, ', '
   end
 
-  # Der Prompt verspricht diesen Abschnitt - fehlt er, laeuft die Anweisung ins Leere.
+  # The prompt promises this section - without it the instruction goes nowhere.
   def test_default_prompt_and_inventory_agree_on_the_marker
     assert_includes Check::DEFAULT_AI_PROMPT, 'Anhaenge dieser Mail:'
     assert_includes Check.attachment_inventory([]), 'Anhaenge dieser Mail:'
   end
 
-  # Screenshot fuer Software, Foto fuer Hardware - beides muss im Prompt stehen.
+  # Screenshot for software, photo for hardware - the prompt must state both.
   def test_default_prompt_asks_for_screenshot_and_photo
     prompt = Check::DEFAULT_AI_PROMPT
     assert_includes prompt, 'SCREENSHOT'
@@ -160,10 +160,10 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert_includes prompt, 'HARDWARE'
   end
 
-  # --- Zu kleine Bilder zaehlen nicht als Screenshot/Foto ---
+  # --- Images too small to be a screenshot/photo do not count ---
 
-  # Das eigentliche Problem: das Signatur-Logo haengt an fast jeder Mail und
-  # wuerde "Anhang erforderlich" sonst immer erfuellen.
+  # The actual problem: the signature logo is attached to nearly every mail and
+  # would otherwise satisfy "attachment required" every time.
   def test_signature_logo_does_not_satisfy_the_attachment_rule
     s = setting(:info_request_min_chars => 0, :info_request_require_attachment => true)
     verdict = Check.evaluate(:text => 'egal', :attachments => [png(3)], :setting => s)
@@ -176,7 +176,7 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert Check.evaluate(:text => 'egal', :attachments => [png(400)], :setting => s).complete?
   end
 
-  # Die Schwelle gilt nur fuer Bilder - ein kleines Log ist echtes Beweismaterial.
+  # The floor applies to images only - a small log is real evidence.
   def test_small_non_image_still_counts
     s = setting(:info_request_min_chars => 0, :info_request_require_attachment => true)
     log = FakeAttachment.new('error.log', 'text/plain', 900)
@@ -196,19 +196,19 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert Check.evaluate(:text => 'x', :attachments => [png(1)], :setting => s).complete?
   end
 
-  # Ohne Content-Type entscheidet die Endung.
+  # Without a content type the file extension decides.
   def test_extension_identifies_images_without_content_type
     small = FakeAttachment.new('logo.png', nil, 2 * 1024)
     assert_empty Check.relevant_attachments([small])
   end
 
-  # Unbekannte Groesse: im Zweifel behalten, nicht verwerfen.
+  # Unknown size: keep it when in doubt, never discard.
   def test_unknown_size_is_kept
     unknown = FakeAttachment.new('bild.png', 'image/png', nil)
     assert_equal 1, Check.relevant_attachments([unknown]).size
   end
 
-  # Das Inventar fuer die KI darf die gefilterten Bilder nicht doch nennen.
+  # The inventory for the AI must not name the filtered images after all.
   def test_inventory_hides_filtered_images
     inv = Check.attachment_inventory([png(2), FakeAttachment.new('echt.png', 'image/png', 300 * 1024)])
     assert_includes inv, 'echt.png'
@@ -219,7 +219,7 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert_includes Check.attachment_inventory([png(2)]), 'keine'
   end
 
-  # --- KI-Antwort ---
+  # --- AI answer ---
 
   def test_parse_clean_json_incomplete
     verdict = Check.parse_ai_verdict('{"complete": false, "missing": ["Fehlermeldung"]}')
@@ -241,8 +241,8 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert_equal ['System'], verdict.reasons
   end
 
-  # Alles Unlesbare muss als "vollstaendig" gelten - eine kaputte Modellantwort
-  # darf niemals eine Mail an den Kunden ausloesen.
+  # Anything unreadable has to count as "complete" - a broken model answer must
+  # never trigger a mail to the customer.
   def test_parse_fails_closed_on_garbage
     ['', 'Tut mir leid, ich kann das nicht.', '{kein json', 'null', '[]'].each do |raw|
       verdict = Check.parse_ai_verdict(raw)
@@ -257,7 +257,7 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert_equal 'error', verdict.source
   end
 
-  # "unvollstaendig" ohne Begruendung gibt dem Kunden nichts zu beantworten.
+  # "incomplete" without a reason gives the customer nothing to answer.
   def test_parse_fails_closed_on_incomplete_without_reasons
     verdict = Check.parse_ai_verdict('{"complete": false, "missing": []}')
     assert verdict.complete?

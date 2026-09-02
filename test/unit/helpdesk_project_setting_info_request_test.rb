@@ -1,7 +1,7 @@
 require File.expand_path('../../test_helper', __FILE__)
 
-# Tests fuer die Helfer der Vollstaendigkeitspruefung auf HelpdeskProjectSetting:
-# Modus-Validierung, Prompt-Kombination und die Textbaustein-Fallbacks.
+# Tests for the completeness-check helpers on HelpdeskProjectSetting: mode
+# validation, prompt combination and the template fallbacks.
 class HelpdeskProjectSettingInfoRequestTest < ActiveSupport::TestCase
   def setup
     @ps = HelpdeskProjectSetting.new
@@ -42,7 +42,7 @@ class HelpdeskProjectSettingInfoRequestTest < ActiveSupport::TestCase
     assert_not_empty @ps.errors[:info_request_min_chars]
   end
 
-  # Default ist oeffentlich: der Kunde hat denselben Text ohnehin per Mail.
+  # Public is the default: the customer has the same text by mail anyway.
   def test_note_visibility_defaults_to_public
     assert_not HelpdeskProjectSetting.new.info_request_note_private?
   end
@@ -67,7 +67,7 @@ class HelpdeskProjectSettingInfoRequestTest < ActiveSupport::TestCase
     assert_not_empty @ps.errors[:info_request_note_visibility]
   end
 
-  # --- Prompt-Modi (wie effective_ai_prompt, aber eigener globaler Key) ---
+  # --- Prompt modes (like effective_ai_prompt, but its own global key) ---
 
   def test_prompt_inherit_uses_global
     with_settings('info_request_ai_prompt' => 'GLOBAL')
@@ -90,14 +90,14 @@ class HelpdeskProjectSettingInfoRequestTest < ActiveSupport::TestCase
     assert_equal "GLOBAL\n\nPROJECT", @ps.effective_info_request_prompt
   end
 
-  # Kein Modus gesetzt = erben, damit Bestandsprojekte den zentralen Prompt nutzen.
+  # No mode set = inherit, so existing projects use the central prompt.
   def test_prompt_defaults_to_inherit
     with_settings('info_request_ai_prompt' => 'GLOBAL')
     @ps.info_request_ai_prompt = 'PROJECT'
     assert_equal 'GLOBAL', @ps.effective_info_request_prompt
   end
 
-  # Die Refaktorierung auf combine_prompts darf die Zusammenfassung nicht veraendern.
+  # The refactoring onto combine_prompts must not change the summary behaviour.
   def test_ai_prompt_still_works_after_refactoring
     with_settings('ai_prompt' => 'GLOBAL')
     @ps.ai_prompt_mode = 'extend'
@@ -105,7 +105,7 @@ class HelpdeskProjectSettingInfoRequestTest < ActiveSupport::TestCase
     assert_equal "GLOBAL\n\nPROJECT", @ps.effective_ai_prompt
   end
 
-  # --- Textbausteine ---
+  # --- Templates ---
 
   def test_subject_and_body_fall_back_to_global
     with_settings('info_request_subject' => 'G-SUBJ', 'info_request_body' => 'G-BODY')

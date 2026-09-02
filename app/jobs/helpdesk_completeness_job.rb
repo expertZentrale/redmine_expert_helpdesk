@@ -1,23 +1,22 @@
-# Prueft asynchron, ob die Erstmail eines Tickets genug Informationen enthaelt,
-# und fordert den Kunden bei Bedarf automatisch zur Ergaenzung auf.
+# Checks asynchronously whether the first mail of a ticket carries enough
+# information and, when it does not, asks the customer to fill in the rest.
 #
-# Wird aus dem MailProcessor nach der Ingestion via perform_later angestossen,
-# damit weder die Regelauswertung noch (im KI-Modus) die Modell-Latenz den
-# Mailabruf blockiert. Selbst-enthaltend: laedt alle Objekte anhand der IDs neu
-# und prueft saemtliche Schalter erneut, bevor irgendetwas nach aussen geht.
+# Fired from MailProcessor after ingestion via perform_later, so that neither the
+# rule evaluation nor (in AI mode) the model latency blocks the mail fetch.
+# Self-contained: reloads every object by id and re-checks every switch before
+# anything leaves the box.
 #
-# Fehler werden geloggt und nicht weitergeworfen — die Mailverarbeitung ist zu
-# diesem Zeitpunkt bereits abgeschlossen, und eine misslungene Pruefung darf ein
-# Ticket niemals beschaedigen.
+# Errors are logged and never re-raised — mail processing is already finished at
+# this point, and a failed check must never damage a ticket.
 class HelpdeskCompletenessJob < ActiveJob::Base
   queue_as :default
 
-  # Mehr Text braucht die Pruefung nicht, und der KI-Modus soll an einem langen
-  # weitergeleiteten Verlauf nicht unnoetig Token verbrennen.
+  # The check needs no more text than this, and the AI mode should not burn tokens
+  # on a long forwarded thread.
   MAX_INPUT_CHARS = 8_000
 
-  # force: true = manueller Neuanlauf durch einen Bearbeiter. Ueberspringt die
-  # Wiederholungssperre, nicht aber die Aktivierungsschalter.
+  # force: true = manual re-run by an agent. Skips the repeat guard, but not the
+  # activation switches.
   def perform(issue_id, message_id: nil, force: false)
     settings = Setting.plugin_redmine_expert_helpdesk
     unless settings['info_request_enabled'].to_s == '1'
@@ -72,8 +71,8 @@ class HelpdeskCompletenessJob < ActiveJob::Base
 
   private
 
-  # Liefert ein Verdict oder nil, wenn der KI-Modus nicht laufen kann. nil heisst
-  # immer "nichts tun" — im Zweifel wird der Kunde NICHT angeschrieben.
+  # Returns a Verdict, or nil when the AI mode cannot run. nil always means "do
+  # nothing" — when in doubt the customer is NOT mailed.
   def evaluate(issue, ps, settings, text, attachments)
     if ps.info_request_ai_mode?
       ai_verdict(issue, ps, settings, text, attachments)
@@ -104,9 +103,9 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     prompt = ps.effective_info_request_prompt.presence ||
              RedmineExpertHelpdesk::CompletenessCheck::DEFAULT_AI_PROMPT
 
-    # Der Prompt fordert Screenshots/Fotos an - ohne das Anhang-Inventar wuerde das
-    # Modell auch dann eines verlangen, wenn der Kunde laengst eines mitgeschickt
-    # hat. Die Liste wird NACH dem Kuerzen angehaengt, damit sie nie wegfaellt.
+    # The prompt asks for screenshots/photos - without the attachment inventory the
+    # model would demand one even when the customer already sent it. The list is
+    # appended AFTER truncating, so it can never be cut off.
     input = text.first(MAX_INPUT_CHARS) +
             RedmineExpertHelpdesk::CompletenessCheck.attachment_inventory(attachments, ps)
 
@@ -117,13 +116,13 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     )
     RedmineExpertHelpdesk::CompletenessCheck.parse_ai_verdict(raw)
   rescue RedmineExpertHelpdesk::AiClient::AiError => e
-    # Fail closed: ohne belastbares Urteil geht keine Mail an den Kunden.
+    # Fail closed: without a dependable verdict no mail goes to the customer.
     log(:warn, "##{issue.id}: KI-Aufruf fehlgeschlagen, keine Rueckfrage: #{e.message}")
     nil
   end
 
-  # Text der Erstmail: bevorzugt aus der archivierten .eml (dort steht der
-  # Originaltext ohne Redmine-Nachbearbeitung), sonst die Ticketbeschreibung.
+  # Text of the first mail: preferably from the archived .eml (which holds the
+  # original text without Redmine's post-processing), else the issue description.
   def source_text(issue, message)
     eml = message&.eml_attachment
     if eml && eml.diskfile && File.exist?(eml.diskfile)
@@ -151,8 +150,8 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     nil
   end
 
-  # Die echten Mailanhaenge des Tickets — ohne die von uns selbst angehaengte
-  # Original-.eml, die sonst jede Mail "mit Screenshot" aussehen liesse.
+  # The real mail attachments of the ticket — without the Original .eml we attach
+  # ourselves, which would otherwise make every mail look like it had evidence.
   def mail_attachments(issue, message)
     exclude_id = message&.eml_attachment_id
     issue.attachments.to_a.reject do |a|
@@ -160,9 +159,9 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     end
   end
 
-  # Optionaler Statuswechsel ("Warten auf Kunde"). validate => false wie in
-  # MailProcessor#apply_new_issue_defaults: der Workflow des Bearbeiters darf
-  # einen automatischen Statuswechsel nicht blockieren.
+  # Optional status change ("waiting for customer"). validate => false as in
+  # MailProcessor#apply_new_issue_defaults: an agent's workflow must not block an
+  # automatic status change.
   def apply_status(issue, ps)
     return if ps.info_request_status_id.blank?
     return if issue.status_id == ps.info_request_status_id

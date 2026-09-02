@@ -93,7 +93,7 @@ class HelpdeskProjectSettingsController < ApplicationController
     setting.ai_include_private_notes = hp[:ai_include_private_notes] == '1'
   end
 
-  # Vollstaendigkeitspruefung / Rueckfrage (fuenftes Formular im Tab)
+  # Completeness check / follow-up (fifth form in the tab)
   def update_info_request_settings(setting)
     hp = params[:helpdesk_project_setting] || {}
 
@@ -105,7 +105,7 @@ class HelpdeskProjectSettingsController < ApplicationController
     setting.info_request_require_attachment = hp[:info_request_require_attachment] == '1'
     setting.info_request_min_attachment_kb = hp[:info_request_min_attachment_kb].to_i
     setting.info_request_keywords = hp[:info_request_keywords].to_s.strip.presence
-    # 0 wuerde bei jeder Mail ausloesen; die Pruefung deaktiviert man ueber den Modus.
+    # 0 would fire on every mail; the check is switched off via the mode instead.
     threshold = hp[:info_request_threshold].to_i
     setting.info_request_threshold = threshold.positive? ? threshold : 1
 

@@ -248,8 +248,8 @@
   </fieldset>
 <% end %>
 
-<%# --- Vollstaendigkeitspruefung eingehender Erstmails ("Rueckfrage") --- %>
-<%# Bewusst nicht an AiFeatures gekoppelt: der Regelmodus laeuft ohne KI. %>
+<%# --- Completeness check of incoming first mails ("follow-up") --- %>
+<%# Deliberately not gated on AiFeatures: the rule mode runs without AI. %>
 <fieldset class="tabular" style="margin-bottom: 14px;">
 <legend><%= l(:label_helpdesk_info_request) %></legend>
 <% unless Setting.plugin_redmine_expert_helpdesk['info_request_enabled'].to_s == '1' %>
@@ -365,8 +365,8 @@
 </fieldset>
 
 <script>
-// Nur die Felder des gewaehlten Modus zeigen - die Regelwerte sind im KI-Modus
-// wirkungslos und umgekehrt.
+// Show only the fields of the selected mode - the rule values have no effect in
+// AI mode and vice versa.
 (function () {
   var mode = document.getElementById('hd_ir_mode');
   if (!mode) { return; }

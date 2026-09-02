@@ -24,11 +24,11 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   KB_INGEST_MODES  = %w[off auto manual].freeze
   KB_DISPLAY_MODES = %w[off summary sidebar both].freeze
 
-  # Vollstaendigkeitspruefung eingehender Erstmails: aus, regelbasiert oder per KI.
-  # Die Prompt-Modi teilt sie sich mit der Zusammenfassung (AI_PROMPT_MODES).
+  # Completeness check of incoming first mails: off, rule-based or AI-powered.
+  # It shares the prompt modes with the summary (AI_PROMPT_MODES).
   INFO_REQUEST_MODES = RedmineExpertHelpdesk::CompletenessCheck::MODES
-  # Sichtbarkeit der Protokoll-Notiz einer Rueckfrage: oeffentlich (Kunde sieht,
-  # was erfragt wurde) oder intern (nur Bearbeiter).
+  # Visibility of the note recording a follow-up: public (the customer sees what
+  # was asked for) or private (agents only).
   INFO_REQUEST_NOTE_VISIBILITIES = %w[public private].freeze
 
   validates :phishing_action, :inclusion => { :in => PHISHING_ACTIONS }, :allow_nil => true
@@ -100,21 +100,21 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
     %w[sidebar both].include?(kb_proposal_display.to_s)
   end
 
-  # --- Vollstaendigkeitspruefung / Rueckfrage ---
+  # --- Completeness check / follow-up ---
 
-  # Laeuft die Pruefung in diesem Projekt ueberhaupt? Der globale Schalter wird
-  # bewusst NICHT hier geprueft, sondern im Job (eine Gate-Kette, eine Logzeile).
+  # Does the check run in this project at all? The global switch is deliberately
+  # NOT checked here but in the job (one gate chain, one log line).
   def info_request_enabled?
     info_request_mode.to_s.present? && info_request_mode != 'off'
   end
 
-  # KI-Modus? Dann braucht der Job zusaetzlich die globalen KI-Schalter.
+  # AI mode? Then the job additionally needs the global AI switches.
   def info_request_ai_mode?
     info_request_mode == 'ai'
   end
 
-  # Wird die Rueckfrage als interne Notiz protokolliert? Default ist oeffentlich,
-  # damit Bearbeiter und Kunde dieselbe Information vor sich haben.
+  # Is the follow-up recorded as an internal note? Public by default, so agent and
+  # customer have the same information in front of them.
   def info_request_note_private?
     info_request_note_visibility.to_s == 'private'
   end
@@ -123,8 +123,8 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
     RedmineExpertHelpdesk::CompletenessCheck.keyword_list(self)
   end
 
-  # Betreff/Text der Rueckfrage: Projekt schlaegt zentralen Default (Plugin-
-  # Einstellung), damit ein Projekt eigene Formulierungen nutzen kann.
+  # Subject/text of the follow-up: the project beats the central default (plugin
+  # setting), so a project can use its own wording.
   def effective_info_request_subject
     info_request_subject.presence ||
       Setting.plugin_redmine_expert_helpdesk['info_request_subject'].to_s
@@ -135,7 +135,7 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
       Setting.plugin_redmine_expert_helpdesk['info_request_body'].to_s
   end
 
-  # Wie effective_ai_prompt, aber fuer den Pruef-Prompt der Rueckfrage.
+  # Like effective_ai_prompt, but for the follow-up's check prompt.
   def effective_info_request_prompt
     combine_prompts(
       Setting.plugin_redmine_expert_helpdesk['info_request_ai_prompt'].to_s,
@@ -156,7 +156,7 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
 
   private
 
-  # Gemeinsame Kombinationslogik der Prompt-Modi (inherit/extend/override).
+  # Shared combination logic of the prompt modes (inherit/extend/override).
   def combine_prompts(global, project, mode)
     case mode.presence || 'inherit'
     when 'override'

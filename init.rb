@@ -112,8 +112,8 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'ai_log_level'         => RedmineExpertHelpdesk::AiLogger::DEFAULT_LEVEL,
              'ai_max_output_tokens' => '500',
              'ai_timeout'           => '60',
-             # Vollstaendigkeitspruefung eingehender Erstmails ("Rueckfrage").
-             # Zentraler Hauptschalter; Modus und Regeln stehen pro Projekt.
+             # Completeness check of incoming first mails ("follow-up").
+             # Central master switch; mode and rules live per project.
              'info_request_enabled'   => '0',
              'info_request_subject'   => 'Rueckfrage zu Ihrer Anfrage [#{{issue.id}}] {{issue.subject}}',
              'info_request_body'      => RedmineExpertHelpdesk::InfoRequestMailer::DEFAULT_BODY,

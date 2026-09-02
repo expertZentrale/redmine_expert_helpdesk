@@ -11,9 +11,10 @@
 # which is why a full MIME message is built here too).
 module RedmineExpertHelpdesk
   class InfoRequestMailer
-    # Zentraler Default-Text der Rueckfrage. {{missing_info}} wird durch die
-    # aufbereitete Liste der fehlenden Angaben ersetzt; ohne diesen Platzhalter
-    # bekommt der Kunde eine Rueckfrage, ohne zu erfahren, was fehlt.
+    # Central default text of the follow-up. {{missing_info}} is replaced with the
+    # rendered list of missing details; without that placeholder the customer gets
+    # a follow-up without ever learning what is missing. German on purpose - this
+    # is user-facing content, editable in the settings form.
     DEFAULT_BODY = <<~'BODY'.freeze
       Guten Tag {{contact.name}},
 

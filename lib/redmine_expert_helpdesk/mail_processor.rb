@@ -5,15 +5,15 @@
 #
 # Ablauf pro Postfach:
 #   1. Nachrichten ueber den Provider aus dem Quellordner laden
-#   2. Absender gegen Black-/Whitelist pruefen
-#   3. "Ignorieren"-Regeln anwenden
-#   4. MIME an den Redmine-Standard MailHandler uebergeben
-#      (uebernimmt Ticket-Erstellung, Antworten-Zuordnung via In-Reply-To /
-#       [#id]-Betreff, Anhaenge und Benutzeranlage)
-#   5. Regeln auf das erstellte Ticket anwenden, Kontakt verknuepfen
-#   6. Autoresponder bei neuen Tickets versenden
-#   7. KI-Zusammenfassung und Vollstaendigkeitspruefung asynchron anstossen
-#   8. Nachricht in den Zielordner verschieben
+#   2. Check the sender against the black-/whitelist
+#   3. Apply the "ignore" rules
+#   4. Hand the MIME to Redmine's own MailHandler
+#      (does ticket creation, reply matching via In-Reply-To / [#id] subject,
+#       attachments and user creation)
+#   5. Apply the rules to the created ticket, link the contact
+#   6. Send the autoresponder for new tickets
+#   7. Enqueue the AI summary and the completeness check asynchronously
+#   8. Move the message to the target folder
 
 module RedmineExpertHelpdesk
   class MailProcessor
@@ -261,11 +261,10 @@ module RedmineExpertHelpdesk
       Rails.logger.warn("[helpdesk][ai] Enqueue fehlgeschlagen (Issue ##{issue.id}): #{e.message}")
     end
 
-    # Vollstaendigkeitspruefung der Erstmail asynchron anstossen. Nur neue Tickets:
-    # eine Antwort im laufenden Verlauf darf keine automatische Rueckfrage ausloesen.
-    # Die guenstigen Schalter werden schon hier geprueft, damit ohne aktivierte
-    # Funktion gar kein Job in die Queue geht. Fehler beim Enqueue duerfen die
-    # Mailverarbeitung nicht abbrechen.
+    # Enqueue the completeness check of the first mail. New tickets only: a reply in
+    # a running conversation must never trigger an automatic follow-up. The cheap
+    # switches are checked here already, so no job is queued while the feature is
+    # off. An enqueue failure must not abort mail processing.
     def enqueue_completeness_check(issue, msg)
       return unless Setting.plugin_redmine_expert_helpdesk['info_request_enabled'].to_s == '1'
       return unless HelpdeskProjectSetting.for_project(issue.project).info_request_enabled?

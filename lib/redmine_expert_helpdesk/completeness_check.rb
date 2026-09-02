@@ -36,9 +36,9 @@ module RedmineExpertHelpdesk
 
     MODES = %w[off heuristic ai].freeze
 
-    # Bilder unter dieser Groesse zaehlen nicht als Screenshot/Foto. Signatur-Logos
-    # und Tracking-Pixel haengen an fast jeder Mail und liegen typisch bei 1-10 KB;
-    # ein echter Screenshot oder ein Handyfoto liegt deutlich darueber.
+    # Images below this size do not count as a screenshot/photo. Signature logos and
+    # tracking pixels are attached to nearly every mail and are typically 1-10 KB;
+    # a real screenshot or a phone photo is well above that.
     DEFAULT_MIN_ATTACHMENT_KB = 15
 
     # Quoted history and signatures are not new information, so they must not
@@ -53,9 +53,10 @@ module RedmineExpertHelpdesk
       /^\s*(am|on)\s.{0,80}\s(schrieb|wrote)\s*:?\s*$/i
     ].freeze
 
-    # Central default prompt for the AI mode. Deliberately asks for STRICT JSON
-    # and for a conservative verdict: a false "incomplete" mails a customer who
-    # did nothing wrong, which is worse than a missed check.
+    # Central default prompt for the AI mode. Deliberately asks for STRICT JSON and
+    # for a conservative verdict: a false "incomplete" mails a customer who did
+    # nothing wrong, which is worse than a missed check. The prompt text itself is
+    # German on purpose - it is user-facing content shown in the settings form.
     DEFAULT_AI_PROMPT = <<~PROMPT.freeze
       Du bist ein Assistent im technischen Kundensupport (Helpdesk). Pruefe, ob die
       folgende Kundennachricht genug Informationen enthaelt, damit ein Bearbeiter mit
@@ -171,10 +172,10 @@ module RedmineExpertHelpdesk
         body.gsub(/\s+/, ' ').strip
       end
 
-      # Anhaenge, die als Beweismaterial durchgehen. Die Groessenschwelle gilt NUR
-      # fuer Bilder: sie existiert wegen Signatur-Logos und Tracking-Pixeln, die
-      # sonst jede Mail "mit Screenshot" aussehen liessen. Ein 2-KB-Log oder ein
-      # kleines PDF ist dagegen echtes Beweismaterial und bleibt drin.
+      # Attachments that count as evidence. The size floor applies to IMAGES ONLY:
+      # it exists because of signature logos and tracking pixels, which would
+      # otherwise make every mail look like it came "with a screenshot". A 2 KB log
+      # or a small PDF is evidence of a different kind and stays.
       def relevant_attachments(attachments, setting = nil)
         min_bytes = min_attachment_kb(setting) * 1024
 
@@ -183,7 +184,7 @@ module RedmineExpertHelpdesk
           next false unless min_bytes.positive?
 
           size = a.respond_to?(:filesize) ? a.filesize.to_i : 0
-          # Groesse unbekannt (0/nil) => im Zweifel behalten, nicht verwerfen.
+          # Unknown size (0/nil) => keep it when in doubt, never discard.
           size.positive? && size < min_bytes
         end
       end
@@ -193,7 +194,7 @@ module RedmineExpertHelpdesk
           setting.respond_to?(:info_request_min_attachment_kb)
 
         value = setting.info_request_min_attachment_kb
-        # nil => Default; 0 schaltet die Schwelle bewusst ab.
+        # nil => default; 0 deliberately switches the floor off.
         value.nil? ? DEFAULT_MIN_ATTACHMENT_KB : value.to_i
       end
 
@@ -202,15 +203,15 @@ module RedmineExpertHelpdesk
         return true if type.downcase.start_with?('image/')
         return false if type.present?
 
-        # Kein Content-Type gemeldet: ueber die Endung entscheiden.
+        # No content type reported: decide by file extension.
         name = attachment.respond_to?(:filename) ? attachment.filename.to_s : ''
         name.downcase.end_with?('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.heic')
       end
 
-      # Anhang-Inventar fuer den KI-Modus. Der Prompt fordert Screenshots/Fotos an,
-      # kann aber ohne diese Liste nicht sehen, dass laengst eines beiliegt - er
-      # wuerde dann etwas verlangen, das der Kunde bereits geschickt hat.
-      # Name + Typ genuegen; die Bilddaten selbst gehen bewusst NICHT mit.
+      # Attachment inventory for the AI mode. The prompt asks for screenshots/photos
+      # but, without this list, cannot see that one is already attached - it would
+      # then demand something the customer has already sent.
+      # Name + type are enough; the image data itself is deliberately NOT included.
       def attachment_inventory(attachments, setting = nil)
         list = relevant_attachments(attachments, setting).filter_map do |a|
           name = a.respond_to?(:filename) ? a.filename.to_s : a.to_s
