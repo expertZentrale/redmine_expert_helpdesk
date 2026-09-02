@@ -120,7 +120,12 @@ class HelpdeskProjectSettingsController < ApplicationController
 
     setting.info_request_subject   = hp[:info_request_subject].to_s.strip.presence
     setting.info_request_body      = hp[:info_request_body].to_s.strip.presence
-    setting.info_request_status_id = hp[:info_request_status_id].presence
+    # Must be an existing status id. The value is later written to the issue with
+    # validate => false, and a non-numeric one would type-cast to 0 - which is not
+    # blank in Rails, so it would sail through every guard and leave the ticket in
+    # a status that does not exist.
+    status_id = hp[:info_request_status_id].to_i
+    setting.info_request_status_id = IssueStatus.exists?(status_id) ? status_id : nil
   end
 
   # Wissensbasis-Einstellungen (viertes Formular im Tab)

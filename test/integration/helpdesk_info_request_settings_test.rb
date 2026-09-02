@@ -115,6 +115,30 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
     assert_equal 'heuristic', HelpdeskProjectSetting.for_project(@project).reload.info_request_mode
   end
 
+  # A crafted non-numeric id type-casts to 0, which is NOT blank in Rails, so it
+  # would pass every guard and be written to the issue with validate => false.
+  def test_non_numeric_status_id_is_rejected
+    log_user('jsmith', 'jsmith')
+
+    put helpdesk_project_setting_path(:project_id => @project),
+        :params => { :info_request_form => '1',
+                     :helpdesk_project_setting => { :info_request_mode => 'heuristic',
+                                                    :info_request_status_id => 'bogus' } }
+
+    assert_nil HelpdeskProjectSetting.for_project(@project).info_request_status_id
+  end
+
+  def test_unknown_status_id_is_rejected
+    log_user('jsmith', 'jsmith')
+
+    put helpdesk_project_setting_path(:project_id => @project),
+        :params => { :info_request_form => '1',
+                     :helpdesk_project_setting => { :info_request_mode => 'heuristic',
+                                                    :info_request_status_id => '999999' } }
+
+    assert_nil HelpdeskProjectSetting.for_project(@project).info_request_status_id
+  end
+
   # A threshold of 0 would fire on every mail - the controller keeps it at 1.
   def test_threshold_zero_is_clamped
     log_user('jsmith', 'jsmith')

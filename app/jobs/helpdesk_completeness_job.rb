@@ -163,11 +163,19 @@ class HelpdeskCompletenessJob < ActiveJob::Base
   # MailProcessor#apply_new_issue_defaults: an agent's workflow must not block an
   # automatic status change.
   def apply_status(issue, ps)
-    return if ps.info_request_status_id.blank?
-    return if issue.status_id == ps.info_request_status_id
+    status_id = ps.info_request_status_id.to_i
+    return unless status_id.positive?
+    return if issue.status_id == status_id
+
+    # Checked again here, not just on input: the status may have been deleted
+    # since it was configured, and save(:validate => false) would happily write a
+    # dangling id and leave the ticket in a status that no longer exists.
+    unless IssueStatus.exists?(status_id)
+      return log(:warn, "##{issue.id}: konfigurierter Status #{status_id} existiert nicht mehr")
+    end
 
     issue.reload
-    issue.status_id = ps.info_request_status_id
+    issue.status_id = status_id
     issue.save(:validate => false)
   rescue StandardError => e
     log(:warn, "##{issue.id}: Status konnte nicht gesetzt werden: #{e.message}")

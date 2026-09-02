@@ -69,6 +69,34 @@ class HelpdeskCompletenessJobTest < ActiveSupport::TestCase
     HelpdeskCompletenessJob.perform_now(@issue.id)
   end
 
+  # --- apply_status must never write a dangling status ---
+
+  def apply_status(status_id)
+    @ps.update_columns(:info_request_status_id => status_id)
+    issue = Issue.find(@issue.id)
+    before = issue.status_id
+    HelpdeskCompletenessJob.new.send(:apply_status, issue, @ps.reload)
+    [before, Issue.find(@issue.id).status_id]
+  end
+
+  # 0 is not blank in Rails, so it has to be rejected explicitly.
+  def test_zero_status_is_not_written
+    before, after = apply_status(0)
+    assert_equal before, after
+  end
+
+  # The status may have been deleted long after it was configured.
+  def test_deleted_status_is_not_written
+    before, after = apply_status(999_999)
+    assert_equal before, after
+  end
+
+  def test_valid_status_is_written
+    target = IssueStatus.where.not(:id => @issue.status_id).first
+    _before, after = apply_status(target.id)
+    assert_equal target.id, after
+  end
+
   # The job must never raise - mail processing is already finished by then.
   def test_never_raises
     enable_globally
