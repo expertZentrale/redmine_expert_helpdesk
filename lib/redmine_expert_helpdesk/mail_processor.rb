@@ -347,6 +347,18 @@ module RedmineExpertHelpdesk
     # arbitrary inbound mail, and a field made mandatory, a workflow transition or a
     # locked version added since the ticket was created would otherwise make the save
     # fail silently -- leaving the ticket closed with the customer's reply inside it.
+    #
+    # Not resetting the SLA solution time here is deliberate too, and looks like an
+    # oversight if you only read this method. Sla.sync_solution! hangs off
+    # controller_issues_edit_after_save, so it never fires for this model-level save
+    # and info.solution_business_minutes keeps the value from the first close. That
+    # is the intended reading: the statistic means "time to first solution". The
+    # displayed clock is unaffected -- helpdesk_sla_solution derives "done" from
+    # closed?, so it correctly starts running again while the ticket is open -- and
+    # a later close through the UI keeps the first value anyway, because
+    # sync_solution! returns early once solution_business_minutes is set. Making the
+    # reopen reset it would change what the SLA statistics report, so do not "fix"
+    # this without deciding that question first.
     def reopen_if_closed(issue, journal = nil)
       return false unless issue.status&.is_closed?
       return false if @mailbox.reopen_status_id.blank?
