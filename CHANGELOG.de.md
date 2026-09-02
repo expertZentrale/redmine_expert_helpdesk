@@ -7,6 +7,36 @@
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Eingehende Mails werden auf ausreichende Informationen geprüft, und der Kunde kann automatisch
+  um die fehlenden Angaben gebeten werden.** Ein einzeiliges „Drucker geht nicht“ ohne Screenshot,
+  ohne Fehlermeldung und ohne Systemangabe kostet den Bearbeiter den ersten Durchlauf allein für
+  ein „Bitte teilen Sie uns mehr mit“ — und dieser Durchlauf läuft gegen die SLA. Die Prüfung
+  bewertet die **erste** Mail eines neuen Tickets und schickt dem Kunden, wenn sie zum Loslegen
+  nicht reicht, eine Rückfrage aus einer Vorlage, hält im Journal fest, was erfragt wurde, und setzt
+  das Ticket auf Wunsch auf einen Status wie „Warten auf Kunde“.
+
+  Zwei Modi, konfiguriert **je Projekt** unter *Projekt → Konfiguration → expert Helpdesk*:
+
+  - **Regelbasiert** — Mindestlänge in Zeichen und/oder Wörtern, „Anhang erforderlich“, eine Liste
+    erwarteter Begriffe sowie eine Schwelle, wie viele dieser Regeln verletzt sein müssen, bevor
+    nachgefragt wird. Zitierte Verläufe, Weiterleitungs-Header und Signaturen werden vor der
+    Messung entfernt, damit eine Zwei-Wort-Antwort unter einem langen Verlauf nicht als
+    ausführlich durchgeht. Benötigt keine KI.
+  - **KI-gestützt** — das Modell liefert ein Urteil samt der konkret fehlenden Angaben, die direkt
+    in die Rückfrage-Mail wandern. Nutzt die vorhandene KI-Konfiguration und erscheint in der
+    KI-Statistik als eigener Anfragetyp `completeness`.
+
+  Alles ist **standardmäßig aus**, hinter einem zentralen Hauptschalter unter *Administration →
+  Plugins* und einem Projekt-Modus, der auf „Aus“ steht. Betreff und Text sind Vorlagen
+  (`{{missing_info}}` fügt die Liste der fehlenden Angaben ein), zentral mit optionaler Übersteuerung
+  je Projekt. Je Ticket wird **höchstens einmal** nachgefragt — ein erneuter Abruf, eine
+  Wiedereröffnung oder ein manueller Neuanlauf können denselben Kunden nie zweimal anschreiben. Der
+  KI-Modus **fällt sicher aus**: eine unlesbare oder fehlgeschlagene Modellantwort gilt als
+  „vollständig“, es geht also bei einer kaputten Antwort keine Mail raus.
+
+
 ## [0.5.1] - 2026-09-02
 
 ### Hinzugefügt

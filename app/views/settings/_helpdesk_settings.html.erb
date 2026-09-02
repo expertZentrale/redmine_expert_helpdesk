@@ -328,6 +328,38 @@
 <p><em class="info"><%= l(:text_helpdesk_ai_privacy_info) %></em></p>
 
 <hr />
+<h3 style="margin-top:1em;"><%= l(:label_helpdesk_info_request) %></h3>
+<p>
+  <%= hidden_field_tag 'settings[info_request_enabled]', '0', :id => nil %>
+  <%= check_box_tag 'settings[info_request_enabled]', '1',
+        @settings['info_request_enabled'] == '1', :id => 'settings_info_request_enabled' %>
+  <%= label_tag 'settings_info_request_enabled', l(:field_helpdesk_info_request_enabled) %>
+  <em class="info"><%= l(:text_helpdesk_info_request_enabled_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_info_request_subject) %></label>
+  <%= text_field_tag 'settings[info_request_subject]', @settings['info_request_subject'],
+                     :size => 60, :id => 'settings_info_request_subject' %>
+  <em class="info"><%= l(:text_helpdesk_info_request_subject_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_info_request_body) %></label>
+  <%= text_area_tag 'settings[info_request_body]',
+        @settings['info_request_body'].presence || RedmineExpertHelpdesk::InfoRequestMailer::DEFAULT_BODY,
+        :rows => 10, :cols => 70, :id => 'settings_info_request_body' %>
+  <%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'settings_info_request_body' } %>
+  <em class="info"><%= l(:text_helpdesk_info_request_body_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_info_request_ai_prompt) %></label>
+  <%= text_area_tag 'settings[info_request_ai_prompt]',
+        @settings['info_request_ai_prompt'].presence || RedmineExpertHelpdesk::CompletenessCheck::DEFAULT_AI_PROMPT,
+        :rows => 10, :cols => 70, :id => 'settings_info_request_ai_prompt' %>
+  <em class="info"><%= l(:text_helpdesk_info_request_ai_prompt_info) %></em>
+</p>
+
+
+<hr />
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_kb_settings) %></h3>
 <p>
   <%= hidden_field_tag 'settings[kb_enabled]', '0', :id => nil %>

@@ -71,7 +71,9 @@ module RedmineExpertHelpdesk
         :avg_latency_ms => SlaStatistics.mean(durations),
         :p95_latency_ms => percentile(durations, 95),
         :summaries     => rows.count { |r| r.request_type == 'summary' },
-        :kb_requests   => rows.count { |r| r.request_type != 'summary' }
+        # Explicit prefix match: "everything that is not a summary" used to be the
+        # KB counter, which would now silently absorb the completeness checks too.
+        :kb_requests   => rows.count { |r| r.request_type.to_s.start_with?('kb_') }
       }
     end
 

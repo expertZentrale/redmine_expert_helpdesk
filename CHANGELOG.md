@@ -8,6 +8,34 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Incoming mail is checked for sufficient information, and the customer can be asked for the
+  rest automatically.** A one-line "printer is broken" with no screenshot, no error message and no
+  system name costs an agent the first cycle just to write "please tell us more" — and that cycle
+  runs against the SLA. The check evaluates the **first** mail of a new ticket and, when it does
+  not carry enough to start working, sends the customer a templated follow-up, records a journal
+  note listing what was asked for, and optionally moves the ticket to a status such as
+  "Waiting for customer".
+
+  Two modes, configured **per project** under *Project → Settings → expert Helpdesk*:
+
+  - **Rule-based** — minimum length in characters and/or words, "an attachment is required", a list
+    of expected terms, and a threshold saying how many of those rules have to fail before the
+    customer is asked. Quoted history, forwarded headers and signatures are stripped before
+    measuring, so a two-word reply under a long thread does not pass as a detailed one. Needs no AI.
+  - **AI-powered** — the model returns a verdict plus the concrete details it found missing, which
+    go straight into the follow-up mail. Uses the existing AI provider configuration and shows up
+    in the AI statistics as its own `completeness` request type.
+
+  Everything is **off by default**, behind a central master switch under *Administration → Plugins*
+  and a per-project mode that starts at "Off". Subject and body are templates (`{{missing_info}}`
+  inserts the list of missing details), centrally with an optional per-project override. Each
+  ticket is asked **at most once** — a re-fetch, a reopen or a manual re-run can never mail the same
+  customer twice. The AI mode **fails closed**: an unparseable or failed model response counts as
+  "complete", so no mail goes out on a garbled answer.
+
+
 ## [0.5.1] - 2026-09-02
 
 ### Added

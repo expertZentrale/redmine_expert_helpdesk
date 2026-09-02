@@ -34,6 +34,7 @@ see [Tests](#tests).
 - [Plugin Settings](#plugin-settings)
 - [REST API](#rest-api)
 - [AI summaries](#ai-summaries)
+- [Completeness check for incoming mail](#completeness-check-for-incoming-mail)
 - [Knowledge base (RAG)](#knowledge-base-rag)
 - [Tests](#tests) — what CI runs
 - [Azure App Registration (one-time setup)](#azure-app-registration-one-time-setup)
@@ -65,6 +66,8 @@ see [Tests](#tests).
   configured once under *Administration → Plugins → Redmine expert Helpdesk*;
   individual mailboxes may override them with their own credentials.
 - **Autoresponder**: Configurable confirmation email for new tickets.
+- **Completeness check**: Optionally evaluates the first mail of a new ticket — rule-based
+  or AI-powered — and asks the customer automatically for the details that are missing.
 - **Customer replies**: Reply to the customer directly from the ticket page,
   with header/footer templates; sent as full MIME from the project mailbox over
   whichever backend it uses — Graph or its own SMTP server — and filed in its
@@ -863,6 +866,62 @@ feature. The regenerate button appears only when *Generate AI summaries for this
 > configured provider. For a fully on-premise flow, use the **Custom** provider pointed at
 > a self-hosted, OpenAI-compatible endpoint. The feature is off by default and opt-in per
 > project.
+
+## Completeness check for incoming mail
+
+A ticket that arrives as *"printer is broken"* — no screenshot, no error message, no system
+name — costs an agent the first cycle just to write "please tell us more", and that cycle runs
+against the SLA. The plugin can evaluate the **first** mail of a new ticket and, when it does not
+carry enough to start working, mail the customer a templated follow-up automatically.
+
+**What happens on "not enough information":**
+
+1. A follow-up mail goes to the customer, listing the missing details. It carries
+   `In-Reply-To`/`References` of the original mail, so the answer threads back onto the same ticket.
+2. A journal note records that the follow-up was sent and what was asked for — public, so the
+   agent and the customer see the same thing.
+3. Optionally the ticket is moved to a configured status (e.g. *Waiting for customer*).
+
+**Two modes**, chosen per project:
+
+| Mode | How it decides | Needs AI |
+|---|---|---|
+| **Rule-based** | Minimum length (characters and/or words), "an attachment is required", a list of expected terms, and a threshold: how many of these rules must fail before the customer is asked. | No |
+| **AI-powered** | The model returns a verdict plus the concrete details it found missing; those go straight into the follow-up mail. | Yes |
+
+Quoted history, forwarded headers (`-----Original Message-----`, `Am … schrieb …:`) and
+signatures are stripped before anything is measured, so a two-word reply under a long quoted
+thread does not pass as a detailed report.
+
+**Central configuration** (*Administration → Plugins → Redmine expert Helpdesk*):
+- **Enable completeness check** — the master switch. Off by default; while it is off, no project
+  runs the check no matter how it is configured.
+- **Subject / text of the follow-up mail** — templates. All the usual macros work, plus
+  `{{missing_info}}`, which inserts the rendered list of missing details.
+- **Check prompt** — the default prompt for the AI mode.
+
+**Per project** (*Project → Settings → expert Helpdesk*):
+- **Mode** — *Off* (default), *Rule-based* or *AI-powered*.
+- The rule values: minimum characters, minimum words, "require an attachment", expected terms
+  (one per line), and the threshold. A value of `0` switches an individual rule off.
+- **Prompt mode** for the AI check — inherit / extend / override the central prompt, exactly like
+  the AI summary prompt.
+- **Subject / text** — optional per-project override of the central templates.
+- **Status after the follow-up** — optional; blank leaves the status untouched.
+
+**Safety properties worth knowing:**
+
+- **New tickets only.** A reply in a running conversation never triggers a follow-up.
+- **At most one follow-up per ticket.** A re-fetch, a reopen or a manual re-run cannot mail the
+  same customer twice — the counter lives on `helpdesk_ticket_infos`.
+- **The AI mode fails closed.** The model has to answer with JSON
+  (`{"complete": true|false, "missing": [...]}`); anything unparseable, an API error, or
+  "incomplete" without a single reason all count as *complete*, so a garbled response never mails
+  a customer.
+- **It never breaks ingestion.** The check runs in a background job after the mail has been
+  processed; every failure is logged and swallowed.
+- AI-mode calls are logged to `helpdesk_ai_requests` as request type `completeness` and show up in
+  the per-project AI statistics.
 
 ## Knowledge base (RAG)
 

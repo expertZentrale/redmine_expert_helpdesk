@@ -12,7 +12,8 @@
 #       [#id]-Betreff, Anhaenge und Benutzeranlage)
 #   5. Regeln auf das erstellte Ticket anwenden, Kontakt verknuepfen
 #   6. Autoresponder bei neuen Tickets versenden
-#   7. Nachricht in den Zielordner verschieben
+#   7. KI-Zusammenfassung und Vollstaendigkeitspruefung asynchron anstossen
+#   8. Nachricht in den Zielordner verschieben
 
 module RedmineExpertHelpdesk
   class MailProcessor
@@ -208,6 +209,7 @@ module RedmineExpertHelpdesk
           add_phishing_note(issue, phishing_hits, phishing_suspicions)
         end
         enqueue_ai_summary(issue, object, new_issue, msg)
+        enqueue_completeness_check(issue, msg) if new_issue
         (new_issue ? result.created_issues : result.updated_issues) << issue.id
       end
 
@@ -257,6 +259,21 @@ module RedmineExpertHelpdesk
       )
     rescue => e
       Rails.logger.warn("[helpdesk][ai] Enqueue fehlgeschlagen (Issue ##{issue.id}): #{e.message}")
+    end
+
+    # Vollstaendigkeitspruefung der Erstmail asynchron anstossen. Nur neue Tickets:
+    # eine Antwort im laufenden Verlauf darf keine automatische Rueckfrage ausloesen.
+    # Die guenstigen Schalter werden schon hier geprueft, damit ohne aktivierte
+    # Funktion gar kein Job in die Queue geht. Fehler beim Enqueue duerfen die
+    # Mailverarbeitung nicht abbrechen.
+    def enqueue_completeness_check(issue, msg)
+      return unless Setting.plugin_redmine_expert_helpdesk['info_request_enabled'].to_s == '1'
+      return unless HelpdeskProjectSetting.for_project(issue.project).info_request_enabled?
+
+      HelpdeskCompletenessJob.perform_later(issue.id, :message_id => msg.id)
+    rescue => e
+      Rails.logger.warn("[helpdesk][info_request] Enqueue fehlgeschlagen " \
+                        "(Issue ##{issue.id}): #{e.message}")
     end
 
     # --- Ticket-Wiedereroeffnung --------------------------------------------

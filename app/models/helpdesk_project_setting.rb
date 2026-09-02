@@ -5,6 +5,9 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   belongs_to :reply_status, :class_name => 'IssueStatus', :optional => true
   # Default assignee for new tickets: a user *or* a group, hence Principal.
   belongs_to :default_assigned_to, :class_name => 'Principal', :optional => true
+  # Optional status the ticket is moved to after an automatic request for more
+  # information ("waiting for customer"); NULL means "leave the status alone".
+  belongs_to :info_request_status, :class_name => 'IssueStatus', :optional => true
 
   DEFAULT_SUBJECT_TEMPLATE = 'Re: [#{{issue.id}}] {{issue.subject}}'.freeze
 
@@ -21,11 +24,21 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   KB_INGEST_MODES  = %w[off auto manual].freeze
   KB_DISPLAY_MODES = %w[off summary sidebar both].freeze
 
+  # Vollstaendigkeitspruefung eingehender Erstmails: aus, regelbasiert oder per KI.
+  # Die Prompt-Modi teilt sie sich mit der Zusammenfassung (AI_PROMPT_MODES).
+  INFO_REQUEST_MODES = RedmineExpertHelpdesk::CompletenessCheck::MODES
+
   validates :phishing_action, :inclusion => { :in => PHISHING_ACTIONS }, :allow_nil => true
   validates :ai_summary_scope, :inclusion => { :in => AI_SCOPES }, :allow_nil => true
   validates :ai_prompt_mode,   :inclusion => { :in => AI_PROMPT_MODES }, :allow_nil => true
   validates :kb_ingest_mode,      :inclusion => { :in => KB_INGEST_MODES }, :allow_nil => true
   validates :kb_proposal_display, :inclusion => { :in => KB_DISPLAY_MODES }, :allow_nil => true
+  validates :info_request_mode, :inclusion => { :in => INFO_REQUEST_MODES }, :allow_nil => true
+  validates :info_request_ai_prompt_mode,
+            :inclusion => { :in => AI_PROMPT_MODES }, :allow_nil => true
+  validates :info_request_min_chars, :info_request_min_words, :info_request_threshold,
+            :numericality => { :only_integer => true, :greater_than_or_equal_to => 0 },
+            :allow_nil => true
   validates :sla_work_start, :sla_work_end,
             :format => { :with => /\A\d{1,2}:\d{2}\z/ }, :allow_blank => true
   validates :sla_reaction_minutes, :sla_solution_minutes,
@@ -79,12 +92,59 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
     %w[sidebar both].include?(kb_proposal_display.to_s)
   end
 
+  # --- Vollstaendigkeitspruefung / Rueckfrage ---
+
+  # Laeuft die Pruefung in diesem Projekt ueberhaupt? Der globale Schalter wird
+  # bewusst NICHT hier geprueft, sondern im Job (eine Gate-Kette, eine Logzeile).
+  def info_request_enabled?
+    info_request_mode.to_s.present? && info_request_mode != 'off'
+  end
+
+  # KI-Modus? Dann braucht der Job zusaetzlich die globalen KI-Schalter.
+  def info_request_ai_mode?
+    info_request_mode == 'ai'
+  end
+
+  def info_request_keyword_list
+    RedmineExpertHelpdesk::CompletenessCheck.keyword_list(self)
+  end
+
+  # Betreff/Text der Rueckfrage: Projekt schlaegt zentralen Default (Plugin-
+  # Einstellung), damit ein Projekt eigene Formulierungen nutzen kann.
+  def effective_info_request_subject
+    info_request_subject.presence ||
+      Setting.plugin_redmine_expert_helpdesk['info_request_subject'].to_s
+  end
+
+  def effective_info_request_body
+    info_request_body.presence ||
+      Setting.plugin_redmine_expert_helpdesk['info_request_body'].to_s
+  end
+
+  # Wie effective_ai_prompt, aber fuer den Pruef-Prompt der Rueckfrage.
+  def effective_info_request_prompt
+    combine_prompts(
+      Setting.plugin_redmine_expert_helpdesk['info_request_ai_prompt'].to_s,
+      info_request_ai_prompt.to_s,
+      info_request_ai_prompt_mode
+    )
+  end
+
   # Effektiver Prompt: erben (zentraler Default), erweitern (zentral + Projekt)
   # oder ersetzen (nur Projekt). Analog zu HelpdeskMailbox#effective_footer_template.
   def effective_ai_prompt
-    global  = Setting.plugin_redmine_expert_helpdesk['ai_prompt'].to_s
-    project = ai_prompt.to_s
-    case ai_prompt_mode.presence || 'inherit'
+    combine_prompts(
+      Setting.plugin_redmine_expert_helpdesk['ai_prompt'].to_s,
+      ai_prompt.to_s,
+      ai_prompt_mode
+    )
+  end
+
+  private
+
+  # Gemeinsame Kombinationslogik der Prompt-Modi (inherit/extend/override).
+  def combine_prompts(global, project, mode)
+    case mode.presence || 'inherit'
     when 'override'
       project.presence || global
     when 'extend'

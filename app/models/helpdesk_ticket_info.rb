@@ -52,6 +52,26 @@ class HelpdeskTicketInfo < HelpdeskApplicationRecord
     nil
   end
 
+  # Has this ticket already been asked for more information? This is the repeat
+  # guard of the completeness check — a re-fetch, a reopen or a manual re-run must
+  # never mail the same customer twice.
+  def info_request_sent?
+    info_request_count.to_i.positive?
+  end
+
+  # Records that a request for more information went out. update_columns keeps the
+  # Issue callbacks (and the awaiting-agent bookkeeping) out of it.
+  def self.record_info_request!(issue, at = Time.current)
+    info = find_or_initialize_by(:issue_id => issue.id)
+    info.info_request_sent_at = at
+    info.info_request_count = info.info_request_count.to_i + 1
+    info.save!
+    info
+  rescue StandardError => e
+    Rails.logger.warn("Helpdesk: record_info_request! failed (issue ##{issue.try(:id)}): #{e.message}")
+    nil
+  end
+
   # Clears the flag. Deliberately uses find_by + update_columns: it must not create
   # a row just to clear it, and it must not re-trigger the Issue callbacks.
   def self.clear_awaiting_agent!(issue)

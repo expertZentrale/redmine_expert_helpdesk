@@ -239,6 +239,18 @@ module RedmineExpertHelpdesk
         api.ai_attach_images        s.ai_attach_images
         api.ai_include_journal      s.ai_include_journal
         api.ai_include_private_notes s.ai_include_private_notes
+        # Vollstaendigkeitspruefung eingehender Erstmails (opt-in je Projekt).
+        api.info_request_mode               s.info_request_mode
+        api.info_request_min_chars          s.info_request_min_chars
+        api.info_request_min_words          s.info_request_min_words
+        api.info_request_require_attachment s.info_request_require_attachment
+        api.info_request_keywords           s.info_request_keywords
+        api.info_request_threshold          s.info_request_threshold
+        api.info_request_ai_prompt_mode     s.info_request_ai_prompt_mode
+        api.info_request_ai_prompt          s.info_request_ai_prompt
+        api.info_request_subject            s.info_request_subject
+        api.info_request_body               s.info_request_body
+        api.info_request_status_id          s.info_request_status_id
         # Wissensbasis (RAG).
         api.kb_ingest_mode          s.kb_ingest_mode
         api.kb_proposal_display     s.kb_proposal_display

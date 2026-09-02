@@ -248,6 +248,123 @@
   </fieldset>
 <% end %>
 
+<%# --- Vollstaendigkeitspruefung eingehender Erstmails ("Rueckfrage") --- %>
+<%# Bewusst nicht an AiFeatures gekoppelt: der Regelmodus laeuft ohne KI. %>
+<fieldset class="tabular" style="margin-bottom: 14px;">
+<legend><%= l(:label_helpdesk_info_request) %></legend>
+<% unless Setting.plugin_redmine_expert_helpdesk['info_request_enabled'].to_s == '1' %>
+  <p><em class="info"><%= l(:text_helpdesk_info_request_globally_off) %></em></p>
+<% end %>
+<%= form_tag helpdesk_project_setting_path(:project_id => @project), :method => :put do %>
+<%= hidden_field_tag 'info_request_form', '1' %>
+<p>
+  <label for="hd_ir_mode"><%= l(:field_helpdesk_info_request_mode) %></label>
+  <%= select_tag 'helpdesk_project_setting[info_request_mode]',
+        options_for_select(
+          HelpdeskProjectSetting::INFO_REQUEST_MODES.map { |m| [l(:"label_helpdesk_info_request_mode_#{m}"), m] },
+          hd_setting.info_request_mode.presence || 'off'),
+        :id => 'hd_ir_mode' %>
+  <em class="info"><%= l(:text_helpdesk_info_request_mode_info) %></em>
+</p>
+<% unless RedmineExpertHelpdesk::AiFeatures.ai_enabled? %>
+  <p><em class="info"><%= l(:text_helpdesk_info_request_ai_unavailable) %></em></p>
+<% end %>
+
+<div id="hd_ir_heuristic">
+  <p>
+    <label for="hd_ir_min_chars"><%= l(:field_helpdesk_info_request_min_chars) %></label>
+    <%= text_field_tag 'helpdesk_project_setting[info_request_min_chars]',
+          hd_setting.info_request_min_chars, :size => 6, :id => 'hd_ir_min_chars' %>
+    <em class="info"><%= l(:text_helpdesk_info_request_min_chars_info) %></em>
+  </p>
+  <p>
+    <label for="hd_ir_min_words"><%= l(:field_helpdesk_info_request_min_words) %></label>
+    <%= text_field_tag 'helpdesk_project_setting[info_request_min_words]',
+          hd_setting.info_request_min_words, :size => 6, :id => 'hd_ir_min_words' %>
+    <em class="info"><%= l(:text_helpdesk_info_request_min_words_info) %></em>
+  </p>
+  <p>
+    <%= hidden_field_tag 'helpdesk_project_setting[info_request_require_attachment]', '0' %>
+    <%= check_box_tag 'helpdesk_project_setting[info_request_require_attachment]', '1',
+          hd_setting.info_request_require_attachment?, :id => 'hd_ir_att' %>
+    <%= label_tag 'hd_ir_att', l(:field_helpdesk_info_request_require_attachment) %>
+    <em class="info"><%= l(:text_helpdesk_info_request_require_attachment_info) %></em>
+  </p>
+  <p>
+    <label for="hd_ir_keywords"><%= l(:field_helpdesk_info_request_keywords) %></label>
+    <%= text_area_tag 'helpdesk_project_setting[info_request_keywords]',
+          hd_setting.info_request_keywords, :rows => 3, :cols => 50, :id => 'hd_ir_keywords' %>
+    <em class="info"><%= l(:text_helpdesk_info_request_keywords_info) %></em>
+  </p>
+  <p>
+    <label for="hd_ir_threshold"><%= l(:field_helpdesk_info_request_threshold) %></label>
+    <%= text_field_tag 'helpdesk_project_setting[info_request_threshold]',
+          hd_setting.info_request_threshold, :size => 4, :id => 'hd_ir_threshold' %>
+    <em class="info"><%= l(:text_helpdesk_info_request_threshold_info) %></em>
+  </p>
+</div>
+
+<div id="hd_ir_ai">
+  <p>
+    <label for="hd_ir_prompt_mode"><%= l(:field_helpdesk_info_request_ai_prompt_mode) %></label>
+    <%= select_tag 'helpdesk_project_setting[info_request_ai_prompt_mode]',
+          options_for_select(
+            HelpdeskProjectSetting::AI_PROMPT_MODES.map { |m| [l(:"label_helpdesk_ai_prompt_mode_#{m}"), m] },
+            hd_setting.info_request_ai_prompt_mode.presence || 'inherit'),
+          :id => 'hd_ir_prompt_mode' %>
+    <em class="info"><%= l(:text_helpdesk_ai_prompt_mode_info) %></em>
+  </p>
+  <p>
+    <label for="hd_ir_prompt"><%= l(:field_helpdesk_info_request_ai_prompt) %></label>
+    <%= text_area_tag 'helpdesk_project_setting[info_request_ai_prompt]',
+          hd_setting.info_request_ai_prompt, :rows => 6, :cols => 70, :id => 'hd_ir_prompt' %>
+    <em class="info"><%= l(:text_helpdesk_info_request_ai_prompt_info) %></em>
+  </p>
+</div>
+
+<p>
+  <label for="hd_ir_subject"><%= l(:field_helpdesk_info_request_subject) %></label>
+  <%= text_field_tag 'helpdesk_project_setting[info_request_subject]',
+        hd_setting.info_request_subject, :size => 60, :id => 'hd_ir_subject' %>
+  <em class="info"><%= l(:text_helpdesk_info_request_subject_info) %></em>
+</p>
+<p>
+  <label for="hd_ir_body"><%= l(:field_helpdesk_info_request_body) %></label>
+  <%= text_area_tag 'helpdesk_project_setting[info_request_body]',
+        hd_setting.info_request_body, :rows => 8, :cols => 70, :id => 'hd_ir_body' %>
+  <em class="info"><%= l(:text_helpdesk_info_request_body_info) %></em>
+</p>
+<%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'hd_ir_body' } %>
+<p>
+  <label for="hd_ir_status"><%= l(:field_helpdesk_info_request_status) %></label>
+  <%= select_tag 'helpdesk_project_setting[info_request_status_id]',
+        options_from_collection_for_select(IssueStatus.sorted, :id, :name,
+                                           hd_setting.info_request_status_id),
+        :include_blank => true, :id => 'hd_ir_status' %>
+  <em class="info"><%= l(:text_helpdesk_info_request_status_info) %></em>
+</p>
+<p><%= submit_tag l(:button_save) %></p>
+<% end %>
+</fieldset>
+
+<script>
+// Nur die Felder des gewaehlten Modus zeigen - die Regelwerte sind im KI-Modus
+// wirkungslos und umgekehrt.
+(function () {
+  var mode = document.getElementById('hd_ir_mode');
+  if (!mode) { return; }
+  function sync() {
+    var h = document.getElementById('hd_ir_heuristic');
+    var a = document.getElementById('hd_ir_ai');
+    if (h) { h.style.display = mode.value === 'heuristic' ? '' : 'none'; }
+    if (a) { a.style.display = mode.value === 'ai' ? '' : 'none'; }
+  }
+  mode.addEventListener('change', sync);
+  sync();
+})();
+</script>
+
+
 <%# --- Wissensbasis (RAG), nur wenn zentral aktiviert --- %>
 <% if RedmineExpertHelpdesk::AiFeatures.kb_enabled? %>
   <fieldset class="tabular" style="margin-bottom: 14px;">

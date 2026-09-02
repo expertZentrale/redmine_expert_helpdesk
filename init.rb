@@ -27,6 +27,8 @@ require File.expand_path('../lib/redmine_expert_helpdesk/mailbox_folders', __FIL
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_logger', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_features', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_client', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/completeness_check', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/info_request_mailer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_store', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_extractor', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/template_renderer', __FILE__)
@@ -110,6 +112,12 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'ai_log_level'         => RedmineExpertHelpdesk::AiLogger::DEFAULT_LEVEL,
              'ai_max_output_tokens' => '500',
              'ai_timeout'           => '60',
+             # Vollstaendigkeitspruefung eingehender Erstmails ("Rueckfrage").
+             # Zentraler Hauptschalter; Modus und Regeln stehen pro Projekt.
+             'info_request_enabled'   => '0',
+             'info_request_subject'   => 'Rueckfrage zu Ihrer Anfrage [#{{issue.id}}] {{issue.subject}}',
+             'info_request_body'      => RedmineExpertHelpdesk::InfoRequestMailer::DEFAULT_BODY,
+             'info_request_ai_prompt' => RedmineExpertHelpdesk::CompletenessCheck::DEFAULT_AI_PROMPT,
              'kb_enabled'         => '0',
              'kb_backend'         => 'qdrant',
              'kb_qdrant_url'      => '',

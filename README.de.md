@@ -35,6 +35,7 @@ siehe [Tests](#tests).
 - [Plugin-Einstellungen](#plugin-einstellungen)
 - [REST-API](#rest-api)
 - [KI-Zusammenfassungen](#ki-zusammenfassungen)
+- [Vollständigkeitsprüfung eingehender Mails](#vollständigkeitsprüfung-eingehender-mails)
 - [Wissensbasis (RAG)](#wissensbasis-rag)
 - [Tests](#tests) — was die CI ausführt
 - [Azure-App-Registrierung (einmalig)](#azure-app-registrierung-einmalig)
@@ -66,6 +67,8 @@ siehe [Tests](#tests).
   einmalig unter *Administration → Plugins → Redmine expert Helpdesk* gepflegt;
   einzelne Postfächer können sie durch eigene Zugangsdaten ersetzen.
 - **Autoresponder**: Konfigurierbare Bestätigungsmail bei neuen Tickets.
+- **Vollständigkeitsprüfung**: Bewertet auf Wunsch die Erstmail eines neuen Tickets —
+  regelbasiert oder KI-gestützt — und fragt beim Kunden automatisch die fehlenden Angaben nach.
 - **Kundenantworten**: Antwort an den Kunden direkt von der Ticketseite, mit
   Header-/Footer-Vorlagen; Versand als vollständiges MIME aus dem Projektpostfach
   über dessen jeweiliges Backend — Graph oder der eigene SMTP-Server — und in beiden
@@ -900,6 +903,65 @@ fehlgeschlagenen Lauf oder für Tickets, die vor Aktivierung der Funktion eingin
 > ist standardmäßig aus und pro Projekt zu aktivieren.
 
 ---
+
+## Vollständigkeitsprüfung eingehender Mails
+
+Ein Ticket, das als *„Drucker geht nicht“* hereinkommt — ohne Screenshot, ohne Fehlermeldung, ohne
+Systemangabe — kostet den Bearbeiter den ersten Durchlauf allein für ein „Bitte teilen Sie uns mehr
+mit“, und dieser Durchlauf läuft gegen die SLA. Das Plugin kann die **erste** Mail eines neuen
+Tickets bewerten und dem Kunden automatisch eine Rückfrage aus einer Vorlage schicken, wenn sie zum
+Loslegen nicht reicht.
+
+**Was bei „nicht genug Informationen“ passiert:**
+
+1. Eine Rückfrage-Mail geht an den Kunden und listet die fehlenden Angaben auf. Sie trägt
+   `In-Reply-To`/`References` der Originalmail, sodass die Antwort wieder demselben Ticket
+   zugeordnet wird.
+2. Eine Journal-Notiz hält fest, dass die Rückfrage gesendet wurde und was erfragt wurde — öffentlich,
+   damit Bearbeiter und Kunde dasselbe sehen.
+3. Optional wird das Ticket auf einen konfigurierten Status gesetzt (z. B. *Warten auf Kunde*).
+
+**Zwei Modi**, je Projekt wählbar:
+
+| Modus | Wie entschieden wird | Braucht KI |
+|---|---|---|
+| **Regelbasiert** | Mindestlänge (Zeichen und/oder Wörter), „Anhang erforderlich“, eine Liste erwarteter Begriffe und eine Schwelle: wie viele dieser Regeln verletzt sein müssen, bevor nachgefragt wird. | Nein |
+| **KI-gestützt** | Das Modell liefert ein Urteil samt der konkret fehlenden Angaben; diese wandern direkt in die Rückfrage-Mail. | Ja |
+
+Zitierte Verläufe, Weiterleitungs-Header (`-----Ursprüngliche Nachricht-----`, `Am … schrieb …:`)
+und Signaturen werden vor jeder Messung entfernt, damit eine Zwei-Wort-Antwort unter einem langen
+zitierten Verlauf nicht als ausführliche Meldung durchgeht.
+
+**Zentrale Konfiguration** (*Administration → Plugins → Redmine expert Helpdesk*):
+- **Vollständigkeitsprüfung aktivieren** — der Hauptschalter. Standardmäßig aus; solange er aus ist,
+  prüft kein Projekt, unabhängig von dessen Einstellung.
+- **Betreff / Text der Rückfrage** — Vorlagen. Alle üblichen Makros funktionieren, dazu
+  `{{missing_info}}`, das die aufbereitete Liste der fehlenden Angaben einfügt.
+- **Prüf-Prompt** — der Standard-Prompt für den KI-Modus.
+
+**Je Projekt** (*Projekt → Konfiguration → expert Helpdesk*):
+- **Modus** — *Aus* (Standard), *Regelbasiert* oder *KI-gestützt*.
+- Die Regelwerte: Mindestzeichen, Mindestwörter, „Anhang erforderlich“, erwartete Begriffe
+  (einer je Zeile) und die Schwelle. Der Wert `0` schaltet eine einzelne Regel ab.
+- **Prompt-Modus** für die KI-Prüfung — erben / erweitern / ersetzen, genau wie beim Prompt der
+  KI-Zusammenfassung.
+- **Betreff / Text** — optionale Übersteuerung der zentralen Vorlagen je Projekt.
+- **Status nach der Rückfrage** — optional; leer lässt den Status unverändert.
+
+**Wichtige Sicherheitseigenschaften:**
+
+- **Nur neue Tickets.** Eine Antwort im laufenden Verlauf löst nie eine Rückfrage aus.
+- **Höchstens eine Rückfrage je Ticket.** Ein erneuter Abruf, eine Wiedereröffnung oder ein
+  manueller Neuanlauf können denselben Kunden nicht zweimal anschreiben — der Zähler steht auf
+  `helpdesk_ticket_infos`.
+- **Der KI-Modus fällt sicher aus.** Das Modell muss mit JSON antworten
+  (`{"complete": true|false, "missing": [...]}`); alles Unlesbare, ein API-Fehler oder
+  „unvollständig“ ohne eine einzige Begründung gelten als *vollständig* — eine kaputte Antwort
+  schreibt also nie einen Kunden an.
+- **Die Mailverarbeitung wird nie unterbrochen.** Die Prüfung läuft in einem Hintergrund-Job,
+  nachdem die Mail verarbeitet wurde; jeder Fehler wird geloggt und geschluckt.
+- Aufrufe im KI-Modus werden in `helpdesk_ai_requests` als Anfragetyp `completeness` protokolliert
+  und erscheinen in der projektbezogenen KI-Statistik.
 
 ## Wissensbasis (RAG)
 
