@@ -36,6 +36,38 @@ class InfoRequestMailerTest < ActiveSupport::TestCase
     assert_includes Mailer::DEFAULT_BODY, '{{missing_info}}'
   end
 
+  # --- Template fallbacks: an empty mail must be impossible ---
+
+  BlankSetting = Struct.new(:effective_info_request_body, :effective_info_request_subject,
+                            :keyword_init => true)
+
+  # An admin can clear the central setting, and a fresh install can miss the key,
+  # which would otherwise mail the customer a completely empty body.
+  def test_blank_body_falls_back_to_the_default
+    setting = BlankSetting.new(:effective_info_request_body => '')
+    assert_equal Mailer::DEFAULT_BODY, Mailer.body_template(setting)
+
+    setting = BlankSetting.new(:effective_info_request_body => '   ')
+    assert_equal Mailer::DEFAULT_BODY, Mailer.body_template(setting)
+  end
+
+  def test_configured_body_wins
+    setting = BlankSetting.new(:effective_info_request_body => 'Eigener Text')
+    assert_equal 'Eigener Text', Mailer.body_template(setting)
+  end
+
+  def test_blank_subject_falls_back_to_the_ticket_subject
+    setting = BlankSetting.new(:effective_info_request_subject => '')
+    template = Mailer.subject_template(setting, Issue.find(1))
+    assert_includes template, '#1'
+    assert_includes template, '{{issue.subject}}'
+  end
+
+  def test_configured_subject_wins
+    setting = BlankSetting.new(:effective_info_request_subject => 'Rueckfrage')
+    assert_equal 'Rueckfrage', Mailer.subject_template(setting, Issue.find(1))
+  end
+
   # --- Visibility of the protocol note ---
 
   def add_note(private_note)

@@ -561,7 +561,7 @@ en:
   text_helpdesk_kb_not_configured: 'The knowledge base is not enabled/configured (see Administration → Plugins).'
   text_helpdesk_kb_nothing_to_approve: 'There is no pending knowledge-base entry for this ticket.'
 
-  # --- Vollstaendigkeitspruefung eingehender Erstmails ("Rueckfrage") ---
+  # --- Completeness check of incoming first mails ("follow-up") ---
   label_helpdesk_info_request: 'Completeness check for incoming mail'
   label_helpdesk_info_request_mode_off: 'Off'
   label_helpdesk_info_request_mode_heuristic: 'Rule-based'

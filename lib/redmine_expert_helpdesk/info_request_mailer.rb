@@ -41,11 +41,8 @@ module RedmineExpertHelpdesk
         rendered = render_reasons(reasons)
         context  = { :issue => issue, :contact => contact, :missing_info => rendered }
 
-        subject = TemplateRenderer.render(
-          setting.effective_info_request_subject.presence || default_subject(issue),
-          context
-        )
-        body = TemplateRenderer.render(setting.effective_info_request_body, context)
+        subject = TemplateRenderer.render(subject_template(setting, issue), context)
+        body    = TemplateRenderer.render(body_template(setting), context)
 
         mail = build_mail(mailbox, contact, subject, body, in_reply_to)
 
@@ -78,6 +75,17 @@ module RedmineExpertHelpdesk
             reason.to_s
           end
         end.reject(&:blank?).map { |line| "- #{line}" }.join("\n")
+      end
+
+      # Never send an empty mail. Both templates can end up blank - an admin can
+      # clear the central setting, and a fresh install can miss the key entirely -
+      # so each falls back to what ships with the plugin.
+      def body_template(setting)
+        setting.effective_info_request_body.presence || DEFAULT_BODY
+      end
+
+      def subject_template(setting, issue)
+        setting.effective_info_request_subject.presence || default_subject(issue)
       end
 
       private
