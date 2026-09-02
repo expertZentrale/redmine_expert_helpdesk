@@ -96,6 +96,9 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'phishing_database_enabled'  => '0',
              'phishing_database_feed_url' => 'https://raw.githubusercontent.com/Phishing-Database/Phishing.Database/master/phishing-links-ACTIVE.txt',
              'global_footer'            => '',
+             # Issue custom fields an admin opted into as {{issue.cf.*}} macros,
+             # as a comma-separated id list. Empty = no custom field macros.
+             'macro_custom_field_ids'   => '',
              'ai_enabled'           => '0',
              'ai_provider'          => 'openai',
              'ai_api_key'           => '',

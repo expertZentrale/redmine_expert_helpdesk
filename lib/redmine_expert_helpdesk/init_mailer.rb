@@ -138,7 +138,10 @@ module RedmineExpertHelpdesk
 
       mail_obj             = Mail.new
       mail_obj.message_id  = message_id
-      mail_obj.from        = @mailbox.mailbox_address
+      mail_obj.from        = @mailbox.from_address
+      # Opt-in only; see HelpdeskMailbox#reply_to_address.
+      reply_to_addr        = @mailbox.reply_to_address
+      mail_obj.reply_to    = reply_to_addr if reply_to_addr
       mail_obj.to          = @to_list
       mail_obj.cc          = @cc_list  if @cc_list.any?
       mail_obj.bcc         = @bcc_list if @bcc_list.any?

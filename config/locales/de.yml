@@ -155,8 +155,19 @@ de:
   field_helpdesk_autoresponder_enabled: Autoresponder aktiv
   field_helpdesk_autoresponder_subject: Betreff
   field_helpdesk_autoresponder_body: Text
-  text_helpdesk_macros_info: 'Verfügbare Makros: {{ticket_id}}, {{ticket_subject}}, {{ticket_url}}, {{contact_name}}, {{contact_email}}, {{user_name}}, {{project_name}}'
+  text_helpdesk_macros_info: 'Verfügbare Makros: {{issue.id}}, {{issue.subject}}, {{issue.url}}, {{issue.status}}, {{issue.priority}}, {{issue.tracker}}, {{issue.author}}, {{issue.assignee}}, {{issue.category}}, {{issue.version}}, {{issue.start_date}}, {{issue.due_date}}, {{issue.created_on}}, {{issue.updated_on}}, {{issue.done_ratio}}, {{issue.description}}, {{issue.parent_id}}, {{contact.name}}, {{contact.email}}, {{user.name}}, {{user.firstname}}, {{user.lastname}}, {{user.login}}, {{user.mail}}, {{project.name}}, {{project.identifier}}. Freigeschaltete benutzerdefinierte Ticket-Felder stehen als {{issue.cf.<name>}} oder {{issue.cf.<id>}} zur Verfügung. Die alte Schreibweise ({{ticket_id}}, {{contact_name}}, ...) funktioniert weiterhin.'
+  field_helpdesk_smtp_from_address: 'Abweichender Absender (From)'
+  text_helpdesk_smtp_from_address_info: 'Optional. Leer = Versand unter der Postfach-Adresse. Wird nur beim Weg über Redmines eigene SMTP-Konfiguration verwendet; Graph und das eigene SMTP-Postfach authentifizieren sich als das Postfach und lehnen einen fremden Absender ab. Der Relay muss für diese Adresse senden dürfen (SPF/DMARC).'
+  field_helpdesk_smtp_reply_to_mailbox: 'Reply-To auf die Postfach-Adresse setzen'
+  text_helpdesk_smtp_reply_to_mailbox_info: 'Standardmäßig aus. Aus lassen, wenn die Absender-Adresse ohnehin in dieses Postfach zustellt — etwa ein Verteiler, dessen einziges Mitglied dieses Postfach ist; ein Reply-To würde dann nur die interne Adresse offenlegen. Einschalten, wenn Mail an die Absender-Adresse dieses Postfach nicht erreicht, sonst finden Kundenantworten nicht ins Ticket zurück.'
+  error_helpdesk_invalid_from_address: 'ist keine gültige E-Mail-Adresse'
   label_helpdesk_macros: 'Makros'
+  label_helpdesk_macros_more: 'weitere Makros'
+  label_helpdesk_macros_custom_fields: 'Benutzerdef. Felder'
+  label_helpdesk_macro_name: 'Makro'
+  label_helpdesk_macro_custom_fields: 'Benutzerdefinierte Felder als Makros'
+  text_helpdesk_macro_custom_fields_info: 'Nur die hier ausgewählten benutzerdefinierten Ticket-Felder lassen sich als {{issue.cf.*}}-Makro verwenden. Vorlagen gehen an Kunden, interne Felder bleiben daher ohne Freigabe gesperrt. Zusätzlich gilt weiterhin die Redmine-Sichtbarkeit des Feldes: Was der antwortende Agent nicht sehen darf, bleibt leer.'
+  text_helpdesk_macro_custom_fields_none: 'In diesem Redmine sind keine benutzerdefinierten Ticket-Felder definiert.'
   note_helpdesk_autoresponder_sent: 'Automatische Bestätigungsmail an %{email} versendet.'
   label_helpdesk_message_plural: 'Helpdesk-Nachrichten'
 
