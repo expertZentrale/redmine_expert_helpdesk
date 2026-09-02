@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-02
+
 ### Behoben
 
 - **Eine automatische Notiz kann das „Wartet auf Bearbeitung“-Kennzeichen nicht mehr löschen.** Das

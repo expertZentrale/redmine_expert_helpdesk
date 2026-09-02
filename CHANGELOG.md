@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-02
+
 ### Fixed
 
 - **An automatic note can no longer clear the "awaiting response" flag.** The plugin writes several

@@ -1,0 +1,32 @@
+h3. Added
+
+* *Incoming mail is checked for sufficient information, and the customer can be asked for the rest automatically.* A ticket that arrives as "the printer is broken" — no screenshot, no error message, no system name — costs an agent the first cycle just to write "please tell us more", and that cycle runs against the SLA. The plugin now evaluates the *first* mail of a new ticket and, when it does not carry enough to start working, sends the customer a templated follow-up listing what is missing, records a journal note, and can move the ticket to a "waiting for customer" status. Off by default.
+
+* *Two modes, chosen per project.* *Rule-based* works without AI: minimum length in characters and/or words, "an attachment is required", a minimum image size, a list of expected terms, and a threshold saying how many of those rules must fail before the customer is asked. *AI-powered* lets the model return a verdict plus the concrete details it found missing, which go straight into the follow-up mail; it uses the AI provider already configured for the summaries and appears in the AI statistics as its own @completeness@ request type.
+
+* *The AI prompt asks for the right kind of evidence.* A screenshot when the problem is software (an application, a web portal, an error dialog) and a photo when it is hardware (a device, printer, till, display, cabling — ideally showing the type plate or the display). When it cannot tell which of the two is meant, it asks for the affected system instead of guessing. The model is also told which files are already attached, so it never asks for a screenshot the customer has already sent.
+
+* *Quoted history and signature logos do not count as content.* Quoted conversations, forward headers and signatures are stripped before anything is measured, so a two-word reply under a long thread does not pass as a detailed report. Images below a configurable size (15 KB by default) are ignored as evidence, because signature logos and tracking pixels hang off nearly every mail and would otherwise satisfy "an attachment is required" every single time. That size floor applies to images only — a small log file or PDF is evidence of a different kind and still counts.
+
+* *Editable texts.* Subject and body of the follow-up are templates using the usual macros plus @{{missing_info}}@, which inserts the rendered list of missing details. They are configured centrally and can be overridden per project, as can the check prompt (inherit, extend or replace, exactly like the summary prompt). The journal note recording the follow-up is public by default — the customer received the same text by mail — and can be switched to an internal note per project.
+
+h3. Fixed
+
+* *An automatic note can no longer clear the "awaiting response" flag.* The plugin writes several notes by itself — the autoresponder, the phishing warning and the new follow-up — all authored by the anonymous user. Clearing the flag was gated on the author holding *Send helpdesk reply*, which is normally enough, but a project that granted that permission to the *Anonymous* role turned every one of those notes into "an agent has answered". The phishing note was the sharp edge: it runs moments after the flag is set during the same mail fetch, so a waiting ticket disappeared from the queue immediately. Anonymous is now excluded outright; real agent replies are unaffected.
+
+h3. Upgrade notes
+
+Four migrations run on upgrade (@043@–@046@), all of them adding optional columns to the helpdesk project settings and ticket info tables. Nothing needs to be reconfigured and no existing behaviour changes.
+
+*The completeness check is off after the upgrade and stays off until you switch it on twice*: once centrally under *Administration → Plugins → Redmine expert Helpdesk → Enable completeness check*, and once per project under *Project settings → expert Helpdesk*, where the mode starts at *Off*. While the central switch is off, no project runs the check regardless of how it is configured.
+
+It is deliberately conservative, because a wrong follow-up annoys a customer who wrote everything correctly:
+
+* Only the *first* mail of a new ticket is ever checked. A reply in a running conversation never triggers a follow-up.
+* Each ticket is asked *at most once*. The follow-up is claimed before the mail is sent, so a repeated mail fetch, a reopened ticket, a retried job or a manual re-run cannot mail the same customer twice.
+* The AI mode fails closed: an unreadable model answer, an API error, or a verdict of "incomplete" without a single reason all count as complete, so no mail goes out.
+* The check runs after the mail has been processed and can never break the mail fetch.
+
+*The follow-up does not touch the SLA.* The note does not stop the reaction clock, and the optional status change can never close the ticket — every SLA evaluation treats a closed ticket as both the reaction and the solution, so closing here would mark both clocks met before the customer had even answered. Closed statuses are therefore not offered in the status selector. If your "waiting for customer" status is flagged as closed in Redmine, pick an open status for this setting or leave it empty.
+
+The AI mode sends the mail body and the attachment names to the configured AI provider, exactly like the existing summaries. It needs no additional configuration beyond the AI settings that are already there, and the rule-based mode needs no AI at all.
