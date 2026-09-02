@@ -42,6 +42,31 @@ class HelpdeskProjectSettingInfoRequestTest < ActiveSupport::TestCase
     assert_not_empty @ps.errors[:info_request_min_chars]
   end
 
+  # Default ist oeffentlich: der Kunde hat denselben Text ohnehin per Mail.
+  def test_note_visibility_defaults_to_public
+    assert_not HelpdeskProjectSetting.new.info_request_note_private?
+  end
+
+  def test_note_visibility_predicate
+    @ps.info_request_note_visibility = 'private'
+    assert @ps.info_request_note_private?
+
+    @ps.info_request_note_visibility = 'public'
+    assert_not @ps.info_request_note_private?
+  end
+
+  def test_note_visibility_validation
+    HelpdeskProjectSetting::INFO_REQUEST_NOTE_VISIBILITIES.each do |v|
+      @ps.info_request_note_visibility = v
+      @ps.valid?
+      assert_empty @ps.errors[:info_request_note_visibility], "#{v} sollte gueltig sein"
+    end
+
+    @ps.info_request_note_visibility = 'bogus'
+    @ps.valid?
+    assert_not_empty @ps.errors[:info_request_note_visibility]
+  end
+
   # --- Prompt-Modi (wie effective_ai_prompt, aber eigener globaler Key) ---
 
   def test_prompt_inherit_uses_global

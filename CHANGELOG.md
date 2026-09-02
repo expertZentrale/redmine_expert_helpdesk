@@ -15,8 +15,8 @@
   system name costs an agent the first cycle just to write "please tell us more" — and that cycle
   runs against the SLA. The check evaluates the **first** mail of a new ticket and, when it does
   not carry enough to start working, sends the customer a templated follow-up, records a journal
-  note listing what was asked for, and optionally moves the ticket to a status such as
-  "Waiting for customer".
+  note listing what was asked for (public or internal, per project), and optionally moves the
+  ticket to a status such as "Waiting for customer".
 
   Two modes, configured **per project** under *Project → Settings → expert Helpdesk*:
 

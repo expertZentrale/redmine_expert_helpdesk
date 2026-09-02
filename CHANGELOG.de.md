@@ -14,8 +14,9 @@
   ohne Fehlermeldung und ohne Systemangabe kostet den Bearbeiter den ersten Durchlauf allein für
   ein „Bitte teilen Sie uns mehr mit“ — und dieser Durchlauf läuft gegen die SLA. Die Prüfung
   bewertet die **erste** Mail eines neuen Tickets und schickt dem Kunden, wenn sie zum Loslegen
-  nicht reicht, eine Rückfrage aus einer Vorlage, hält im Journal fest, was erfragt wurde, und setzt
-  das Ticket auf Wunsch auf einen Status wie „Warten auf Kunde“.
+  nicht reicht, eine Rückfrage aus einer Vorlage, hält im Journal fest, was erfragt wurde (je
+  Projekt öffentlich oder intern), und setzt das Ticket auf Wunsch auf einen Status wie
+  „Warten auf Kunde“.
 
   Zwei Modi, konfiguriert **je Projekt** unter *Projekt → Konfiguration → expert Helpdesk*:
 

@@ -189,7 +189,8 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     and re-checks every gate (global `info_request_enabled`, per-project `info_request_mode`, plus
     `AiFeatures.ai_enabled?` + `AiClient#configured?` in AI mode). `InfoRequestMailer` sends the
     plain-text follow-up along the mailbox's `outgoing_route` (autoresponder shape), threads it via
-    `In-Reply-To`/`References` and writes a public journal note; the job records the send on
+    `In-Reply-To`/`References` and writes a journal note (public by default, internal per
+    `info_request_note_visibility`); the job records the send on
     `HelpdeskTicketInfo#info_request_count` — the repeat guard, so a re-fetch/reopen cannot mail
     twice. AI calls log as `HelpdeskAiRequest` type `completeness`. Off by default; migrations
     043-044.

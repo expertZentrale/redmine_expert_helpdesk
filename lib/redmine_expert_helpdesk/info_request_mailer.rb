@@ -63,7 +63,7 @@ module RedmineExpertHelpdesk
           :recipient_to     => contact.email
         )
 
-        add_note(issue, contact, rendered)
+        add_note(issue, contact, rendered, setting.info_request_note_private?)
         message
       end
 
@@ -124,14 +124,16 @@ module RedmineExpertHelpdesk
         end
       end
 
-      # Public note (not private): the agent must see what the customer was asked
-      # for, and so must the customer in the portal view of the ticket.
-      def add_note(issue, contact, rendered_reasons)
+      # Protocol note for the agent. Public by default - the customer got the same
+      # text by mail anyway, and a shared record avoids asking twice - but a
+      # project can keep it internal (info_request_note_visibility).
+      def add_note(issue, contact, rendered_reasons, private_note = false)
         Journal.create!(
-          :journalized => issue,
-          :user        => User.anonymous,
-          :notes       => I18n.t(:note_helpdesk_info_request_sent, :email => contact.email) +
-                          (rendered_reasons.present? ? "\n\n#{rendered_reasons}" : '')
+          :journalized   => issue,
+          :user          => User.anonymous,
+          :notes         => I18n.t(:note_helpdesk_info_request_sent, :email => contact.email) +
+                            (rendered_reasons.present? ? "\n\n#{rendered_reasons}" : ''),
+          :private_notes => private_note
         )
       rescue StandardError => e
         Rails.logger.warn("[helpdesk][info_request] Notiz konnte nicht gespeichert werden " \

@@ -336,6 +336,17 @@
 </p>
 <%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'hd_ir_body' } %>
 <p>
+  <label for="hd_ir_note_vis"><%= l(:field_helpdesk_info_request_note_visibility) %></label>
+  <%= select_tag 'helpdesk_project_setting[info_request_note_visibility]',
+        options_for_select(
+          HelpdeskProjectSetting::INFO_REQUEST_NOTE_VISIBILITIES.map { |v|
+            [l(:"label_helpdesk_info_request_note_#{v}"), v]
+          },
+          hd_setting.info_request_note_visibility.presence || 'public'),
+        :id => 'hd_ir_note_vis' %>
+  <em class="info"><%= l(:text_helpdesk_info_request_note_visibility_info) %></em>
+</p>
+<p>
   <label for="hd_ir_status"><%= l(:field_helpdesk_info_request_status) %></label>
   <%= select_tag 'helpdesk_project_setting[info_request_status_id]',
         options_from_collection_for_select(IssueStatus.sorted, :id, :name,

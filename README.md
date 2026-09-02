@@ -878,8 +878,9 @@ carry enough to start working, mail the customer a templated follow-up automatic
 
 1. A follow-up mail goes to the customer, listing the missing details. It carries
    `In-Reply-To`/`References` of the original mail, so the answer threads back onto the same ticket.
-2. A journal note records that the follow-up was sent and what was asked for — public, so the
-   agent and the customer see the same thing.
+2. A journal note records that the follow-up was sent and what was asked for. Public by default,
+   so the agent and the customer see the same record; a project can make it an internal note
+   instead (**Journal note about the follow-up**).
 3. Optionally the ticket is moved to a configured status (e.g. *Waiting for customer*).
 
 **Two modes**, chosen per project:
@@ -907,6 +908,8 @@ thread does not pass as a detailed report.
 - **Prompt mode** for the AI check — inherit / extend / override the central prompt, exactly like
   the AI summary prompt.
 - **Subject / text** — optional per-project override of the central templates.
+- **Journal note about the follow-up** — *Public* (default; the customer sees it too) or
+  *Internal* (agents with the "View private notes" permission only). The mail itself is unaffected.
 - **Status after the follow-up** — optional; blank leaves the status untouched.
 
 **Safety properties worth knowing:**

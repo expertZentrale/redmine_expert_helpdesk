@@ -917,8 +917,9 @@ Loslegen nicht reicht.
 1. Eine Rückfrage-Mail geht an den Kunden und listet die fehlenden Angaben auf. Sie trägt
    `In-Reply-To`/`References` der Originalmail, sodass die Antwort wieder demselben Ticket
    zugeordnet wird.
-2. Eine Journal-Notiz hält fest, dass die Rückfrage gesendet wurde und was erfragt wurde — öffentlich,
-   damit Bearbeiter und Kunde dasselbe sehen.
+2. Eine Journal-Notiz hält fest, dass die Rückfrage gesendet wurde und was erfragt wurde.
+   Standardmäßig öffentlich, damit Bearbeiter und Kunde denselben Stand haben; je Projekt lässt sie
+   sich stattdessen als interne Notiz führen (**Journal-Notiz zur Rückfrage**).
 3. Optional wird das Ticket auf einen konfigurierten Status gesetzt (z. B. *Warten auf Kunde*).
 
 **Zwei Modi**, je Projekt wählbar:
@@ -946,6 +947,9 @@ zitierten Verlauf nicht als ausführliche Meldung durchgeht.
 - **Prompt-Modus** für die KI-Prüfung — erben / erweitern / ersetzen, genau wie beim Prompt der
   KI-Zusammenfassung.
 - **Betreff / Text** — optionale Übersteuerung der zentralen Vorlagen je Projekt.
+- **Journal-Notiz zur Rückfrage** — *Öffentlich* (Standard; der Kunde sieht sie auch) oder
+  *Intern* (nur Bearbeiter mit dem Recht „Private Notizen sehen“). Die Mail selbst bleibt davon
+  unberührt.
 - **Status nach der Rückfrage** — optional; leer lässt den Status unverändert.
 
 **Wichtige Sicherheitseigenschaften:**

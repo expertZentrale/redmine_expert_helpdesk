@@ -549,6 +549,7 @@ Response `200`:
     "info_request_ai_prompt": null,
     "info_request_subject": null,
     "info_request_body": null,
+    "info_request_note_visibility": "public",
     "info_request_status_id": null,
     "kb_ingest_mode": "off",
     "kb_proposal_display": "off",
@@ -598,6 +599,7 @@ A **partial** update — only the keys you send are changed. Body key
 | `info_request_ai_prompt_mode` | string | `inherit`, `extend` or `override`, as for `ai_prompt_mode`. |
 | `info_request_ai_prompt` | string \| null | Project prompt for the AI check. |
 | `info_request_subject` / `info_request_body` | string \| null | Override the central follow-up templates. `{{missing_info}}` inserts the list of missing details. |
+| `info_request_note_visibility` | string | `public` or `private` — whether the journal note recording the follow-up is visible to the customer. |
 | `info_request_status_id` | integer \| null | Status set after a follow-up went out; `null` leaves the status untouched. |
 | `kb_ingest_mode` | string | `off`, `auto` or `manual` — whether resolved tickets feed the knowledge base. |
 | `kb_proposal_display` | string | `off`, `summary`, `sidebar` or `both`. |

@@ -250,6 +250,7 @@ module RedmineExpertHelpdesk
         api.info_request_ai_prompt          s.info_request_ai_prompt
         api.info_request_subject            s.info_request_subject
         api.info_request_body               s.info_request_body
+        api.info_request_note_visibility    s.info_request_note_visibility
         api.info_request_status_id          s.info_request_status_id
         # Wissensbasis (RAG).
         api.kb_ingest_mode          s.kb_ingest_mode

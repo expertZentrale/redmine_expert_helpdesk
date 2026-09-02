@@ -113,6 +113,10 @@ class HelpdeskProjectSettingsController < ApplicationController
       HelpdeskProjectSetting::AI_PROMPT_MODES.include?(prompt_mode)
     setting.info_request_ai_prompt = hp[:info_request_ai_prompt].to_s.strip.presence
 
+    visibility = hp[:info_request_note_visibility].to_s
+    setting.info_request_note_visibility = visibility if
+      HelpdeskProjectSetting::INFO_REQUEST_NOTE_VISIBILITIES.include?(visibility)
+
     setting.info_request_subject   = hp[:info_request_subject].to_s.strip.presence
     setting.info_request_body      = hp[:info_request_body].to_s.strip.presence
     setting.info_request_status_id = hp[:info_request_status_id].presence

@@ -32,6 +32,10 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
     assert_select 'div#hd_ir_ai textarea#hd_ir_prompt'
     assert_select 'textarea#hd_ir_body'
     assert_select 'select#hd_ir_status option[value=""]'
+    assert_select 'select#hd_ir_note_vis' do
+      assert_select 'option[value=?]', 'public'
+      assert_select 'option[value=?]', 'private'
+    end
   end
 
   # Der Hinweis erscheint genau dann, wenn der zentrale Schalter aus ist.
@@ -66,6 +70,7 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
             :info_request_ai_prompt => 'Projekt-Prompt',
             :info_request_subject => 'Rueckfrage',
             :info_request_body => 'Bitte ergaenzen: {{missing_info}}',
+            :info_request_note_visibility => 'private',
             :info_request_status_id => '2'
           }
         }
@@ -80,6 +85,19 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
     assert_equal 2, ps.info_request_threshold
     assert_equal 'extend', ps.info_request_ai_prompt_mode
     assert_equal 2, ps.info_request_status_id
+    assert ps.info_request_note_private?
+  end
+
+  # Ein unbekannter Wert darf die gespeicherte Sichtbarkeit nicht ueberschreiben.
+  def test_invalid_note_visibility_is_ignored
+    log_user('jsmith', 'jsmith')
+    HelpdeskProjectSetting.for_project(@project).update!(:info_request_note_visibility => 'private')
+
+    put helpdesk_project_setting_path(:project_id => @project),
+        :params => { :info_request_form => '1',
+                     :helpdesk_project_setting => { :info_request_note_visibility => 'bogus' } }
+
+    assert HelpdeskProjectSetting.for_project(@project).reload.info_request_note_private?
   end
 
   # Ein unbekannter Modus darf den gespeicherten Wert nicht ueberschreiben.

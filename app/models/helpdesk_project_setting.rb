@@ -27,6 +27,9 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   # Vollstaendigkeitspruefung eingehender Erstmails: aus, regelbasiert oder per KI.
   # Die Prompt-Modi teilt sie sich mit der Zusammenfassung (AI_PROMPT_MODES).
   INFO_REQUEST_MODES = RedmineExpertHelpdesk::CompletenessCheck::MODES
+  # Sichtbarkeit der Protokoll-Notiz einer Rueckfrage: oeffentlich (Kunde sieht,
+  # was erfragt wurde) oder intern (nur Bearbeiter).
+  INFO_REQUEST_NOTE_VISIBILITIES = %w[public private].freeze
 
   validates :phishing_action, :inclusion => { :in => PHISHING_ACTIONS }, :allow_nil => true
   validates :ai_summary_scope, :inclusion => { :in => AI_SCOPES }, :allow_nil => true
@@ -34,6 +37,8 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   validates :kb_ingest_mode,      :inclusion => { :in => KB_INGEST_MODES }, :allow_nil => true
   validates :kb_proposal_display, :inclusion => { :in => KB_DISPLAY_MODES }, :allow_nil => true
   validates :info_request_mode, :inclusion => { :in => INFO_REQUEST_MODES }, :allow_nil => true
+  validates :info_request_note_visibility,
+            :inclusion => { :in => INFO_REQUEST_NOTE_VISIBILITIES }, :allow_nil => true
   validates :info_request_ai_prompt_mode,
             :inclusion => { :in => AI_PROMPT_MODES }, :allow_nil => true
   validates :info_request_min_chars, :info_request_min_words, :info_request_threshold,
@@ -103,6 +108,12 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   # KI-Modus? Dann braucht der Job zusaetzlich die globalen KI-Schalter.
   def info_request_ai_mode?
     info_request_mode == 'ai'
+  end
+
+  # Wird die Rueckfrage als interne Notiz protokolliert? Default ist oeffentlich,
+  # damit Bearbeiter und Kunde dieselbe Information vor sich haben.
+  def info_request_note_private?
+    info_request_note_visibility.to_s == 'private'
   end
 
   def info_request_keyword_list
