@@ -1,0 +1,21 @@
+h3. Added
+
+* *Reply templates, footers and autoresponders understand far more macros.* Besides @{{issue.id}}@, @{{issue.subject}}@ and @{{issue.url}}@ a template can now use the ticket's status, priority, tracker, author, assignee, category, target version, start and due date, creation and update date, progress, description and parent id — 26 macros in total. The short forms of the original seven (@{{ticket_id}}@, @{{contact_name}}@ and friends) keep working unchanged.
+
+* *Macros for the replying agent.* @{{user.firstname}}@, @{{user.lastname}}@, @{{user.login}}@ and @{{user.mail}}@ join the existing @{{user.name}}@, so a signature can be built from the agent actually sending the mail. @{{project.identifier}}@ was added next to @{{project.name}}@.
+
+* *Issue custom fields as macros, enabled per field.* An administrator picks the fields under *Administration → Plugins → expert Helpdesk → Custom fields as macros*; only those expand. Each enabled field is addressable either by id (@{{issue.cf.42}}@, which survives renaming the field) or by its name (@{{issue.cf.vertragsnummer}}@, easier to read in a template). Redmine's own field visibility still applies on top: a field the replying agent may not see renders empty, so an internal field cannot reach a customer through a shared template.
+
+* *Optional sender override for mailboxes that send through Redmine's SMTP configuration.* A mailbox whose reply transport is *SMTP (Redmine default)* can send under an address other than the mailbox address. The case this serves is a distribution list that was turned into a helpdesk mailbox: the list address still exists and the mailbox is its only member, so mail should go out under the list address. Setting @Reply-To@ to the mailbox address is a separate option and off by default, because for that setup the list address already delivers back to the mailbox and a @Reply-To@ would only expose the internal address. The override is ignored for the Graph and own-SMTP transports, which authenticate as the mailbox and reject a foreign sender.
+
+h3. Fixed
+
+* *The macro list no longer drifts apart from what the renderer understands.* The clickable macro chips read their list from the renderer itself instead of a separately maintained copy, and offer the common macros directly with the rest behind a "more macros" expander.
+
+h3. Upgrade notes
+
+Two migrations run on upgrade (@smtp_from_address@ and @smtp_reply_to_mailbox@ on the mailboxes table). Both are optional columns with empty defaults, so every existing mailbox keeps sending exactly as before and nothing needs to be reconfigured.
+
+Custom field macros are off until an administrator enables individual fields — an upgrade alone exposes no custom field in any template. On an installation that has saved the plugin settings before, the new setting starts out empty, which means no custom field macros.
+
+The sender override only applies to the *SMTP (Redmine default)* transport. If you use it, the relay configured in Redmine's @configuration.yml@ must be permitted to send for that address; the plugin checks the syntax only, so a refusal by your mail infrastructure (SPF/DMARC) shows up when the mail is sent, not when the mailbox is saved.

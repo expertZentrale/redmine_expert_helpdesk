@@ -62,6 +62,7 @@ Under *Administration → Plugins → Redmine expert Helpdesk*, or via the *expe
 | Mark tickets awaiting a response | Flags tickets whose customer replied by mail and clears the flag when an agent answers (on by default) |
 | Answer templates | Global canned responses offered in every helpdesk project, in addition to a project's own ones |
 | Embedded images | Rewrites the @[cid:…]@ markers of incoming mails to the stored image attachment (on by default) |
+| Custom fields as macros | Issue custom fields that may be used as @{{issue.cf.…}}@ in templates. Nothing is enabled by default; a field's own Redmine visibility still applies on top |
 
 Nothing here is required for a mailbox that carries its own credentials — see the next step.
 
@@ -76,6 +77,8 @@ Under *Project settings → Helpdesk*, add a mailbox and pick its *Mail provider
 *Credentials* is an explicit switch, not a fallback chain. *From plugin settings* uses the central app registration above; *Individual for this mailbox* uses only the mailbox's own fields. A mailbox uses one source entirely — blank fields are deliberately not filled in from the other, so a half-configured mailbox cannot silently authenticate against the wrong tenant.
 
 Use *Test connection* before saving. It performs a real login, lists the folders and probes the outgoing route, so a wrong port, encryption mode or credential surfaces immediately instead of on the first fetch.
+
+*Reply transport* decides how outgoing mail leaves: through the mailbox's own backend, through Microsoft Graph, or through Redmine's global SMTP settings. Only the last one offers *Sender override (From)*, an optional address to send under instead of the mailbox address — meant for a distribution list that became a helpdesk mailbox. The relay must be allowed to send for that address. Graph and the mailbox's own SMTP server authenticate as the mailbox and reject a foreign sender, so the field is hidden for them.
 
 For Microsoft 365 the app registration needs the application permissions @Mail.ReadWrite@ and @Mail.Send@, granted with admin consent.
 

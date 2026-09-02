@@ -17,9 +17,10 @@ h3. Features
 
 * *Per-project mailboxes* — source and target folders, defaults for tracker, priority and status, handling of unknown senders.
 * *Autoresponder* — configurable confirmation mail for new tickets.
-* *Customer replies* from the ticket page, with header/footer templates, inline images (CID), attachments and CC/BCC. Sent through the mailbox itself, so a copy lands in its Sent folder.
+* *Customer replies* from the ticket page, with header/footer templates, inline images (CID), attachments and CC/BCC. Sent through the mailbox itself, so a copy lands in its Sent folder. A mailbox routed over Redmine's own SMTP settings can optionally send under a different address, for a distribution list that became a helpdesk mailbox.
 * *Address autocomplete* — To/CC/BCC suggest matching project contacts.
 * *Quoting and answer templates* — next to the formatting icons of the note field, a *Quote* button inserts the original mail, the complete conversation or only the mail exchange (private notes never among them), and a *Templates* button inserts a stored answer with its macros already resolved. Templates are maintained globally and per project.
+* *Template macros* — ticket fields (status, priority, tracker, author, assignee, category, version, dates, progress), the replying agent's name, login and address, and the project. Issue custom fields can be used too, each one enabled by an administrator and still subject to its own Redmine visibility, so an internal field cannot reach a customer through a shared template.
 * *Embedded images* — inline images of an incoming mail are shown in the ticket where the mail showed them, instead of leaving a @[cid:…]@ marker behind, and images referenced in a reply are sent to the customer as inline parts.
 * *Contacts* — senders are saved automatically; customer list per project, a customer panel with previous tickets on the ticket page, and sortable *Customer* / *Customer email* issue-list columns with a filter matching name or email.
 * *Black-/whitelists* — sender and domain filters per mailbox.

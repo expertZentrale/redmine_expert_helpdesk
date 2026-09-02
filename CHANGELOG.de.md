@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-02
+
 ### Hinzugefügt
 
 - **Textbausteine, Fußzeilen und Autoresponder kennen deutlich mehr Makros.** Der Katalog wuchs von

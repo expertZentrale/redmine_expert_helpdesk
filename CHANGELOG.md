@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-02
+
 ### Added
 
 - **Reply templates, footers and autoresponders understand far more macros.** The catalogue grew
