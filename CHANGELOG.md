@@ -8,6 +8,18 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **An automatic note can no longer clear the "awaiting response" flag.** The plugin writes several
+  notes by itself — the autoresponder, the phishing warning and the new completeness follow-up —
+  all authored by the anonymous user. Clearing the flag was gated on the author holding
+  `send_helpdesk_reply`, which is normally enough, but a project that grants that permission to the
+  *Anonymous* role turned every one of those notes into "an agent has answered". The phishing note
+  was the worst case: it runs a few lines after the flag is set during the same fetch, so a waiting
+  ticket vanished from the queue in the same breath. Anonymous is now excluded outright — it is the
+  plugin talking, never an agent, permission or not. A real agent reply is unaffected: the reply
+  controller and the web UI both run as a logged-in user.
+
 ### Added
 
 - **Incoming mail is checked for sufficient information, and the customer can be asked for the

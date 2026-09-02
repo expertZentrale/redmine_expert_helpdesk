@@ -7,6 +7,19 @@
 
 ## [Unreleased]
 
+### Behoben
+
+- **Eine automatische Notiz kann das „Wartet auf Bearbeitung“-Kennzeichen nicht mehr löschen.** Das
+  Plugin schreibt mehrere Notizen selbst — Autoresponder, Phishing-Warnung und die neue Rückfrage —
+  alle mit dem anonymen Benutzer als Autor. Das Löschen des Kennzeichens hing am Recht
+  `send_helpdesk_reply` des Autors, was normalerweise genügt; ein Projekt, das dieses Recht der
+  Rolle *Anonym* gibt, machte damit aber aus jeder dieser Notizen „ein Bearbeiter hat geantwortet“.
+  Am schlimmsten bei der Phishing-Notiz: sie läuft im selben Abruf wenige Zeilen nach dem Setzen des
+  Kennzeichens, das wartende Ticket verschwand also im selben Atemzug aus der Warteschlange. Anonym
+  ist jetzt grundsätzlich ausgenommen — hier spricht das Plugin, nie ein Bearbeiter, Recht hin oder
+  her. Echte Bearbeiter-Antworten sind nicht betroffen: Antwort-Controller und Web-Oberfläche laufen
+  beide als angemeldeter Benutzer.
+
 ### Hinzugefügt
 
 - **Eingehende Mails werden auf ausreichende Informationen geprüft, und der Kunde kann automatisch
