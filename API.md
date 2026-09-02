@@ -543,6 +543,7 @@ Response `200`:
     "info_request_min_chars": 200,
     "info_request_min_words": 20,
     "info_request_require_attachment": false,
+    "info_request_min_attachment_kb": 15,
     "info_request_keywords": null,
     "info_request_threshold": 1,
     "info_request_ai_prompt_mode": "inherit",
@@ -594,6 +595,7 @@ A **partial** update — only the keys you send are changed. Body key
 | `info_request_mode` | string | `off`, `heuristic` or `ai` — completeness check of the first mail of a new ticket (off by default). |
 | `info_request_min_chars` / `info_request_min_words` | integer \| null | Rule mode: minimum body length. `0` disables the individual rule. |
 | `info_request_require_attachment` | boolean | Rule mode: treat a mail with no attachment as incomplete. |
+| `info_request_min_attachment_kb` | integer \| null | Images below this size do not count as a screenshot/photo (signature logos, tracking pixels). Images only; `0` disables the floor. |
 | `info_request_keywords` | string \| null | Rule mode: expected terms, one per line (or comma-separated). Empty disables the rule. |
 | `info_request_threshold` | integer \| null | How many rules must fail before the customer is asked. Minimum 1. |
 | `info_request_ai_prompt_mode` | string | `inherit`, `extend` or `override`, as for `ai_prompt_mode`. |

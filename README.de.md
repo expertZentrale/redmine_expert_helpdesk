@@ -929,9 +929,22 @@ Loslegen nicht reicht.
 | **Regelbasiert** | Mindestlänge (Zeichen und/oder Wörter), „Anhang erforderlich“, eine Liste erwarteter Begriffe und eine Schwelle: wie viele dieser Regeln verletzt sein müssen, bevor nachgefragt wird. | Nein |
 | **KI-gestützt** | Das Modell liefert ein Urteil samt der konkret fehlenden Angaben; diese wandern direkt in die Rückfrage-Mail. | Ja |
 
+Der Standard-Prompt fordert bei **Software** (Anwendung, Web-Portal, Fehlerdialog) einen
+**Screenshot** an und bei **Hardware** (Gerät, Drucker, Kasse, Bildschirm, Verkabelung — möglichst
+mit Typenschild oder Display-Anzeige) ein **Foto**. Lässt sich nicht entscheiden, welches von
+beidem gemeint ist, fragt er stattdessen nach dem betroffenen System, statt zu raten. Dem Modell
+wird außerdem mitgeteilt, welche Dateien bereits anhängen — es verlangt also nie einen Screenshot,
+den der Kunde schon geschickt hat.
+
 Zitierte Verläufe, Weiterleitungs-Header (`-----Ursprüngliche Nachricht-----`, `Am … schrieb …:`)
 und Signaturen werden vor jeder Messung entfernt, damit eine Zwei-Wort-Antwort unter einem langen
 zitierten Verlauf nicht als ausführliche Meldung durchgeht.
+
+**Bilder unterhalb einer Mindestgröße zählen in beiden Modi nicht als Beweismaterial.**
+Signatur-Logos und Tracking-Pixel hängen an fast jeder Mail und würden „Anhang erforderlich“ sonst
+jedes Mal erfüllen. Die Schwelle steht je Projekt (standardmäßig 15 KB, `0` schaltet sie ab) und
+gilt **nur für Bilder** — ein kleines Log oder PDF ist Beweismaterial anderer Art und zählt
+weiterhin. Meldet ein Anhang gar keine Größe, wird er behalten statt verworfen.
 
 **Zentrale Konfiguration** (*Administration → Plugins → Redmine expert Helpdesk*):
 - **Vollständigkeitsprüfung aktivieren** — der Hauptschalter. Standardmäßig aus; solange er aus ist,
@@ -942,8 +955,9 @@ zitierten Verlauf nicht als ausführliche Meldung durchgeht.
 
 **Je Projekt** (*Projekt → Konfiguration → expert Helpdesk*):
 - **Modus** — *Aus* (Standard), *Regelbasiert* oder *KI-gestützt*.
-- Die Regelwerte: Mindestzeichen, Mindestwörter, „Anhang erforderlich“, erwartete Begriffe
-  (einer je Zeile) und die Schwelle. Der Wert `0` schaltet eine einzelne Regel ab.
+- Die Regelwerte: Mindestzeichen, Mindestwörter, „Anhang erforderlich“, **Mindestgröße für Bilder
+  (KB)**, erwartete Begriffe (einer je Zeile) und die Schwelle. Der Wert `0` schaltet eine einzelne
+  Regel ab.
 - **Prompt-Modus** für die KI-Prüfung — erben / erweitern / ersetzen, genau wie beim Prompt der
   KI-Zusammenfassung.
 - **Betreff / Text** — optionale Übersteuerung der zentralen Vorlagen je Projekt.

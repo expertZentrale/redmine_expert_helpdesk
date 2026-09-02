@@ -291,6 +291,12 @@
     <em class="info"><%= l(:text_helpdesk_info_request_require_attachment_info) %></em>
   </p>
   <p>
+    <label for="hd_ir_min_att_kb"><%= l(:field_helpdesk_info_request_min_attachment_kb) %></label>
+    <%= text_field_tag 'helpdesk_project_setting[info_request_min_attachment_kb]',
+          hd_setting.info_request_min_attachment_kb, :size => 6, :id => 'hd_ir_min_att_kb' %>
+    <em class="info"><%= l(:text_helpdesk_info_request_min_attachment_kb_info) %></em>
+  </p>
+  <p>
     <label for="hd_ir_keywords"><%= l(:field_helpdesk_info_request_keywords) %></label>
     <%= text_area_tag 'helpdesk_project_setting[info_request_keywords]',
           hd_setting.info_request_keywords, :rows => 3, :cols => 50, :id => 'hd_ir_keywords' %>

@@ -28,6 +28,7 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
       end
     end
     assert_select 'div#hd_ir_heuristic input#hd_ir_min_chars'
+    assert_select 'div#hd_ir_heuristic input#hd_ir_min_att_kb'
     assert_select 'div#hd_ir_heuristic textarea#hd_ir_keywords'
     assert_select 'div#hd_ir_ai textarea#hd_ir_prompt'
     assert_select 'textarea#hd_ir_body'
@@ -64,6 +65,7 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
             :info_request_min_chars => '150',
             :info_request_min_words => '12',
             :info_request_require_attachment => '1',
+            :info_request_min_attachment_kb => '40',
             :info_request_keywords => "Drucker\nSAP",
             :info_request_threshold => '2',
             :info_request_ai_prompt_mode => 'extend',
@@ -81,6 +83,7 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
     assert_equal 150, ps.info_request_min_chars
     assert_equal 12,  ps.info_request_min_words
     assert ps.info_request_require_attachment?
+    assert_equal 40, ps.info_request_min_attachment_kb
     assert_equal %w[drucker sap], ps.info_request_keyword_list
     assert_equal 2, ps.info_request_threshold
     assert_equal 'extend', ps.info_request_ai_prompt_mode

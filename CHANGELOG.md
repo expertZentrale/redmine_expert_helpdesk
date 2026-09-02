@@ -25,8 +25,15 @@
     customer is asked. Quoted history, forwarded headers and signatures are stripped before
     measuring, so a two-word reply under a long thread does not pass as a detailed one. Needs no AI.
   - **AI-powered** — the model returns a verdict plus the concrete details it found missing, which
-    go straight into the follow-up mail. Uses the existing AI provider configuration and shows up
-    in the AI statistics as its own `completeness` request type.
+    go straight into the follow-up mail. The default prompt asks for a **screenshot** when the
+    problem is software and a **photo** when it is hardware, and it is told which files are already
+    attached so it never asks for one the customer has sent. Uses the existing AI provider
+    configuration and shows up in the AI statistics as its own `completeness` request type.
+
+  Images below a configurable size (15 KB by default) are ignored as evidence in both modes —
+  signature logos and tracking pixels hang off nearly every mail and would otherwise satisfy
+  "an attachment is required" every time. The threshold applies to images only; a small log or PDF
+  still counts.
 
   Everything is **off by default**, behind a central master switch under *Administration → Plugins*
   and a per-project mode that starts at "Off". Subject and body are templates (`{{missing_info}}`

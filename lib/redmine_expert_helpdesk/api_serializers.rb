@@ -244,6 +244,7 @@ module RedmineExpertHelpdesk
         api.info_request_min_chars          s.info_request_min_chars
         api.info_request_min_words          s.info_request_min_words
         api.info_request_require_attachment s.info_request_require_attachment
+        api.info_request_min_attachment_kb  s.info_request_min_attachment_kb
         api.info_request_keywords           s.info_request_keywords
         api.info_request_threshold          s.info_request_threshold
         api.info_request_ai_prompt_mode     s.info_request_ai_prompt_mode

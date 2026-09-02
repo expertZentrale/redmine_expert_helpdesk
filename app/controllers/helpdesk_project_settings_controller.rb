@@ -103,6 +103,7 @@ class HelpdeskProjectSettingsController < ApplicationController
     setting.info_request_min_chars = hp[:info_request_min_chars].to_i
     setting.info_request_min_words = hp[:info_request_min_words].to_i
     setting.info_request_require_attachment = hp[:info_request_require_attachment] == '1'
+    setting.info_request_min_attachment_kb = hp[:info_request_min_attachment_kb].to_i
     setting.info_request_keywords = hp[:info_request_keywords].to_s.strip.presence
     # 0 wuerde bei jeder Mail ausloesen; die Pruefung deaktiviert man ueber den Modus.
     threshold = hp[:info_request_threshold].to_i

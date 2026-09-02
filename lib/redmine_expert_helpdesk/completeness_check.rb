@@ -36,6 +36,11 @@ module RedmineExpertHelpdesk
 
     MODES = %w[off heuristic ai].freeze
 
+    # Bilder unter dieser Groesse zaehlen nicht als Screenshot/Foto. Signatur-Logos
+    # und Tracking-Pixel haengen an fast jeder Mail und liegen typisch bei 1-10 KB;
+    # ein echter Screenshot oder ein Handyfoto liegt deutlich darueber.
+    DEFAULT_MIN_ATTACHMENT_KB = 15
+
     # Quoted history and signatures are not new information, so they must not
     # push a two-word mail over the length threshold. Covers Outlook (German and
     # English), Gmail/Thunderbird ("Am ... schrieb ...:"), plain "> " quoting and
@@ -60,6 +65,24 @@ module RedmineExpertHelpdesk
       - worum es geht (betroffenes System, Anwendung, Geraet oder Dienst),
       - was genau passiert (Fehlermeldung, Symptom, beobachtetes Verhalten),
       - seit wann bzw. wann es auftritt oder wie es reproduziert werden kann.
+
+      Bildmaterial hilft fast immer weiter, deshalb zusaetzlich:
+      - Geht es um SOFTWARE (Anwendung, Web-Portal, Betriebssystem, Fehlerdialog,
+        Meldung auf dem Bildschirm)? Dann sollte ein SCREENSHOT der Fehlermeldung
+        bzw. des betroffenen Fensters vorliegen.
+      - Geht es um HARDWARE (Geraet, Drucker, Kasse, Bildschirm, Kabel, Netzteil,
+        Beschaedigung, Anzeige am Geraet)? Dann sollte ein FOTO des Geraets bzw.
+        der Stelle vorliegen - moeglichst mit Typenschild, Seriennummer oder der
+        Anzeige im Display.
+      - Laesst sich nicht entscheiden, ob Software oder Hardware gemeint ist,
+        fordere kein Bildmaterial an, sondern frage nach dem betroffenen System.
+
+      Am Ende der Nachricht steht ein Abschnitt "Anhaenge dieser Mail:" mit den
+      beigefuegten Dateien. Verlange NIEMALS etwas, das dort bereits aufgefuehrt
+      ist: liegt ein Bild bei, ist die Bild-Anforderung erfuellt. Steht dort
+      "keine", enthaelt die Mail keine verwertbaren Anhaenge. Winzige Bilder
+      (Signatur-Logos, Tracking-Pixel) sind bereits herausgefiltert und tauchen
+      dort nicht auf - du musst sie nicht selbst erkennen.
 
       Bewerte im Zweifel als ausreichend. Eine unnoetige Rueckfrage aergert Kunden,
       die alles Noetige geschrieben haben. Reine Hoeflichkeitsfloskeln, Signaturen
@@ -87,7 +110,8 @@ module RedmineExpertHelpdesk
         min_words = setting.info_request_min_words.to_i
         reasons << :too_few_words if min_words.positive? && word_count(body) < min_words
 
-        if setting.info_request_require_attachment? && attachments.to_a.empty?
+        if setting.info_request_require_attachment? &&
+           relevant_attachments(attachments, setting).empty?
           reasons << :no_attachment
         end
 
@@ -145,6 +169,58 @@ module RedmineExpertHelpdesk
         end
         body = body.lines.reject { |line| line =~ /^\s*>/ }.join
         body.gsub(/\s+/, ' ').strip
+      end
+
+      # Anhaenge, die als Beweismaterial durchgehen. Die Groessenschwelle gilt NUR
+      # fuer Bilder: sie existiert wegen Signatur-Logos und Tracking-Pixeln, die
+      # sonst jede Mail "mit Screenshot" aussehen liessen. Ein 2-KB-Log oder ein
+      # kleines PDF ist dagegen echtes Beweismaterial und bleibt drin.
+      def relevant_attachments(attachments, setting = nil)
+        min_bytes = min_attachment_kb(setting) * 1024
+
+        Array(attachments).reject do |a|
+          next false unless image?(a)
+          next false unless min_bytes.positive?
+
+          size = a.respond_to?(:filesize) ? a.filesize.to_i : 0
+          # Groesse unbekannt (0/nil) => im Zweifel behalten, nicht verwerfen.
+          size.positive? && size < min_bytes
+        end
+      end
+
+      def min_attachment_kb(setting)
+        return DEFAULT_MIN_ATTACHMENT_KB unless
+          setting.respond_to?(:info_request_min_attachment_kb)
+
+        value = setting.info_request_min_attachment_kb
+        # nil => Default; 0 schaltet die Schwelle bewusst ab.
+        value.nil? ? DEFAULT_MIN_ATTACHMENT_KB : value.to_i
+      end
+
+      def image?(attachment)
+        type = attachment.respond_to?(:content_type) ? attachment.content_type.to_s : ''
+        return true if type.downcase.start_with?('image/')
+        return false if type.present?
+
+        # Kein Content-Type gemeldet: ueber die Endung entscheiden.
+        name = attachment.respond_to?(:filename) ? attachment.filename.to_s : ''
+        name.downcase.end_with?('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.heic')
+      end
+
+      # Anhang-Inventar fuer den KI-Modus. Der Prompt fordert Screenshots/Fotos an,
+      # kann aber ohne diese Liste nicht sehen, dass laengst eines beiliegt - er
+      # wuerde dann etwas verlangen, das der Kunde bereits geschickt hat.
+      # Name + Typ genuegen; die Bilddaten selbst gehen bewusst NICHT mit.
+      def attachment_inventory(attachments, setting = nil)
+        list = relevant_attachments(attachments, setting).filter_map do |a|
+          name = a.respond_to?(:filename) ? a.filename.to_s : a.to_s
+          next if name.blank?
+
+          type = a.respond_to?(:content_type) ? a.content_type.to_s : ''
+          type.present? ? "#{name} (#{type})" : name
+        end
+
+        "\n\nAnhaenge dieser Mail: #{list.any? ? list.join(', ') : 'keine'}"
       end
 
       def keyword_list(setting)

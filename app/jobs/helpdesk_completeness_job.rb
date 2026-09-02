@@ -76,7 +76,7 @@ class HelpdeskCompletenessJob < ActiveJob::Base
   # immer "nichts tun" — im Zweifel wird der Kunde NICHT angeschrieben.
   def evaluate(issue, ps, settings, text, attachments)
     if ps.info_request_ai_mode?
-      ai_verdict(issue, ps, settings, text)
+      ai_verdict(issue, ps, settings, text, attachments)
     else
       RedmineExpertHelpdesk::CompletenessCheck.evaluate(
         :text => text, :attachments => attachments, :setting => ps
@@ -84,7 +84,7 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     end
   end
 
-  def ai_verdict(issue, ps, settings, text)
+  def ai_verdict(issue, ps, settings, text, attachments)
     unless RedmineExpertHelpdesk::AiFeatures.ai_enabled?
       log(:info, "##{issue.id}: KI-Modus, aber KI global deaktiviert")
       return nil
@@ -104,8 +104,14 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     prompt = ps.effective_info_request_prompt.presence ||
              RedmineExpertHelpdesk::CompletenessCheck::DEFAULT_AI_PROMPT
 
+    # Der Prompt fordert Screenshots/Fotos an - ohne das Anhang-Inventar wuerde das
+    # Modell auch dann eines verlangen, wenn der Kunde laengst eines mitgeschickt
+    # hat. Die Liste wird NACH dem Kuerzen angehaengt, damit sie nie wegfaellt.
+    input = text.first(MAX_INPUT_CHARS) +
+            RedmineExpertHelpdesk::CompletenessCheck.attachment_inventory(attachments, ps)
+
     raw = client.summarize(
-      prompt, text.first(MAX_INPUT_CHARS), [],
+      prompt, input, [],
       :log_context => { :request_type => 'completeness',
                         :project_id => issue.project_id, :issue_id => issue.id }
     )

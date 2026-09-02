@@ -246,7 +246,13 @@ nested registration would never fire in production.
   a new ticket. `CompletenessCheck` is pure (no DB/HTTP/mail) and holds both modes: `evaluate` runs
   the per-project rule set (min chars/words, attachment required, expected terms, threshold — a `0`
   disables an individual rule) after stripping quoted history/forward headers/signatures, and
-  `parse_ai_verdict` reads the model's JSON. Both return the same `Verdict`. The AI path **fails
+  `parse_ai_verdict` reads the model's JSON. **`relevant_attachments` drops images under
+  `info_request_min_attachment_kb` (default 15 KB)** — signature logos and tracking pixels are on
+  nearly every mail and made "attachment required" always true; the floor is images-only (a small
+  log/PDF is still evidence) and an attachment reporting no size is kept, not dropped. The AI
+  prompt asks for a screenshot (software) or a photo (hardware), so the job appends
+  `attachment_inventory` to the model input — without it the model asks for a screenshot the
+  customer already sent. Both return the same `Verdict`. The AI path **fails
   closed** — unparseable output, a missing `complete` field, or "incomplete" with no reasons all
   render as *complete*, so a garbled response never mails a customer. Driven by
   **`HelpdeskCompletenessJob`** (`app/jobs/`), which `MailProcessor#enqueue_completeness_check`

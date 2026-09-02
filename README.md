@@ -890,9 +890,21 @@ carry enough to start working, mail the customer a templated follow-up automatic
 | **Rule-based** | Minimum length (characters and/or words), "an attachment is required", a list of expected terms, and a threshold: how many of these rules must fail before the customer is asked. | No |
 | **AI-powered** | The model returns a verdict plus the concrete details it found missing; those go straight into the follow-up mail. | Yes |
 
+The default AI prompt asks for a **screenshot** when the problem is software (an application, a
+web portal, an error dialog) and a **photo** when it is hardware (a device, printer, till, display,
+cabling — ideally showing the type plate or the display). When it cannot tell which of the two it
+is, it asks for the affected system instead of guessing. The model is also told which files are
+already attached, so it never asks for a screenshot the customer has already sent.
+
 Quoted history, forwarded headers (`-----Original Message-----`, `Am … schrieb …:`) and
 signatures are stripped before anything is measured, so a two-word reply under a long quoted
 thread does not pass as a detailed report.
+
+**Images below a minimum size do not count as evidence** in either mode. Signature logos and
+tracking pixels hang off nearly every mail and would otherwise satisfy "an attachment is required"
+every single time. The threshold is per project (15 KB by default, `0` switches it off) and applies
+to **images only** — a small log file or PDF is evidence of a different kind and still counts. When
+an attachment reports no size at all, it is kept rather than discarded.
 
 **Central configuration** (*Administration → Plugins → Redmine expert Helpdesk*):
 - **Enable completeness check** — the master switch. Off by default; while it is off, no project
@@ -903,8 +915,9 @@ thread does not pass as a detailed report.
 
 **Per project** (*Project → Settings → expert Helpdesk*):
 - **Mode** — *Off* (default), *Rule-based* or *AI-powered*.
-- The rule values: minimum characters, minimum words, "require an attachment", expected terms
-  (one per line), and the threshold. A value of `0` switches an individual rule off.
+- The rule values: minimum characters, minimum words, "require an attachment", **minimum image
+  size (KB)**, expected terms (one per line), and the threshold. A value of `0` switches an
+  individual rule off.
 - **Prompt mode** for the AI check — inherit / extend / override the central prompt, exactly like
   the AI summary prompt.
 - **Subject / text** — optional per-project override of the central templates.

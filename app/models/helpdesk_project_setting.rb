@@ -41,6 +41,9 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
             :inclusion => { :in => INFO_REQUEST_NOTE_VISIBILITIES }, :allow_nil => true
   validates :info_request_ai_prompt_mode,
             :inclusion => { :in => AI_PROMPT_MODES }, :allow_nil => true
+  validates :info_request_min_attachment_kb,
+            :numericality => { :only_integer => true, :greater_than_or_equal_to => 0 },
+            :allow_nil => true
   validates :info_request_min_chars, :info_request_min_words, :info_request_threshold,
             :numericality => { :only_integer => true, :greater_than_or_equal_to => 0 },
             :allow_nil => true

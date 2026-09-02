@@ -26,8 +26,16 @@
     Messung entfernt, damit eine Zwei-Wort-Antwort unter einem langen Verlauf nicht als
     ausführlich durchgeht. Benötigt keine KI.
   - **KI-gestützt** — das Modell liefert ein Urteil samt der konkret fehlenden Angaben, die direkt
-    in die Rückfrage-Mail wandern. Nutzt die vorhandene KI-Konfiguration und erscheint in der
-    KI-Statistik als eigener Anfragetyp `completeness`.
+    in die Rückfrage-Mail wandern. Der Standard-Prompt fordert bei Software-Problemen einen
+    **Screenshot** und bei Hardware-Problemen ein **Foto** an und bekommt mitgeteilt, welche Dateien
+    bereits anhängen — er verlangt also nie etwas, das der Kunde schon geschickt hat. Nutzt die
+    vorhandene KI-Konfiguration und erscheint in der KI-Statistik als eigener Anfragetyp
+    `completeness`.
+
+  Bilder unterhalb einer konfigurierbaren Größe (standardmäßig 15 KB) zählen in beiden Modi nicht
+  als Beweismaterial — Signatur-Logos und Tracking-Pixel hängen an fast jeder Mail und würden
+  „Anhang erforderlich“ sonst immer erfüllen. Die Schwelle gilt nur für Bilder; ein kleines Log
+  oder PDF zählt weiterhin.
 
   Alles ist **standardmäßig aus**, hinter einem zentralen Hauptschalter unter *Administration →
   Plugins* und einem Projekt-Modus, der auf „Aus“ steht. Betreff und Text sind Vorlagen
