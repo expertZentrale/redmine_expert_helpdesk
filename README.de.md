@@ -971,7 +971,10 @@ weiterhin. Meldet ein Anhang gar keine Größe, wird er behalten statt verworfen
 - **Nur neue Tickets.** Eine Antwort im laufenden Verlauf löst nie eine Rückfrage aus.
 - **Höchstens eine Rückfrage je Ticket.** Ein erneuter Abruf, eine Wiedereröffnung oder ein
   manueller Neuanlauf können denselben Kunden nicht zweimal anschreiben — der Zähler steht auf
-  `helpdesk_ticket_infos`.
+  `helpdesk_ticket_infos`. Die Rückfrage wird **vor** dem Versand in einem Row-Lock *beansprucht*,
+  damit zwei gleichzeitig laufende Jobs desselben Tickets (doppeltes Enqueue, überlappender Retry)
+  nicht beide durchkommen. Schlägt der Versand danach fehl, bleibt der Anspruch bewusst bestehen:
+  eine ausgebliebene Rückfrage kann ein Bearbeiter nachholen, eine doppelte nicht.
 - **Der KI-Modus fällt sicher aus.** Das Modell muss mit JSON antworten
   (`{"complete": true|false, "missing": [...]}`); alles Unlesbare, ein API-Fehler oder
   „unvollständig“ ohne eine einzige Begründung gelten als *vollständig* — eine kaputte Antwort

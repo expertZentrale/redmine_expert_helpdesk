@@ -929,7 +929,10 @@ an attachment reports no size at all, it is kept rather than discarded.
 
 - **New tickets only.** A reply in a running conversation never triggers a follow-up.
 - **At most one follow-up per ticket.** A re-fetch, a reopen or a manual re-run cannot mail the
-  same customer twice — the counter lives on `helpdesk_ticket_infos`.
+  same customer twice — the counter lives on `helpdesk_ticket_infos`. The follow-up is *claimed*
+  inside a row lock **before** the mail is sent, so two jobs racing on the same ticket (duplicate
+  enqueue, retry overlap) cannot both get through. If the send then fails the claim is kept on
+  purpose: a missed follow-up is repairable by an agent, a duplicate one is not.
 - **The AI mode fails closed.** The model has to answer with JSON
   (`{"complete": true|false, "missing": [...]}`); anything unparseable, an API error, or
   "incomplete" without a single reason all count as *complete*, so a garbled response never mails

@@ -24,6 +24,11 @@ class HelpdeskCompletenessJobTest < ActiveSupport::TestCase
            .returns({ 'info_request_enabled' => flag })
   end
 
+  def mailbox
+    @mailbox ||= HelpdeskMailbox.create!(:project_id => @issue.project_id,
+                                         :mailbox_address => 'hd-claim@example.com')
+  end
+
   def link_contact!
     contact = HelpdeskContact.create!(:project_id => @issue.project_id,
                                       :email => 'kunde@example.com', :name => 'Kunde')
@@ -65,6 +70,60 @@ class HelpdeskCompletenessJobTest < ActiveSupport::TestCase
     @ps.update!(:info_request_mode => 'ai')
     link_contact!
     RedmineExpertHelpdesk::AiFeatures.stubs(:ai_enabled?).returns(false)
+    RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).never
+    HelpdeskCompletenessJob.perform_now(@issue.id)
+  end
+
+  # --- The claim is the atomic repeat guard ---
+
+  def test_claim_succeeds_once_then_refuses
+    info = link_contact!
+    assert HelpdeskTicketInfo.claim_info_request!(@issue), 'first claim must succeed'
+    assert_not HelpdeskTicketInfo.claim_info_request!(@issue), 'second claim must be refused'
+    assert_equal 1, info.reload.info_request_count
+  end
+
+  def test_force_bypasses_the_claim
+    info = link_contact!
+    assert HelpdeskTicketInfo.claim_info_request!(@issue)
+    assert HelpdeskTicketInfo.claim_info_request!(@issue, :force => true)
+    assert_equal 2, info.reload.info_request_count
+  end
+
+  def test_claim_records_the_timestamp
+    info = link_contact!
+    HelpdeskTicketInfo.claim_info_request!(@issue)
+    assert_not_nil info.reload.info_request_sent_at
+  end
+
+  # Without a linked row there is nothing to claim - and nothing to send.
+  def test_claim_without_ticket_info_is_refused
+    assert_not HelpdeskTicketInfo.claim_info_request!(@issue)
+  end
+
+  # A failed send must not release the claim: at-most-once beats at-least-once here.
+  def test_failed_send_keeps_the_claim
+    enable_globally
+    info = link_contact!
+    info.update!(:helpdesk_mailbox_id => mailbox.id)
+    RedmineExpertHelpdesk::InfoRequestMailer
+      .stubs(:deliver!).raises(StandardError, 'SMTP down')
+
+    assert_nothing_raised { HelpdeskCompletenessJob.perform_now(@issue.id) }
+    assert_equal 1, info.reload.info_request_count,
+                 'the claim must survive a failed send'
+  end
+
+  # And the ticket stays claimed, so a retry does not mail the customer after all.
+  def test_retry_after_a_failed_send_does_not_mail
+    enable_globally
+    info = link_contact!
+    info.update!(:helpdesk_mailbox_id => mailbox.id)
+    RedmineExpertHelpdesk::InfoRequestMailer
+      .stubs(:deliver!).raises(StandardError, 'SMTP down')
+    HelpdeskCompletenessJob.perform_now(@issue.id)
+
+    RedmineExpertHelpdesk::InfoRequestMailer.unstub(:deliver!)
     RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).never
     HelpdeskCompletenessJob.perform_now(@issue.id)
   end

@@ -31,6 +31,8 @@ class HelpdeskCompletenessJob < ActiveJob::Base
       return log(:debug, "im Projekt #{issue.project.identifier} deaktiviert")
     end
 
+    # Cheap early-out so an already-answered ticket never reaches the AI call. The
+    # authoritative, race-free check is the claim further down.
     ticket_info = HelpdeskTicketInfo.for_issue(issue)
     if !force && ticket_info&.info_request_sent?
       return log(:info, "Rueckfrage zu ##{issue.id} bereits gesendet - uebersprungen")
@@ -51,15 +53,28 @@ class HelpdeskCompletenessJob < ActiveJob::Base
       return log(:debug, "##{issue.id}: Mail als ausreichend bewertet (#{verdict.source})")
     end
 
-    RedmineExpertHelpdesk::InfoRequestMailer.deliver!(
-      :issue       => issue,
-      :contact     => contact,
-      :mailbox     => mailbox,
-      :reasons     => verdict.reasons,
-      :in_reply_to => message&.message_id
-    )
+    # Claim before sending: the guard above is a cheap filter, this is the atomic
+    # one. Two jobs racing on the same issue must not both mail the customer.
+    unless HelpdeskTicketInfo.claim_info_request!(issue, :force => force)
+      return log(:info, "##{issue.id}: Rueckfrage bereits beansprucht - uebersprungen")
+    end
 
-    HelpdeskTicketInfo.record_info_request!(issue)
+    begin
+      RedmineExpertHelpdesk::InfoRequestMailer.deliver!(
+        :issue       => issue,
+        :contact     => contact,
+        :mailbox     => mailbox,
+        :reasons     => verdict.reasons,
+        :in_reply_to => message&.message_id
+      )
+    rescue StandardError => e
+      # The claim stays deliberately - see HelpdeskTicketInfo.claim_info_request!.
+      # A missed follow-up is repairable, a duplicate one is not. Logged at error
+      # level because nothing else makes this visible: no mail, no journal note.
+      return log(:error, "##{issue.id}: Rueckfrage beansprucht, aber Versand " \
+                         "fehlgeschlagen (#{e.class}): #{e.message}")
+    end
+
     apply_status(issue, ps)
 
     log(:info, "##{issue.id}: Rueckfrage an #{contact.email} gesendet " \

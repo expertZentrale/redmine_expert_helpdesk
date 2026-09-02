@@ -41,7 +41,9 @@
   Plugins* und einem Projekt-Modus, der auf „Aus“ steht. Betreff und Text sind Vorlagen
   (`{{missing_info}}` fügt die Liste der fehlenden Angaben ein), zentral mit optionaler Übersteuerung
   je Projekt. Je Ticket wird **höchstens einmal** nachgefragt — ein erneuter Abruf, eine
-  Wiedereröffnung oder ein manueller Neuanlauf können denselben Kunden nie zweimal anschreiben. Der
+  Wiedereröffnung oder ein manueller Neuanlauf können denselben Kunden nie zweimal anschreiben, und
+  die Rückfrage wird vor dem Versand in einem Row-Lock beansprucht, sodass zwei gleichzeitig
+  laufende Jobs desselben Tickets nicht beide durchkommen. Der
   KI-Modus **fällt sicher aus**: eine unlesbare oder fehlgeschlagene Modellantwort gilt als
   „vollständig“, es geht also bei einer kaputten Antwort keine Mail raus.
 

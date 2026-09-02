@@ -261,10 +261,12 @@ nested registration would never fire in production.
   `AiClient#configured?` in AI mode) before anything leaves the box. `InfoRequestMailer` sends the
   templated follow-up along the mailbox's `outgoing_route` (the autoresponder's shape, plain text —
   none of `init_mailer`'s HTML/CID machinery), threads it with `In-Reply-To`/`References`, writes a
-  journal note (public by default, internal per `info_request_note_visibility`), and the job then
-  records the send on `HelpdeskTicketInfo`
-  (`info_request_count`) — **the repeat guard**, so a re-fetch or reopen cannot mail twice.
-  AI-mode calls log as `HelpdeskAiRequest` type `completeness`. Off by default; migrations 043–044.
+  journal note (public by default, internal per `info_request_note_visibility`). The repeat guard is
+  **`HelpdeskTicketInfo.claim_info_request!`** — guard + increment inside **one row lock**, taken
+  *before* the send, so a duplicate enqueue or a retry overlap cannot both mail the customer; a
+  failed send deliberately keeps the claim, because a missed follow-up is repairable and a duplicate
+  is not. AI-mode calls log as `HelpdeskAiRequest` type `completeness`. Off by default;
+  migrations 043–046.
 - **`knowledge_store.rb` / `knowledge_extractor.rb`** — RAG knowledge base from resolved tickets.
   On close (**`Issue#after_save`** in `patches/issue_patch.rb` → `saved_change_to_status_id? &&
   closed?`, so single **and** bulk/API closes are caught) or via rake

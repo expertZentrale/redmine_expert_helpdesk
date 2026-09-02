@@ -39,7 +39,8 @@
   and a per-project mode that starts at "Off". Subject and body are templates (`{{missing_info}}`
   inserts the list of missing details), centrally with an optional per-project override. Each
   ticket is asked **at most once** — a re-fetch, a reopen or a manual re-run can never mail the same
-  customer twice. The AI mode **fails closed**: an unparseable or failed model response counts as
+  customer twice, and the follow-up is claimed inside a row lock before it is sent, so two jobs
+  racing on the same ticket cannot both get through. The AI mode **fails closed**: an unparseable or failed model response counts as
   "complete", so no mail goes out on a garbled answer.
 
 
