@@ -7,6 +7,66 @@
 
 ## [Unreleased]
 
+### Behoben
+
+- **Eine automatische Notiz kann das „Wartet auf Bearbeitung“-Kennzeichen nicht mehr löschen.** Das
+  Plugin schreibt mehrere Notizen selbst — Autoresponder, Phishing-Warnung und die neue Rückfrage —
+  alle mit dem anonymen Benutzer als Autor. Das Löschen des Kennzeichens hing am Recht
+  `send_helpdesk_reply` des Autors, was normalerweise genügt; ein Projekt, das dieses Recht der
+  Rolle *Anonym* gibt, machte damit aber aus jeder dieser Notizen „ein Bearbeiter hat geantwortet“.
+  Am schlimmsten bei der Phishing-Notiz: sie läuft im selben Abruf wenige Zeilen nach dem Setzen des
+  Kennzeichens, das wartende Ticket verschwand also im selben Atemzug aus der Warteschlange. Anonym
+  ist jetzt grundsätzlich ausgenommen — hier spricht das Plugin, nie ein Bearbeiter, Recht hin oder
+  her. Echte Bearbeiter-Antworten sind nicht betroffen: Antwort-Controller und Web-Oberfläche laufen
+  beide als angemeldeter Benutzer.
+
+### Hinzugefügt
+
+- **Eingehende Mails werden auf ausreichende Informationen geprüft, und der Kunde kann automatisch
+  um die fehlenden Angaben gebeten werden.** Ein einzeiliges „Drucker geht nicht“ ohne Screenshot,
+  ohne Fehlermeldung und ohne Systemangabe kostet den Bearbeiter den ersten Durchlauf allein für
+  ein „Bitte teilen Sie uns mehr mit“ — und dieser Durchlauf läuft gegen die SLA. Die Prüfung
+  bewertet die **erste** Mail eines neuen Tickets und schickt dem Kunden, wenn sie zum Loslegen
+  nicht reicht, eine Rückfrage aus einer Vorlage, hält im Journal fest, was erfragt wurde (je
+  Projekt öffentlich oder intern), und setzt das Ticket auf Wunsch auf einen Status wie
+  „Warten auf Kunde“.
+
+  Zwei Modi, konfiguriert **je Projekt** unter *Projekt → Konfiguration → expert Helpdesk*:
+
+  - **Regelbasiert** — Mindestlänge in Zeichen und/oder Wörtern, „Anhang erforderlich“, eine Liste
+    erwarteter Begriffe sowie eine Schwelle, wie viele dieser Regeln verletzt sein müssen, bevor
+    nachgefragt wird. Zitierte Verläufe, Weiterleitungs-Header und Signaturen werden vor der
+    Messung entfernt, damit eine Zwei-Wort-Antwort unter einem langen Verlauf nicht als
+    ausführlich durchgeht. Benötigt keine KI.
+  - **KI-gestützt** — das Modell liefert ein Urteil samt der konkret fehlenden Angaben, die direkt
+    in die Rückfrage-Mail wandern. Der Standard-Prompt fordert bei Software-Problemen einen
+    **Screenshot** und bei Hardware-Problemen ein **Foto** an und bekommt mitgeteilt, welche Dateien
+    bereits anhängen — er verlangt also nie etwas, das der Kunde schon geschickt hat. Nutzt die
+    vorhandene KI-Konfiguration und erscheint in der KI-Statistik als eigener Anfragetyp
+    `completeness`.
+
+  Bilder unterhalb einer konfigurierbaren Größe (standardmäßig 15 KB) zählen in beiden Modi nicht
+  als Beweismaterial — Signatur-Logos und Tracking-Pixel hängen an fast jeder Mail und würden
+  „Anhang erforderlich“ sonst immer erfüllen. Die Schwelle gilt nur für Bilder; ein kleines Log
+  oder PDF zählt weiterhin.
+
+  Die Rückfrage ist **SLA-neutral**: ihre Notiz stoppt die Reaktionsuhr nicht, und der optionale
+  Statuswechsel kann das Ticket nie schließen — ein geschlossenes Ticket gilt überall als Reaktion
+  und als Lösung, ein Abschluss an dieser Stelle hätte also beide Uhren auf „erfüllt“ gesetzt, bevor
+  der Kunde geantwortet hat. Abschluss-Status werden nicht angeboten, nicht gespeichert und nicht
+  geschrieben.
+
+  Alles ist **standardmäßig aus**, hinter einem zentralen Hauptschalter unter *Administration →
+  Plugins* und einem Projekt-Modus, der auf „Aus“ steht. Betreff und Text sind Vorlagen
+  (`{{missing_info}}` fügt die Liste der fehlenden Angaben ein), zentral mit optionaler Übersteuerung
+  je Projekt. Je Ticket wird **höchstens einmal** nachgefragt — ein erneuter Abruf, eine
+  Wiedereröffnung oder ein manueller Neuanlauf können denselben Kunden nie zweimal anschreiben, und
+  die Rückfrage wird vor dem Versand in einem Row-Lock beansprucht, sodass zwei gleichzeitig
+  laufende Jobs desselben Tickets nicht beide durchkommen. Der
+  KI-Modus **fällt sicher aus**: eine unlesbare oder fehlgeschlagene Modellantwort gilt als
+  „vollständig“, es geht also bei einer kaputten Antwort keine Mail raus.
+
+
 ## [0.5.1] - 2026-09-02
 
 ### Hinzugefügt

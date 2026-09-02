@@ -220,11 +220,14 @@ nested registration would never fire in production.
   and opts to email them (also used by the "New Helpdesk Ticket" flow).
 - **`mail_logger.rb`** — one log line per outgoing mail, naming the transport it took.
   **Every send site wraps its send in `MailLogger.track`** (reply controller, `init_mailer`,
-  autoresponder in `mail_processor`, `HelpdeskSlaMailer`) — three transports × four senders
-  otherwise all look identical in the log. Success uses the `mail_log_level` plugin setting
+  autoresponder in `mail_processor`, `info_request_mailer`, `HelpdeskSlaMailer`) — three
+  transports × five senders otherwise all look identical in the log. Success uses the `mail_log_level` plugin setting
   (default `info`), failures are always `error` and the exception is re-raised.
 - **`template_renderer.rb`** — `{{issue.*}}`-style Mustache-ish templating for subjects,
-  headers/footers, autoresponder bodies.
+  headers/footers, autoresponder bodies. `RESOLVERS` feeds both the renderer and the chip
+  catalogue; `CONTEXT_RESOLVERS` (currently `{{missing_info}}`) resolves from a value the caller
+  passes in and is deliberately **kept out of `catalogue`**, because it is meaningless outside its
+  own template and would only clutter the chip bar.
 - **`ai_client.rb`** — AI provider client for per-project mail summaries. `Net::HTTP` (mirrors
   `graph_client.rb`), three providers: `openai` (Chat Completions), `anthropic` (Messages),
   `custom` (OpenAI-compatible base URL for self-hosted). Central config in the plugin settings
@@ -239,6 +242,35 @@ nested registration would never fire in production.
   Agents can re-run it on demand via **`HelpdeskAiController#regenerate`** (sidebar button,
   `send_helpdesk_reply` permission), which enqueues the job with `force: true` (bypasses the
   per-project enable/scope).
+- **`completeness_check.rb` / `info_request_mailer.rb`** — completeness check of the *first* mail of
+  a new ticket. `CompletenessCheck` is pure (no DB/HTTP/mail) and holds both modes: `evaluate` runs
+  the per-project rule set (min chars/words, attachment required, expected terms, threshold — a `0`
+  disables an individual rule) after stripping quoted history/forward headers/signatures, and
+  `parse_ai_verdict` reads the model's JSON. **`relevant_attachments` drops images under
+  `info_request_min_attachment_kb` (default 15 KB)** — signature logos and tracking pixels are on
+  nearly every mail and made "attachment required" always true; the floor is images-only (a small
+  log/PDF is still evidence) and an attachment reporting no size is kept, not dropped. The AI
+  prompt asks for a screenshot (software) or a photo (hardware), so the job appends
+  `attachment_inventory` to the model input — without it the model asks for a screenshot the
+  customer already sent. Both return the same `Verdict`. The AI path **fails
+  closed** — unparseable output, a missing `complete` field, or "incomplete" with no reasons all
+  render as *complete*, so a garbled response never mails a customer. Driven by
+  **`HelpdeskCompletenessJob`** (`app/jobs/`), which `MailProcessor#enqueue_completeness_check`
+  fires `perform_later` for **new tickets only**; it re-checks every gate (global
+  `info_request_enabled`, per-project `info_request_mode`, plus `AiFeatures.ai_enabled?` +
+  `AiClient#configured?` in AI mode) before anything leaves the box. `InfoRequestMailer` sends the
+  templated follow-up along the mailbox's `outgoing_route` (the autoresponder's shape, plain text —
+  none of `init_mailer`'s HTML/CID machinery), threads it with `In-Reply-To`/`References`, writes a
+  journal note (public by default, internal per `info_request_note_visibility`). The repeat guard is
+  **`HelpdeskTicketInfo.claim_info_request!`** — guard + increment inside **one row lock**, taken
+  *before* the send, so a duplicate enqueue or a retry overlap cannot both mail the customer; a
+  failed send deliberately keeps the claim, because a missed follow-up is repairable and a duplicate
+  is not. **The whole flow is SLA-neutral**: the note never reaches `Sla.record_first_response!`
+  (that is a controller hook), and `apply_status` refuses a **closed** status — `helpdesk_sla_*`,
+  `issue_query_patch`'s `COALESCE(first_response_at, closed_on)` and `sla_statistics` all read a
+  closed ticket as reaction-done *and* solution-done, so an automatic close would mark both clocks
+  met before the customer answered. Enforced in the controller, the select and the job.
+  AI-mode calls log as `HelpdeskAiRequest` type `completeness`. Off by default; migrations 043–046.
 - **`knowledge_store.rb` / `knowledge_extractor.rb`** — RAG knowledge base from resolved tickets.
   On close (**`Issue#after_save`** in `patches/issue_patch.rb` → `saved_change_to_status_id? &&
   closed?`, so single **and** bulk/API closes are caught) or via rake

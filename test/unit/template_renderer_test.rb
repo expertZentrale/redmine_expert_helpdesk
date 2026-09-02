@@ -259,6 +259,24 @@ class TemplateRendererTest < ActiveSupport::TestCase
     end
   end
 
+  # {{missing_info}} does not come from the ticket but from the context the
+  # completeness check passes in.
+  def test_missing_info_macro_renders_context_value
+    assert_equal "- A\n- B",
+                 RedmineExpertHelpdesk::TemplateRenderer.render('{{missing_info}}',
+                                                                :missing_info => "- A\n- B")
+  end
+
+  def test_missing_info_macro_renders_empty_without_context
+    assert_equal '', RedmineExpertHelpdesk::TemplateRenderer.render('{{missing_info}}', {})
+  end
+
+  # Deliberately not in the chips: outside the follow-up template the macro has no
+  # effect and would only clutter the chip bar.
+  def test_missing_info_is_not_in_the_chip_catalogue
+    assert_not_includes RedmineExpertHelpdesk::TemplateRenderer.catalogue, 'missing_info'
+  end
+
   private
 
   def with_macro_custom_fields(value)

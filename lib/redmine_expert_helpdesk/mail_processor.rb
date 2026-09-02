@@ -5,14 +5,15 @@
 #
 # Ablauf pro Postfach:
 #   1. Nachrichten ueber den Provider aus dem Quellordner laden
-#   2. Absender gegen Black-/Whitelist pruefen
-#   3. "Ignorieren"-Regeln anwenden
-#   4. MIME an den Redmine-Standard MailHandler uebergeben
-#      (uebernimmt Ticket-Erstellung, Antworten-Zuordnung via In-Reply-To /
-#       [#id]-Betreff, Anhaenge und Benutzeranlage)
-#   5. Regeln auf das erstellte Ticket anwenden, Kontakt verknuepfen
-#   6. Autoresponder bei neuen Tickets versenden
-#   7. Nachricht in den Zielordner verschieben
+#   2. Check the sender against the black-/whitelist
+#   3. Apply the "ignore" rules
+#   4. Hand the MIME to Redmine's own MailHandler
+#      (does ticket creation, reply matching via In-Reply-To / [#id] subject,
+#       attachments and user creation)
+#   5. Apply the rules to the created ticket, link the contact
+#   6. Send the autoresponder for new tickets
+#   7. Enqueue the AI summary and the completeness check asynchronously
+#   8. Move the message to the target folder
 
 module RedmineExpertHelpdesk
   class MailProcessor
@@ -208,6 +209,7 @@ module RedmineExpertHelpdesk
           add_phishing_note(issue, phishing_hits, phishing_suspicions)
         end
         enqueue_ai_summary(issue, object, new_issue, msg)
+        enqueue_completeness_check(issue, msg) if new_issue
         (new_issue ? result.created_issues : result.updated_issues) << issue.id
       end
 
@@ -257,6 +259,20 @@ module RedmineExpertHelpdesk
       )
     rescue => e
       Rails.logger.warn("[helpdesk][ai] Enqueue fehlgeschlagen (Issue ##{issue.id}): #{e.message}")
+    end
+
+    # Enqueue the completeness check of the first mail. New tickets only: a reply in
+    # a running conversation must never trigger an automatic follow-up. The cheap
+    # switches are checked here already, so no job is queued while the feature is
+    # off. An enqueue failure must not abort mail processing.
+    def enqueue_completeness_check(issue, msg)
+      return unless Setting.plugin_redmine_expert_helpdesk['info_request_enabled'].to_s == '1'
+      return unless HelpdeskProjectSetting.for_project(issue.project).info_request_enabled?
+
+      HelpdeskCompletenessJob.perform_later(issue.id, :message_id => msg.id)
+    rescue => e
+      Rails.logger.warn("[helpdesk][info_request] Enqueue fehlgeschlagen " \
+                        "(Issue ##{issue.id}): #{e.message}")
     end
 
     # --- Ticket-Wiedereroeffnung --------------------------------------------
@@ -331,6 +347,18 @@ module RedmineExpertHelpdesk
     # arbitrary inbound mail, and a field made mandatory, a workflow transition or a
     # locked version added since the ticket was created would otherwise make the save
     # fail silently -- leaving the ticket closed with the customer's reply inside it.
+    #
+    # Not resetting the SLA solution time here is deliberate too, and looks like an
+    # oversight if you only read this method. Sla.sync_solution! hangs off
+    # controller_issues_edit_after_save, so it never fires for this model-level save
+    # and info.solution_business_minutes keeps the value from the first close. That
+    # is the intended reading: the statistic means "time to first solution". The
+    # displayed clock is unaffected -- helpdesk_sla_solution derives "done" from
+    # closed?, so it correctly starts running again while the ticket is open -- and
+    # a later close through the UI keeps the first value anyway, because
+    # sync_solution! returns early once solution_business_minutes is set. Making the
+    # reopen reset it would change what the SLA statistics report, so do not "fix"
+    # this without deciding that question first.
     def reopen_if_closed(issue, journal = nil)
       return false unless issue.status&.is_closed?
       return false if @mailbox.reopen_status_id.blank?

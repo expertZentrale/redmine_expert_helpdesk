@@ -161,9 +161,12 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     Off switch: plugin setting `inline_images_enabled`.
   - `init_mailer.rb` — outbound "initial" mail (contact-assign / "New Helpdesk Ticket" flow).
   - `mail_logger.rb` — one log line per outgoing mail incl. the transport used. Every send site
-    wraps its send in `MailLogger.track` (replies, init mail, autoresponder, SLA mail); success at
+    wraps its send in `MailLogger.track` (replies, init mail, autoresponder, info request, SLA
+    mail); success at
     the `mail_log_level` setting (default `info`), failures always `error` + re-raise.
   - `template_renderer.rb` — `{{issue.*}}` templating for subjects/headers/footers/autoresponder.
+    `RESOLVERS` feeds renderer + chip catalogue; `CONTEXT_RESOLVERS` (`{{missing_info}}`) resolves
+    from a caller-supplied value and is deliberately kept out of `catalogue`.
   - `ai_client.rb` — AI provider client (`Net::HTTP`, mirrors `graph_client.rb`) for per-project
     mail summaries: `openai` / `anthropic` / `custom` (OpenAI-compatible, self-hosted). Central
     `ai_*` plugin settings; ships `DEFAULT_PROMPT`. Runs via `HelpdeskAiSummaryJob` (`app/jobs/`,
@@ -175,6 +178,28 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     `_issue_sidebar` badge JS, like the to/cc/bcc recipient badges). Manual re-run via
     `HelpdeskAiController#regenerate` (sidebar button, `send_helpdesk_reply`) enqueues the job
     with `force: true` (bypasses per-project enable/scope).
+  - `completeness_check.rb` / `info_request_mailer.rb` — completeness check of the *first* mail of
+    a new ticket, asking the customer for what is missing. `CompletenessCheck` is pure (no
+    DB/HTTP/mail): `evaluate` runs the per-project rule set (min chars/words, attachment required,
+    expected terms, threshold; `0` disables a rule) after stripping quoted history/forward
+    headers/signatures, `parse_ai_verdict` reads the model's JSON — both return a `Verdict`.
+    `relevant_attachments` drops images under `info_request_min_attachment_kb` (default 15 KB;
+    images only, unknown size kept) so signature logos cannot satisfy "attachment required". The
+    AI prompt asks for a screenshot (software) / photo (hardware), so the job appends
+    `attachment_inventory` to the input — otherwise the model asks for one already attached. The AI
+    path **fails closed** (unparseable output, missing `complete`, or "incomplete" with no reasons
+    all count as complete), so a garbled response never mails a customer. `HelpdeskCompletenessJob`
+    (`app/jobs/`) is enqueued by `MailProcessor#enqueue_completeness_check` for **new tickets only**
+    and re-checks every gate (global `info_request_enabled`, per-project `info_request_mode`, plus
+    `AiFeatures.ai_enabled?` + `AiClient#configured?` in AI mode). `InfoRequestMailer` sends the
+    plain-text follow-up along the mailbox's `outgoing_route` (autoresponder shape), threads it via
+    `In-Reply-To`/`References` and writes a journal note (public by default, internal per
+    `info_request_note_visibility`). The repeat guard is `HelpdeskTicketInfo.claim_info_request!`:
+    guard + increment in one row lock, claimed BEFORE the send so racing jobs cannot both mail; a
+    failed send keeps the claim on purpose (at-most-once). SLA-neutral by design: the note never
+    reaches `Sla.record_first_response!`, and `apply_status` refuses a closed status because every
+    SLA reader counts a closed ticket as reaction-done AND solution-done. AI calls log as
+    `HelpdeskAiRequest` type `completeness`. Off by default; migrations 043-046.
   - `knowledge_store.rb` / `knowledge_extractor.rb` — RAG knowledge base from resolved tickets.
     On close (`Issue#after_save` in `patches/issue_patch.rb` — catches single + bulk + API) or rake
     (`kb_backfill`/`kb_reembed`), `HelpdeskKnowledgeIngestJob` extracts

@@ -52,6 +52,43 @@ class HelpdeskTicketInfo < HelpdeskApplicationRecord
     nil
   end
 
+  # Has this ticket already been asked for more information? This is the repeat
+  # guard of the completeness check — a re-fetch, a reopen or a manual re-run must
+  # never mail the same customer twice.
+  def info_request_sent?
+    info_request_count.to_i.positive?
+  end
+
+  # Claims the follow-up for this ticket, returning whether the caller may send it.
+  #
+  # The guard and the counter increment happen inside ONE row lock, so two jobs
+  # racing on the same issue (duplicate enqueue, retry overlap) cannot both pass:
+  # checking info_request_sent? and incrementing separately would let both through.
+  #
+  # Deliberately claimed BEFORE the mail goes out, not after. If the send then
+  # fails the customer is not asked at all, which an agent can spot and repair - a
+  # duplicate mail to a customer cannot be taken back. At-most-once is the property
+  # this feature promises.
+  def self.claim_info_request!(issue, force: false, at: Time.current)
+    info = for_issue(issue)
+    return false if info.nil?
+
+    claimed = false
+    info.with_lock do
+      next if !force && info.info_request_sent?
+
+      info.info_request_sent_at = at
+      info.info_request_count   = info.info_request_count.to_i + 1
+      info.save!
+      claimed = true
+    end
+    claimed
+  rescue StandardError => e
+    # Failing to claim means not sending - never the other way round.
+    Rails.logger.warn("Helpdesk: claim_info_request! failed (issue ##{issue.try(:id)}): #{e.message}")
+    false
+  end
+
   # Clears the flag. Deliberately uses find_by + update_columns: it must not create
   # a row just to clear it, and it must not re-trigger the Issue callbacks.
   def self.clear_awaiting_agent!(issue)

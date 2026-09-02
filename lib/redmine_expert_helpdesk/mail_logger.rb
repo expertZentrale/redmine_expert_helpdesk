@@ -2,8 +2,8 @@
 #
 # Outgoing mail leaves the plugin through three different transports (Graph
 # sendMail, the mailbox's own SMTP server, Redmine's global ActionMailer SMTP)
-# and from four different places (agent reply, initial mail, autoresponder, SLA
-# breach notification). When a customer says "I never got that mail", the log
+# and from five different places (agent reply, initial mail, autoresponder, the
+# completeness follow-up, SLA breach notification). When a customer says "I never got that mail", the log
 # has to answer *which way* it was sent, not just that something happened - so
 # every send site funnels through here and the route is always part of the line.
 #

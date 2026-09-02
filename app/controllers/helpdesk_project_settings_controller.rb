@@ -13,6 +13,8 @@ class HelpdeskProjectSettingsController < ApplicationController
       update_ai_settings(setting)
     elsif params[:kb_form].present?
       update_kb_settings(setting)
+    elsif params[:info_request_form].present?
+      update_info_request_settings(setting)
     else
       update_reply_settings(setting)
     end
@@ -89,6 +91,45 @@ class HelpdeskProjectSettingsController < ApplicationController
     setting.ai_attach_images   = hp[:ai_attach_images] == '1'
     setting.ai_include_journal       = hp[:ai_include_journal] == '1'
     setting.ai_include_private_notes = hp[:ai_include_private_notes] == '1'
+  end
+
+  # Completeness check / follow-up (fifth form in the tab)
+  def update_info_request_settings(setting)
+    hp = params[:helpdesk_project_setting] || {}
+
+    mode = hp[:info_request_mode].to_s
+    setting.info_request_mode = mode if HelpdeskProjectSetting::INFO_REQUEST_MODES.include?(mode)
+
+    setting.info_request_min_chars = hp[:info_request_min_chars].to_i
+    setting.info_request_min_words = hp[:info_request_min_words].to_i
+    setting.info_request_require_attachment = hp[:info_request_require_attachment] == '1'
+    setting.info_request_min_attachment_kb = hp[:info_request_min_attachment_kb].to_i
+    setting.info_request_keywords = hp[:info_request_keywords].to_s.strip.presence
+    # 0 would fire on every mail; the check is switched off via the mode instead.
+    threshold = hp[:info_request_threshold].to_i
+    setting.info_request_threshold = threshold.positive? ? threshold : 1
+
+    prompt_mode = hp[:info_request_ai_prompt_mode].to_s
+    setting.info_request_ai_prompt_mode = prompt_mode if
+      HelpdeskProjectSetting::AI_PROMPT_MODES.include?(prompt_mode)
+    setting.info_request_ai_prompt = hp[:info_request_ai_prompt].to_s.strip.presence
+
+    visibility = hp[:info_request_note_visibility].to_s
+    setting.info_request_note_visibility = visibility if
+      HelpdeskProjectSetting::INFO_REQUEST_NOTE_VISIBILITIES.include?(visibility)
+
+    setting.info_request_subject   = hp[:info_request_subject].to_s.strip.presence
+    setting.info_request_body      = hp[:info_request_body].to_s.strip.presence
+    # Must be an existing, OPEN status. Two separate reasons:
+    # - a non-numeric value type-casts to 0, which is not blank in Rails, so it
+    #   would sail through every guard and leave the ticket in a status that does
+    #   not exist;
+    # - a closed status would make the automatic follow-up close the ticket, and
+    #   every SLA reader treats closed_on as both reaction-done and solution-done.
+    #   Waiting for the customer is a pause, not a solution.
+    status_id = hp[:info_request_status_id].to_i
+    setting.info_request_status_id =
+      IssueStatus.where(:id => status_id, :is_closed => false).exists? ? status_id : nil
   end
 
   # Wissensbasis-Einstellungen (viertes Formular im Tab)

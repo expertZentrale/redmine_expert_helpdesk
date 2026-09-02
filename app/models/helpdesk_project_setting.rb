@@ -5,6 +5,9 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   belongs_to :reply_status, :class_name => 'IssueStatus', :optional => true
   # Default assignee for new tickets: a user *or* a group, hence Principal.
   belongs_to :default_assigned_to, :class_name => 'Principal', :optional => true
+  # Optional status the ticket is moved to after an automatic request for more
+  # information ("waiting for customer"); NULL means "leave the status alone".
+  belongs_to :info_request_status, :class_name => 'IssueStatus', :optional => true
 
   DEFAULT_SUBJECT_TEMPLATE = 'Re: [#{{issue.id}}] {{issue.subject}}'.freeze
 
@@ -21,11 +24,29 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   KB_INGEST_MODES  = %w[off auto manual].freeze
   KB_DISPLAY_MODES = %w[off summary sidebar both].freeze
 
+  # Completeness check of incoming first mails: off, rule-based or AI-powered.
+  # It shares the prompt modes with the summary (AI_PROMPT_MODES).
+  INFO_REQUEST_MODES = RedmineExpertHelpdesk::CompletenessCheck::MODES
+  # Visibility of the note recording a follow-up: public (the customer sees what
+  # was asked for) or private (agents only).
+  INFO_REQUEST_NOTE_VISIBILITIES = %w[public private].freeze
+
   validates :phishing_action, :inclusion => { :in => PHISHING_ACTIONS }, :allow_nil => true
   validates :ai_summary_scope, :inclusion => { :in => AI_SCOPES }, :allow_nil => true
   validates :ai_prompt_mode,   :inclusion => { :in => AI_PROMPT_MODES }, :allow_nil => true
   validates :kb_ingest_mode,      :inclusion => { :in => KB_INGEST_MODES }, :allow_nil => true
   validates :kb_proposal_display, :inclusion => { :in => KB_DISPLAY_MODES }, :allow_nil => true
+  validates :info_request_mode, :inclusion => { :in => INFO_REQUEST_MODES }, :allow_nil => true
+  validates :info_request_note_visibility,
+            :inclusion => { :in => INFO_REQUEST_NOTE_VISIBILITIES }, :allow_nil => true
+  validates :info_request_ai_prompt_mode,
+            :inclusion => { :in => AI_PROMPT_MODES }, :allow_nil => true
+  validates :info_request_min_attachment_kb,
+            :numericality => { :only_integer => true, :greater_than_or_equal_to => 0 },
+            :allow_nil => true
+  validates :info_request_min_chars, :info_request_min_words, :info_request_threshold,
+            :numericality => { :only_integer => true, :greater_than_or_equal_to => 0 },
+            :allow_nil => true
   validates :sla_work_start, :sla_work_end,
             :format => { :with => /\A\d{1,2}:\d{2}\z/ }, :allow_blank => true
   validates :sla_reaction_minutes, :sla_solution_minutes,
@@ -79,12 +100,65 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
     %w[sidebar both].include?(kb_proposal_display.to_s)
   end
 
+  # --- Completeness check / follow-up ---
+
+  # Does the check run in this project at all? The global switch is deliberately
+  # NOT checked here but in the job (one gate chain, one log line).
+  def info_request_enabled?
+    info_request_mode.to_s.present? && info_request_mode != 'off'
+  end
+
+  # AI mode? Then the job additionally needs the global AI switches.
+  def info_request_ai_mode?
+    info_request_mode == 'ai'
+  end
+
+  # Is the follow-up recorded as an internal note? Public by default, so agent and
+  # customer have the same information in front of them.
+  def info_request_note_private?
+    info_request_note_visibility.to_s == 'private'
+  end
+
+  def info_request_keyword_list
+    RedmineExpertHelpdesk::CompletenessCheck.keyword_list(self)
+  end
+
+  # Subject/text of the follow-up: the project beats the central default (plugin
+  # setting), so a project can use its own wording.
+  def effective_info_request_subject
+    info_request_subject.presence ||
+      Setting.plugin_redmine_expert_helpdesk['info_request_subject'].to_s
+  end
+
+  def effective_info_request_body
+    info_request_body.presence ||
+      Setting.plugin_redmine_expert_helpdesk['info_request_body'].to_s
+  end
+
+  # Like effective_ai_prompt, but for the follow-up's check prompt.
+  def effective_info_request_prompt
+    combine_prompts(
+      Setting.plugin_redmine_expert_helpdesk['info_request_ai_prompt'].to_s,
+      info_request_ai_prompt.to_s,
+      info_request_ai_prompt_mode
+    )
+  end
+
   # Effektiver Prompt: erben (zentraler Default), erweitern (zentral + Projekt)
   # oder ersetzen (nur Projekt). Analog zu HelpdeskMailbox#effective_footer_template.
   def effective_ai_prompt
-    global  = Setting.plugin_redmine_expert_helpdesk['ai_prompt'].to_s
-    project = ai_prompt.to_s
-    case ai_prompt_mode.presence || 'inherit'
+    combine_prompts(
+      Setting.plugin_redmine_expert_helpdesk['ai_prompt'].to_s,
+      ai_prompt.to_s,
+      ai_prompt_mode
+    )
+  end
+
+  private
+
+  # Shared combination logic of the prompt modes (inherit/extend/override).
+  def combine_prompts(global, project, mode)
+    case mode.presence || 'inherit'
     when 'override'
       project.presence || global
     when 'extend'

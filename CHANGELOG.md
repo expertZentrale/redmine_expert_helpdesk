@@ -8,6 +8,59 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **An automatic note can no longer clear the "awaiting response" flag.** The plugin writes several
+  notes by itself — the autoresponder, the phishing warning and the new completeness follow-up —
+  all authored by the anonymous user. Clearing the flag was gated on the author holding
+  `send_helpdesk_reply`, which is normally enough, but a project that grants that permission to the
+  *Anonymous* role turned every one of those notes into "an agent has answered". The phishing note
+  was the worst case: it runs a few lines after the flag is set during the same fetch, so a waiting
+  ticket vanished from the queue in the same breath. Anonymous is now excluded outright — it is the
+  plugin talking, never an agent, permission or not. A real agent reply is unaffected: the reply
+  controller and the web UI both run as a logged-in user.
+
+### Added
+
+- **Incoming mail is checked for sufficient information, and the customer can be asked for the
+  rest automatically.** A one-line "printer is broken" with no screenshot, no error message and no
+  system name costs an agent the first cycle just to write "please tell us more" — and that cycle
+  runs against the SLA. The check evaluates the **first** mail of a new ticket and, when it does
+  not carry enough to start working, sends the customer a templated follow-up, records a journal
+  note listing what was asked for (public or internal, per project), and optionally moves the
+  ticket to a status such as "Waiting for customer".
+
+  Two modes, configured **per project** under *Project → Settings → expert Helpdesk*:
+
+  - **Rule-based** — minimum length in characters and/or words, "an attachment is required", a list
+    of expected terms, and a threshold saying how many of those rules have to fail before the
+    customer is asked. Quoted history, forwarded headers and signatures are stripped before
+    measuring, so a two-word reply under a long thread does not pass as a detailed one. Needs no AI.
+  - **AI-powered** — the model returns a verdict plus the concrete details it found missing, which
+    go straight into the follow-up mail. The default prompt asks for a **screenshot** when the
+    problem is software and a **photo** when it is hardware, and it is told which files are already
+    attached so it never asks for one the customer has sent. Uses the existing AI provider
+    configuration and shows up in the AI statistics as its own `completeness` request type.
+
+  Images below a configurable size (15 KB by default) are ignored as evidence in both modes —
+  signature logos and tracking pixels hang off nearly every mail and would otherwise satisfy
+  "an attachment is required" every time. The threshold applies to images only; a small log or PDF
+  still counts.
+
+  The follow-up is **SLA-neutral**: its note does not stop the reaction clock, and the optional
+  status change can never close the ticket — a closed ticket counts as both reaction-done and
+  solution-done everywhere, so closing here would mark both clocks met before the customer had
+  answered. Closed statuses are not offered, not saved and not written.
+
+  Everything is **off by default**, behind a central master switch under *Administration → Plugins*
+  and a per-project mode that starts at "Off". Subject and body are templates (`{{missing_info}}`
+  inserts the list of missing details), centrally with an optional per-project override. Each
+  ticket is asked **at most once** — a re-fetch, a reopen or a manual re-run can never mail the same
+  customer twice, and the follow-up is claimed inside a row lock before it is sent, so two jobs
+  racing on the same ticket cannot both get through. The AI mode **fails closed**: an unparseable or failed model response counts as
+  "complete", so no mail goes out on a garbled answer.
+
+
 ## [0.5.1] - 2026-09-02
 
 ### Added

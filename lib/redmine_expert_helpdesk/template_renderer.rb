@@ -69,6 +69,14 @@ module RedmineExpertHelpdesk
       'project.identifier' => ->(c) { c[:issue]&.project&.identifier }
     }.freeze
 
+    # Context-only macros: they resolve from a value the caller passes in, not from
+    # the issue, so they are useless outside their own template and are deliberately
+    # NOT in the chip catalogue (their hint text lives on the settings form).
+    # {{missing_info}} is the rendered list of what an incoming mail was missing.
+    CONTEXT_RESOLVERS = {
+      'missing_info' => ->(c) { c[:missing_info] }
+    }.freeze
+
     # Macro names offered as clickable chips / listed in the settings hint.
     # Legacy aliases are deliberately not advertised any more; they keep
     # working for templates that already use them.
@@ -106,7 +114,7 @@ module RedmineExpertHelpdesk
         return custom_field_value(context, cf_key, shared)
       end
 
-      resolver = RESOLVERS[name]
+      resolver = RESOLVERS[name] || CONTEXT_RESOLVERS[name]
       return nil if resolver.nil?
 
       # Guarded: a nil association, a stubbed test double or a field the
