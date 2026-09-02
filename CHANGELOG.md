@@ -8,6 +8,50 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Reply templates, footers and autoresponders understand far more macros.** The catalogue grew
+  from seven entries to 26: besides `{{issue.id}}`, `{{issue.subject}}` and `{{issue.url}}` a
+  template can now use `{{issue.status}}`, `{{issue.priority}}`, `{{issue.tracker}}`,
+  `{{issue.author}}`, `{{issue.assignee}}`, `{{issue.category}}`, `{{issue.version}}`,
+  `{{issue.start_date}}`, `{{issue.due_date}}`, `{{issue.created_on}}`, `{{issue.updated_on}}`,
+  `{{issue.done_ratio}}`, `{{issue.description}}` and `{{issue.parent_id}}`.
+- **Macros for the replying agent.** `{{user.firstname}}`, `{{user.lastname}}`, `{{user.login}}`
+  and `{{user.mail}}` join the existing `{{user.name}}`, so a signature can be built from the
+  agent actually sending the mail. `{{project.identifier}}` was added alongside `{{project.name}}`.
+- **Issue custom fields as macros, opt-in per field.** An admin enables individual issue custom
+  fields under *Administration → Plugins → Helpdesk → Custom fields as macros*; only those expand.
+  Each enabled field is addressable both by id (`{{issue.cf.42}}`, survives a rename) and by
+  slugified name (`{{issue.cf.vertragsnummer}}`, readable in templates). Redmine's own field
+  visibility applies on top — a field the replying agent may not see renders empty, so an internal
+  field cannot leak into a customer mail through a shared template.
+
+- **Optional sender override for mailboxes sending through Redmine's SMTP.** A mailbox whose
+  reply transport is *Redmine SMTP* can now set a From address that differs from the mailbox
+  address (mailbox form → *Sender override (From)*). Empty keeps the previous behaviour.
+  The override is deliberately ignored on the Graph and own-SMTP routes, which authenticate as
+  the mailbox and reject a foreign sender.
+- **Optional `Reply-To` for the sender override.** Off by default: the usual case is a
+  distribution list that became a helpdesk mailbox, where the list address still delivers to
+  the mailbox and a `Reply-To` would only expose the internal address. Enable *Set Reply-To to
+  the mailbox address* where mail to the override address does not come back to the mailbox.
+
+### Fixed
+
+- **Custom-field settings table rendered broken.** The format column printed raw i18n keys
+  (`label_string`) because `cf.format.label` returns a String, not a Symbol, and the field
+  labels were caught by Redmine's `.tabular label` float, dragging them out of their table
+  cells. Labels now use Redmine's `inline` class and the format name is translated.
+
+### Changed
+
+- **Macro resolution is lazy.** Only macros that actually occur in a template are evaluated, so a
+  footer using `{{issue.id}}` no longer touches the issue's status, assignee or custom fields.
+- **The macro chip bar reads its list from the renderer.** Chips, the settings hint and the
+  renderer previously held three hand-maintained copies of the macro list that could drift apart.
+  Common macros stay inline, the rest moved behind a "more macros" expander grouped by prefix.
+
+
 ## [0.5.0] - 2026-09-01
 
 ### Added

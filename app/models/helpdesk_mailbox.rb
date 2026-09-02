@@ -76,6 +76,12 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
             :allow_blank => true
   validates :imap_host, :presence => true, :if => :imap?
   validates :smtp_host, :presence => true, :if => -> { imap? && outgoing_route == 'mailbox_smtp' }
+  # Only a syntax check: whether the relay actually accepts this sender is a
+  # question of its own configuration (SPF/DMARC), not of ours.
+  validates :smtp_from_address,
+            :format => { :with => /\A[^@\s]+@[^@\s]+\.[^@\s]+\z/,
+                         :message => ->(_object, _data) { I18n.t(:error_helpdesk_invalid_from_address) } },
+            :allow_blank => true
 
   scope :enabled, -> { where(:enabled => true) }
 
@@ -97,7 +103,7 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
                   'imap_host', 'imap_port', 'imap_security', 'imap_username',
                   'imap_verify_ssl', 'imap_unseen_only', 'imap_timeout',
                   'smtp_host', 'smtp_port', 'smtp_security', 'smtp_username',
-                  'smtp_verify_ssl',
+                  'smtp_verify_ssl', 'smtp_from_address', 'smtp_reply_to_mailbox',
                   'oauth_preset', 'oauth_grant', 'oauth_tenant_id', 'oauth_client_id',
                   'oauth_authorize_url', 'oauth_token_url', 'oauth_scope', 'oauth_sa_email',
                   # virtual writers below; the *_enc columns are never safe attributes
@@ -165,6 +171,33 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
     return t unless t == 'provider'
 
     imap? ? 'mailbox_smtp' : 'graph'
+  end
+
+  # Sender for every outgoing mail of this mailbox.
+  #
+  # The override only applies on the 'smtp' route (Redmine's global
+  # ActionMailer relay), where the sender is a free header. Graph and the
+  # mailbox's own SMTP server authenticate *as* the mailbox and reject a
+  # foreign From, so there the mailbox address is the only valid answer.
+  def from_address
+    from_address_overridden? ? smtp_from_address.strip : mailbox_address
+  end
+
+  def from_address_overridden?
+    outgoing_route == 'smtp' && smtp_from_address.present?
+  end
+
+  # Reply-To for outgoing mail, or nil when none should be set.
+  #
+  # Opt-in, because the usual reason for a From override is a distribution
+  # list that became a helpdesk mailbox: the list address still delivers to
+  # this mailbox, so a Reply-To would add nothing and would expose the
+  # internal address to the customer. Switch it on where the override address
+  # does not deliver back here.
+  def reply_to_address
+    return nil unless from_address_overridden? && smtp_reply_to_mailbox?
+
+    mailbox_address
   end
 
   # Graph can only send for a mailbox that Microsoft actually hosts. That is

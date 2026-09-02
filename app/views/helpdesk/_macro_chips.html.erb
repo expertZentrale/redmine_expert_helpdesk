@@ -1,5 +1,9 @@
-<%# Clickbare Makro-Chips: Klick fuegt das Makro an der Cursor-Position im Zielfeld ein.
-    Locals: field_id (String) — HTML-id des Ziel-Inputs/Textareas %>
+<%# Clickable macro chips: a click inserts the macro at the cursor position in the target field.
+    Locals: field_id (String) — HTML id of the target input/textarea
+
+    The macro list comes from RedmineExpertHelpdesk::TemplateRenderer.catalogue so
+    chips and renderer cannot drift apart. Common macros sit directly in the bar,
+    the rest lives behind "more" — otherwise the chip bar swamps the form. %>
 <% unless @hd_macro_chips_assets_loaded
      @hd_macro_chips_assets_loaded = true %>
   <% content_for :header_tags do %>
@@ -13,6 +17,17 @@
         transition: background 0.12s, border-color 0.12s;
       }
       .hd-macro-chip:hover { background: #d4e0ff; border-color: #5577cc; color: #001880; }
+      .hd-macro-more { margin-top: 4px; }
+      .hd-macro-more > summary {
+        cursor: pointer; font-size: 0.82em; color: #2244aa; list-style: none;
+      }
+      .hd-macro-more > summary::-webkit-details-marker { display: none; }
+      .hd-macro-more > summary::before { content: '\25B8 '; }
+      .hd-macro-more[open] > summary::before { content: '\25BE '; }
+      .hd-macro-group { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; margin: 3px 0; }
+      .hd-macro-group-label {
+        font-size: 0.78em; color: #999; min-width: 5.5em; text-transform: uppercase;
+      }
     </style>
     <script>
       document.addEventListener('click', function(ev) {
@@ -31,9 +46,39 @@
     </script>
   <% end %>
 <% end %>
+<%
+  common = %w[issue.id issue.subject issue.url contact.name contact.email user.name project.name]
+  catalogue = RedmineExpertHelpdesk::TemplateRenderer.catalogue
+  # Enabled issue custom fields as {{issue.cf.<slug>}}; the slug reads better
+  # than the id, and both notations render the same value.
+  cf_macros = RedmineExpertHelpdesk::TemplateRenderer.macro_custom_fields.values.map do |cf|
+    ["issue.cf.#{RedmineExpertHelpdesk::TemplateRenderer.slugify(cf.name)}", cf.name]
+  end
+  rest = (catalogue - common).group_by { |m| m.split('.').first }
+%>
 <span class="hd-macro-bar">
   <span class="hd-macro-label"><%= l(:label_helpdesk_macros) %>:</span>
-  <% %w[{{ticket_id}} {{ticket_subject}} {{ticket_url}} {{contact_name}} {{contact_email}} {{user_name}} {{project_name}}].each do |m| %>
-    <code class="hd-macro-chip" data-macro="<%= m %>" data-target="<%= field_id %>"><%= m %></code>
+  <% common.each do |m| %>
+    <code class="hd-macro-chip" data-macro="{{<%= m %>}}" data-target="<%= field_id %>">{{<%= m %>}}</code>
   <% end %>
 </span>
+<details class="hd-macro-more">
+  <summary><%= l(:label_helpdesk_macros_more) %></summary>
+  <% rest.each do |group, macros| %>
+    <div class="hd-macro-group">
+      <span class="hd-macro-group-label"><%= group %></span>
+      <% macros.each do |m| %>
+        <code class="hd-macro-chip" data-macro="{{<%= m %>}}" data-target="<%= field_id %>">{{<%= m %>}}</code>
+      <% end %>
+    </div>
+  <% end %>
+  <% if cf_macros.any? %>
+    <div class="hd-macro-group">
+      <span class="hd-macro-group-label"><%= l(:label_helpdesk_macros_custom_fields) %></span>
+      <% cf_macros.each do |macro, title| %>
+        <code class="hd-macro-chip" data-macro="{{<%= macro %>}}" data-target="<%= field_id %>"
+              title="<%= h(title) %>">{{<%= macro %>}}</code>
+      <% end %>
+    </div>
+  <% end %>
+</details>

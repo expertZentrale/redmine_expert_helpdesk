@@ -155,8 +155,19 @@ en:
   field_helpdesk_autoresponder_enabled: Autoresponder enabled
   field_helpdesk_autoresponder_subject: Subject
   field_helpdesk_autoresponder_body: Body
-  text_helpdesk_macros_info: 'Available macros: {{ticket_id}}, {{ticket_subject}}, {{ticket_url}}, {{contact_name}}, {{contact_email}}, {{user_name}}, {{project_name}}'
+  text_helpdesk_macros_info: 'Available macros: {{issue.id}}, {{issue.subject}}, {{issue.url}}, {{issue.status}}, {{issue.priority}}, {{issue.tracker}}, {{issue.author}}, {{issue.assignee}}, {{issue.category}}, {{issue.version}}, {{issue.start_date}}, {{issue.due_date}}, {{issue.created_on}}, {{issue.updated_on}}, {{issue.done_ratio}}, {{issue.description}}, {{issue.parent_id}}, {{contact.name}}, {{contact.email}}, {{user.name}}, {{user.firstname}}, {{user.lastname}}, {{user.login}}, {{user.mail}}, {{project.name}}, {{project.identifier}}. Enabled issue custom fields are available as {{issue.cf.<name>}} or {{issue.cf.<id>}}. The older notation ({{ticket_id}}, {{contact_name}}, ...) keeps working.'
+  field_helpdesk_smtp_from_address: 'Sender override (From)'
+  text_helpdesk_smtp_from_address_info: 'Optional. Empty = send as the mailbox address. Only used when replies go through Redmine''s own SMTP configuration; Graph and the mailbox''s own SMTP server authenticate as the mailbox and reject a foreign sender. The relay must be allowed to send for this address (SPF/DMARC).'
+  field_helpdesk_smtp_reply_to_mailbox: 'Set Reply-To to the mailbox address'
+  text_helpdesk_smtp_reply_to_mailbox_info: 'Off by default. Leave it off when the sender address delivers back to this mailbox anyway — a distribution list whose only member is this mailbox, for example; a Reply-To would then only expose the internal address. Switch it on when mail to the sender address does not reach this mailbox, otherwise customer replies never make it back into the ticket.'
+  error_helpdesk_invalid_from_address: 'is not a valid email address'
   label_helpdesk_macros: 'Macros'
+  label_helpdesk_macros_more: 'more macros'
+  label_helpdesk_macros_custom_fields: 'Custom fields'
+  label_helpdesk_macro_name: 'Macro'
+  label_helpdesk_macro_custom_fields: 'Custom fields as macros'
+  text_helpdesk_macro_custom_fields_info: 'Only the issue custom fields selected here can be used as {{issue.cf.*}} macros. Templates are sent to customers, so internal fields stay unavailable unless enabled. Redmine''s own field visibility still applies on top: a field the replying agent may not see renders empty.'
+  text_helpdesk_macro_custom_fields_none: 'No issue custom fields are defined in this Redmine.'
   note_helpdesk_autoresponder_sent: 'Autoresponse sent to %{email}.'
   label_helpdesk_message_plural: 'Helpdesk Messages'
 

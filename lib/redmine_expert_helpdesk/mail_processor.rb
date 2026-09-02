@@ -624,7 +624,10 @@ module RedmineExpertHelpdesk
       # Durch die References-Verknuepfung mit der urspruenglichen Kundenmail erkennt
       # Redmines MailHandler Antworten auf den Autoresponder und ordnet sie dem Ticket zu.
       mail = Mail.new
-      mail.from    = @mailbox.mailbox_address
+      mail.from    = @mailbox.from_address
+      # Opt-in only; see HelpdeskMailbox#reply_to_address.
+      reply_to_addr = @mailbox.reply_to_address
+      mail.reply_to = reply_to_addr if reply_to_addr
       mail.to      = contact.email
       mail.subject = subject
       mail.body    = body

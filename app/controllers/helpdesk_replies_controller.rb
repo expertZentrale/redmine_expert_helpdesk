@@ -138,7 +138,10 @@ class HelpdeskRepliesController < ApplicationController
   def send_reply_smtp(mailbox, to, cc, bcc, subject, body_html, att_ids, embedded_atts, sent_filenames)
     mail_obj             = Mail.new
     mail_obj.message_id  = generate_message_id(mailbox.mailbox_address)
-    mail_obj.from    = mailbox.mailbox_address
+    mail_obj.from    = mailbox.from_address
+    # Opt-in only; see HelpdeskMailbox#reply_to_address.
+    reply_to_addr = mailbox.reply_to_address
+    mail_obj.reply_to = reply_to_addr if reply_to_addr
     mail_obj.to      = to
     mail_obj.cc      = cc  if cc.present?
     mail_obj.bcc     = bcc if bcc.present?

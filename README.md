@@ -518,6 +518,21 @@ not as attachments).
 | `graph` | Microsoft Graph, using the central app registration | CID | yes |
 | `smtp` | Redmine's global SMTP settings from `configuration.yml` | Base64 data URIs | IMAP mailboxes only |
 
+**Sender override (From)**: A mailbox on the `smtp` transport may send under an address other
+than the mailbox address — *Sender override (From)* in the mailbox form; empty means "send as the
+mailbox address". Two consequences worth knowing:
+
+- `Reply-To` is **not** set by default. The usual reason for an override is a distribution list
+  that became a helpdesk mailbox: the list address still exists, this mailbox is its only
+  member, so replies to the list arrive here anyway and a `Reply-To` would only expose the
+  internal address. Where the override address does *not* deliver back to the mailbox, tick
+  *Set Reply-To to the mailbox address* — otherwise customer replies never reach the ticket.
+- The relay in `configuration.yml` must be permitted to send for that address. This is an SPF /
+  DMARC question on your mail infrastructure; the plugin only validates the syntax.
+
+The field is hidden for the `provider` and `graph` transports and ignored by the model there:
+both authenticate *as* the mailbox and reject a foreign sender.
+
 `graph` is offered **only for a mailbox Microsoft actually hosts** — a Graph mailbox, or an IMAP
 mailbox whose **effective** OAuth2 template is Microsoft ("Microsoft 365 over IMAP"). Effective
 means the template actually in force: the mailbox's own only when *Credentials* is set to
@@ -1341,17 +1356,75 @@ No additional gems required (Ruby standard library only).
 Usable in autoresponder, reply and subject templates. Both notations are
 accepted:
 
-| Macro (dot notation) | Short form | Meaning |
-|----------------------|------------|---------|
+### Ticket
+
+| Macro | Short form | Meaning |
+|---|---|---|
 | `{{issue.id}}` | `{{ticket_id}}` | Ticket number |
 | `{{issue.subject}}` | `{{ticket_subject}}` | Ticket title |
 | `{{issue.url}}` | `{{ticket_url}}` | Link to the ticket |
+| `{{issue.status}}` | – | Status name |
+| `{{issue.priority}}` | – | Priority name |
+| `{{issue.tracker}}` | – | Tracker name |
+| `{{issue.author}}` | – | Author |
+| `{{issue.assignee}}` | – | Assignee (empty if unassigned) |
+| `{{issue.category}}` | – | Category |
+| `{{issue.version}}` | – | Target version |
+| `{{issue.start_date}}` | – | Start date, in the user's date format |
+| `{{issue.due_date}}` | – | Due date |
+| `{{issue.created_on}}` | – | Created on |
+| `{{issue.updated_on}}` | – | Last updated |
+| `{{issue.done_ratio}}` | – | Progress, e.g. `40%` |
+| `{{issue.description}}` | – | Ticket description |
+| `{{issue.parent_id}}` | – | Parent ticket id |
+
+### Customer
+
+| Macro | Short form | Meaning |
+|---|---|---|
 | `{{contact.name}}` | `{{contact_name}}` | Customer name |
 | `{{contact.email}}` | `{{contact_email}}` | Customer email |
-| `{{user.name}}` | `{{user_name}}` | Name of the replying user |
+
+### Replying agent
+
+Resolved from the user actually sending the reply, which makes these usable
+for signatures.
+
+| Macro | Short form | Meaning |
+|---|---|---|
+| `{{user.name}}` | `{{user_name}}` | Display name |
+| `{{user.firstname}}` | – | First name |
+| `{{user.lastname}}` | – | Last name |
+| `{{user.login}}` | – | Login |
+| `{{user.mail}}` | – | Email address |
+
+### Project
+
+| Macro | Short form | Meaning |
+|---|---|---|
 | `{{project.name}}` | `{{project_name}}` | Project name |
+| `{{project.identifier}}` | – | Project identifier |
+
+### Issue custom fields
+
+Custom fields are **not** available by default. An administrator enables them
+individually under *Administration → Plugins → Helpdesk → Custom fields as
+macros*; only enabled fields expand. Each one can be addressed two ways:
+
+| Notation | Example | Note |
+|---|---|---|
+| By id | `{{issue.cf.42}}` | Survives renaming the field |
+| By name | `{{issue.cf.vertragsnummer}}` | Lowercased, every run of non-word characters becomes `_` |
+
+Redmine's own field visibility applies on top of the opt-in: if the replying
+agent is not allowed to see the field, the macro renders empty. That keeps an
+internal field from leaking into a customer mail through a shared template.
 
 Default subject template: `Re: [#{{issue.id}}] {{issue.subject}}`
+
+Anything that cannot be resolved — an unknown macro, a field that is not
+enabled, an empty value — renders as an empty string; a template never fails
+because of a macro.
 
 ---
 

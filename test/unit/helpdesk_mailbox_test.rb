@@ -262,6 +262,96 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
     assert pending.oauth_connected?
   end
 
+
+  # --- Sender override (route 'smtp' only) --------------------------------
+
+  def test_from_address_defaults_to_mailbox_address
+    mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com', :reply_transport => 'smtp')
+    assert_equal 'hd@example.com', mailbox.from_address
+    assert_not mailbox.from_address_overridden?
+  end
+
+  def test_from_address_override_applies_on_redmine_smtp
+    mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
+                                  :reply_transport => 'smtp',
+                                  :smtp_from_address => 'service@example.com')
+    assert_equal 'service@example.com', mailbox.from_address
+    assert mailbox.from_address_overridden?
+  end
+
+  # Graph and the mailbox's own SMTP server authenticate as the mailbox itself
+  # and would reject a foreign sender.
+  def test_from_address_override_ignored_on_other_transports
+    %w[graph provider].each do |transport|
+      mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
+                                    :reply_transport => transport,
+                                    :smtp_from_address => 'service@example.com')
+      assert_equal 'hd@example.com', mailbox.from_address, "transport #{transport}"
+      assert_not mailbox.from_address_overridden?, "transport #{transport}"
+    end
+  end
+
+  def test_from_address_ignores_blank_override
+    mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
+                                  :reply_transport => 'smtp', :smtp_from_address => '   ')
+    assert_equal 'hd@example.com', mailbox.from_address
+    assert_not mailbox.from_address_overridden?
+  end
+
+  def test_from_address_strips_surrounding_whitespace
+    mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
+                                  :reply_transport => 'smtp',
+                                  :smtp_from_address => '  service@example.com  ')
+    assert_equal 'service@example.com', mailbox.from_address
+  end
+
+  # Reply-To is deliberately optional: the usual case is a distribution list
+  # whose only member is this mailbox, so the answer arrives here anyway.
+  def test_reply_to_address_nil_by_default
+    mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
+                                  :reply_transport => 'smtp',
+                                  :smtp_from_address => 'liste@example.com')
+    assert_nil mailbox.reply_to_address
+  end
+
+  def test_reply_to_address_when_opted_in
+    mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
+                                  :reply_transport => 'smtp',
+                                  :smtp_from_address => 'liste@example.com',
+                                  :smtp_reply_to_mailbox => true)
+    assert_equal 'hd@example.com', mailbox.reply_to_address
+  end
+
+  # With no differing sender there is nothing to redirect.
+  def test_reply_to_address_nil_without_override
+    mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
+                                  :reply_transport => 'smtp',
+                                  :smtp_reply_to_mailbox => true)
+    assert_nil mailbox.reply_to_address
+  end
+
+  def test_reply_to_address_nil_on_other_transports
+    mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
+                                  :reply_transport => 'graph',
+                                  :smtp_from_address => 'liste@example.com',
+                                  :smtp_reply_to_mailbox => true)
+    assert_nil mailbox.reply_to_address
+  end
+
+  def test_invalid_from_address_is_rejected
+    mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
+                                  :reply_transport => 'smtp', :smtp_from_address => 'not-an-email')
+    assert_not mailbox.valid?
+    assert mailbox.errors[:smtp_from_address].present?
+  end
+
+  def test_blank_from_address_passes_validation
+    mailbox = HelpdeskMailbox.new(:mailbox_address => 'hd@example.com',
+                                  :reply_transport => 'smtp', :smtp_from_address => '')
+    mailbox.valid?
+    assert_empty mailbox.errors[:smtp_from_address]
+  end
+
   private
 
   def set_global_footer(value)
@@ -295,4 +385,5 @@ class HelpdeskMailboxTest < ActiveSupport::TestCase
   ensure
     Setting.plugin_redmine_expert_helpdesk = previous
   end
+
 end

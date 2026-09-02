@@ -539,6 +539,22 @@ Inline-Bilder (CID-Methode, nicht als Anhang).
 | `graph` | Microsoft Graph über die zentrale App-Registrierung | CID | ja |
 | `smtp` | globale SMTP-Einstellungen von Redmine aus der `configuration.yml` | Base64-Data-URI | nur IMAP-Postfächer |
 
+**Abweichender Absender (From)**: Ein Postfach auf dem Weg `smtp` darf unter einer anderen
+Adresse als der Postfach-Adresse senden — *Abweichender Absender (From)* im Postfach-Formular;
+leer bedeutet „unter der Postfach-Adresse senden". Zwei Punkte dazu:
+
+- `Reply-To` wird standardmäßig **nicht** gesetzt. Der übliche Grund für einen Override ist ein
+  Verteiler, der zu einem Helpdesk-Postfach wurde: Die Verteiler-Adresse existiert weiter, dieses
+  Postfach ist ihr einziges Mitglied, Antworten an den Verteiler kommen also ohnehin hier an — ein
+  `Reply-To` würde nur die interne Adresse offenlegen. Stellt die Override-Adresse *nicht* in
+  dieses Postfach zu, *Reply-To auf die Postfach-Adresse setzen* aktivieren; sonst finden
+  Kundenantworten nicht ins Ticket zurück.
+- Der Relay aus der `configuration.yml` muss für diese Adresse senden dürfen. Das ist eine
+  SPF-/DMARC-Frage der Mail-Infrastruktur; das Plugin prüft nur die Syntax.
+
+Für die Wege `provider` und `graph` blendet das Formular das Feld aus und das Modell ignoriert es:
+Beide authentifizieren sich *als* das Postfach und lehnen einen fremden Absender ab.
+
 `graph` wird **nur für ein Postfach angeboten, das Microsoft auch hostet** — ein Graph-Postfach
 oder ein IMAP-Postfach, dessen **wirksame** OAuth2-Vorlage Microsoft ist („Microsoft 365 über
 IMAP“). Wirksam heißt: die eigene Vorlage nur, wenn *Zugangsdaten* auf *Individuell für dieses
@@ -1400,17 +1416,76 @@ Keine zusätzlichen Gems erforderlich (nur Ruby-Standardbibliothek).
 In Autoresponder-, Antwort- und Betreff-Vorlagen verwendbar. Beide
 Schreibweisen werden akzeptiert:
 
-| Makro (Punkt-Notation) | Kurzform | Bedeutung |
+### Ticket
+
+| Makro | Kurzform | Bedeutung |
 |---|---|---|
 | `{{issue.id}}` | `{{ticket_id}}` | Ticket-Nummer |
 | `{{issue.subject}}` | `{{ticket_subject}}` | Ticket-Titel |
 | `{{issue.url}}` | `{{ticket_url}}` | Link zum Ticket |
+| `{{issue.status}}` | – | Status-Name |
+| `{{issue.priority}}` | – | Priorität |
+| `{{issue.tracker}}` | – | Tracker |
+| `{{issue.author}}` | – | Autor |
+| `{{issue.assignee}}` | – | Bearbeiter (leer, wenn nicht zugewiesen) |
+| `{{issue.category}}` | – | Kategorie |
+| `{{issue.version}}` | – | Zielversion |
+| `{{issue.start_date}}` | – | Beginn, im Datumsformat des Benutzers |
+| `{{issue.due_date}}` | – | Fälligkeitsdatum |
+| `{{issue.created_on}}` | – | Erstellt am |
+| `{{issue.updated_on}}` | – | Zuletzt geändert |
+| `{{issue.done_ratio}}` | – | Fortschritt, z. B. `40%` |
+| `{{issue.description}}` | – | Ticket-Beschreibung |
+| `{{issue.parent_id}}` | – | Nummer des übergeordneten Tickets |
+
+### Kunde
+
+| Makro | Kurzform | Bedeutung |
+|---|---|---|
 | `{{contact.name}}` | `{{contact_name}}` | Name des Kunden |
 | `{{contact.email}}` | `{{contact_email}}` | E-Mail des Kunden |
-| `{{user.name}}` | `{{user_name}}` | Name des antwortenden Benutzers |
+
+### Antwortender Agent
+
+Wird aus dem Benutzer aufgelöst, der die Antwort tatsächlich versendet — damit
+lassen sich Signaturen bauen.
+
+| Makro | Kurzform | Bedeutung |
+|---|---|---|
+| `{{user.name}}` | `{{user_name}}` | Anzeigename |
+| `{{user.firstname}}` | – | Vorname |
+| `{{user.lastname}}` | – | Nachname |
+| `{{user.login}}` | – | Anmeldename |
+| `{{user.mail}}` | – | E-Mail-Adresse |
+
+### Projekt
+
+| Makro | Kurzform | Bedeutung |
+|---|---|---|
 | `{{project.name}}` | `{{project_name}}` | Projektname |
+| `{{project.identifier}}` | – | Projekt-Kennung |
+
+### Benutzerdefinierte Ticket-Felder
+
+Benutzerdefinierte Felder stehen **nicht** automatisch zur Verfügung. Ein
+Administrator schaltet sie einzeln unter *Administration → Plugins → Helpdesk →
+Benutzerdefinierte Felder als Makros* frei; nur freigeschaltete Felder werden
+ersetzt. Jedes Feld ist auf zwei Arten ansprechbar:
+
+| Schreibweise | Beispiel | Hinweis |
+|---|---|---|
+| Über die Id | `{{issue.cf.42}}` | Übersteht das Umbenennen des Feldes |
+| Über den Namen | `{{issue.cf.vertragsnummer}}` | Kleinbuchstaben, jede Folge von Sonderzeichen wird zu `_` |
+
+Zusätzlich zur Freigabe gilt die Redmine-Sichtbarkeit des Feldes: Darf der
+antwortende Agent das Feld nicht sehen, bleibt das Makro leer. So gerät ein
+internes Feld nicht über eine geteilte Vorlage in eine Kundenmail.
 
 Standard-Betreff-Vorlage: `Re: [#{{issue.id}}] {{issue.subject}}`
+
+Alles, was nicht aufgelöst werden kann — unbekanntes Makro, nicht
+freigeschaltetes Feld, leerer Wert — wird zu einer leeren Zeichenkette; eine
+Vorlage scheitert nie an einem Makro.
 
 ## Hinweise
 

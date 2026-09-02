@@ -7,6 +7,54 @@
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Textbausteine, Fußzeilen und Autoresponder kennen deutlich mehr Makros.** Der Katalog wuchs von
+  sieben auf 26 Einträge: neben `{{issue.id}}`, `{{issue.subject}}` und `{{issue.url}}` stehen jetzt
+  `{{issue.status}}`, `{{issue.priority}}`, `{{issue.tracker}}`, `{{issue.author}}`,
+  `{{issue.assignee}}`, `{{issue.category}}`, `{{issue.version}}`, `{{issue.start_date}}`,
+  `{{issue.due_date}}`, `{{issue.created_on}}`, `{{issue.updated_on}}`, `{{issue.done_ratio}}`,
+  `{{issue.description}}` und `{{issue.parent_id}}` zur Verfügung.
+- **Makros für den antwortenden Agenten.** `{{user.firstname}}`, `{{user.lastname}}`,
+  `{{user.login}}` und `{{user.mail}}` ergänzen das bisherige `{{user.name}}`, sodass sich eine
+  Signatur aus dem tatsächlich sendenden Agenten bauen lässt. Zusätzlich gibt es
+  `{{project.identifier}}` neben `{{project.name}}`.
+- **Benutzerdefinierte Ticket-Felder als Makros, Freigabe pro Feld.** Ein Administrator schaltet
+  einzelne Felder unter *Administration → Plugins → Helpdesk → Benutzerdefinierte Felder als Makros*
+  frei; nur diese werden ersetzt. Jedes freigeschaltete Feld ist sowohl über die Id
+  (`{{issue.cf.42}}`, überlebt eine Umbenennung) als auch über den Namens-Slug
+  (`{{issue.cf.vertragsnummer}}`, lesbar in Vorlagen) ansprechbar. Zusätzlich greift die
+  Redmine-Sichtbarkeit des Feldes: Was der antwortende Agent nicht sehen darf, bleibt leer — ein
+  internes Feld kann so nicht über eine geteilte Vorlage in eine Kundenmail geraten.
+
+- **Optionaler abweichender Absender für Postfächer über Redmines SMTP.** Ein Postfach mit dem
+  Antwortweg *Redmine-SMTP* kann jetzt eine From-Adresse setzen, die von der Postfach-Adresse
+  abweicht (Postfach-Formular → *Abweichender Absender (From)*). Leer lässt alles wie bisher.
+  Für die Wege Graph und eigenes SMTP wird der Wert bewusst ignoriert: Beide authentifizieren
+  sich als das Postfach und lehnen einen fremden Absender ab.
+- **Optionales `Reply-To` zum abweichenden Absender.** Standardmäßig aus: Der Regelfall ist ein
+  Verteiler, der zu einem Helpdesk-Postfach wurde — die Verteiler-Adresse stellt weiterhin in
+  das Postfach zu, ein `Reply-To` würde nur die interne Adresse offenlegen. *Reply-To auf die
+  Postfach-Adresse setzen* einschalten, wenn Mail an die Override-Adresse nicht zurückkommt.
+
+### Behoben
+
+- **Tabelle der benutzerdefinierten Felder in den Einstellungen war zerschossen.** Die
+  Format-Spalte gab rohe i18n-Schlüssel aus (`label_string`), weil `cf.format.label` einen String
+  und kein Symbol liefert; zusätzlich zog Redmines `.tabular label`-Float die Feldnamen aus ihren
+  Tabellenzellen. Die Labels nutzen jetzt Redmines Klasse `inline`, der Formatname wird übersetzt.
+
+### Geändert
+
+- **Makros werden nur bei Bedarf aufgelöst.** Es werden ausschließlich die Makros ausgewertet, die
+  tatsächlich in der Vorlage vorkommen; eine Fußzeile mit `{{issue.id}}` liest damit weder Status
+  noch Bearbeiter oder benutzerdefinierte Felder.
+- **Die Makro-Chipleiste liest ihre Liste aus dem Renderer.** Chips, Einstellungs-Hinweis und
+  Renderer pflegten die Makroliste bisher dreifach von Hand und konnten auseinanderlaufen. Häufige
+  Makros stehen weiter direkt in der Leiste, der Rest liegt hinter „weitere Makros“, nach Präfix
+  gruppiert.
+
+
 ## [0.5.0] - 2026-09-01
 
 ### Hinzugefügt

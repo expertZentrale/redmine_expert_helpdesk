@@ -216,6 +216,51 @@
 </p>
 
 <hr />
+
+<h3 style="margin-top:1em;"><%= l(:label_helpdesk_macro_custom_fields) %></h3>
+<p>
+  <em class="info"><%= l(:text_helpdesk_macro_custom_fields_info) %></em>
+</p>
+<%
+  macro_cf_selected = RedmineExpertHelpdesk::TemplateRenderer.macro_custom_field_ids
+  macro_cf_available = IssueCustomField.sorted.to_a
+%>
+<%# Hidden field first: with no checkbox ticked no parameter would arrive at
+    all and the previous selection would silently survive. %>
+<%= hidden_field_tag 'settings[macro_custom_field_ids][]', '' %>
+<% if macro_cf_available.empty? %>
+  <p><em class="info"><%= l(:text_helpdesk_macro_custom_fields_none) %></em></p>
+<% else %>
+  <table class="list">
+    <thead>
+      <tr>
+        <th></th>
+        <th><%= l(:field_name) %></th>
+        <th><%= l(:field_field_format) %></th>
+        <th><%= l(:label_helpdesk_macro_name) %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% macro_cf_available.each do |cf| %>
+        <tr>
+          <td style="width:1em;">
+            <%= check_box_tag 'settings[macro_custom_field_ids][]', cf.id.to_s,
+                              macro_cf_selected.include?(cf.id),
+                              :id => "settings_macro_cf_#{cf.id}" %>
+          </td>
+          <td><label class="inline" for="settings_macro_cf_<%= cf.id %>"><%= h(cf.name) %></label></td>
+          <td><%= h(l(cf.format.label.to_sym)) %></td>
+          <td>
+            <code>{{issue.cf.<%= RedmineExpertHelpdesk::TemplateRenderer.slugify(cf.name) %>}}</code>
+            <span class="info">/ <code>{{issue.cf.<%= cf.id %>}}</code></span>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>
+
+<hr />
 <%# A link, not a form: this partial is rendered inside the form_tag of
     settings/plugin.html.erb, so a nested <form> would be invalid. %>
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_reply_templates) %></h3>
