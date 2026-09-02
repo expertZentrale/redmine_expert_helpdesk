@@ -182,11 +182,20 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     return unless status_id.positive?
     return if issue.status_id == status_id
 
-    # Checked again here, not just on input: the status may have been deleted
-    # since it was configured, and save(:validate => false) would happily write a
-    # dangling id and leave the ticket in a status that no longer exists.
-    unless IssueStatus.exists?(status_id)
+    # Checked again here, not just on input: a status can be deleted or flagged as
+    # closed long after it was configured, and save(:validate => false) would
+    # happily write it.
+    status = IssueStatus.find_by(:id => status_id)
+    if status.nil?
       return log(:warn, "##{issue.id}: konfigurierter Status #{status_id} existiert nicht mehr")
+    end
+
+    # An automatic follow-up must never close a ticket: every SLA reader treats
+    # closed_on as both reaction-done and solution-done, so closing here would
+    # silently mark both clocks met while the customer has not even answered yet.
+    if status.is_closed?
+      return log(:warn, "##{issue.id}: Status #{status.name} ist ein Abschluss-Status - " \
+                        "eine automatische Rueckfrage darf das Ticket nicht schliessen")
     end
 
     issue.reload

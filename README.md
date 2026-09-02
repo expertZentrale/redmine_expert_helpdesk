@@ -923,7 +923,8 @@ an attachment reports no size at all, it is kept rather than discarded.
 - **Subject / text** — optional per-project override of the central templates.
 - **Journal note about the follow-up** — *Public* (default; the customer sees it too) or
   *Internal* (agents with the "View private notes" permission only). The mail itself is unaffected.
-- **Status after the follow-up** — optional; blank leaves the status untouched.
+- **Status after the follow-up** — optional; blank leaves the status untouched. **Only open
+  statuses are offered**, see the SLA note below.
 
 **Safety properties worth knowing:**
 
@@ -937,6 +938,12 @@ an attachment reports no size at all, it is kept rather than discarded.
   (`{"complete": true|false, "missing": [...]}`); anything unparseable, an API error, or
   "incomplete" without a single reason all count as *complete*, so a garbled response never mails
   a customer.
+- **It never touches the SLA.** The follow-up note does not stop the reaction clock — it is the
+  plugin talking, not an agent reacting — and the automatic status change can never close the
+  ticket. That second part matters: every SLA reader treats a closed ticket as *both* reaction-done
+  and solution-done, so a "waiting for customer" status that happened to be flagged as closed would
+  have silently marked both clocks met before the customer had even answered. Closed statuses are
+  therefore not offered in the select, rejected on save, and refused again at the write.
 - **It never breaks ingestion.** The check runs in a background job after the mail has been
   processed; every failure is logged and swallowed.
 - AI-mode calls are logged to `helpdesk_ai_requests` as request type `completeness` and show up in

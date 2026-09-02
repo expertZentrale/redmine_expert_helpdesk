@@ -196,8 +196,10 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     `In-Reply-To`/`References` and writes a journal note (public by default, internal per
     `info_request_note_visibility`). The repeat guard is `HelpdeskTicketInfo.claim_info_request!`:
     guard + increment in one row lock, claimed BEFORE the send so racing jobs cannot both mail; a
-    failed send keeps the claim on purpose (at-most-once). AI calls log as `HelpdeskAiRequest`
-    type `completeness`. Off by default; migrations 043-046.
+    failed send keeps the claim on purpose (at-most-once). SLA-neutral by design: the note never
+    reaches `Sla.record_first_response!`, and `apply_status` refuses a closed status because every
+    SLA reader counts a closed ticket as reaction-done AND solution-done. AI calls log as
+    `HelpdeskAiRequest` type `completeness`. Off by default; migrations 043-046.
   - `knowledge_store.rb` / `knowledge_extractor.rb` — RAG knowledge base from resolved tickets.
     On close (`Issue#after_save` in `patches/issue_patch.rb` — catches single + bulk + API) or rake
     (`kb_backfill`/`kb_reembed`), `HelpdeskKnowledgeIngestJob` extracts

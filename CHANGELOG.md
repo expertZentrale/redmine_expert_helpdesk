@@ -35,6 +35,11 @@
   "an attachment is required" every time. The threshold applies to images only; a small log or PDF
   still counts.
 
+  The follow-up is **SLA-neutral**: its note does not stop the reaction clock, and the optional
+  status change can never close the ticket — a closed ticket counts as both reaction-done and
+  solution-done everywhere, so closing here would mark both clocks met before the customer had
+  answered. Closed statuses are not offered, not saved and not written.
+
   Everything is **off by default**, behind a central master switch under *Administration → Plugins*
   and a per-project mode that starts at "Off". Subject and body are templates (`{{missing_info}}`
   inserts the list of missing details), centrally with an optional per-project override. Each

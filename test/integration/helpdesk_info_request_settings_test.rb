@@ -139,6 +139,31 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
     assert_nil HelpdeskProjectSetting.for_project(@project).info_request_status_id
   end
 
+  # Closing a ticket counts as reaction AND solution for the SLA, so an automatic
+  # follow-up must never be able to do it - not even by configuration.
+  def test_closed_status_is_rejected
+    log_user('jsmith', 'jsmith')
+    closed = IssueStatus.where(:is_closed => true).first
+
+    put helpdesk_project_setting_path(:project_id => @project),
+        :params => { :info_request_form => '1',
+                     :helpdesk_project_setting => { :info_request_mode => 'heuristic',
+                                                    :info_request_status_id => closed.id.to_s } }
+
+    assert_nil HelpdeskProjectSetting.for_project(@project).info_request_status_id
+  end
+
+  def test_status_select_offers_only_open_statuses
+    log_user('jsmith', 'jsmith')
+    settings_tab
+
+    IssueStatus.where(:is_closed => true).each do |st|
+      assert_select "select#hd_ir_status option[value=?]", st.id.to_s, :count => 0
+    end
+    open_status = IssueStatus.where(:is_closed => false).first
+    assert_select "select#hd_ir_status option[value=?]", open_status.id.to_s
+  end
+
   # A threshold of 0 would fire on every mail - the controller keeps it at 1.
   def test_threshold_zero_is_clamped
     log_user('jsmith', 'jsmith')

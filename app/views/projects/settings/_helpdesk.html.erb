@@ -354,9 +354,10 @@
 </p>
 <p>
   <label for="hd_ir_status"><%= l(:field_helpdesk_info_request_status) %></label>
+  <%# Closed statuses are deliberately not offered - see the hint below. %>
   <%= select_tag 'helpdesk_project_setting[info_request_status_id]',
-        options_from_collection_for_select(IssueStatus.sorted, :id, :name,
-                                           hd_setting.info_request_status_id),
+        options_from_collection_for_select(IssueStatus.sorted.where(:is_closed => false),
+                                           :id, :name, hd_setting.info_request_status_id),
         :include_blank => true, :id => 'hd_ir_status' %>
   <em class="info"><%= l(:text_helpdesk_info_request_status_info) %></em>
 </p>

@@ -151,9 +151,16 @@ class HelpdeskCompletenessJobTest < ActiveSupport::TestCase
   end
 
   def test_valid_status_is_written
-    target = IssueStatus.where.not(:id => @issue.status_id).first
+    target = IssueStatus.where(:is_closed => false).where.not(:id => @issue.status_id).first
     _before, after = apply_status(target.id)
     assert_equal target.id, after
+  end
+
+  # Defence in depth: a status can be flagged as closed after it was configured.
+  def test_closed_status_is_not_written
+    closed = IssueStatus.where(:is_closed => true).first
+    before, after = apply_status(closed.id)
+    assert_equal before, after
   end
 
   # The job must never raise - mail processing is already finished by then.

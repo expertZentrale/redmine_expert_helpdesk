@@ -964,7 +964,8 @@ weiterhin. Meldet ein Anhang gar keine Größe, wird er behalten statt verworfen
 - **Journal-Notiz zur Rückfrage** — *Öffentlich* (Standard; der Kunde sieht sie auch) oder
   *Intern* (nur Bearbeiter mit dem Recht „Private Notizen sehen“). Die Mail selbst bleibt davon
   unberührt.
-- **Status nach der Rückfrage** — optional; leer lässt den Status unverändert.
+- **Status nach der Rückfrage** — optional; leer lässt den Status unverändert. **Angeboten werden
+  nur offene Status**, siehe den SLA-Hinweis unten.
 
 **Wichtige Sicherheitseigenschaften:**
 
@@ -979,6 +980,13 @@ weiterhin. Meldet ein Anhang gar keine Größe, wird er behalten statt verworfen
   (`{"complete": true|false, "missing": [...]}`); alles Unlesbare, ein API-Fehler oder
   „unvollständig“ ohne eine einzige Begründung gelten als *vollständig* — eine kaputte Antwort
   schreibt also nie einen Kunden an.
+- **Die SLA bleibt unberührt.** Die Rückfrage-Notiz stoppt die Reaktionsuhr nicht — hier spricht
+  das Plugin, nicht ein Bearbeiter — und der automatische Statuswechsel kann das Ticket niemals
+  schließen. Gerade der zweite Punkt ist wichtig: für jede SLA-Auswertung gilt ein geschlossenes
+  Ticket als Reaktion *und* als Lösung, ein als „geschlossen“ markierter „Warten auf Kunde“-Status
+  hätte also beide Uhren stillschweigend auf „erfüllt“ gesetzt, bevor der Kunde überhaupt
+  geantwortet hat. Abschluss-Status werden daher nicht angeboten, beim Speichern abgelehnt und beim
+  Schreiben erneut verweigert.
 - **Die Mailverarbeitung wird nie unterbrochen.** Die Prüfung läuft in einem Hintergrund-Job,
   nachdem die Mail verarbeitet wurde; jeder Fehler wird geloggt und geschluckt.
 - Aufrufe im KI-Modus werden in `helpdesk_ai_requests` als Anfragetyp `completeness` protokolliert

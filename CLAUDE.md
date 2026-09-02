@@ -265,8 +265,12 @@ nested registration would never fire in production.
   **`HelpdeskTicketInfo.claim_info_request!`** — guard + increment inside **one row lock**, taken
   *before* the send, so a duplicate enqueue or a retry overlap cannot both mail the customer; a
   failed send deliberately keeps the claim, because a missed follow-up is repairable and a duplicate
-  is not. AI-mode calls log as `HelpdeskAiRequest` type `completeness`. Off by default;
-  migrations 043–046.
+  is not. **The whole flow is SLA-neutral**: the note never reaches `Sla.record_first_response!`
+  (that is a controller hook), and `apply_status` refuses a **closed** status — `helpdesk_sla_*`,
+  `issue_query_patch`'s `COALESCE(first_response_at, closed_on)` and `sla_statistics` all read a
+  closed ticket as reaction-done *and* solution-done, so an automatic close would mark both clocks
+  met before the customer answered. Enforced in the controller, the select and the job.
+  AI-mode calls log as `HelpdeskAiRequest` type `completeness`. Off by default; migrations 043–046.
 - **`knowledge_store.rb` / `knowledge_extractor.rb`** — RAG knowledge base from resolved tickets.
   On close (**`Issue#after_save`** in `patches/issue_patch.rb` → `saved_change_to_status_id? &&
   closed?`, so single **and** bulk/API closes are caught) or via rake

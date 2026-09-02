@@ -596,7 +596,7 @@ de:
   text_helpdesk_info_request_ai_prompt_info: 'Das Modell muss mit JSON antworten ({"complete": true|false, "missing": [...]}). Alles Unlesbare gilt als vollständig – es geht dann keine Mail raus.'
   text_helpdesk_info_request_subject_info: 'Makros sind erlaubt. Leer greift der zentrale Standardtext.'
   text_helpdesk_info_request_body_info: 'Makros sind erlaubt. {{missing_info}} fügt die Liste der fehlenden Angaben ein. Leer greift der zentrale Standardtext.'
-  text_helpdesk_info_request_status_info: 'Optional, z. B. "Warten auf Kunde". Leer lässt den Status unverändert.'
+  text_helpdesk_info_request_status_info: 'Optional, z. B. „Warten auf Kunde“. Leer lässt den Status unverändert. Abschluss-Status werden nicht angeboten: das Schließen eines Tickets gilt für die SLA als Reaktion UND als Lösung, und das darf eine automatische Rückfrage nicht auslösen.'
   text_helpdesk_info_request_reason_too_short: 'Eine kurze Beschreibung des Problems (was genau funktioniert nicht?)'
   text_helpdesk_info_request_reason_too_few_words: 'Ein paar weitere Angaben zu Ihrem Anliegen'
   text_helpdesk_info_request_reason_no_attachment: 'Nach Möglichkeit einen Screenshot oder die Fehlermeldung als Datei'

@@ -37,6 +37,12 @@
   „Anhang erforderlich“ sonst immer erfüllen. Die Schwelle gilt nur für Bilder; ein kleines Log
   oder PDF zählt weiterhin.
 
+  Die Rückfrage ist **SLA-neutral**: ihre Notiz stoppt die Reaktionsuhr nicht, und der optionale
+  Statuswechsel kann das Ticket nie schließen — ein geschlossenes Ticket gilt überall als Reaktion
+  und als Lösung, ein Abschluss an dieser Stelle hätte also beide Uhren auf „erfüllt“ gesetzt, bevor
+  der Kunde geantwortet hat. Abschluss-Status werden nicht angeboten, nicht gespeichert und nicht
+  geschrieben.
+
   Alles ist **standardmäßig aus**, hinter einem zentralen Hauptschalter unter *Administration →
   Plugins* und einem Projekt-Modus, der auf „Aus“ steht. Betreff und Text sind Vorlagen
   (`{{missing_info}}` fügt die Liste der fehlenden Angaben ein), zentral mit optionaler Übersteuerung

@@ -596,7 +596,7 @@ en:
   text_helpdesk_info_request_ai_prompt_info: 'The model has to answer with JSON ({"complete": true|false, "missing": [...]}). Anything unreadable counts as complete, so no mail goes out.'
   text_helpdesk_info_request_subject_info: 'Macros are allowed. Empty falls back to the central default.'
   text_helpdesk_info_request_body_info: 'Macros are allowed. {{missing_info}} inserts the list of missing details. Empty falls back to the central default.'
-  text_helpdesk_info_request_status_info: 'Optional, e.g. "Waiting for customer". Empty leaves the status untouched.'
+  text_helpdesk_info_request_status_info: 'Optional, e.g. "Waiting for customer". Empty leaves the status untouched. Closed statuses are not offered: closing a ticket counts as both the reaction and the solution for the SLA, and an automatic follow-up must not do that.'
   text_helpdesk_info_request_reason_too_short: 'A short description of the problem (what exactly is not working?)'
   text_helpdesk_info_request_reason_too_few_words: 'A few more details about your request'
   text_helpdesk_info_request_reason_no_attachment: 'A screenshot or the error message as a file, if available'
