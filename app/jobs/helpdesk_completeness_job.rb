@@ -45,7 +45,15 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     end
 
     message = message_id && HelpdeskMessage.find_by(:id => message_id)
-    text    = source_text(issue, message)
+
+    # Nobody to ask: a Veeam report, a cron mail or a monitoring alert is a real
+    # ticket, but a follow-up to it bounces or loops. Checked before the rule
+    # evaluation so the AI mode never burns tokens on it either.
+    if (reason = automated_sender_reason(ps, contact, message))
+      return log(:info, "##{issue.id}: automatischer Absender (#{reason}) - keine Rueckfrage")
+    end
+
+    text = source_text(issue, message)
     verdict = evaluate(issue, ps, settings, text, mail_attachments(issue, message))
     return if verdict.nil?
 
@@ -133,6 +141,36 @@ class HelpdeskCompletenessJob < ActiveJob::Base
   rescue RedmineExpertHelpdesk::AiClient::AiError => e
     # Fail closed: without a dependable verdict no mail goes to the customer.
     log(:warn, "##{issue.id}: KI-Aufruf fehlgeschlagen, keine Rueckfrage: #{e.message}")
+    nil
+  end
+
+  # Why this mail must not be answered, or nil when a human plausibly wrote it.
+  # Two independent signals, because neither covers the other: the project's list
+  # names the senders an admin already knows, the headers catch the ones nobody has
+  # entered yet.
+  def automated_sender_reason(setting, contact, message)
+    entries = RedmineExpertHelpdesk::AutomatedMail.parse_list(setting.info_request_sender_blacklist)
+    if entries.any? && RedmineExpertHelpdesk::AutomatedMail.list_matches?(entries, contact.email)
+      return "Absender-Blacklist: #{contact.email}"
+    end
+
+    header_trigger(message)
+  end
+
+  # RFC 3834 and the de-facto machine-mail headers, read from the archived .eml.
+  # An NDR carries the same headers but is a delivery failure, not a robot's
+  # report - MailProcessor keeps those, and so does this.
+  def header_trigger(message)
+    eml = message&.eml_attachment
+    return nil unless eml && eml.diskfile && File.exist?(eml.diskfile)
+
+    msg = Mail.read(eml.diskfile)
+    return nil if RedmineExpertHelpdesk::AutomatedMail.ndr?(msg)
+
+    RedmineExpertHelpdesk::AutomatedMail.trigger(msg)
+  rescue StandardError => e
+    # Unreadable .eml => decide on the sender list alone; never block the check.
+    log(:warn, "Header-Pruefung fehlgeschlagen: #{e.message}")
     nil
   end
 

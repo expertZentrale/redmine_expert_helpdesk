@@ -925,6 +925,13 @@ an attachment reports no size at all, it is kept rather than discarded.
 - The rule values: minimum characters, minimum words, "require an attachment", **minimum image
   size (KB)**, expected terms (one per line), and the threshold. A value of `0` switches an
   individual rule off.
+- **Never ask these senders** — one entry per line: full address, bare domain or `@domain`.
+  Backup reports, cron mails and monitoring alerts are real tickets, but nobody behind them can
+  answer a follow-up. Mail that marks itself machine-generated in its headers
+  (`Auto-Submitted`, `Precedence: bulk`, `X-Auto-Response-Suppress`, the Exchange and
+  autoresponder equivalents) is skipped automatically even without an entry here; delivery
+  failures (NDR) are not, since a bounce is something the plugin has to act on. The check runs
+  before the rule evaluation, so the AI mode never spends a token on such a mail.
 - **Prompt mode** for the AI check — inherit / extend / override the central prompt, exactly like
   the AI summary prompt.
 - **Subject / text** — optional per-project override of the central templates.
