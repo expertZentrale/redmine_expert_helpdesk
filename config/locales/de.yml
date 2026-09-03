@@ -593,6 +593,8 @@ de:
   text_helpdesk_info_request_require_attachment_info: 'Mails ganz ohne Anhang (Screenshot, Log, Foto) als unvollständig werten.'
   field_helpdesk_info_request_min_attachment_kb: 'Mindestgröße für Bilder'
   text_helpdesk_info_request_min_attachment_kb_info: 'In KB. Kleinere Bilder zählen nicht als Screenshot oder Foto — Signatur-Logos und Tracking-Pixel hängen an fast jeder Mail. Gilt nur für Bilder; ein kleines Log oder PDF zählt weiterhin. 0 schaltet die Schwelle ab.'
+  field_helpdesk_info_request_sender_blacklist: 'Diese Absender nie fragen'
+  text_helpdesk_info_request_sender_blacklist_info: 'Ein Eintrag pro Zeile: vollständige Adresse, reine Domain oder "@domain". Backup-Berichte, Cronjob-Mails und Monitoring-Alarme sind echte Tickets, aber dahinter steht niemand, der eine Rückfrage beantworten könnte. Mails, die sich in ihren Headern selbst als maschinell kennzeichnen, werden auch ohne Eintrag übersprungen: Auto-Submitted, Precedence (bulk, list, junk), X-Auto-Response-Suppress, X-MS-Exchange-Generated-Message-Source sowie die Header X-Autoreply/X-Autorespond/X-Autoresponder. Unzustellbarkeitsberichte (NDR) werden nicht übersprungen.'
   text_helpdesk_info_request_keywords_info: 'Ein Begriff je Zeile. Die Mail muss mindestens einen davon enthalten, sonst gilt sie als unvollständig. Leer schaltet diese Regel ab.'
   text_helpdesk_info_request_threshold_info: 'Wie viele Regeln verletzt sein müssen, bevor nachgefragt wird. 1 = schon die erste verletzte Regel löst eine Rückfrage aus.'
   text_helpdesk_info_request_ai_prompt_info: 'Das Modell muss mit JSON antworten ({"complete": true|false, "missing": [...]}). Alles Unlesbare gilt als vollständig – es geht dann keine Mail raus.'

@@ -593,6 +593,8 @@ en:
   text_helpdesk_info_request_require_attachment_info: 'Treat a mail without any attachment (screenshot, log, photo) as incomplete.'
   field_helpdesk_info_request_min_attachment_kb: 'Minimum image size'
   text_helpdesk_info_request_min_attachment_kb_info: 'In KB. Images smaller than this do not count as a screenshot or photo — signature logos and tracking pixels hang off nearly every mail. Applies to images only; a small log or PDF still counts. 0 disables the threshold.'
+  field_helpdesk_info_request_sender_blacklist: 'Never ask these senders'
+  text_helpdesk_info_request_sender_blacklist_info: 'One entry per line: full address, bare domain or "@domain". Backup reports, cron mails and monitoring alerts are real tickets, but no one behind them can answer a follow-up. Mail that marks itself machine-generated in its headers is skipped automatically, even without an entry here: Auto-Submitted, Precedence (bulk, list, junk), X-Auto-Response-Suppress, X-MS-Exchange-Generated-Message-Source and the X-Autoreply/X-Autorespond/X-Autoresponder headers. Delivery failures (NDR) are not skipped.'
   text_helpdesk_info_request_keywords_info: 'One term per line. The mail must contain at least one of them, otherwise it counts as incomplete. Empty disables this rule.'
   text_helpdesk_info_request_threshold_info: 'How many rules have to fail before the customer is asked. 1 = the first failed rule already triggers a follow-up.'
   text_helpdesk_info_request_ai_prompt_info: 'The model has to answer with JSON ({"complete": true|false, "missing": [...]}). Anything unreadable counts as complete, so no mail goes out.'

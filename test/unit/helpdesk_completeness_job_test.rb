@@ -74,6 +74,54 @@ class HelpdeskCompletenessJobTest < ActiveSupport::TestCase
     HelpdeskCompletenessJob.perform_now(@issue.id)
   end
 
+  # --- Automated senders: a robot cannot answer a follow-up ---
+
+  def test_blacklisted_sender_gets_no_follow_up
+    enable_globally
+    info = link_contact!
+    info.update!(:helpdesk_mailbox_id => mailbox.id)
+    @ps.update!(:info_request_sender_blacklist => "veeam@example.com\nkunde@example.com")
+
+    RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).never
+    HelpdeskCompletenessJob.perform_now(@issue.id)
+  end
+
+  # The domain form covers a whole monitoring host.
+  def test_blacklisted_domain_gets_no_follow_up
+    enable_globally
+    info = link_contact!
+    info.update!(:helpdesk_mailbox_id => mailbox.id)
+    @ps.update!(:info_request_sender_blacklist => '@example.com')
+
+    RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).never
+    HelpdeskCompletenessJob.perform_now(@issue.id)
+  end
+
+  # An unrelated entry must not silence a real customer.
+  def test_unlisted_sender_still_gets_the_follow_up
+    enable_globally
+    info = link_contact!
+    info.update!(:helpdesk_mailbox_id => mailbox.id)
+    @ps.update!(:info_request_sender_blacklist => 'veeam@other.example')
+
+    RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).once
+    HelpdeskCompletenessJob.perform_now(@issue.id)
+  end
+
+  # The blacklist is checked before the rule evaluation, so the AI mode cannot
+  # spend a token on a mail nobody will ever be asked about.
+  def test_blacklist_short_circuits_before_the_ai_call
+    enable_globally
+    @ps.update!(:info_request_mode => 'ai', :info_request_sender_blacklist => 'kunde@example.com')
+    info = link_contact!
+    info.update!(:helpdesk_mailbox_id => mailbox.id)
+
+    RedmineExpertHelpdesk::AiFeatures.stubs(:ai_enabled?).returns(true)
+    RedmineExpertHelpdesk::AiClient.any_instance.expects(:summarize).never
+    RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).never
+    HelpdeskCompletenessJob.perform_now(@issue.id)
+  end
+
   # --- The claim is the atomic repeat guard ---
 
   def test_claim_succeeds_once_then_refuses

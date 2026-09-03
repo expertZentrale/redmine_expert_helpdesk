@@ -45,7 +45,15 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     end
 
     message = message_id && HelpdeskMessage.find_by(:id => message_id)
-    text    = source_text(issue, message)
+
+    # Nobody to ask: a Veeam report, a cron mail or a monitoring alert is a real
+    # ticket, but a follow-up to it bounces or loops. Checked before the rule
+    # evaluation so the AI mode never burns tokens on it either.
+    if (reason = automated_sender_reason(ps, contact, message))
+      return log(:info, "##{issue.id}: automatischer Absender (#{reason}) - keine Rueckfrage")
+    end
+
+    text = source_text(issue, message)
     verdict = evaluate(issue, ps, settings, text, mail_attachments(issue, message))
     return if verdict.nil?
 
@@ -136,19 +144,61 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     nil
   end
 
+  # Why this mail must not be answered, or nil when a human plausibly wrote it.
+  # Two independent signals, because neither covers the other: the project's list
+  # names the senders an admin already knows, the headers catch the ones nobody has
+  # entered yet.
+  def automated_sender_reason(setting, contact, message)
+    entries = RedmineExpertHelpdesk::AutomatedMail.parse_list(setting.info_request_sender_blacklist)
+    if entries.any? && RedmineExpertHelpdesk::AutomatedMail.list_matches?(entries, contact.email)
+      return "Absender-Blacklist: #{contact.email}"
+    end
+
+    header_trigger(message)
+  end
+
+  # RFC 3834 and the de-facto machine-mail headers, read from the archived .eml.
+  # An NDR carries the same headers but is a delivery failure, not a robot's
+  # report - MailProcessor keeps those, and so does this.
+  def header_trigger(message)
+    msg = eml_mail(message)
+    return nil if msg.nil?
+    return nil if RedmineExpertHelpdesk::AutomatedMail.ndr?(msg)
+
+    RedmineExpertHelpdesk::AutomatedMail.trigger(msg)
+  rescue StandardError => e
+    # Unreadable .eml => decide on the sender list alone; never block the check.
+    log(:warn, "Header-Pruefung fehlgeschlagen: #{e.message}")
+    nil
+  end
+
+  # The archived .eml, parsed once per run. Both the header gate and the body
+  # extraction need it, and the file carries every attachment of the mail - parsing
+  # it twice reads a possibly multi-megabyte file twice for nothing.
+  def eml_mail(message)
+    return @eml_mail if defined?(@eml_mail)
+
+    @eml_mail = begin
+      eml = message&.eml_attachment
+      Mail.read(eml.diskfile) if eml && eml.diskfile && File.exist?(eml.diskfile)
+    rescue StandardError => e
+      log(:warn, ".eml konnte nicht gelesen werden: #{e.message}")
+      nil
+    end
+  end
+
   # Text of the first mail: preferably from the archived .eml (which holds the
   # original text without Redmine's post-processing), else the issue description.
   def source_text(issue, message)
-    eml = message&.eml_attachment
-    if eml && eml.diskfile && File.exist?(eml.diskfile)
-      text = plain_text_from_eml(eml.diskfile)
+    mail = eml_mail(message)
+    if mail
+      text = plain_text_from_mail(mail)
       return text if text.present?
     end
     issue.description.to_s
   end
 
-  def plain_text_from_eml(path)
-    mail = Mail.read(path)
+  def plain_text_from_mail(mail)
     if mail.multipart?
       part = mail.text_part
       return part.decoded.to_s if part
@@ -161,7 +211,7 @@ class HelpdeskCompletenessJob < ActiveJob::Base
       mail.body.decoded.to_s
     end
   rescue StandardError => e
-    log(:warn, ".eml konnte nicht gelesen werden: #{e.message}")
+    log(:warn, ".eml-Text konnte nicht gelesen werden: #{e.message}")
     nil
   end
 

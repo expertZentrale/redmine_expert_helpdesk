@@ -309,6 +309,13 @@
     <em class="info"><%= l(:text_helpdesk_info_request_keywords_info) %></em>
   </p>
   <p>
+    <label for="hd_ir_blacklist"><%= l(:field_helpdesk_info_request_sender_blacklist) %></label>
+    <%= text_area_tag 'helpdesk_project_setting[info_request_sender_blacklist]',
+          hd_setting.info_request_sender_blacklist, :rows => 3, :cols => 40,
+          :id => 'hd_ir_blacklist' %>
+    <em class="info"><%= l(:text_helpdesk_info_request_sender_blacklist_info) %></em>
+  </p>
+  <p>
     <label for="hd_ir_threshold"><%= l(:field_helpdesk_info_request_threshold) %></label>
     <%= text_field_tag 'helpdesk_project_setting[info_request_threshold]',
           hd_setting.info_request_threshold, :size => 4, :id => 'hd_ir_threshold' %>

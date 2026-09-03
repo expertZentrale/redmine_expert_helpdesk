@@ -10,6 +10,26 @@
 
 ### Added
 
+- **The completeness check no longer asks robots for more information.** Veeam job reports, cron
+  mails and monitoring alerts are legitimate tickets, but there is no author behind them who could
+  answer a follow-up — the request bounced or, with a chatty mailer, looped. Two independent gates
+  now run before the rule evaluation (so the AI mode spends no token on them either): the new
+  per-project **Never ask these senders** list (`info_request_sender_blacklist` — one entry per
+  line: full address, bare domain or `@domain`), and automatic detection of mail that marks itself
+  machine-generated in its headers (`Auto-Submitted`, `Precedence: bulk`,
+  `X-Auto-Response-Suppress`, the Exchange and autoresponder equivalents). Delivery failures (NDR)
+  are deliberately excluded from the header rule — a bounce carries the same headers but is
+  something the plugin has to act on. Migration 048.
+
+### Changed
+
+- **Machine-mail detection lives in one place** (`RedmineExpertHelpdesk::AutomatedMail`).
+  `MailProcessor` had the only copy of the header list, used to drop auto-replies before they
+  become tickets; the completeness check needs the same answer to "did a human write this" for the
+  opposite reason. `MailProcessor` now delegates, so the two cannot drift apart.
+
+### Added
+
 - **The AI summary no longer pays vision tokens for signature logos.** When *Attachments →
   Images* is on, every image of the mail was base64-encoded and sent — including the logos,
   social icons and tracking pixels that hang off nearly every business mail. With only four

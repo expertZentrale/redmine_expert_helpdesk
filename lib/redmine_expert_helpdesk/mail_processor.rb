@@ -457,40 +457,15 @@ module RedmineExpertHelpdesk
       true
     end
 
-    # Gibt eine kurze Beschreibung des auslösenden Auto-Reply-Headers zurück,
-    # oder nil wenn kein Auto-Reply erkannt.
+    # Shared with HelpdeskCompletenessJob, which needs the same answer to "did a
+    # human write this" for the opposite reason - see AutomatedMail.
     def auto_reply_trigger(msg)
-      auto_sub = msg['auto-submitted']&.value.to_s.strip.downcase
-      return "auto-submitted: #{auto_sub}" if auto_sub.present? && auto_sub != 'no'
-
-      val = msg['x-auto-response-suppress']&.value.to_s
-      return "x-auto-response-suppress: #{val}" if val.present?
-
-      val = msg['x-ms-exchange-generated-message-source']&.value.to_s
-      return "x-ms-exchange-generated-message-source: #{val}" if val.present?
-
-      %w[x-autorespond x-autoreply x-autoresponder].each do |h|
-        val = msg[h]&.value.to_s
-        return "#{h}: #{val}" if val.present?
-      end
-
-      prec = msg['precedence']&.value.to_s.strip.downcase
-      return "precedence: #{prec}" if %w[bulk list junk].include?(prec)
-
-      nil
+      AutomatedMail.trigger(msg)
     end
 
     # Erkennt NDR-/DSN-Nachrichten, die trotz Auto-Reply-Headern verarbeitet werden sollen.
     def ndr_message?(msg)
-      # RFC 3462: multipart/report mit report-type=delivery-status (universell)
-      ct = msg.content_type.to_s.downcase
-      return true if ct.include?('report-type=delivery-status')
-
-      # Exchange: X-MS-Exchange-Message-Is-Ndr ist gesetzt (Wert kann leer sein)
-      return true unless msg['x-ms-exchange-message-is-ndr'].nil?
-      return true if msg['x-ms-exchange-generated-message-source']&.value.to_s.strip.downcase == 'nondeliveryreport'
-
-      false
+      AutomatedMail.ndr?(msg)
     end
 
     # Entfernt Auto-Submitted-Header aus NDR-MIME, damit Redmines MailHandler
@@ -534,12 +509,11 @@ module RedmineExpertHelpdesk
     end
 
     def parse_list(text)
-      text.to_s.split(/[\r\n,;]+/).map { |e| e.strip.downcase }.reject(&:blank?)
+      AutomatedMail.parse_list(text)
     end
 
     def list_matches?(entries, sender)
-      domain = sender.split('@').last.to_s
-      entries.any? { |e| e == sender || e == domain || e == "@#{domain}" }
+      AutomatedMail.list_matches?(entries, sender)
     end
 
     # --- Regeln ---------------------------------------------------------------

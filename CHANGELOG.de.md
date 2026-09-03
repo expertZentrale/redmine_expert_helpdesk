@@ -9,6 +9,28 @@
 
 ### Hinzugefügt
 
+- **Die Vollständigkeitsprüfung fragt keine Roboter mehr nach Informationen.** Veeam-Jobberichte,
+  Cronjob-Mails und Monitoring-Alarme sind echte Tickets, aber dahinter steht niemand, der eine
+  Rückfrage beantworten könnte — die Anfrage kam als unzustellbar zurück oder lief bei einem
+  gesprächigen Absender in eine Schleife. Vor der Regelauswertung greifen jetzt zwei unabhängige
+  Sperren (der KI-Modus verbraucht dafür also auch keinen Token): die neue projektspezifische
+  Liste **Diese Absender nie fragen** (`info_request_sender_blacklist` — ein Eintrag pro Zeile:
+  vollständige Adresse, reine Domain oder `@domain`) und die automatische Erkennung von Mails, die
+  sich in ihren Headern selbst als maschinell kennzeichnen (`Auto-Submitted`, `Precedence: bulk`,
+  `X-Auto-Response-Suppress` sowie die Exchange- und Autoresponder-Varianten). Unzustellbarkeits-
+  berichte (NDR) sind von der Header-Regel bewusst ausgenommen — ein Bounce trägt dieselben Header,
+  ist aber etwas, worauf das Plugin reagieren muss. Migration 048.
+
+### Geändert
+
+- **Die Erkennung maschineller Mails liegt an einer Stelle** (`RedmineExpertHelpdesk::AutomatedMail`).
+  Bisher hatte nur `MailProcessor` die Header-Liste, um Auto-Replies vor der Ticketerstellung
+  auszusortieren; die Vollständigkeitsprüfung braucht dieselbe Antwort auf „hat das ein Mensch
+  geschrieben" aus dem umgekehrten Grund. `MailProcessor` delegiert jetzt, damit beide nicht
+  auseinanderlaufen.
+
+### Hinzugefügt
+
 - **Die KI-Zusammenfassung bezahlt keine Vision-Tokens mehr für Signatur-Logos.** War *Anhänge →
   Bilder* aktiv, wurde jedes Bild der Mail base64-kodiert mitgeschickt — auch die Logos,
   Social-Media-Icons und Tracking-Pixel, die an fast jeder Geschäftsmail hängen. Bei nur vier

@@ -965,6 +965,15 @@ weiterhin. Meldet ein Anhang gar keine Größe, wird er behalten statt verworfen
 - Die Regelwerte: Mindestzeichen, Mindestwörter, „Anhang erforderlich“, **Mindestgröße für Bilder
   (KB)**, erwartete Begriffe (einer je Zeile) und die Schwelle. Der Wert `0` schaltet eine einzelne
   Regel ab.
+- **Diese Absender nie fragen** – ein Eintrag pro Zeile: vollständige Adresse, reine Domain oder
+  `@domain`. Backup-Berichte, Cronjob-Mails und Monitoring-Alarme sind echte Tickets, aber dahinter
+  steht niemand, der eine Rückfrage beantworten könnte. Mails, die sich in ihren Headern selbst als
+  maschinell kennzeichnen (`Auto-Submitted`, `Precedence: bulk|list|junk`,
+  `X-Auto-Response-Suppress`, `X-MS-Exchange-Generated-Message-Source` sowie
+  `X-Autoreply`/`X-Autorespond`/`X-Autoresponder`), werden auch ohne Eintrag übersprungen –
+  Unzustellbarkeitsberichte (NDR) dagegen nicht, denn ein Bounce ist etwas, worauf das Plugin
+  reagieren muss. Die Prüfung läuft vor der Regelauswertung, der KI-Modus verbraucht dafür also
+  keinen Token.
 - **Prompt-Modus** für die KI-Prüfung — erben / erweitern / ersetzen, genau wie beim Prompt der
   KI-Zusammenfassung.
 - **Betreff / Text** — optionale Übersteuerung der zentralen Vorlagen je Projekt.

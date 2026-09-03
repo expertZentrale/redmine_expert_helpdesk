@@ -107,6 +107,7 @@ class HelpdeskProjectSettingsController < ApplicationController
     setting.info_request_require_attachment = hp[:info_request_require_attachment] == '1'
     setting.info_request_min_attachment_kb = hp[:info_request_min_attachment_kb].to_i
     setting.info_request_keywords = hp[:info_request_keywords].to_s.strip.presence
+    setting.info_request_sender_blacklist = hp[:info_request_sender_blacklist].to_s.strip.presence
     # 0 would fire on every mail; the check is switched off via the mode instead.
     threshold = hp[:info_request_threshold].to_i
     setting.info_request_threshold = threshold.positive? ? threshold : 1
