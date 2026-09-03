@@ -40,6 +40,28 @@ class ImageRelevanceTest < ActiveSupport::TestCase
     "GIF89a".b + [width, height].pack('v2') + "\x00\x00\x00".b
   end
 
+  # Negative height marks a top-down bitmap; the parser compares on the magnitude.
+  def bmp(width, height)
+    "BM".b + [0, 0, 0, 54].pack('VvvV') + [40, width, -height].pack('Vl<l<') + ("\x00".b * 20)
+  end
+
+  def webp_lossy(width, height)
+    payload = "\x00\x00\x00\x9d\x01\x2a".b + [width, height].pack('v2') + ("\x00".b * 8)
+    webp_container('VP8 ', payload)
+  end
+
+  # Lossless packs width-1 and height-1 into 14 bits each.
+  def webp_lossless(width, height)
+    bits = (width - 1) | ((height - 1) << 14)
+    payload = "\x2f".b + [bits].pack('V') + ("\x00".b * 8)
+    webp_container('VP8L', payload)
+  end
+
+  def webp_container(fourcc, payload)
+    body = "WEBP".b + fourcc.b + [payload.bytesize].pack('V') + payload
+    "RIFF".b + [body.bytesize].pack('V') + body
+  end
+
   def jpeg(width, height)
     sof = "\xff\xc0".b + [11].pack('n') + "\x08".b + [height, width].pack('n2') + "\x01\x00\x11\x00".b
     "\xff\xd8".b + sof + "\xff\xda".b + [2].pack('n')
@@ -65,6 +87,25 @@ class ImageRelevanceTest < ActiveSupport::TestCase
 
   def test_dimensions_jpeg
     assert_equal [640, 480], Filter.dimensions(attachment(jpeg(640, 480), :name => 'x.jpg').diskfile)
+  end
+
+  def test_dimensions_bmp
+    assert_equal [120, 90], Filter.dimensions(attachment(bmp(120, 90), :name => 'x.bmp').diskfile)
+  end
+
+  def test_dimensions_webp_lossy
+    assert_equal [300, 200], Filter.dimensions(attachment(webp_lossy(300, 200), :name => 'x.webp').diskfile)
+  end
+
+  def test_dimensions_webp_lossless
+    assert_equal [300, 200], Filter.dimensions(attachment(webp_lossless(300, 200), :name => 'x.webp').diskfile)
+  end
+
+  # A WEBP tracking pixel must not survive the bit masking either.
+  def test_tiny_webp_is_dropped
+    pixel = attachment(webp_lossless(1, 1), :name => 'px.webp', :type => 'image/webp',
+                       :bytes => 20 * 1024)
+    assert_equal [], Filter.relevant_images([pixel], setting)
   end
 
   def test_dimensions_of_truncated_header_is_nil
