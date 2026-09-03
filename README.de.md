@@ -881,6 +881,13 @@ aktiviert ist):
 - **Anhänge** – unabhängig wählbar, was an die KI geht: Dateinamen/Metadaten, extrahierter
   Text (PDF via optionalem `pdf-reader`, Textdateien) und/oder Bilder (erfordert ein
   vision-fähiges Modell).
+- **Mindestgröße für Bilder** – Bilder unterhalb dieser KB-Grenze oder kleiner als 64x64 Pixel
+  gehen nicht an das Modell. Signatur-Logos, Social-Media-Icons und Tracking-Pixel hängen an
+  fast jeder Mail: sie kosten Vision-Tokens ohne Nutzen und verdrängen den eigentlichen
+  Screenshot aus dem kleinen Bild-Budget pro Anfrage. Ein Bild ohne ermittelbare Größe bleibt
+  erhalten; ein Bild, das inline eingebettet ist *und* dessen Bytes auch auf anderen Tickets
+  vorkommen, wird als Signaturgrafik verworfen. Gilt nur für Bilder – Anhang-Text und
+  Metadaten bleiben unberührt. `0` schaltet es ab; Standard 15 KB.
 - **Ticketverlauf** – optional den gesamten Verlauf (Beschreibung + alle Notizen) statt nur
   der auslösenden Mail senden, optional inklusive **privater Notizen** (Standard aus; diese
   internen Notizen gehen dann ebenfalls an den Anbieter). Die eigenen KI-Zusammenfassungs-

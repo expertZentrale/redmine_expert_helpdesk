@@ -503,6 +503,8 @@ de:
   label_helpdesk_ai_attach_text: 'Extrahierter Text (PDF, Textdateien)'
   label_helpdesk_ai_attach_images: 'Bilder (Vision-Modell nötig)'
   text_helpdesk_ai_attachments_info: 'Wählt, welche Anhang-Informationen in die Zusammenfassung einfließen. Bilder erfordern ein vision-fähiges Modell.'
+  field_helpdesk_ai_min_image_kb: 'Mindestgröße für Bilder'
+  text_helpdesk_ai_min_image_kb_info: 'In KB. Kleinere Bilder werden nicht an das Modell geschickt - Signatur-Logos, Social-Media-Icons und Tracking-Pixel hängen an fast jeder Mail, kosten Tokens ohne Nutzen und verdrängen den eigentlichen Screenshot aus dem Bild-Budget. Bilder unter 64x64 Pixeln werden ebenfalls übersprungen. Gilt nur für Bilder; Anhang-Text und Metadaten bleiben unberührt. 0 schaltet die Schwelle ab.'
   field_helpdesk_ai_include_journal: 'Kompletten Ticketverlauf einbeziehen'
   text_helpdesk_ai_include_journal_info: 'Den gesamten Verlauf (Beschreibung + alle Notizen) statt nur der auslösenden Mail senden. Die eigenen KI-Zusammenfassungs-Notizen werden ausgeschlossen.'
   field_helpdesk_ai_include_private_notes: 'Auch private Notizen einbeziehen'

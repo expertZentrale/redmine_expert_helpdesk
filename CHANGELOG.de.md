@@ -7,6 +7,31 @@
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Die KI-Zusammenfassung bezahlt keine Vision-Tokens mehr für Signatur-Logos.** War *Anhänge →
+  Bilder* aktiv, wurde jedes Bild der Mail base64-kodiert mitgeschickt — auch die Logos,
+  Social-Media-Icons und Tracking-Pixel, die an fast jeder Geschäftsmail hängen. Bei nur vier
+  Bild-Plätzen pro Anfrage konnte eine dreiteilige Signatur den eigentlichen Screenshot komplett
+  aus dem Paket verdrängen. Bilder werden jetzt vorher gefiltert: unterhalb der neuen
+  projektspezifischen **Mindestgröße für Bilder** (`ai_min_image_kb`, Standard 15 KB, `0`
+  schaltet es ab), unter 64x64 Pixeln, oder inline eingebettet *und* byte-identisch mit einem
+  Bild auf anderen Tickets (eine Signaturgrafik — ein eingefügter Screenshot ist zwar inline,
+  aber einzigartig). Jede Stufe behält das Bild, wenn ihr Signal fehlt (unbekannte Größe,
+  unlesbarer Header, unbekanntes Format) — der Filter kann so nur das Logo verlieren, nie den
+  Screenshot. Die Abmessungen werden aus dem Datei-Header gelesen: kein neues Gem, kein
+  ImageMagick. Die Größenprüfung teilt sich jetzt mit der Vollständigkeitsprüfung
+  (`RedmineExpertHelpdesk::ImageRelevance`), die dasselbe Problem für „Anhang erforderlich"
+  bereits gelöst hatte. Migration 047.
+
+### Geändert
+
+- **Eine zweizeilige Mail mit Signatur-Logo wird wieder übersprungen.** Die Abkürzung „zu kurz
+  für einen KI-Call" greift nur, wenn kein Bild anhängt — jedes Logo hat sie ausgehebelt und die
+  Mail trotzdem an den Anbieter geschickt. Mit den vorher herausgefilterten Logos funktioniert
+  der Skip wie dokumentiert. Gefilterte Bilder stehen im KI-Debug-Log
+  (`images issue=#… candidates=… sent=… dropped=…`).
+
 ## [0.6.0] - 2026-09-02
 
 ### Behoben
