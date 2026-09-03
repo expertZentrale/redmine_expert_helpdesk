@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-03
+
 ### Added
 
 - **The completeness check no longer asks robots for more information.** Veeam job reports, cron
@@ -20,15 +22,6 @@
   `X-Auto-Response-Suppress`, the Exchange and autoresponder equivalents). Delivery failures (NDR)
   are deliberately excluded from the header rule — a bounce carries the same headers but is
   something the plugin has to act on. Migration 048.
-
-### Changed
-
-- **Machine-mail detection lives in one place** (`RedmineExpertHelpdesk::AutomatedMail`).
-  `MailProcessor` had the only copy of the header list, used to drop auto-replies before they
-  become tickets; the completeness check needs the same answer to "did a human write this" for the
-  opposite reason. `MailProcessor` now delegates, so the two cannot drift apart.
-
-### Added
 
 - **The AI summary no longer pays vision tokens for signature logos.** When *Attachments →
   Images* is on, every image of the mail was base64-encoded and sent — including the logos,
@@ -45,6 +38,11 @@
   "attachment required". Migration 047.
 
 ### Changed
+
+- **Machine-mail detection lives in one place** (`RedmineExpertHelpdesk::AutomatedMail`).
+  `MailProcessor` had the only copy of the header list, used to drop auto-replies before they
+  become tickets; the completeness check needs the same answer to "did a human write this" for the
+  opposite reason. `MailProcessor` now delegates, so the two cannot drift apart.
 
 - **A two-line mail with a signature logo is skipped again.** The "too short to be worth an AI
   call" short-circuit only fires when no image is attached, so any logo defeated it and sent

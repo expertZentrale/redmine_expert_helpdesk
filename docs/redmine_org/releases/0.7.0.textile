@@ -1,0 +1,20 @@
+h3. Added
+
+* *The AI summary no longer pays vision tokens for signature logos.* With *Attachments → Images* enabled, every image of a mail was sent to the model — including the logos, social icons and tracking pixels that hang off nearly every business mail. With only four image slots per request, a three-image signature could push the actual screenshot out of the batch entirely. Images are now filtered first: below the new per-project *minimum image size* (default 15 KB, @0@ disables it), below 64x64 pixels, or embedded inline *and* byte-identical to an image on other tickets — a signature graphic, whereas a pasted screenshot is inline but unique. Every stage keeps the image when its signal is unavailable (unknown size, unreadable header, unknown format), so the filter can only lose the logo, never the screenshot. Image dimensions are read from the file header, so no additional gem and no ImageMagick is required.
+
+* *The completeness check no longer asks robots for more information.* Veeam job reports, cron mails and monitoring alerts are legitimate tickets, but nobody behind them can answer a follow-up — the request bounced or, with a chatty mailer, looped. Two gates now run before the rule evaluation, so the AI mode spends no token on them either: the new per-project *"Never ask these senders"* list (one entry per line: full address, bare domain or @"@domain"@), and automatic detection of mail that marks itself machine-generated in its headers (@Auto-Submitted@, @Precedence: bulk|list|junk@, @X-Auto-Response-Suppress@, @X-MS-Exchange-Generated-Message-Source@ and the @X-Autoreply@/@X-Autorespond@/@X-Autoresponder@ headers). Delivery failures (NDR) are deliberately excluded — a bounce carries the same headers but is something the plugin has to act on.
+
+h3. Changed
+
+* *A two-line mail with a signature logo is summarized no more.* The "too short to be worth an AI call" short-circuit only fires when no image is attached, so any signature logo defeated it and sent the mail to the provider anyway. With the logos filtered out beforehand, the skip works as documented. Filtered images are reported in the AI debug log.
+
+* *Machine-mail detection and the image size test each live in one place now.* The header list was previously known only to the incoming-mail processor, which uses it to drop auto-replies before they become tickets; the completeness check needs the same answer to "did a human write this" for the opposite reason. The image size floor was previously known only to the completeness check. Both are shared now, so the features cannot drift apart.
+
+h3. Upgrade notes
+
+Two migrations run on upgrade (047, 048). Both add a per-project setting with a safe default, so no configuration is required:
+
+* *Minimum image size* defaults to *15 KB*. If a project relies on the AI summary seeing very small images, set the value to @0@ in *Project → Settings → expert Helpdesk* to switch the floor off. Images smaller than 64x64 pixels are skipped regardless of this value.
+* *"Never ask these senders"* starts empty. The header-based detection is active immediately, so tickets from mailers that identify themselves as automated stop receiving follow-ups even without an entry.
+
+Both settings are exposed through the REST API (@ai_min_image_kb@, @info_request_sender_blacklist@).

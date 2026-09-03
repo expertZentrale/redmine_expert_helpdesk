@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-03
+
 ### Hinzugefügt
 
 - **Die Vollständigkeitsprüfung fragt keine Roboter mehr nach Informationen.** Veeam-Jobberichte,
@@ -20,16 +22,6 @@
   `X-Auto-Response-Suppress` sowie die Exchange- und Autoresponder-Varianten). Unzustellbarkeits-
   berichte (NDR) sind von der Header-Regel bewusst ausgenommen — ein Bounce trägt dieselben Header,
   ist aber etwas, worauf das Plugin reagieren muss. Migration 048.
-
-### Geändert
-
-- **Die Erkennung maschineller Mails liegt an einer Stelle** (`RedmineExpertHelpdesk::AutomatedMail`).
-  Bisher hatte nur `MailProcessor` die Header-Liste, um Auto-Replies vor der Ticketerstellung
-  auszusortieren; die Vollständigkeitsprüfung braucht dieselbe Antwort auf „hat das ein Mensch
-  geschrieben" aus dem umgekehrten Grund. `MailProcessor` delegiert jetzt, damit beide nicht
-  auseinanderlaufen.
-
-### Hinzugefügt
 
 - **Die KI-Zusammenfassung bezahlt keine Vision-Tokens mehr für Signatur-Logos.** War *Anhänge →
   Bilder* aktiv, wurde jedes Bild der Mail base64-kodiert mitgeschickt — auch die Logos,
@@ -47,6 +39,12 @@
   bereits gelöst hatte. Migration 047.
 
 ### Geändert
+
+- **Die Erkennung maschineller Mails liegt an einer Stelle** (`RedmineExpertHelpdesk::AutomatedMail`).
+  Bisher hatte nur `MailProcessor` die Header-Liste, um Auto-Replies vor der Ticketerstellung
+  auszusortieren; die Vollständigkeitsprüfung braucht dieselbe Antwort auf „hat das ein Mensch
+  geschrieben" aus dem umgekehrten Grund. `MailProcessor` delegiert jetzt, damit beide nicht
+  auseinanderlaufen.
 
 - **Eine zweizeilige Mail mit Signatur-Logo wird wieder übersprungen.** Die Abkürzung „zu kurz
   für einen KI-Call" greift nur, wenn kein Bild anhängt — jedes Logo hat sie ausgehebelt und die
