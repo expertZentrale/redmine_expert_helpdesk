@@ -928,8 +928,9 @@ an attachment reports no size at all, it is kept rather than discarded.
 - **Never ask these senders** — one entry per line: full address, bare domain or `@domain`.
   Backup reports, cron mails and monitoring alerts are real tickets, but nobody behind them can
   answer a follow-up. Mail that marks itself machine-generated in its headers
-  (`Auto-Submitted`, `Precedence: bulk`, `X-Auto-Response-Suppress`, the Exchange and
-  autoresponder equivalents) is skipped automatically even without an entry here; delivery
+  (`Auto-Submitted`, `Precedence: bulk|list|junk`, `X-Auto-Response-Suppress`,
+  `X-MS-Exchange-Generated-Message-Source`, `X-Autoreply`/`X-Autorespond`/`X-Autoresponder`)
+  is skipped automatically even without an entry here; delivery
   failures (NDR) are not, since a bounce is something the plugin has to act on. The check runs
   before the rule evaluation, so the AI mode never spends a token on such a mail.
 - **Prompt mode** for the AI check — inherit / extend / override the central prompt, exactly like

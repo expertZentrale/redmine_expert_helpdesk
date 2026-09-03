@@ -968,8 +968,9 @@ weiterhin. Meldet ein Anhang gar keine Größe, wird er behalten statt verworfen
 - **Diese Absender nie fragen** – ein Eintrag pro Zeile: vollständige Adresse, reine Domain oder
   `@domain`. Backup-Berichte, Cronjob-Mails und Monitoring-Alarme sind echte Tickets, aber dahinter
   steht niemand, der eine Rückfrage beantworten könnte. Mails, die sich in ihren Headern selbst als
-  maschinell kennzeichnen (`Auto-Submitted`, `Precedence: bulk`, `X-Auto-Response-Suppress` sowie
-  die Exchange- und Autoresponder-Varianten), werden auch ohne Eintrag übersprungen –
+  maschinell kennzeichnen (`Auto-Submitted`, `Precedence: bulk|list|junk`,
+  `X-Auto-Response-Suppress`, `X-MS-Exchange-Generated-Message-Source` sowie
+  `X-Autoreply`/`X-Autorespond`/`X-Autoresponder`), werden auch ohne Eintrag übersprungen –
   Unzustellbarkeitsberichte (NDR) dagegen nicht, denn ein Bounce ist etwas, worauf das Plugin
   reagieren muss. Die Prüfung läuft vor der Regelauswertung, der KI-Modus verbraucht dafür also
   keinen Token.

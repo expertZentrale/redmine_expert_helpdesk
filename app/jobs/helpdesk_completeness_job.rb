@@ -161,10 +161,8 @@ class HelpdeskCompletenessJob < ActiveJob::Base
   # An NDR carries the same headers but is a delivery failure, not a robot's
   # report - MailProcessor keeps those, and so does this.
   def header_trigger(message)
-    eml = message&.eml_attachment
-    return nil unless eml && eml.diskfile && File.exist?(eml.diskfile)
-
-    msg = Mail.read(eml.diskfile)
+    msg = eml_mail(message)
+    return nil if msg.nil?
     return nil if RedmineExpertHelpdesk::AutomatedMail.ndr?(msg)
 
     RedmineExpertHelpdesk::AutomatedMail.trigger(msg)
@@ -174,19 +172,33 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     nil
   end
 
+  # The archived .eml, parsed once per run. Both the header gate and the body
+  # extraction need it, and the file carries every attachment of the mail - parsing
+  # it twice reads a possibly multi-megabyte file twice for nothing.
+  def eml_mail(message)
+    return @eml_mail if defined?(@eml_mail)
+
+    @eml_mail = begin
+      eml = message&.eml_attachment
+      Mail.read(eml.diskfile) if eml && eml.diskfile && File.exist?(eml.diskfile)
+    rescue StandardError => e
+      log(:warn, ".eml konnte nicht gelesen werden: #{e.message}")
+      nil
+    end
+  end
+
   # Text of the first mail: preferably from the archived .eml (which holds the
   # original text without Redmine's post-processing), else the issue description.
   def source_text(issue, message)
-    eml = message&.eml_attachment
-    if eml && eml.diskfile && File.exist?(eml.diskfile)
-      text = plain_text_from_eml(eml.diskfile)
+    mail = eml_mail(message)
+    if mail
+      text = plain_text_from_mail(mail)
       return text if text.present?
     end
     issue.description.to_s
   end
 
-  def plain_text_from_eml(path)
-    mail = Mail.read(path)
+  def plain_text_from_mail(mail)
     if mail.multipart?
       part = mail.text_part
       return part.decoded.to_s if part
@@ -199,7 +211,7 @@ class HelpdeskCompletenessJob < ActiveJob::Base
       mail.body.decoded.to_s
     end
   rescue StandardError => e
-    log(:warn, ".eml konnte nicht gelesen werden: #{e.message}")
+    log(:warn, ".eml-Text konnte nicht gelesen werden: #{e.message}")
     nil
   end
 
