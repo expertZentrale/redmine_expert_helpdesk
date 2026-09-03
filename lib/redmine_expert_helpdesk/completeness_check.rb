@@ -198,14 +198,10 @@ module RedmineExpertHelpdesk
         value.nil? ? DEFAULT_MIN_ATTACHMENT_KB : value.to_i
       end
 
+      # One definition for both features - ImageRelevance applies the same test
+      # before handing images to the vision model.
       def image?(attachment)
-        type = attachment.respond_to?(:content_type) ? attachment.content_type.to_s : ''
-        return true if type.downcase.start_with?('image/')
-        return false if type.present?
-
-        # No content type reported: decide by file extension.
-        name = attachment.respond_to?(:filename) ? attachment.filename.to_s : ''
-        name.downcase.end_with?('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.heic')
+        ImageRelevance.image?(attachment)
       end
 
       # Attachment inventory for the AI mode. The prompt asks for screenshots/photos

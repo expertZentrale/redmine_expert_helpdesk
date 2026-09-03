@@ -89,6 +89,7 @@ class HelpdeskProjectSettingsController < ApplicationController
     setting.ai_attach_metadata = hp[:ai_attach_metadata] == '1'
     setting.ai_attach_text     = hp[:ai_attach_text] == '1'
     setting.ai_attach_images   = hp[:ai_attach_images] == '1'
+    setting.ai_min_image_kb    = hp[:ai_min_image_kb].to_i
     setting.ai_include_journal       = hp[:ai_include_journal] == '1'
     setting.ai_include_private_notes = hp[:ai_include_private_notes] == '1'
   end

@@ -45,6 +45,7 @@ class HelpdeskProjectSettingsApiController < ApplicationController
     @setting.ai_summary_scope       = hp[:ai_summary_scope]           if hp.key?(:ai_summary_scope)
     @setting.ai_prompt_mode         = hp[:ai_prompt_mode]             if hp.key?(:ai_prompt_mode)
     @setting.ai_prompt              = hp[:ai_prompt].to_s             if hp.key?(:ai_prompt)
+    @setting.ai_min_image_kb        = hp[:ai_min_image_kb].presence  if hp.key?(:ai_min_image_kb)
     @setting.kb_ingest_mode         = hp[:kb_ingest_mode]             if hp.key?(:kb_ingest_mode)
     @setting.kb_proposal_display    = hp[:kb_proposal_display]        if hp.key?(:kb_proposal_display)
     if hp.key?(:sla_work_days)

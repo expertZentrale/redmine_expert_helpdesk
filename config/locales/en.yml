@@ -503,6 +503,8 @@ en:
   label_helpdesk_ai_attach_text: 'Extracted text (PDF, text files)'
   label_helpdesk_ai_attach_images: 'Images (vision model required)'
   text_helpdesk_ai_attachments_info: 'Choose which attachment information is included in the summary input. Images require a vision-capable model.'
+  field_helpdesk_ai_min_image_kb: 'Minimum image size'
+  text_helpdesk_ai_min_image_kb_info: 'In KB. Smaller images are not sent to the model - signature logos, social icons and tracking pixels hang off nearly every mail, cost tokens for nothing and push the real screenshot out of the image budget. Images below 64x64 pixels are skipped as well. Applies to images only; attachment text and metadata are unaffected. 0 disables the threshold.'
   field_helpdesk_ai_include_journal: 'Include the full ticket history'
   text_helpdesk_ai_include_journal_info: 'Send the whole conversation (description + all notes) instead of only the triggering mail. The plugin''s own AI summary notes are excluded.'
   field_helpdesk_ai_include_private_notes: 'Also include private notes'

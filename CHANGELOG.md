@@ -8,6 +8,30 @@
 
 ## [Unreleased]
 
+### Added
+
+- **The AI summary no longer pays vision tokens for signature logos.** When *Attachments →
+  Images* is on, every image of the mail was base64-encoded and sent — including the logos,
+  social icons and tracking pixels that hang off nearly every business mail. With only four
+  image slots per request, a three-image signature could push the actual screenshot out of the
+  batch entirely. Images are now filtered first: below the new per-project **minimum image
+  size** (`ai_min_image_kb`, default 15 KB, `0` disables it), below 64x64 pixels, or embedded
+  inline *and* byte-identical to an image on other tickets (a signature graphic — a pasted
+  screenshot is inline but unique). Every stage keeps the image when its signal is unavailable
+  (unknown size, unreadable header, unknown format), so the filter can only lose the logo,
+  never the screenshot. Dimensions are read from the file header — no new gem, no ImageMagick.
+  The size test itself is now shared with the completeness check
+  (`RedmineExpertHelpdesk::ImageRelevance`), which had solved the same problem for
+  "attachment required". Migration 047.
+
+### Changed
+
+- **A two-line mail with a signature logo is skipped again.** The "too short to be worth an AI
+  call" short-circuit only fires when no image is attached, so any logo defeated it and sent
+  the mail to the provider anyway. With the logos filtered out beforehand, the skip works as
+  documented. Filtered images are reported in the AI debug log
+  (`images issue=#… candidates=… sent=… dropped=…`).
+
 ## [0.6.0] - 2026-09-02
 
 ### Fixed

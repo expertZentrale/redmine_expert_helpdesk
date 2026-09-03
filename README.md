@@ -848,6 +848,13 @@ centrally):
 - **Attachments** — independently choose what is sent to the AI: filenames/metadata,
   extracted text (PDF via optional `pdf-reader`, text files), and/or images (requires a
   vision-capable model).
+- **Minimum image size** — images below this many KB, or smaller than 64x64 pixels, are not
+  sent to the model. Signature logos, social icons and tracking pixels hang off nearly every
+  mail: they cost vision tokens for nothing and push the real screenshot out of the small
+  per-request image budget. An image whose size cannot be determined is kept, and one that is
+  embedded inline *and* whose bytes recur on other tickets is dropped as a signature graphic.
+  Applies to images only — attachment text and metadata are unaffected. `0` disables it;
+  default 15 KB.
 - **Ticket history** — optionally send the whole conversation (description + all notes)
   instead of only the triggering mail, and optionally include **private notes** (off by
   default; those internal notes are then sent to the provider too). The plugin's own AI

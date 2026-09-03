@@ -27,6 +27,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/mailbox_folders', __FIL
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_logger', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_features', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/ai_client', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/image_relevance', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/completeness_check', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/info_request_mailer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_store', __FILE__)

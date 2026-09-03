@@ -237,6 +237,7 @@ module RedmineExpertHelpdesk
         api.ai_attach_metadata      s.ai_attach_metadata
         api.ai_attach_text          s.ai_attach_text
         api.ai_attach_images        s.ai_attach_images
+        api.ai_min_image_kb         s.ai_min_image_kb
         api.ai_include_journal      s.ai_include_journal
         api.ai_include_private_notes s.ai_include_private_notes
         # Completeness check of incoming first mails (opt-in per project).

@@ -232,6 +232,12 @@
       </p>
       <p><em class="info"><%= l(:text_helpdesk_ai_attachments_info) %></em></p>
       <p>
+        <label for="hd_ai_min_image_kb"><%= l(:field_helpdesk_ai_min_image_kb) %></label>
+        <%= text_field_tag 'helpdesk_project_setting[ai_min_image_kb]',
+              hd_setting.ai_min_image_kb, :size => 6, :id => 'hd_ai_min_image_kb' %>
+        <em class="info"><%= l(:text_helpdesk_ai_min_image_kb_info) %></em>
+      </p>
+      <p>
         <%= check_box_tag 'helpdesk_project_setting[ai_include_journal]', '1',
                           hd_setting.ai_include_journal?, :id => 'hd_ai_include_journal' %>
         <%= label_tag 'hd_ai_include_journal', l(:field_helpdesk_ai_include_journal) %>

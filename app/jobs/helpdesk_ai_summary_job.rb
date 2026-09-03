@@ -51,7 +51,7 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
                      source_text(issue, journal, message)
                    end
     attachments  = mail_attachments(issue, journal, message&.eml_attachment_id)
-    user_text, image_parts = build_input(base_text, attachments, ps, settings)
+    user_text, image_parts = build_input(base_text, attachments, ps, settings, issue, message)
     return if user_text.blank? && image_parts.empty?
 
     # Too short to be worth an AI call: a two-line mail summarizes to itself.
@@ -183,7 +183,7 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
 
   # Baut den User-Text (Mailinhalt + optionale Anhang-Infos) und die Bildliste
   # entsprechend der projektspezifischen Anhang-Auswahl. Truncated auf das Limit.
-  def build_input(base_text, attachments, ps, settings)
+  def build_input(base_text, attachments, ps, settings, issue = nil, message = nil)
     max_chars = settings['ai_max_input_chars'].to_i
     max_chars = 12_000 unless max_chars.positive?
 
@@ -203,7 +203,14 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
     end
 
     if ps.ai_attach_images?
-      attachments.select { |a| a.content_type.to_s.start_with?('image/') }.first(MAX_IMAGES).each do |a|
+      # Only images that can plausibly be evidence: the byte/pixel floors live in
+      # ImageRelevance, the recurring-logo stage needs the DB and the MIME.
+      candidates = attachments.select { |a| RedmineExpertHelpdesk::ImageRelevance.image?(a) }
+      images     = RedmineExpertHelpdesk::ImageRelevance.relevant_images(candidates, ps)
+      images     = reject_recurring_logos(images, issue, message)
+      log_image_filter(issue, candidates, images, ps)
+
+      images.first(MAX_IMAGES).each do |a|
         next unless a.diskfile && File.exist?(a.diskfile) && a.filesize.to_i <= MAX_IMAGE_BYTES
 
         image_parts << { :content_type => a.content_type, :data => Base64.strict_encode64(File.binread(a.diskfile)) }
@@ -213,6 +220,72 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
     user_text = parts.join("\n").strip
     user_text = user_text[0, max_chars] if user_text.length > max_chars
     [user_text, image_parts]
+  end
+
+  # Third relevance stage. Kept out of ImageRelevance because it needs the database
+  # and the archived MIME. A signature logo is embedded INLINE *and* its bytes recur
+  # on other tickets; a pasted screenshot is inline too but unique, and a re-attached
+  # photo may recur but is not inline. Only the combination is safe enough to drop.
+  def reject_recurring_logos(images, issue, message)
+    return images if issue.nil?
+
+    inline = inline_filenames(message)
+    return images if inline.empty?
+
+    own_ids = ticket_attachment_ids(issue)
+
+    images.reject do |a|
+      next false unless inline.include?(a.filename.to_s.downcase)
+      next false if a.digest.blank?
+
+      Attachment.where(:digest => a.digest).where.not(:id => own_ids).exists?
+    end
+  end
+
+  # Every attachment of this ticket - on the issue itself and on its journals -
+  # so "recurs elsewhere" cannot be satisfied by the ticket's own history.
+  def ticket_attachment_ids(issue)
+    Attachment.where(:container_type => 'Issue', :container_id => issue.id).pluck(:id) +
+      Attachment.where(:container_type => 'Journal', :container_id => issue.journals.ids).pluck(:id)
+  end
+
+  # File names of the MIME parts the sender embedded (Content-ID or an inline
+  # disposition). Redmine sanitizes the stored file name, so both spellings go in.
+  def inline_filenames(message)
+    eml = message && Attachment.find_by(:id => message.eml_attachment_id)
+    return [] unless eml && eml.diskfile && File.exist?(eml.diskfile)
+
+    mail = Mail.read_from_string(File.binread(eml.diskfile))
+    mail.all_parts.flat_map do |part|
+      next [] unless part.content_id.present? ||
+                     part.content_disposition.to_s.downcase.start_with?('inline')
+
+      name = part.filename.to_s
+      next [] if name.blank?
+
+      [name.downcase, sanitized_filename(name).to_s.downcase].uniq
+    end
+  rescue StandardError => e
+    RedmineExpertHelpdesk::AiLogger.debug("inline-scan issue: #{e.message}")
+    []
+  end
+
+  def sanitized_filename(name)
+    Attachment.new(:filename => name).filename
+  rescue StandardError
+    name
+  end
+
+  # Without this line an admin cannot tell a filtered logo from a model that simply
+  # ignored the image.
+  def log_image_filter(issue, candidates, images, ps)
+    dropped = candidates.size - images.size
+    return if dropped.zero?
+
+    RedmineExpertHelpdesk::AiLogger.debug(
+      "images issue=##{issue&.id} candidates=#{candidates.size} sent=#{images.size} " \
+      "dropped=#{dropped} min_kb=#{RedmineExpertHelpdesk::ImageRelevance.min_image_kb(ps)}"
+    )
   end
 
   # Textextraktion aus Anhaengen: Text-basierte Typen direkt, PDF via pdf-reader
