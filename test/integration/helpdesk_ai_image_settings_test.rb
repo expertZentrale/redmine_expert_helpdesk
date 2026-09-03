@@ -13,13 +13,17 @@ class HelpdeskAiImageSettingsTest < Redmine::IntegrationTest
     Role.find(1).add_permission!(:manage_helpdesk, :view_helpdesk_info)
   end
 
+  # The whole AI section is gated on the central switch, so it has to be on here.
   def test_project_tab_renders_the_min_image_field
     log_user('jsmith', 'jsmith')
-    get settings_project_path(@project, :tab => 'expert_helpdesk')
 
-    assert_response :success
-    assert_select 'input#hd_ai_attach_images'
-    assert_select 'input#hd_ai_min_image_kb'
+    with_plugin_setting('ai_enabled' => '1') do
+      get settings_project_path(@project, :tab => 'expert_helpdesk')
+
+      assert_response :success
+      assert_select 'input#hd_ai_attach_images'
+      assert_select 'input#hd_ai_min_image_kb'
+    end
   end
 
   def test_saving_the_ai_form_stores_the_min_image_size
@@ -62,5 +66,13 @@ class HelpdeskAiImageSettingsTest < Redmine::IntegrationTest
 
     assert_equal RedmineExpertHelpdesk::ImageRelevance::DEFAULT_MIN_IMAGE_KB,
                  RedmineExpertHelpdesk::ImageRelevance.min_image_kb(ps)
+  end
+
+  def with_plugin_setting(hash)
+    original = Setting.plugin_redmine_expert_helpdesk
+    Setting.plugin_redmine_expert_helpdesk = original.merge(hash)
+    yield
+  ensure
+    Setting.plugin_redmine_expert_helpdesk = original
   end
 end
