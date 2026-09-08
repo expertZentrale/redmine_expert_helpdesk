@@ -8,6 +8,18 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **The completeness check reads the subject line.** Both modes evaluated the mail body alone,
+  so a ticket opened as "Drucker HP 4050 im EG druckt nicht" with a one-line body was asked which
+  device was affected — the customer had already said so in the subject. The subject (from the
+  archived `.eml`, else the issue subject) now counts towards the rule-based length and expected-term
+  checks and is shown to the AI model as the first line of its input (`Betreff: …`), with the default
+  prompt told to treat it as information. It is joined after the quote/forward stripping, so a
+  subject that looks like a forwarded header is never cut, and in AI mode it is appended after the
+  body truncation, so a long thread cannot push it out. Rule-based thresholds tuned to the body
+  alone may now be met by subject and body together.
+
 ## [0.7.0] - 2026-09-03
 
 ### Added

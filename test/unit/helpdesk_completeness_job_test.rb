@@ -122,6 +122,51 @@ class HelpdeskCompletenessJobTest < ActiveSupport::TestCase
     HelpdeskCompletenessJob.perform_now(@issue.id)
   end
 
+  # --- The subject line is part of the evaluated text ---
+
+  LONG_SUBJECT = 'Drucker HP 4050 im Erdgeschoss druckt seit heute frueh nicht mehr, ' \
+                 'das Display zeigt den Fehler 49.4C02 - bitte um Hilfe'.freeze
+
+  # The description alone is far below min_chars; the subject carries the rest.
+  # Without an .eml the job falls back to the issue subject.
+  def test_subject_is_part_of_the_evaluated_text
+    enable_globally
+    info = link_contact!
+    info.update!(:helpdesk_mailbox_id => mailbox.id)
+    @issue.update_columns(:subject => LONG_SUBJECT)
+
+    RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).never
+    HelpdeskCompletenessJob.perform_now(@issue.id)
+  end
+
+  def test_short_subject_and_body_still_get_the_follow_up
+    enable_globally
+    info = link_contact!
+    info.update!(:helpdesk_mailbox_id => mailbox.id)
+    @issue.update_columns(:subject => 'Drucker')
+
+    RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).once
+    HelpdeskCompletenessJob.perform_now(@issue.id)
+  end
+
+  # AI mode: the model sees the subject as the first line of its input.
+  def test_ai_input_carries_the_subject
+    enable_globally
+    @ps.update!(:info_request_mode => 'ai')
+    info = link_contact!
+    info.update!(:helpdesk_mailbox_id => mailbox.id)
+    @issue.update_columns(:subject => LONG_SUBJECT)
+
+    RedmineExpertHelpdesk::AiFeatures.stubs(:ai_enabled?).returns(true)
+    RedmineExpertHelpdesk::AiClient.any_instance.stubs(:configured?).returns(true)
+    RedmineExpertHelpdesk::AiClient.any_instance
+      .expects(:summarize)
+      .with { |_prompt, input, *_rest| input.start_with?("Betreff: #{LONG_SUBJECT}\n\nkaputt") }
+      .returns('{"complete": true, "missing": []}')
+    RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).never
+    HelpdeskCompletenessJob.perform_now(@issue.id)
+  end
+
   # --- The claim is the atomic repeat guard ---
 
   def test_claim_succeeds_once_then_refuses

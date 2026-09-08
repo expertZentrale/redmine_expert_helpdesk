@@ -160,6 +160,77 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert_includes prompt, 'HARDWARE'
   end
 
+  # --- The subject line is part of the message ---
+
+  # The actual problem: "Drucker HP 4050 im EG druckt nicht seit heute" with an
+  # empty body used to fail every length rule and ask for the device.
+  def test_subject_counts_towards_length
+    subject = 'Drucker HP 4050 im Erdgeschoss druckt seit heute frueh nicht mehr, ' \
+              'Display zeigt Fehler 49.4C02 - bitte um Hilfe'
+    assert Check.evaluate(:text => 'kaputt', :subject => subject, :setting => setting).complete?
+    assert Check.evaluate(:text => 'kaputt', :setting => setting).incomplete?
+  end
+
+  def test_keyword_in_subject_satisfies_rule
+    s = setting(:info_request_min_chars => 0, :info_request_keywords => 'drucker')
+    verdict = Check.evaluate(:text => 'geht nicht', :subject => 'Drucker EG', :setting => s)
+    assert verdict.complete?
+    assert Check.evaluate(:text => 'geht nicht', :setting => s).incomplete?
+  end
+
+  # The subject is joined after the quote stripping: a fully quoted body must not
+  # take the subject down with it, and a subject that looks like a forwarded
+  # header must not be cut.
+  def test_subject_survives_quote_stripping
+    subject = 'Betreff: Drucker HP 4050 im Erdgeschoss druckt seit heute frueh nicht mehr, ' \
+              'Display zeigt Fehler 49.4C02'
+    body = "> alter Text\n> noch mehr alter Text\n"
+    verdict = Check.evaluate(:text => body, :subject => subject, :setting => setting)
+    assert verdict.complete?
+  end
+
+  def test_blank_subject_changes_nothing
+    long = 'x ' * 200
+    [nil, '', '   '].each do |subject|
+      assert Check.evaluate(:text => long, :subject => subject, :setting => setting).complete?
+      assert Check.evaluate(:text => 'kurz', :subject => subject, :setting => setting).incomplete?
+    end
+  end
+
+  # --- Model input for the AI mode ---
+
+  def test_ai_input_puts_subject_first_and_inventory_last
+    input = Check.ai_input(:text => 'a' * 50, :subject => ' Drucker kaputt ',
+                           :attachments => [png(200)], :max_chars => 10)
+    assert input.start_with?("Betreff: Drucker kaputt\n\n#{'a' * 10}"), input
+    assert_not_includes input, 'a' * 11
+    assert input.end_with?('Anhaenge dieser Mail: bild.png (image/png)'), input
+  end
+
+  def test_ai_input_omits_blank_subject
+    input = Check.ai_input(:text => 'body', :subject => '  ')
+    assert input.start_with?('body'), input
+    assert_not_includes input, 'Betreff:'
+  end
+
+  # Settings arrive as strings; the limit must not depend on the caller's type.
+  def test_ai_input_accepts_a_numeric_string_limit
+    input = Check.ai_input(:text => 'a' * 50, :max_chars => '10')
+    assert input.start_with?('a' * 10)
+    assert_not_includes input, 'a' * 11
+  end
+
+  def test_ai_input_without_max_chars_keeps_the_whole_body
+    input = Check.ai_input(:text => 'a' * 50)
+    assert input.start_with?('a' * 50)
+  end
+
+  # The job labels the subject with this marker - the prompt must explain it.
+  def test_default_prompt_mentions_the_subject
+    assert_includes Check::DEFAULT_AI_PROMPT, 'Betreff:'
+    assert Check.ai_input(:text => 'x', :subject => 'y').start_with?('Betreff:')
+  end
+
   # --- Images too small to be a screenshot/photo do not count ---
 
   # The actual problem: the signature logo is attached to nearly every mail and

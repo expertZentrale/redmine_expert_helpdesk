@@ -7,6 +7,19 @@
 
 ## [Unreleased]
 
+### Behoben
+
+- **Die Vollständigkeitsprüfung liest die Betreffzeile.** Beide Modi werteten nur den Mailtext aus,
+  sodass ein Ticket mit dem Betreff „Drucker HP 4050 im EG druckt nicht“ und einer einzeiligen Mail
+  gefragt wurde, welches Gerät betroffen sei — das stand bereits im Betreff. Der Betreff (aus der
+  archivierten `.eml`, sonst der Ticket-Betreff) zählt jetzt bei den regelbasierten Längen- und
+  Begriffsprüfungen mit und wird dem KI-Modell als erste Zeile der Eingabe vorgelegt
+  (`Betreff: …`); der Standard-Prompt behandelt ihn ausdrücklich als Information. Er wird erst nach
+  dem Entfernen zitierter Verläufe angefügt, sodass ein Betreff, der wie ein Weiterleitungs-Header
+  aussieht, nie abgeschnitten wird, und im KI-Modus erst nach dem Kürzen des Textes, sodass ein
+  langer Verlauf ihn nicht verdrängen kann. Regelbasierte Schwellen, die auf den Text allein
+  abgestimmt waren, können jetzt durch Betreff und Text zusammen erreicht werden.
+
 ## [0.7.0] - 2026-09-03
 
 ### Hinzugefügt

@@ -5,6 +5,10 @@
 # to start working, so HelpdeskCompletenessJob can ask the customer for the rest
 # before the SLA clock has burnt the first cycle.
 #
+# Subject and body are evaluated together: the subject line is often the only
+# place a customer names the affected device, and asking for it again is exactly
+# the kind of follow-up that annoys people.
+#
 # Two modes, both ending in the same Verdict:
 # - heuristic: the rule set configured per project (length, attachments,
 #   keywords). No external dependency, no cost, works with AI switched off.
@@ -67,6 +71,9 @@ module RedmineExpertHelpdesk
       - was genau passiert (Fehlermeldung, Symptom, beobachtetes Verhalten),
       - seit wann bzw. wann es auftritt oder wie es reproduziert werden kann.
 
+      Die Nachricht beginnt mit der Betreffzeile ("Betreff: ..."). Angaben im Betreff
+      zaehlen genauso wie Angaben im Text - frage nichts nach, was dort bereits steht.
+
       Bildmaterial hilft fast immer weiter, deshalb zusaetzlich:
       - Geht es um SOFTWARE (Anwendung, Web-Portal, Betriebssystem, Fehlerdialog,
         Meldung auf dem Bildschirm)? Dann sollte ein SCREENSHOT der Fehlermeldung
@@ -101,8 +108,11 @@ module RedmineExpertHelpdesk
     class << self
       # setting: a HelpdeskProjectSetting (or any object answering the same
       # info_request_* readers — the tests pass a Struct).
-      def evaluate(text:, attachments: [], setting:)
-        body = meaningful_text(text)
+      # subject: the mail subject, measured together with the body. It is joined
+      # after meaningful_text so the quote/forward stripping never touches it - a
+      # subject "Betreff: Drucker" must not be mistaken for a forwarded header.
+      def evaluate(text:, subject: nil, attachments: [], setting:)
+        body = [subject.to_s.strip, meaningful_text(text)].reject(&:blank?).join(' ')
         reasons = []
 
         min_chars = setting.info_request_min_chars.to_i
@@ -218,6 +228,20 @@ module RedmineExpertHelpdesk
         end
 
         "\n\nAnhaenge dieser Mail: #{list.any? ? list.join(', ') : 'keine'}"
+      end
+
+      # Model input for the AI mode, in a fixed order: subject line first, then the
+      # body cut to max_chars, then the attachment inventory. Subject and inventory
+      # are added AFTER truncating, so a long forwarded thread can cut off neither.
+      def ai_input(text:, subject: nil, attachments: [], setting: nil, max_chars: nil)
+        body = text.to_s
+        limit = max_chars.to_i
+        body = body.first(limit) if limit.positive?
+
+        head = subject.to_s.strip
+        head = head.present? ? "Betreff: #{head}\n\n" : ''
+
+        head + body + attachment_inventory(attachments, setting)
       end
 
       def keyword_list(setting)

@@ -945,7 +945,10 @@ den der Kunde schon geschickt hat.
 
 Zitierte Verläufe, Weiterleitungs-Header (`-----Ursprüngliche Nachricht-----`, `Am … schrieb …:`)
 und Signaturen werden vor jeder Messung entfernt, damit eine Zwei-Wort-Antwort unter einem langen
-zitierten Verlauf nicht als ausführliche Meldung durchgeht.
+zitierten Verlauf nicht als ausführliche Meldung durchgeht. **Die Betreffzeile zählt in beiden Modi
+zur Nachricht**: Sie wird zusammen mit dem Text gemessen und dem Modell als erste Zeile vorgelegt,
+sodass eine Rückfrage nie nach dem Gerät oder System fragt, das der Kunde bereits im Betreff genannt
+hat. Sie wird nie entfernt.
 
 **Bilder unterhalb einer Mindestgröße zählen in beiden Modi nicht als Beweismaterial.**
 Signatur-Logos und Tracking-Pixel hängen an fast jeder Mail und würden „Anhang erforderlich“ sonst
