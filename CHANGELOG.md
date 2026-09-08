@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-09-08
+
 ### Fixed
 
 - **The completeness check reads the subject line.** Both modes evaluated the mail body alone,

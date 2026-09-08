@@ -1,0 +1,12 @@
+h3. Fixed
+
+* *The completeness check reads the subject line.* Both modes evaluated the mail body alone, so a ticket opened as "Drucker HP 4050 im EG druckt nicht" with a one-line body was asked which device was affected — the customer had already said so in the subject. The subject now counts towards the rule-based length and expected-term checks and is shown to the AI model as the first line of its input (@Betreff: …@), with the default prompt told to treat it as information. It is joined after the quoted-history stripping, so a subject that looks like a forwarded header is never cut, and in AI mode it is added after the body truncation, so a long thread cannot push it out.
+
+* *The AI summary and the knowledge base read the subject line too.* The summary job built its model input from the body alone, so an informative subject over a one-line body was skipped as "too short" or summarised without the device and error the subject named; the knowledge extractor embedded the same tickets without it. Both now start the text with @Betreff: …@, the subject counts towards the minimum input length, and both default prompts explain the line. The archived @.eml@ is also parsed only once per summary run instead of up to three times.
+
+h3. Upgrade notes
+
+No migration. Two behaviour changes worth knowing:
+
+* *Rule-based completeness thresholds* (minimum characters / words, expected terms) are now met by subject and body together. A project that tuned these values to the body alone may see fewer follow-ups; lower the values if that is unwanted.
+* *Minimum input characters* for the AI summary now include the subject, so some mails that were previously skipped as too short are summarised.

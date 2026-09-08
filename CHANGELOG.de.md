@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-09-08
+
 ### Behoben
 
 - **Die Vollständigkeitsprüfung liest die Betreffzeile.** Beide Modi werteten nur den Mailtext aus,
