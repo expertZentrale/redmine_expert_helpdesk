@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **The settings REST API writes the completeness-check fields.** `PUT …/helpdesk/settings` accepted
+  every `info_request_*` key documented in `API.md` without error and then ignored it — the response
+  echoed the unchanged value and the caller only noticed by reading it back. All of them are applied
+  now, partially like the other fields. Two rules the form silently coerces answer **422** on the API
+  instead: a threshold below 1, and a status that is closed or does not exist (#17).
+
 ## [0.7.1] - 2026-09-08
 
 ### Fixed

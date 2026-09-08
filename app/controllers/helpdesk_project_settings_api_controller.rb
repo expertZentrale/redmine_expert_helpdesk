@@ -57,6 +57,8 @@ class HelpdeskProjectSettingsApiController < ApplicationController
     # Aktivierungszeitpunkt merken: SLA gilt nur fuer Tickets ab diesem Datum.
     @setting.sla_enabled_at = Time.current if @setting.sla_enabled? && !was_enabled
 
+    return unless apply_info_request_settings(hp)
+
     begin
       ActiveRecord::Base.transaction do
         @setting.save!
@@ -80,6 +82,52 @@ class HelpdeskProjectSettingsApiController < ApplicationController
   def load_priorities
     @priorities = HelpdeskSlaPriority.where(:project_id => @project.id)
                                      .includes(:priority).order(:priority_id => :asc)
+  end
+
+  # Completeness check / follow-up. Partial like the rest: only keys that were
+  # sent change anything. Mode, prompt mode, visibility and the numeric floors
+  # are validated by the model; the two rules the model cannot express are
+  # checked here and answer 422 instead of being silently coerced - the form
+  # coerces, an API caller needs to hear about it.
+  def apply_info_request_settings(hp)
+    apply_boolean(:info_request_require_attachment, hp)
+
+    %i[info_request_mode info_request_ai_prompt_mode info_request_note_visibility].each do |f|
+      @setting.public_send("#{f}=", hp[f].to_s) if hp.key?(f)
+    end
+    %i[info_request_min_chars info_request_min_words info_request_min_attachment_kb
+       info_request_threshold].each do |f|
+      @setting.public_send("#{f}=", hp[f].presence) if hp.key?(f)
+    end
+    %i[info_request_keywords info_request_sender_blacklist info_request_ai_prompt
+       info_request_subject info_request_body].each do |f|
+      @setting.public_send("#{f}=", hp[f].to_s.strip.presence) if hp.key?(f)
+    end
+
+    # A threshold of 0 would fire on a perfect mail; the check is switched off
+    # via the mode instead.
+    if hp.key?(:info_request_threshold) && @setting.info_request_threshold.to_i < 1
+      @setting.errors.add(:info_request_threshold, :greater_than_or_equal_to, :count => 1)
+    end
+
+    # Existing, OPEN status only: an automatic follow-up must never close a
+    # ticket, because every SLA reader treats closed_on as reaction-done and
+    # solution-done (see HelpdeskCompletenessJob#apply_status).
+    if hp.key?(:info_request_status_id)
+      status_id = hp[:info_request_status_id].presence
+      if status_id.nil?
+        @setting.info_request_status_id = nil
+      elsif IssueStatus.where(:id => status_id.to_i, :is_closed => false).exists?
+        @setting.info_request_status_id = status_id.to_i
+      else
+        @setting.errors.add(:info_request_status_id, :inclusion)
+      end
+    end
+
+    return true if @setting.errors.empty?
+
+    render_validation_errors(@setting)
+    false
   end
 
   def apply_boolean(field, hp)
