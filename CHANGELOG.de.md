@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-09-08
+
 ### Behoben
 
 - **Die REST-API für Einstellungen schreibt die Felder der Vollständigkeitsprüfung.**

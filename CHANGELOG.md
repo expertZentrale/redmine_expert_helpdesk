@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-09-08
+
 ### Fixed
 
 - **The settings REST API writes the completeness-check fields.** `PUT …/helpdesk/settings` accepted

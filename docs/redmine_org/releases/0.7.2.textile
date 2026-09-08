@@ -1,0 +1,7 @@
+h3. Fixed
+
+* *The settings REST API writes the completeness-check fields.* @PUT /projects/:id/helpdesk/settings@ accepted every @info_request_*@ key documented in the API reference without error and then ignored it — the response echoed the unchanged value and the caller only noticed by reading it back. All of them are applied now, partially like the other fields: mode, rule values, expected terms, sender list, threshold, prompt mode and prompt, follow-up subject and body, note visibility and the status after a follow-up. Two rules the project settings form silently corrects answer *422* on the API instead: a threshold below 1, and a status that is closed or does not exist. A closed status is refused because an automatic follow-up must never close a ticket — every SLA reader treats a closed ticket as both reaction-done and solution-done.
+
+h3. Upgrade notes
+
+No migration and no behaviour change for the web UI. Scripts that already send @info_request_*@ keys and relied on them being ignored will now change the project's settings — check them before upgrading.
