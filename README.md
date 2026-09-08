@@ -905,7 +905,10 @@ already attached, so it never asks for a screenshot the customer has already sen
 
 Quoted history, forwarded headers (`-----Original Message-----`, `Am … schrieb …:`) and
 signatures are stripped before anything is measured, so a two-word reply under a long quoted
-thread does not pass as a detailed report.
+thread does not pass as a detailed report. **The subject line counts as part of the message** in
+both modes: it is measured together with the body and shown to the model as its first line, so a
+follow-up never asks for the device or system the customer already named in the subject. It is
+never stripped.
 
 **Images below a minimum size do not count as evidence** in either mode. Signature logos and
 tracking pixels hang off nearly every mail and would otherwise satisfy "an attachment is required"

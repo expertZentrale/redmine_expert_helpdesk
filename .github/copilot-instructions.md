@@ -186,7 +186,10 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     `relevant_attachments` drops images under `info_request_min_attachment_kb` (default 15 KB;
     images only, unknown size kept) so signature logos cannot satisfy "attachment required". The
     AI prompt asks for a screenshot (software) / photo (hardware), so the job appends
-    `attachment_inventory` to the input — otherwise the model asks for one already attached. The AI
+    `attachment_inventory` to the input — otherwise the model asks for one already attached. The subject
+    line is evaluated together with the body in both modes (`evaluate(subject:)`; `ai_input` prepends
+    `Betreff: …` after truncation) — it once fell through entirely and the follow-up asked for the
+    device the customer had named in the subject. The AI
     path **fails closed** (unparseable output, missing `complete`, or "incomplete" with no reasons
     all count as complete), so a garbled response never mails a customer. `HelpdeskCompletenessJob`
     (`app/jobs/`) is enqueued by `MailProcessor#enqueue_completeness_check` for **new tickets only**

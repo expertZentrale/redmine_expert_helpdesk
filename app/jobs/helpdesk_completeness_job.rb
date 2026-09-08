@@ -54,7 +54,8 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     end
 
     text = source_text(issue, message)
-    verdict = evaluate(issue, ps, settings, text, mail_attachments(issue, message))
+    subject = source_subject(issue, message)
+    verdict = evaluate(issue, ps, settings, text, subject, mail_attachments(issue, message))
     return if verdict.nil?
 
     if verdict.complete?
@@ -96,17 +97,17 @@ class HelpdeskCompletenessJob < ActiveJob::Base
 
   # Returns a Verdict, or nil when the AI mode cannot run. nil always means "do
   # nothing" — when in doubt the customer is NOT mailed.
-  def evaluate(issue, ps, settings, text, attachments)
+  def evaluate(issue, ps, settings, text, subject, attachments)
     if ps.info_request_ai_mode?
-      ai_verdict(issue, ps, settings, text, attachments)
+      ai_verdict(issue, ps, settings, text, subject, attachments)
     else
       RedmineExpertHelpdesk::CompletenessCheck.evaluate(
-        :text => text, :attachments => attachments, :setting => ps
+        :text => text, :subject => subject, :attachments => attachments, :setting => ps
       )
     end
   end
 
-  def ai_verdict(issue, ps, settings, text, attachments)
+  def ai_verdict(issue, ps, settings, text, subject, attachments)
     unless RedmineExpertHelpdesk::AiFeatures.ai_enabled?
       log(:info, "##{issue.id}: KI-Modus, aber KI global deaktiviert")
       return nil
@@ -118,7 +119,7 @@ class HelpdeskCompletenessJob < ActiveJob::Base
       return nil
     end
 
-    if text.blank?
+    if text.blank? && subject.blank?
       log(:debug, "##{issue.id}: kein auswertbarer Text")
       return nil
     end
@@ -126,11 +127,14 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     prompt = ps.effective_info_request_prompt.presence ||
              RedmineExpertHelpdesk::CompletenessCheck::DEFAULT_AI_PROMPT
 
-    # The prompt asks for screenshots/photos - without the attachment inventory the
-    # model would demand one even when the customer already sent it. The list is
-    # appended AFTER truncating, so it can never be cut off.
-    input = text.first(MAX_INPUT_CHARS) +
-            RedmineExpertHelpdesk::CompletenessCheck.attachment_inventory(attachments, ps)
+    # Subject line first, body truncated, attachment inventory last. The prompt
+    # asks for screenshots/photos - without the inventory the model would demand
+    # one the customer already sent; without the subject it asks for the device
+    # the customer already named there. Both are added AFTER truncating.
+    input = RedmineExpertHelpdesk::CompletenessCheck.ai_input(
+      :text => text, :subject => subject, :attachments => attachments,
+      :setting => ps, :max_chars => MAX_INPUT_CHARS
+    )
 
     raw = client.summarize(
       prompt, input, [],
@@ -196,6 +200,18 @@ class HelpdeskCompletenessJob < ActiveJob::Base
       return text if text.present?
     end
     issue.description.to_s
+  end
+
+  # Subject of the first mail, same preference order as source_text. Redmine's
+  # MailHandler has already copied the cleaned subject into the issue, so the
+  # fallback is good enough when the .eml is missing.
+  def source_subject(issue, message)
+    mail = eml_mail(message)
+    subject = mail&.subject.to_s.strip
+    subject.present? ? subject : issue.subject.to_s.strip
+  rescue StandardError => e
+    log(:warn, ".eml-Betreff konnte nicht gelesen werden: #{e.message}")
+    issue.subject.to_s.strip
   end
 
   def plain_text_from_mail(mail)

@@ -252,7 +252,11 @@ nested registration would never fire in production.
   log/PDF is still evidence) and an attachment reporting no size is kept, not dropped. The AI
   prompt asks for a screenshot (software) or a photo (hardware), so the job appends
   `attachment_inventory` to the model input — without it the model asks for a screenshot the
-  customer already sent. Both return the same `Verdict`. The AI path **fails
+  customer already sent. **The subject line is evaluated together with the body in both modes**
+  (`evaluate(subject:)`, `ai_input`): joined after the quote stripping so it is never cut, and in AI
+  mode prepended as `Betreff: …` after the body truncation — it once fell through entirely and the
+  follow-up asked for the device the customer had named in the subject. Both return the same
+  `Verdict`. The AI path **fails
   closed** — unparseable output, a missing `complete` field, or "incomplete" with no reasons all
   render as *complete*, so a garbled response never mails a customer. Driven by
   **`HelpdeskCompletenessJob`** (`app/jobs/`), which `MailProcessor#enqueue_completeness_check`
