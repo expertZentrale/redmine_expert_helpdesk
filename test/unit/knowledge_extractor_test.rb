@@ -8,7 +8,7 @@ class KnowledgeExtractorTest < ActiveSupport::TestCase
 
   # The subject often carries the device and the error the body only refers to.
   def test_ticket_text_starts_with_the_subject
-    issue = Issue.new(:subject => 'Drucker HP 4050: Fehler 49.4C02', :description => 'Geht nicht.')
+    issue = Issue.new(:subject => '  Drucker HP 4050: Fehler 49.4C02 ', :description => 'Geht nicht.')
     text = extractor.send(:ticket_text, issue)
     assert text.start_with?("Betreff: Drucker HP 4050: Fehler 49.4C02\n\nGeht nicht."), text
   end

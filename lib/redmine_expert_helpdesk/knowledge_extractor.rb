@@ -61,7 +61,8 @@ module RedmineExpertHelpdesk
       parts = []
       # The subject often carries the device and the error that the body only
       # refers to; without it the entry embeds "printer broken" as the problem.
-      parts << "Betreff: #{issue.subject}" if issue.subject.present?
+      subject = issue.subject.to_s.strip
+      parts << "Betreff: #{subject}" if subject.present?
       parts << issue.description.to_s if issue.description.present?
       issue.journals.order(:created_on).each do |j|
         next if j.notes.blank? || own.include?(j.id)
