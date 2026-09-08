@@ -228,7 +228,9 @@ nested registration would never fire in production.
   catalogue; `CONTEXT_RESOLVERS` (currently `{{missing_info}}`) resolves from a value the caller
   passes in and is deliberately **kept out of `catalogue`**, because it is meaningless outside its
   own template and would only clutter the chip bar.
-- **`ai_client.rb`** — AI provider client for per-project mail summaries. `Net::HTTP` (mirrors
+- **`ai_client.rb`** — AI provider client for per-project mail summaries. The summary job
+  prepends `Betreff: …` to the model input and counts the subject towards `ai_min_input_chars`
+  (it once fell through entirely; see `HelpdeskAiSummaryJob#source_subject`/`with_subject`). `Net::HTTP` (mirrors
   `graph_client.rb`), three providers: `openai` (Chat Completions), `anthropic` (Messages),
   `custom` (OpenAI-compatible base URL for self-hosted). Central config in the plugin settings
   (`ai_*` keys). Ships `DEFAULT_PROMPT`. Called from **`HelpdeskAiSummaryJob`**
@@ -276,6 +278,7 @@ nested registration would never fire in production.
   met before the customer answered. Enforced in the controller, the select and the job.
   AI-mode calls log as `HelpdeskAiRequest` type `completeness`. Off by default; migrations 043–046.
 - **`knowledge_store.rb` / `knowledge_extractor.rb`** — RAG knowledge base from resolved tickets.
+  `KnowledgeExtractor#ticket_text` starts with the `Betreff: …` line, then description and notes.
   On close (**`Issue#after_save`** in `patches/issue_patch.rb` → `saved_change_to_status_id? &&
   closed?`, so single **and** bulk/API closes are caught) or via rake
   (`redmine_expert_helpdesk:kb_backfill` / `kb_reembed`), **`HelpdeskKnowledgeIngestJob`** extracts

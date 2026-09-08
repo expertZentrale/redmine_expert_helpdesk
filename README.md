@@ -831,6 +831,9 @@ per project.
 - **Min. input characters** (default 200) — mails shorter than this skip the AI call
   entirely, since a two-line mail summarizes to itself. The private note then just states
   that the summary was skipped and why (it still carries the 🤖 badge, with 0 tokens).
+  **The subject line counts towards this length** and is shown to the model as the first
+  line of the message (`Betreff: …`), so a one-line body under an informative subject is
+  neither skipped nor summarised without the device and error it names.
   `0` disables the check and always summarizes.
 - **Log level for AI diagnostics** (*Logging* section, default `debug`, `off` to silence) —
   the severity at which the plugin logs the measured input length and the resulting decision:
@@ -970,7 +973,8 @@ an attachment reports no size at all, it is kept rather than discarded.
 ## Knowledge base (RAG)
 
 Resolved tickets can be turned into a **per-project knowledge base**: an AI call extracts a
-`{problem, solution}` pair from each closed ticket, embeds the problem, and stores it in an
+`{problem, solution}` pair from each closed ticket (subject line, description and notes), embeds
+the problem, and stores it in an
 external vector database. When a new mail arrives, the summary job searches **only that
 project's** knowledge for similar solved tickets and — if enough clear the score threshold —
 adds a **proposed solution** to the summary and/or a sidebar panel. Disabled by default.

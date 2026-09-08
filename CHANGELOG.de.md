@@ -20,6 +20,15 @@
   langer Verlauf ihn nicht verdrängen kann. Regelbasierte Schwellen, die auf den Text allein
   abgestimmt waren, können jetzt durch Betreff und Text zusammen erreicht werden.
 
+- **Auch die KI-Zusammenfassung und die Wissensbasis lesen die Betreffzeile.** Der
+  Zusammenfassungs-Job baute seine Modell-Eingabe nur aus dem Mailtext, sodass ein
+  aussagekräftiger Betreff über einer einzeiligen Mail als „zu kurz“ übersprungen oder ohne das
+  im Betreff genannte Gerät und den Fehler zusammengefasst wurde; die Wissensbasis-Extraktion
+  bettete dieselben Tickets ohne ihn ein. Beide stellen jetzt `Betreff: …` als erste Zeile
+  voran (aus der archivierten `.eml`, sonst der Ticket-Betreff), der Betreff zählt bei der
+  Mindestlänge mit, und beide Standard-Prompts erklären die Zeile. Der Betreff steht am Anfang
+  des Textes, das Eingabelimit kürzt also den Text, nicht den Betreff.
+
 ## [0.7.0] - 2026-09-03
 
 ### Hinzugefügt
