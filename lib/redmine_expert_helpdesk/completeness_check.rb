@@ -71,8 +71,8 @@ module RedmineExpertHelpdesk
       - was genau passiert (Fehlermeldung, Symptom, beobachtetes Verhalten),
       - seit wann bzw. wann es auftritt oder wie es reproduziert werden kann.
 
-  Die Nachricht beginnt mit der Betreffzeile ("Betreff: ..."). Angaben im Betreff
-  zaehlen genauso wie Angaben im Text - frage nichts nach, was dort bereits steht.
+      Die Nachricht beginnt mit der Betreffzeile ("Betreff: ..."). Angaben im Betreff
+      zaehlen genauso wie Angaben im Text - frage nichts nach, was dort bereits steht.
 
       Bildmaterial hilft fast immer weiter, deshalb zusaetzlich:
       - Geht es um SOFTWARE (Anwendung, Web-Portal, Betriebssystem, Fehlerdialog,
