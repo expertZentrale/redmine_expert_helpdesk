@@ -235,7 +235,8 @@ module RedmineExpertHelpdesk
       # are added AFTER truncating, so a long forwarded thread can cut off neither.
       def ai_input(text:, subject: nil, attachments: [], setting: nil, max_chars: nil)
         body = text.to_s
-        body = body.first(max_chars) if max_chars.to_i.positive?
+        limit = max_chars.to_i
+        body = body.first(limit) if limit.positive?
 
         head = subject.to_s.strip
         head = head.present? ? "Betreff: #{head}\n\n" : ''

@@ -213,6 +213,13 @@ class CompletenessCheckTest < ActiveSupport::TestCase
     assert_not_includes input, 'Betreff:'
   end
 
+  # Settings arrive as strings; the limit must not depend on the caller's type.
+  def test_ai_input_accepts_a_numeric_string_limit
+    input = Check.ai_input(:text => 'a' * 50, :max_chars => '10')
+    assert input.start_with?('a' * 10)
+    assert_not_includes input, 'a' * 11
+  end
+
   def test_ai_input_without_max_chars_keeps_the_whole_body
     input = Check.ai_input(:text => 'a' * 50)
     assert input.start_with?('a' * 50)
