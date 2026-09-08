@@ -174,6 +174,75 @@ class HelpdeskApiTest < Redmine::IntegrationTest
     assert_equal 'auto', body['kb_ingest_mode']
   end
 
+  # The info_request_* fields were documented as writable but silently ignored
+  # (issue #17). Every documented key must round-trip.
+  def test_project_settings_info_request_round_trip
+    open_status = IssueStatus.where(:is_closed => false).first
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => {
+          :info_request_mode => 'heuristic', :info_request_min_chars => 60,
+          :info_request_min_words => 5, :info_request_require_attachment => true,
+          :info_request_min_attachment_kb => 20, :info_request_keywords => "drucker\nkasse",
+          :info_request_sender_blacklist => '@monitoring.local', :info_request_threshold => 2,
+          :info_request_ai_prompt_mode => 'extend', :info_request_ai_prompt => 'Sei streng.',
+          :info_request_subject => 'Rueckfrage zu #{{issue.id}}', :info_request_body => 'Bitte: {{missing_info}}',
+          :info_request_note_visibility => 'private', :info_request_status_id => open_status.id
+        } }, :headers => auth
+    assert_response :success
+
+    s = HelpdeskProjectSetting.for_project(@project)
+    assert_equal 'heuristic', s.info_request_mode
+    assert_equal 60, s.info_request_min_chars
+    assert_equal 5, s.info_request_min_words
+    assert s.info_request_require_attachment?
+    assert_equal 20, s.info_request_min_attachment_kb
+    assert_equal "drucker\nkasse", s.info_request_keywords
+    assert_equal '@monitoring.local', s.info_request_sender_blacklist
+    assert_equal 2, s.info_request_threshold
+    assert_equal 'extend', s.info_request_ai_prompt_mode
+    assert_equal 'Sei streng.', s.info_request_ai_prompt
+    assert_equal 'Rueckfrage zu #{{issue.id}}', s.info_request_subject
+    assert_equal 'Bitte: {{missing_info}}', s.info_request_body
+    assert_equal 'private', s.info_request_note_visibility
+    assert_equal open_status.id, s.info_request_status_id
+
+    body = ActiveSupport::JSON.decode(@response.body)['helpdesk_project_setting']
+    assert_equal 60, body['info_request_min_chars']
+    assert_equal open_status.id, body['info_request_status_id']
+
+    # Partial: an unrelated update leaves the fields alone; null clears a text field.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :info_request_keywords => nil, :sla_enabled => false } },
+        :headers => auth
+    assert_response :success
+    s.reload
+    assert_nil s.info_request_keywords
+    assert_equal 60, s.info_request_min_chars
+  end
+
+  def test_project_settings_info_request_rejects_invalid_values
+    closed = IssueStatus.where(:is_closed => true).first
+    [
+      { :info_request_mode => 'sometimes' },
+      { :info_request_threshold => 0 },
+      { :info_request_min_chars => -1 },
+      { :info_request_note_visibility => 'secret' },
+      { :info_request_status_id => closed.id },
+      { :info_request_status_id => 999_999 }
+    ].each do |bad|
+      put "/projects/#{@project.id}/helpdesk/settings.json",
+          :params => { :helpdesk_project_setting => bad }, :headers => auth
+      assert_response :unprocessable_entity, "expected 422 for #{bad.inspect}"
+    end
+    assert_nil HelpdeskProjectSetting.for_project(@project).info_request_status_id
+
+    # null is documented for the threshold and means "default", not 0.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :info_request_threshold => nil } }, :headers => auth
+    assert_response :success
+    assert_nil HelpdeskProjectSetting.for_project(@project).info_request_threshold
+  end
+
   # --- Postfaecher ---------------------------------------------------------
 
   def mailbox_params(extra = {})

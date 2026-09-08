@@ -7,6 +7,15 @@
 
 ## [Unreleased]
 
+### Behoben
+
+- **Die REST-API für Einstellungen schreibt die Felder der Vollständigkeitsprüfung.**
+  `PUT …/helpdesk/settings` nahm jeden in `API.md` dokumentierten `info_request_*`-Schlüssel ohne
+  Fehler entgegen und ignorierte ihn — die Antwort zeigte den unveränderten Wert, der Aufrufer merkte
+  es erst beim Zurücklesen. Alle werden jetzt übernommen, partiell wie die übrigen Felder. Zwei Regeln,
+  die das Formular stillschweigend korrigiert, antworten in der API stattdessen mit **422**: eine
+  Schwelle unter 1 und ein Status, der geschlossen ist oder nicht existiert (#17).
+
 ## [0.7.1] - 2026-09-08
 
 ### Behoben
