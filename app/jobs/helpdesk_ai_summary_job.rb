@@ -118,15 +118,25 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
   # is often the only place the customer names the affected device, and the
   # summary used to lose it entirely.
   def source_subject(issue, message)
-    eml = message&.eml_attachment
-    if eml && eml.diskfile && File.exist?(eml.diskfile)
-      subject = Mail.read(eml.diskfile).subject.to_s.strip
-      return subject if subject.present?
-    end
-    issue.subject.to_s.strip
+    subject = eml_mail(message)&.subject.to_s.strip
+    subject.present? ? subject : issue.subject.to_s.strip
   rescue StandardError => e
     Rails.logger.warn("[helpdesk][ai] .eml-Betreff konnte nicht gelesen werden: #{e.message}")
     issue.subject.to_s.strip
+  end
+
+  # The archived .eml, parsed once per run: subject, body and inline file names
+  # all need it, and a large thread is a multi-megabyte file.
+  def eml_mail(message)
+    return @eml_mail if defined?(@eml_mail)
+
+    @eml_mail = begin
+      eml = message&.eml_attachment
+      Mail.read(eml.diskfile) if eml && eml.diskfile && File.exist?(eml.diskfile)
+    rescue StandardError => e
+      Rails.logger.warn("[helpdesk][ai] .eml konnte nicht gelesen werden: #{e.message}")
+      nil
+    end
   end
 
   # "Betreff: ..." line above the body - the same marker the completeness check
@@ -135,15 +145,13 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
     head = subject.to_s.strip
     return text.to_s if head.blank?
 
-    "Betreff: #{head}
-
-#{text}"
+    "Betreff: #{head}\n\n#{text}"
   end
 
   def source_text(issue, journal, message)
-    eml = message&.eml_attachment
-    if eml && eml.diskfile && File.exist?(eml.diskfile)
-      text = plain_text_from_eml(eml.diskfile)
+    mail = eml_mail(message)
+    if mail
+      text = plain_text_from_mail(mail)
       return text if text.present?
     end
     (journal ? journal.notes : issue.description).to_s
@@ -170,8 +178,7 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
     parts.join("\n\n")
   end
 
-  def plain_text_from_eml(path)
-    mail = Mail.read(path)
+  def plain_text_from_mail(mail)
     if mail.multipart?
       part = mail.text_part
       return part.decoded.to_s if part
@@ -286,10 +293,9 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
   # File names of the MIME parts the sender embedded (Content-ID or an inline
   # disposition). Redmine sanitizes the stored file name, so both spellings go in.
   def inline_filenames(message)
-    eml = message && Attachment.find_by(:id => message.eml_attachment_id)
-    return [] unless eml && eml.diskfile && File.exist?(eml.diskfile)
+    mail = eml_mail(message)
+    return [] if mail.nil?
 
-    mail = Mail.read_from_string(File.binread(eml.diskfile))
     mail.all_parts.flat_map do |part|
       next [] unless part.content_id.present? ||
                      part.content_disposition.to_s.downcase.start_with?('inline')
