@@ -235,6 +235,12 @@ class HelpdeskApiTest < Redmine::IntegrationTest
       assert_response :unprocessable_entity, "expected 422 for #{bad.inspect}"
     end
     assert_nil HelpdeskProjectSetting.for_project(@project).info_request_status_id
+
+    # null is documented for the threshold and means "default", not 0.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :info_request_threshold => nil } }, :headers => auth
+    assert_response :success
+    assert_nil HelpdeskProjectSetting.for_project(@project).info_request_threshold
   end
 
   # --- Postfaecher ---------------------------------------------------------

@@ -105,8 +105,9 @@ class HelpdeskProjectSettingsApiController < ApplicationController
     end
 
     # A threshold of 0 would fire on a perfect mail; the check is switched off
-    # via the mode instead.
-    if hp.key?(:info_request_threshold) && @setting.info_request_threshold.to_i < 1
+    # via the mode instead. null is allowed and means the default (1).
+    if hp.key?(:info_request_threshold) && !@setting.info_request_threshold.nil? &&
+       @setting.info_request_threshold.to_i < 1
       @setting.errors.add(:info_request_threshold, :greater_than_or_equal_to, :count => 1)
     end
 
