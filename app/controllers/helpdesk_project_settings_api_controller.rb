@@ -86,9 +86,10 @@ class HelpdeskProjectSettingsApiController < ApplicationController
 
   # Completeness check / follow-up. Partial like the rest: only keys that were
   # sent change anything. Mode, prompt mode, visibility and the numeric floors
-  # are validated by the model; the two rules the model cannot express are
-  # checked here and answer 422 instead of being silently coerced - the form
-  # coerces, an API caller needs to hear about it.
+  # are validated by the model. Two more rules are enforced here rather than in
+  # the model, because the form deliberately coerces them (threshold below 1
+  # becomes 1, an unusable status becomes none) while an API caller needs to
+  # hear about it: they answer 422.
   def apply_info_request_settings(hp)
     apply_boolean(:info_request_require_attachment, hp)
 
