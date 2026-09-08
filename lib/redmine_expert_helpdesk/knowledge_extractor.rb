@@ -7,7 +7,8 @@ module RedmineExpertHelpdesk
 
     DEFAULT_PROMPT = <<~PROMPT.freeze
       Du erhaeltst den vollstaendigen Verlauf eines ABGESCHLOSSENEN Support-Tickets
-      (Kundenanfrage und Bearbeiter-Antworten). Extrahiere daraus einen wiederverwendbaren
+      (Kundenanfrage und Bearbeiter-Antworten). Der Verlauf beginnt mit der Betreffzeile
+      ("Betreff: ..."); sie ist Teil der Kundenanfrage. Extrahiere daraus einen wiederverwendbaren
       Wissensbasis-Eintrag und antworte AUSSCHLIESSLICH mit einem JSON-Objekt mit genau
       diesen Feldern:
         - "problem":  das urspruengliche Anliegen/Problem des Kunden, praegnant und
@@ -58,6 +59,9 @@ module RedmineExpertHelpdesk
     def ticket_text(issue)
       own = HelpdeskAiSummary.where(:issue_id => issue.id).pluck(:journal_id).compact.to_set
       parts = []
+      # The subject often carries the device and the error that the body only
+      # refers to; without it the entry embeds "printer broken" as the problem.
+      parts << "Betreff: #{issue.subject}" if issue.subject.present?
       parts << issue.description.to_s if issue.description.present?
       issue.journals.order(:created_on).each do |j|
         next if j.notes.blank? || own.include?(j.id)

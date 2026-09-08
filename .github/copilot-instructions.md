@@ -167,7 +167,7 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
   - `template_renderer.rb` — `{{issue.*}}` templating for subjects/headers/footers/autoresponder.
     `RESOLVERS` feeds renderer + chip catalogue; `CONTEXT_RESOLVERS` (`{{missing_info}}`) resolves
     from a caller-supplied value and is deliberately kept out of `catalogue`.
-  - `ai_client.rb` — AI provider client (`Net::HTTP`, mirrors `graph_client.rb`) for per-project
+  - `ai_client.rb` — AI provider client (the summary job prepends `Betreff: …` to the model input and counts the subject towards `ai_min_input_chars`) (`Net::HTTP`, mirrors `graph_client.rb`) for per-project
     mail summaries: `openai` / `anthropic` / `custom` (OpenAI-compatible, self-hosted). Central
     `ai_*` plugin settings; ships `DEFAULT_PROMPT`. Runs via `HelpdeskAiSummaryJob` (`app/jobs/`,
     ActiveJob) enqueued from `MailProcessor#enqueue_ai_summary` after ingest; opt-in per project
@@ -203,7 +203,7 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     reaches `Sla.record_first_response!`, and `apply_status` refuses a closed status because every
     SLA reader counts a closed ticket as reaction-done AND solution-done. AI calls log as
     `HelpdeskAiRequest` type `completeness`. Off by default; migrations 043-046.
-  - `knowledge_store.rb` / `knowledge_extractor.rb` — RAG knowledge base from resolved tickets.
+  - `knowledge_store.rb` / `knowledge_extractor.rb` — RAG knowledge base from resolved tickets (`ticket_text` starts with the `Betreff: …` line).
     On close (`Issue#after_save` in `patches/issue_patch.rb` — catches single + bulk + API) or rake
     (`kb_backfill`/`kb_reembed`), `HelpdeskKnowledgeIngestJob` extracts
     `{problem, solution}`, stores a `HelpdeskKnowledgeEntry` (SQL system of record), and embeds

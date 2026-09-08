@@ -863,7 +863,10 @@ Standardmäßig deaktiviert, Opt-in pro Projekt.
 - **Standard-Prompt** (guter deutscher Default mitgeliefert) sowie Limits (max.
   Eingabezeichen / Ausgabe-Tokens / Timeout).
 - **Min. Eingabezeichen** (Standard 200) – kürzere Mails werden gar nicht erst an die KI
-  geschickt, denn eine zweizeilige Mail fasst sich selbst zusammen. Die interne Notiz hält
+  geschickt, denn eine zweizeilige Mail fasst sich selbst zusammen. **Die Betreffzeile zählt
+  bei dieser Länge mit** und wird dem Modell als erste Zeile der Nachricht vorgelegt
+  (`Betreff: …`), sodass eine einzeilige Mail unter einem aussagekräftigen Betreff weder
+  übersprungen noch ohne das dort genannte Gerät und den Fehler zusammengefasst wird. Die interne Notiz hält
   dann nur fest, dass die Zusammenfassung übersprungen wurde und warum (mit 🤖-Badge und
   0 Tokens). `0` deaktiviert die Prüfung.
 - **Log-Level für KI-Diagnose** (Abschnitt *Logging*, Standard `debug`, `off` schaltet ab) –
@@ -1014,7 +1017,8 @@ weiterhin. Meldet ein Anhang gar keine Größe, wird er behalten statt verworfen
 ## Wissensbasis (RAG)
 
 Aus gelösten Tickets lässt sich eine **projektbezogene Wissensbasis** aufbauen: ein KI-Aufruf
-extrahiert je geschlossenem Ticket ein `{Problem, Lösung}`-Paar, bettet das Problem ein und legt
+extrahiert je geschlossenem Ticket ein `{Problem, Lösung}`-Paar (Betreff, Beschreibung und
+Notizen), bettet das Problem ein und legt
 es in einer externen Vektor-Datenbank ab. Bei einer neuen Mail sucht der Zusammenfassungs-Job
 **nur in der Wissensbasis dieses Projekts** nach ähnlichen gelösten Tickets und ergänzt – wenn
 genügend über dem Schwellwert liegen – einen **Lösungsvorschlag** in der Zusammenfassung und/oder

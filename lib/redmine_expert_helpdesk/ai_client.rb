@@ -46,6 +46,10 @@ module RedmineExpertHelpdesk
       Die Nachricht kann eine weitergeleitete Mail oder ein ganzer Mailverlauf
       sein, in dem die wichtigen Informationen verstreut sind.
 
+      Die Nachricht beginnt mit der Betreffzeile ("Betreff: ..."). Sie ist Teil der
+      Kundennachricht - Angaben dort (System, Geraet, Fehler, Zeitpunkt) gehoeren
+      genauso in die Zusammenfassung wie Angaben aus dem Text.
+
       Gib eine kurze Zusammenfassung auf Deutsch als Stichpunkte aus. Nenne nur
       zutreffende Punkte und erfinde keine Informationen:
       - Anliegen: Was ist das eigentliche Problem/Anliegen des Kunden?

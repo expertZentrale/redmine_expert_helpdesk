@@ -20,6 +20,14 @@
   body truncation, so a long thread cannot push it out. Rule-based thresholds tuned to the body
   alone may now be met by subject and body together.
 
+- **The AI summary and the knowledge base read the subject line too.** The summary job built
+  its model input from the mail body alone, so an informative subject over a one-line body was
+  skipped as "too short" or summarised without the device and error the subject named; the
+  knowledge extractor embedded the same tickets without it. Both now put `Betreff: …` as the
+  first line of the text (from the archived `.eml`, else the issue subject), the subject counts
+  towards the minimum input length, and both default prompts explain the line. The subject is the
+  head of the text, so the input limit can never cut it off.
+
 ## [0.7.0] - 2026-09-03
 
 ### Added

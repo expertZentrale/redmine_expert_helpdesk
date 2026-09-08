@@ -45,20 +45,25 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
     return unless client.configured?
 
     message      = message_id && HelpdeskMessage.find_by(:id => message_id)
+    subject      = source_subject(issue, message)
     base_text    = if ps.ai_include_journal?
                      journal_text(issue, ps)
                    else
                      source_text(issue, journal, message)
                    end
     attachments  = mail_attachments(issue, journal, message&.eml_attachment_id)
-    user_text, image_parts = build_input(base_text, attachments, ps, settings, issue, message)
+    user_text, image_parts = build_input(base_text, attachments, ps, settings, issue, message,
+                                          :subject => subject)
     return if user_text.blank? && image_parts.empty?
 
     # Too short to be worth an AI call: a two-line mail summarizes to itself.
     # Note the skip (the mail itself is right above it) and spare provider/RAG.
-    short = too_short?(base_text, settings)
+    # The subject counts: a one-line body under a subject that names device,
+    # error and time is not a mail that "summarizes itself".
+    gate_text = with_subject(subject, base_text)
+    short = too_short?(gate_text, settings)
     RedmineExpertHelpdesk::AiLogger.debug(
-      "length issue=##{issue.id} chars=#{measured_length(base_text)} " \
+      "length issue=##{issue.id} chars=#{measured_length(gate_text)} " \
       "min=#{settings['ai_min_input_chars'].to_i} images=#{image_parts.size} " \
       "decision=#{short && image_parts.empty? ? 'skip' : 'summarize'}"
     )
@@ -108,6 +113,33 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
 
   # Volltext der Mail: bevorzugt der komplette Klartext aus der .eml (ganzer
   # Verlauf), Fallback auf die Journal-Notiz bzw. Ticket-Beschreibung.
+  # Subject of the mail, same preference order as source_text: the archived .eml
+  # first, else the issue subject MailHandler has already cleaned up. The subject
+  # is often the only place the customer names the affected device, and the
+  # summary used to lose it entirely.
+  def source_subject(issue, message)
+    eml = message&.eml_attachment
+    if eml && eml.diskfile && File.exist?(eml.diskfile)
+      subject = Mail.read(eml.diskfile).subject.to_s.strip
+      return subject if subject.present?
+    end
+    issue.subject.to_s.strip
+  rescue StandardError => e
+    Rails.logger.warn("[helpdesk][ai] .eml-Betreff konnte nicht gelesen werden: #{e.message}")
+    issue.subject.to_s.strip
+  end
+
+  # "Betreff: ..." line above the body - the same marker the completeness check
+  # uses, so both prompts can explain it the same way. Blank subject: body only.
+  def with_subject(subject, text)
+    head = subject.to_s.strip
+    return text.to_s if head.blank?
+
+    "Betreff: #{head}
+
+#{text}"
+  end
+
   def source_text(issue, journal, message)
     eml = message&.eml_attachment
     if eml && eml.diskfile && File.exist?(eml.diskfile)
@@ -183,11 +215,13 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
 
   # Baut den User-Text (Mailinhalt + optionale Anhang-Infos) und die Bildliste
   # entsprechend der projektspezifischen Anhang-Auswahl. Truncated auf das Limit.
-  def build_input(base_text, attachments, ps, settings, issue = nil, message = nil)
+  def build_input(base_text, attachments, ps, settings, issue = nil, message = nil, subject: nil)
     max_chars = settings['ai_max_input_chars'].to_i
     max_chars = 12_000 unless max_chars.positive?
 
-    parts = [base_text.to_s]
+    # Subject line first; it is the head of the text, so the truncation at the
+    # end can never cut it off.
+    parts = [with_subject(subject, base_text)]
     image_parts = []
 
     if attachments.any? && ps.ai_attach_metadata?
