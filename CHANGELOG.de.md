@@ -27,7 +27,7 @@
   bettete dieselben Tickets ohne ihn ein. Beide stellen jetzt `Betreff: …` als erste Zeile
   voran (aus der archivierten `.eml`, sonst der Ticket-Betreff), der Betreff zählt bei der
   Mindestlänge mit, und beide Standard-Prompts erklären die Zeile. Der Betreff steht am Anfang
-  des Textes, das Eingabelimit kann ihn also nie abschneiden.
+  des Textes, das Eingabelimit kürzt also den Text, nicht den Betreff.
 
 ## [0.7.0] - 2026-09-03
 

@@ -26,7 +26,7 @@
   knowledge extractor embedded the same tickets without it. Both now put `Betreff: …` as the
   first line of the text (from the archived `.eml`, else the issue subject), the subject counts
   towards the minimum input length, and both default prompts explain the line. The subject is the
-  head of the text, so the input limit can never cut it off.
+  head of the text, so the input limit trims the body, not the subject.
 
 ## [0.7.0] - 2026-09-03
 
