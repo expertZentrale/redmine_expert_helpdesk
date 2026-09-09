@@ -209,7 +209,8 @@ module RedmineExpertHelpdesk
 
       # SLA: oeffentlicher Kommentar eines Mitarbeiters stoppt die Reaktionsuhr
       if issue && journal && journal.notes.present? && !journal.private_notes?
-        RedmineExpertHelpdesk::Sla.record_first_response!(issue, journal.created_on || Time.current)
+        RedmineExpertHelpdesk::Sla.record_first_response!(issue, journal.created_on || Time.current,
+                                                          :by => journal.user || User.current)
       end
 
       # SLA: Loesungszeit beim Schliessen setzen / beim Wiedereroeffnen zuruecksetzen

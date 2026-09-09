@@ -17,11 +17,21 @@ class SlaFirstResponseTest < ActiveSupport::TestCase
     HelpdeskTicketInfo.create!(:issue_id => @issue.id)
     at = Time.current
 
-    RedmineExpertHelpdesk::Sla.record_first_response!(@issue, at)
+    RedmineExpertHelpdesk::Sla.record_first_response!(@issue, at, :by => User.find(2))
 
     info = HelpdeskTicketInfo.for_issue(@issue)
     assert_in_delta at.to_i, info.first_response_at.to_i, 1
     assert_nil info.reaction_business_minutes
+    assert_equal 2, info.first_response_by_id
+  end
+
+  def test_anonymous_actor_leaves_first_response_by_empty
+    HelpdeskTicketInfo.create!(:issue_id => @issue.id)
+    RedmineExpertHelpdesk::Sla.record_first_response!(@issue, Time.current, :by => User.anonymous)
+
+    info = HelpdeskTicketInfo.for_issue(@issue)
+    assert_not_nil info.first_response_at
+    assert_nil info.first_response_by_id
   end
 
   def test_without_sla_never_creates_a_row

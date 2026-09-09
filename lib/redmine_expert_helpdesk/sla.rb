@@ -159,8 +159,10 @@ module RedmineExpertHelpdesk
     # machinery are SLA features. Without SLA the row is never created here (that
     # would turn every issue of every project into a "helpdesk ticket" on its first
     # public note) - only an existing HelpdeskTicketInfo row gets the timestamp.
-    # Write-once: a later note never moves the first reaction.
-    def self.record_first_response!(issue, at)
+    # Write-once: a later note never moves the first reaction. `by` is the acting
+    # user (nil/anonymous leaves first_response_by_id empty); the ticket statistics
+    # attribute the first response to it without depending on a journal note.
+    def self.record_first_response!(issue, at, by: User.current)
       setting = HelpdeskProjectSetting.for_project(issue.project)
       sla     = setting.persisted? && setting.sla_enabled?
 
@@ -168,7 +170,8 @@ module RedmineExpertHelpdesk
                  : HelpdeskTicketInfo.for_issue(issue)
       return if info.nil? || info.first_response_at.present?
 
-      info.first_response_at = at
+      info.first_response_at    = at
+      info.first_response_by_id = by.id if by.respond_to?(:id) && !by.anonymous?
       info.reaction_business_minutes = BusinessHours.new(setting).elapsed_minutes(issue.created_on, at) if sla
       info.save!
     rescue StandardError => e

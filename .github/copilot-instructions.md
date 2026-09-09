@@ -215,7 +215,8 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     pgvector needs `gem 'pg'` in the deployment (kept out of `PluginGemfile`).
   - `business_hours.rb` / `sla.rb` / `sla_breach_check.rb` — SLA in *business minutes*.
     **First response is recorded regardless of SLA** (`Sla.record_first_response!` only
-    *creates* the ticket-info row under SLA); deadlines, breach mails and chips stay SLA-gated.
+    *creates* the ticket-info row under SLA) together with the acting user (`first_response_by_id`,
+    migration 049); deadlines, breach mails and chips stay SLA-gated.
   - `statistics_support.rb` / `sla_statistics.rb` / `ticket_statistics.rb` / `ai_usage_statistics.rb` —
     the three statistics tabs: pluck flat rows into Structs, fold in Ruby, `to_h` returns pure
     hashes; bucketing/mean/median/histograms from the shared `StatisticsSupport` mixin, filter form

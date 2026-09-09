@@ -34,6 +34,10 @@
   SLA-Funktionen. Ohne SLA wird dafür keine Ticket-Info-Zeile angelegt — der Zeitstempel landet
   nur auf Tickets, die bereits Helpdesk-Tickets sind. Kein Backfill: Tickets von Projekten ohne
   SLA, die vor dieser Version beantwortet wurden, zeigen keine Erstreaktionszeit.
+  Der handelnde Benutzer wird als `first_response_by_id` mitgespeichert (Migration 049), damit
+  die Erstreaktion je Mitarbeiter nicht davon abhängt, dass nach einer Antwortmail auch die Notiz
+  gespeichert wurde; vorhandene Zeilen werden aus der öffentlichen Notiz zum erfassten Zeitpunkt
+  nachgetragen, wo es eine gibt.
 - Bucketing, Mittelwert/Median/Perzentil und die Stoßzeiten-Histogramme der Statistikseiten
   liegen jetzt in einem gemeinsamen Modul `StatisticsSupport`; das Filterformular ist ein
   gemeinsames Partial.

@@ -109,7 +109,7 @@ class HelpdeskRepliesController < ApplicationController
     # ID zurueckgeben: das Formular schickt sie beim Issue-Update als Hidden-Field
     # mit, der controller_issues_edit_after_save-Hook verknuepft dann das Journal.
     # SLA: Kundenantwort stoppt die Reaktionsuhr.
-    RedmineExpertHelpdesk::Sla.record_first_response!(@issue, Time.current)
+    RedmineExpertHelpdesk::Sla.record_first_response!(@issue, Time.current, :by => User.current)
 
     render :json => { :success => true, :helpdesk_message_id => hd_msg.id }
   rescue RedmineExpertHelpdesk::MailProvider::ProviderError => e
