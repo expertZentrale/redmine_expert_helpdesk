@@ -1,0 +1,17 @@
+h3. Added
+
+* *"Ticket statistics" tab per project.* A third statistics page next to SLA and AI statistics, available for every helpdesk project — with or without SLA — and unlocked by the new member permission *View ticket statistics* (meant for a "helpdesk manager" role; without it the tab is hidden and the page answers 403). It covers the helpdesk tickets created in the selected period: ticket volume, average and median first response and resolution, time in status (only statuses that actually occur, completed stays plus the tickets currently sitting there), reopens, tickets awaiting a response, conversation length (incoming mails per ticket, agent replies, automatic mails, share of tickets solved with a single reply), a per-agent table and a per-customer table, plus busiest hours and weekdays. Durations are calendar time; with SLA enabled a time-basis switch shows the same figures in the project's business hours. Charts use the bundled Chart.js, no CDN.
+
+h3. Changed
+
+* *The first reaction is recorded for every helpdesk ticket, not only under SLA.* A public agent note or a customer reply mail sets the first-response timestamp regardless of the project's SLA switch, together with the acting user; only the business-minute figure, the deadlines, the breach mails and the SLA chips remain SLA features. Without SLA no ticket-info row is created for this — the timestamp only lands on tickets that already are helpdesk tickets.
+
+h3. Fixed
+
+* *SLA statistics no longer count reopened tickets as closed.* Redmine keeps the closing timestamp after a reopen; the page now derives "closed" from the current status.
+
+h3. Upgrade notes
+
+* Run the plugin migrations (@bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=production@): migration 049 adds the column for the first-response user and backfills it from the note written at the recorded moment where one exists.
+* Grant the new permission *View ticket statistics* to the roles that should see the tab — it is not granted to anyone by default.
+* No backfill of the first-response timestamp itself: tickets of projects without SLA that were answered before this version show no first-response figure in the statistics.

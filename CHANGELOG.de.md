@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-09
+
 ### Hinzugefügt
 
 - **Reiter „Ticket-Statistik“ je Projekt.** Eine dritte Statistikseite neben SLA- und

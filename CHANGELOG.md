@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-09
+
 ### Added
 
 - **"Ticket statistics" tab per project.** A third statistics page next to SLA and AI
