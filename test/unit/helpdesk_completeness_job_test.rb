@@ -97,6 +97,40 @@ class HelpdeskCompletenessJobTest < ActiveSupport::TestCase
     HelpdeskCompletenessJob.perform_now(@issue.id)
   end
 
+  # An agent marks the customer itself; no admin and no project-wide list involved.
+  def test_opted_out_contact_gets_no_follow_up
+    enable_globally
+    info = link_contact!
+    info.update!(:helpdesk_mailbox_id => mailbox.id)
+    info.helpdesk_contact.update!(:info_request_opt_out => true)
+    RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).never
+    HelpdeskCompletenessJob.perform_now(@issue.id)
+  end
+
+  # The contact flag is read before the evaluation, exactly like the project list,
+  # so the AI mode spends no token on a customer nobody will ever ask.
+  def test_opted_out_contact_short_circuits_before_the_ai_call
+    enable_globally
+    @ps.update!(:info_request_mode => 'ai')
+    info = link_contact!
+    info.update!(:helpdesk_mailbox_id => mailbox.id)
+    info.helpdesk_contact.update!(:info_request_opt_out => true)
+    RedmineExpertHelpdesk::AiFeatures.stubs(:ai_enabled?).returns(true)
+    RedmineExpertHelpdesk::AiClient.any_instance.expects(:summarize).never
+    RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).never
+    HelpdeskCompletenessJob.perform_now(@issue.id)
+  end
+
+  # The flag is opt-in: an untouched contact keeps getting the follow-up.
+  def test_contact_without_the_flag_still_gets_the_follow_up
+    enable_globally
+    info = link_contact!
+    info.update!(:helpdesk_mailbox_id => mailbox.id)
+    assert_equal false, info.helpdesk_contact.info_request_opt_out?
+    RedmineExpertHelpdesk::InfoRequestMailer.expects(:deliver!).once
+    HelpdeskCompletenessJob.perform_now(@issue.id)
+  end
+
   # An unrelated entry must not silence a real customer.
   def test_unlisted_sender_still_gets_the_follow_up
     enable_globally

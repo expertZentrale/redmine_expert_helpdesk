@@ -54,13 +54,21 @@ module RedmineExpertHelpdesk
                                     .order(:id => :asc).first
         end
 
+        # The "never ask this customer" toggle is only offered while the
+        # completeness check can actually run here; the marker on an already
+        # flagged customer is shown either way.
+        info_request_active =
+          Setting.plugin_redmine_expert_helpdesk['info_request_enabled'].to_s == '1' &&
+          HelpdeskProjectSetting.for_project(issue.project).info_request_enabled?
+
         parts << context[:controller].send(:render_to_string, {
           :partial => 'helpdesk/issue_header_bar',
           :locals  => {
-            :issue    => issue,
-            :inbound  => inbound,
-            :outbound => outbound,
-            :contact  => contact
+            :issue               => issue,
+            :inbound             => inbound,
+            :outbound            => outbound,
+            :contact             => contact,
+            :info_request_active => info_request_active
           }
         })
       end

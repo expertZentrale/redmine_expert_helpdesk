@@ -28,6 +28,11 @@
       <%= f.label :notes, l(:field_notes) %>
       <%= f.text_area :notes, :rows => 5, :cols => 60 %>
     </p>
+    <p>
+      <%= f.label :info_request_opt_out, l(:field_helpdesk_contact_info_request_opt_out) %>
+      <%= f.check_box :info_request_opt_out %>
+      <em class="info"><%= l(:text_helpdesk_contact_info_request_opt_out_info) %></em>
+    </p>
   </div>
 
   <p>

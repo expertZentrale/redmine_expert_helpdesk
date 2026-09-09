@@ -43,7 +43,15 @@
         %>
         <tr>
           <td><strong><%= link_to contact.display_name,
-              edit_helpdesk_contact_path(contact, :project_id => @project) %></strong></td>
+              edit_helpdesk_contact_path(contact, :project_id => @project) %></strong>
+            <%# Marked as "never ask": shown as a tag rather than an own column, so the
+                sortable header row and the notes colspan stay as they are. %>
+            <% if contact.info_request_opt_out? %>
+              <span class="hd-contact-tag"
+                    title="<%= h(l(:text_helpdesk_contact_info_request_opt_out_info)) %>"><%=
+                l(:label_helpdesk_contact_info_request_opt_out_short) %></span>
+            <% end %>
+          </td>
           <td><%= mail_to contact.email %></td>
           <td><%= contact.company.presence || '–' %></td>
           <td><%= contact.phone.presence    || '–' %></td>
@@ -85,6 +93,21 @@
   </table>
 
   <span class="pagination"><%= pagination_links_full @contact_pages, @contact_count %></span>
+
+<style>
+  .hd-contact-tag {
+    display: inline-block;
+    font-size: 0.85em;
+    font-weight: normal;
+    padding: 0 5px;
+    line-height: 1.5;
+    border-radius: 3px;
+    background: #f3e5c3;
+    color: #7a5c00;
+    border: 1px solid #e0cc98;
+    cursor: default;
+  }
+</style>
 <% else %>
   <p class="nodata"><%= l(:label_no_data) %></p>
 <% end %>

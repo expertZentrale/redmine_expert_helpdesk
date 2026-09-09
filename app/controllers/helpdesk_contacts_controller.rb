@@ -3,7 +3,7 @@
 class HelpdeskContactsController < ApplicationController
   before_action :find_project_by_project_id
   before_action :authorize
-  before_action :find_contact, :only => [:edit, :update, :destroy]
+  before_action :find_contact, :only => [:edit, :update, :destroy, :toggle_info_request]
 
   helper :sort
   include SortHelper
@@ -98,6 +98,16 @@ class HelpdeskContactsController < ApplicationController
     else
       render :action => 'edit'
     end
+  end
+
+  # "Never ask this customer for more information" toggled straight from the ticket
+  # header bar. The same flag as the checkbox on the edit form - agents meet this
+  # decision on a Veeam report they are looking at, not in the customer list, and a
+  # detour through the form loses the ticket they came from.
+  def toggle_info_request
+    @contact.update_column(:info_request_opt_out, !@contact.info_request_opt_out?)
+    flash[:notice] = l(:notice_successful_update)
+    redirect_back_or_default helpdesk_contacts_path(:project_id => @project)
   end
 
   def destroy

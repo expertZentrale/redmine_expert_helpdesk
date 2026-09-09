@@ -32,6 +32,11 @@ class HelpdeskInfoRequestSettingsTest < Redmine::IntegrationTest
     assert_select 'div#hd_ir_heuristic textarea#hd_ir_keywords'
     assert_select 'div#hd_ir_ai textarea#hd_ir_prompt'
     assert_select 'textarea#hd_ir_body'
+    # The sender list gates both modes, so it must sit outside the two blocks the
+    # mode switch hides - inside #hd_ir_heuristic it was invisible in AI mode.
+    assert_select 'div#hd_ir_heuristic textarea#hd_ir_blacklist', :count => 0
+    assert_select 'div#hd_ir_ai textarea#hd_ir_blacklist', :count => 0
+    assert_select 'textarea#hd_ir_blacklist'
     assert_select 'select#hd_ir_status option[value=""]'
     assert_select 'select#hd_ir_note_vis' do
       assert_select 'option[value=?]', 'public'

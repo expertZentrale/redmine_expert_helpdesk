@@ -16,6 +16,7 @@ module RedmineExpertHelpdesk
         api.company c.company
         api.phone   c.phone
         api.notes   c.notes
+        api.info_request_opt_out c.info_request_opt_out?
         api.project(:id => c.project_id) if c.project_id
         api.created_on c.created_at
         api.updated_on c.updated_at

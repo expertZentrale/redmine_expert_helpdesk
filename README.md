@@ -953,7 +953,8 @@ an attachment reports no size at all, it is kept rather than discarded.
   `X-MS-Exchange-Generated-Message-Source`, `X-Autoreply`/`X-Autorespond`/`X-Autoresponder`)
   is skipped automatically even without an entry here; delivery
   failures (NDR) are not, since a bounce is something the plugin has to act on. The check runs
-  before the rule evaluation, so the AI mode never spends a token on such a mail.
+  before the rule evaluation, so the AI mode never spends a token on such a mail. The field is
+  shown in both modes — it gates the AI check exactly as it gates the rule-based one.
 - **Prompt mode** for the AI check — inherit / extend / override the central prompt, exactly like
   the AI summary prompt.
 - **Subject / text** — optional per-project override of the central templates.
@@ -961,6 +962,19 @@ an attachment reports no size at all, it is kept rather than discarded.
   *Internal* (agents with the "View private notes" permission only). The mail itself is unaffected.
 - **Status after the follow-up** — optional; blank leaves the status untouched. **Only open
   statuses are offered**, see the SLA note below.
+
+**Per customer** (*Project → Customers → edit a customer*):
+- **Never ask for more information** — the same decision as the sender list, taken where it is
+  noticed. An agent who sees a Veeam report land as a ticket ticks the box on that customer instead
+  of asking an admin to extend a project setting. Their tickets are still created and still
+  evaluated; only the follow-up mail is suppressed. Writable over the REST API as
+  `info_request_opt_out`.
+- **The same switch sits on the ticket itself.** The helpdesk bar in the ticket header carries a
+  *never ask* link next to the customer — one click, no detour through the customer list, and it
+  returns to the ticket you were reading. Flagged customers show a *no follow-up* tag there and in
+  the customer list (with *ask again* next to it), so a missing follow-up never looks like a broken
+  check. The link needs the *Manage customers* permission and is only offered while the check is
+  actually running in that project; the tag itself is visible to everyone.
 
 **Safety properties worth knowing:**
 

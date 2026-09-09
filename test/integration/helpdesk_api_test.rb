@@ -66,6 +66,14 @@ class HelpdeskApiTest < Redmine::IntegrationTest
     body = ActiveSupport::JSON.decode(@response.body)['helpdesk_contact']
     assert_equal 'new@example.com', body['email']
     assert_equal 'Acme', body['company']
+    assert_equal false, body['info_request_opt_out']
+
+    # "never ask this customer for more information" is writable over the API too,
+    # so a monitoring integration can flag its own sender when it registers it.
+    put "/helpdesk/contacts/#{id}.json",
+        :params => { :helpdesk_contact => { :info_request_opt_out => '1' } }, :headers => auth
+    assert_response :no_content
+    assert_equal true, HelpdeskContact.find(id).info_request_opt_out?
 
     # loeschen
     assert_difference 'HelpdeskContact.count', -1 do
