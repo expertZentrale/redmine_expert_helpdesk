@@ -136,5 +136,5 @@
       :busiestWeekdays => { :labels => (1..7).map { |i| hd_ai_weekday_name(i) }, :data => @stats[:busiest_weekdays] }
     }
   %>
-  <script type="application/json" id="hd-ai-stats-data"><%= raw chart_data.to_json %></script>
+  <script type="application/json" id="hd-ai-stats-data"><%= raw json_escape(chart_data.to_json) %></script>
 <% end %>
