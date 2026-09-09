@@ -6,28 +6,12 @@
 
 <h2><%= l(:label_helpdesk_sla_statistics) %></h2>
 
-<%= form_tag helpdesk_sla_statistics_path(:project_id => @project), :method => :get,
-             :class => 'hd-stats-filter' do %>
-  <label><%= l(:label_helpdesk_stats_group_by) %>:
-    <%= select_tag :period,
-          options_for_select(
-            RedmineExpertHelpdesk::SlaStatistics::PERIODS.map { |p| [l("label_helpdesk_stats_#{p}"), p] },
-            @period), :id => 'hd-stats-period' %>
-  </label>
-  <label><%= l(:label_helpdesk_stats_range) %>:
-    <%= select_tag :range,
-          options_for_select(
-            HelpdeskSlaStatisticsController::RANGES.map { |r| [l("label_helpdesk_stats_range_#{r}"), r] },
-            @range), :id => 'hd-stats-range' %>
-  </label>
-  <span id="hd-stats-custom-dates"<%= @range == 'custom' ? '' : raw(' style="display:none;"') %>>
-    <label><%= l(:label_helpdesk_stats_from) %>:
-      <%= date_field_tag :date_from, @date_from.iso8601 %></label>
-    <label><%= l(:label_helpdesk_stats_to) %>:
-      <%= date_field_tag :date_to, @date_to.iso8601 %></label>
-  </span>
-  <%= submit_tag l(:button_apply), :name => nil %>
-<% end %>
+<%= render :partial => 'helpdesk/stats_filter',
+           :locals => { :path => helpdesk_sla_statistics_path(:project_id => @project),
+                        :periods => RedmineExpertHelpdesk::SlaStatistics::PERIODS,
+                        :ranges => HelpdeskSlaStatisticsController::RANGES,
+                        :period => @period, :range => @range,
+                        :date_from => @date_from, :date_to => @date_to } %>
 
 <% totals = @stats[:totals] %>
 <% if totals[:tickets] == 0 %>
@@ -128,5 +112,5 @@
       :busiestWeekdays => { :labels => (1..7).map { |i| hd_stats_weekday_name(i) }, :data => @stats[:busiest_weekdays] }
     }
   %>
-  <script type="application/json" id="hd-sla-stats-data"><%= raw chart_data.to_json %></script>
+  <script type="application/json" id="hd-sla-stats-data"><%= raw json_escape(chart_data.to_json) %></script>
 <% end %>

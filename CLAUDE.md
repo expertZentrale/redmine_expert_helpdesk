@@ -296,6 +296,15 @@ nested registration would never fire in production.
   `business_hours` defines the working-day/time window; `sla` computes reaction/solution
   deadlines (with per-priority overrides via `HelpdeskSlaPriority`); `sla_breach_check`
   runs during fetch and notifies on breach.
+- **`statistics_support.rb` / `sla_statistics.rb` / `ticket_statistics.rb` / `ai_usage_statistics.rb`** —
+  the three statistics tabs. House style: pluck flat rows into Structs, fold in Ruby, `to_h` returns
+  pure hashes; bucketing/mean/median/histograms come from the shared `StatisticsSupport` mixin; the
+  filter form is `app/views/helpdesk/_stats_filter.html.erb`. `TicketStatistics` derives "closed"
+  from `IssueStatus#is_closed` (Redmine keeps `issues.closed_on` after a reopen), builds time-in-status
+  from `journal_details` status changes and keeps every fold a DB-free class method
+  (`test/unit/ticket_statistics_test.rb`). **First response is recorded regardless of SLA**
+  (`Sla.record_first_response!` only *creates* the ticket-info row under SLA); deadlines, breach mails
+  and chips stay SLA-gated.
 - **`phish*.rb` / `phishing_scanner.rb`** — download PhishTank + Phishing.Database feeds into
   a local `HelpdeskPhishingUrl` mirror; scan incoming links (decoding Microsoft SafeLinks
   locally). On hit: neutralize (warn banner + journal note) or quarantine, per project.
@@ -330,7 +339,9 @@ derives the constant from the filename with its default inflector, so an acronym
 ### Web layer (`app/`)
 Standard Rails MVC under the plugin. Controllers map to permissions declared in `init.rb`'s
 `project_module :helpdesk` block (`manage_helpdesk`, `fetch_helpdesk_mail`,
-`send_helpdesk_reply`, `view_helpdesk_info`, `manage_helpdesk_contacts`). Key ones:
+`send_helpdesk_reply`, `view_helpdesk_info`, `manage_helpdesk_contacts`,
+`view_helpdesk_sla_statistics`, `view_helpdesk_ticket_statistics` — the latter `:require => :member`,
+meant for a "helpdesk manager" role; `view_helpdesk_ai_statistics` is global). Key ones:
 `helpdesk_fetch` (fetch button + `fetch_all` endpoint), `helpdesk_replies` (agent→customer
 replies, largest controller — handles MIME/CID inline images/transport choice),
 `helpdesk_mailboxes`, `helpdesk_contacts`, `helpdesk_init`, `helpdesk_project_settings`.

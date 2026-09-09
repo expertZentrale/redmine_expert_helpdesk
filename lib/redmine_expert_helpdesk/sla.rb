@@ -152,16 +152,24 @@ module RedmineExpertHelpdesk
 
     # --- Tracking-Ereignisse -------------------------------------------------
 
-    # Erste Reaktion festhalten (oeffentlicher Kommentar oder Kundenantwort-Mail).
+    # Records the first reaction (public agent note or customer reply mail).
+    #
+    # Recorded regardless of SLA: the ticket statistics need first_response_at for
+    # every helpdesk ticket. Only the business-minute figure and the deadline
+    # machinery are SLA features. Without SLA the row is never created here (that
+    # would turn every issue of every project into a "helpdesk ticket" on its first
+    # public note) - only an existing HelpdeskTicketInfo row gets the timestamp.
+    # Write-once: a later note never moves the first reaction.
     def self.record_first_response!(issue, at)
       setting = HelpdeskProjectSetting.for_project(issue.project)
-      return unless setting.persisted? && setting.sla_enabled?
+      sla     = setting.persisted? && setting.sla_enabled?
 
-      info = HelpdeskTicketInfo.find_or_initialize_by(:issue_id => issue.id)
-      return if info.first_response_at.present?
+      info = sla ? HelpdeskTicketInfo.find_or_initialize_by(:issue_id => issue.id)
+                 : HelpdeskTicketInfo.for_issue(issue)
+      return if info.nil? || info.first_response_at.present?
 
       info.first_response_at = at
-      info.reaction_business_minutes = BusinessHours.new(setting).elapsed_minutes(issue.created_on, at)
+      info.reaction_business_minutes = BusinessHours.new(setting).elapsed_minutes(issue.created_on, at) if sla
       info.save!
     rescue StandardError => e
       Rails.logger.warn "Helpdesk/SLA: record_first_response fuer Ticket ##{issue.id} fehlgeschlagen: #{e.message}"

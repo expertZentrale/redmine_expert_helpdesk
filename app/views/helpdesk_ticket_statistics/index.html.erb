@@ -1,0 +1,243 @@
+<%# Ticket statistics of the project (charts via Chart.js, bundled locally) %>
+<% html_title l(:label_helpdesk_ticket_statistics) %>
+<% content_for :header_tags do %>
+  <%= javascript_include_tag 'chart.umd.min', 'chartjs-plugin-datalabels.min', 'helpdesk_ticket_stats', :plugin => 'redmine_expert_helpdesk' %>
+<% end %>
+
+<h2><%= l(:label_helpdesk_ticket_statistics) %></h2>
+
+<% basis_select = nil %>
+<% if @sla_enabled %>
+  <% basis_select = capture do %>
+    <label class="hd-stats-basis"><%= l(:label_helpdesk_ticket_stats_basis) %>:
+      <%= select_tag :basis,
+            options_for_select(HelpdeskTicketStatisticsController::BASES.map { |b| [l("label_helpdesk_ticket_stats_basis_#{b}"), b] }, @basis),
+            :id => 'hd-stats-basis' %>
+    </label>
+  <% end %>
+<% end %>
+<%= render :partial => 'helpdesk/stats_filter',
+           :locals => { :path => helpdesk_ticket_statistics_path(:project_id => @project),
+                        :periods => RedmineExpertHelpdesk::TicketStatistics::PERIODS,
+                        :ranges => HelpdeskTicketStatisticsController::RANGES,
+                        :period => @period, :range => @range,
+                        :date_from => @date_from, :date_to => @date_to,
+                        :extra => basis_select } %>
+<p class="hd-stats-muted hd-stats-note"><%= l("text_helpdesk_ticket_stats_basis_#{@basis}") %></p>
+
+<% totals = @stats[:totals] %>
+<% if totals[:tickets] == 0 %>
+  <p class="nodata"><%= l(:label_helpdesk_ticket_stats_no_data) %></p>
+<% else %>
+
+  <%# --- KPI tiles --- %>
+  <div class="hd-stats-tiles">
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= totals[:tickets] %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_stats_tickets) %></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= totals[:open] %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_stats_open) %></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= totals[:closed] %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_stats_closed) %></span>
+    </div>
+    <div class="hd-stats-tile<%= totals[:reopened_tickets] > 0 ? ' hd-stats-tile-alert' : '' %>">
+      <span class="hd-stats-num"><%= totals[:reopened_tickets] %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_ticket_stats_reopened) %>
+        <em>(<%= totals[:reopen_count] %> <%= l(:label_helpdesk_ticket_stats_reopen_count) %>)</em></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= totals[:awaiting_agent] %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_ticket_stats_awaiting_agent) %></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= hd_stats_minutes(totals[:first_response_mean]) %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_stats_avg_first_response) %>
+        <em>(<%= l(:label_helpdesk_stats_median) %> <%= hd_stats_minutes(totals[:first_response_median]) %>, n=<%= totals[:first_response_count] %>)</em></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= hd_stats_minutes(totals[:resolution_mean]) %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_stats_avg_resolution) %>
+        <em>(<%= l(:label_helpdesk_stats_median) %> <%= hd_stats_minutes(totals[:resolution_median]) %>, n=<%= totals[:resolution_count] %>)</em></span>
+    </div>
+    <div class="hd-stats-tile">
+      <span class="hd-stats-num"><%= hd_ticket_stats_pct(totals[:one_touch_ratio]) %></span>
+      <span class="hd-stats-lbl"><%= l(:label_helpdesk_ticket_stats_one_touch) %>
+        <em>(<%= totals[:one_touch] %> <%= l(:label_helpdesk_ticket_stats_of_closed) %>)</em></span>
+    </div>
+  </div>
+
+  <%# --- Volume --- %>
+  <h3><%= l(:label_helpdesk_stats_volume) %></h3>
+  <div class="hd-chart-box"><canvas id="hd-chart-volume"></canvas></div>
+
+  <%# --- First response / resolution over time --- %>
+  <h3><%= l(:label_helpdesk_stats_avg_over_time) %></h3>
+  <div class="hd-chart-box"><canvas id="hd-chart-avg"></canvas></div>
+
+  <%# --- Time in status --- %>
+  <h3><%= l(:label_helpdesk_ticket_stats_time_in_status) %></h3>
+  <% statuses = @stats[:statuses] %>
+  <% dwell = statuses.select { |s| s[:dwell_count] > 0 } %>
+  <% if dwell.any? %>
+    <div class="hd-chart-box" style="height: <%= [120, 40 * dwell.size + 60].max %>px;"><canvas id="hd-chart-status"></canvas></div>
+  <% end %>
+  <table class="list hd-stats-table">
+    <thead>
+      <tr>
+        <th><%= l(:label_helpdesk_ticket_stats_status) %></th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_passed_through) %></th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_initial) %></th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_currently_in) %></th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_segments) %></th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_mean) %></th>
+        <th class="num"><%= l(:label_helpdesk_stats_median) %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% statuses.each do |s| %>
+        <tr class="<%= cycle('odd', 'even') %><%= s[:closed] ? ' closed' : '' %>">
+          <td><%= hd_ticket_stats_status_name(s) %></td>
+          <td class="num"><%= s[:tickets] %></td>
+          <td class="num"><%= s[:initial] %></td>
+          <td class="num"><%= s[:current] %></td>
+          <td class="num"><%= s[:dwell_count] %></td>
+          <td class="num"><%= hd_stats_minutes(s[:dwell_mean]) %></td>
+          <td class="num"><%= hd_stats_minutes(s[:dwell_median]) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <p class="hd-stats-muted"><%= l(:text_helpdesk_ticket_stats_dwell_note) %></p>
+
+  <%# --- Conversation length --- %>
+  <% conv = @stats[:conversation] %>
+  <h3><%= l(:label_helpdesk_ticket_stats_conversation) %></h3>
+  <div class="hd-chart-box hd-chart-box-sm"><canvas id="hd-chart-conversation"></canvas></div>
+  <p class="hd-stats-muted">
+    <strong><%= l(:label_helpdesk_ticket_stats_incoming) %>:</strong>
+    Ø <%= conv[:incoming_mean] %> (<%= l(:label_helpdesk_stats_median) %> <%= conv[:incoming_median] %>) ·
+    <strong><%= l(:label_helpdesk_ticket_stats_agent_replies) %>:</strong>
+    Ø <%= conv[:replies_mean] %> (<%= l(:label_helpdesk_stats_median) %> <%= conv[:replies_median] %>) ·
+    <strong><%= l(:label_helpdesk_ticket_stats_automated) %>:</strong> <%= conv[:automated_total] %> ·
+    <strong><%= l(:label_helpdesk_ticket_stats_one_touch) %>:</strong>
+    <%= conv[:one_touch] %> (<%= hd_ticket_stats_pct(conv[:one_touch_ratio]) %> <%= l(:label_helpdesk_ticket_stats_of_closed) %>)
+  </p>
+
+  <%# --- Per agent --- %>
+  <h3><%= l(:label_helpdesk_ticket_stats_by_agent) %></h3>
+  <table class="list hd-stats-table">
+    <thead>
+      <tr>
+        <th><%= l(:label_helpdesk_ticket_stats_agent) %></th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_assigned) %></th>
+        <th class="num"><%= l(:label_helpdesk_stats_open) %></th>
+        <th class="num"><%= l(:label_helpdesk_stats_closed) %></th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_replies) %></th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_closed_by) %></th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_first_response) %> (<%= l(:label_helpdesk_stats_median) %>)</th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_resolution) %> (<%= l(:label_helpdesk_stats_median) %>)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @stats[:agents].each do |a| %>
+        <tr class="<%= cycle('odd', 'even') %>">
+          <td><%= hd_ticket_stats_principal(a) %></td>
+          <td class="num"><%= a[:assigned] %></td>
+          <td class="num"><%= a[:open] %></td>
+          <td class="num"><%= a[:closed] %></td>
+          <td class="num"><%= a[:replies] %></td>
+          <td class="num"><%= a[:closed_by] %></td>
+          <td class="num"><%= hd_stats_minutes(a[:first_response_median]) %><% if a[:first_response_count] > 0 %> <em class="hd-stats-muted">(n=<%= a[:first_response_count] %>)</em><% end %></td>
+          <td class="num"><%= hd_stats_minutes(a[:resolution_median]) %><% if a[:resolution_count] > 0 %> <em class="hd-stats-muted">(n=<%= a[:resolution_count] %>)</em><% end %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <p class="hd-stats-muted"><%= l(:text_helpdesk_ticket_stats_assigned_note) %></p>
+
+  <%# --- Per customer --- %>
+  <h3><%= l(:label_helpdesk_ticket_stats_by_customer) %></h3>
+  <table class="list hd-stats-table">
+    <thead>
+      <tr>
+        <th><%= l(:label_helpdesk_ticket_stats_customer) %></th>
+        <th><%= l(:label_helpdesk_ticket_stats_company) %></th>
+        <th class="num"><%= l(:label_helpdesk_stats_tickets) %></th>
+        <th class="num"><%= l(:label_helpdesk_stats_open) %></th>
+        <th class="num"><%= l(:label_helpdesk_stats_closed) %></th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_incoming) %></th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_replies) %></th>
+        <th class="num"><%= l(:label_helpdesk_ticket_stats_resolution) %> (<%= l(:label_helpdesk_stats_median) %>)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @stats[:customers].each do |c| %>
+        <tr class="<%= cycle('odd', 'even') %>">
+          <td><%= hd_ticket_stats_customer(c) %><% if c[:email].present? && c[:name].present? %><br><span class="hd-stats-muted"><%= c[:email] %></span><% end %></td>
+          <td><%= c[:company] %></td>
+          <td class="num"><%= c[:tickets] %></td>
+          <td class="num"><%= c[:open] %></td>
+          <td class="num"><%= c[:closed] %></td>
+          <td class="num"><%= c[:incoming] %></td>
+          <td class="num"><%= c[:replies] %></td>
+          <td class="num"><%= hd_stats_minutes(c[:resolution_median]) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <p class="hd-stats-muted"><%= l(:text_helpdesk_ticket_stats_top_customers, :n => RedmineExpertHelpdesk::TicketStatistics::TOP_CUSTOMERS) %></p>
+
+  <%# --- Busiest times --- %>
+  <div class="hd-stats-busy">
+    <div class="hd-stats-busy-col">
+      <h3><%= l(:label_helpdesk_stats_busiest_hours) %></h3>
+      <div class="hd-chart-box"><canvas id="hd-chart-hours"></canvas></div>
+    </div>
+    <div class="hd-stats-busy-col">
+      <h3><%= l(:label_helpdesk_stats_busiest_weekdays) %></h3>
+      <div class="hd-chart-box"><canvas id="hd-chart-weekdays"></canvas></div>
+    </div>
+  </div>
+
+  <%
+    chart_data = {
+      :labels => {
+        :created       => l(:label_helpdesk_stats_created),
+        :closed        => l(:label_helpdesk_stats_closed),
+        :firstResponse => l(:label_helpdesk_ticket_stats_first_response),
+        :resolution    => l(:label_helpdesk_ticket_stats_resolution),
+        :median        => l(:label_helpdesk_stats_median),
+        :tickets       => l(:label_helpdesk_stats_tickets),
+        :hours         => l(:label_helpdesk_stats_busiest_hours),
+        :weekdays      => l(:label_helpdesk_stats_busiest_weekdays)
+      },
+      :volume => {
+        :labels  => @stats[:volume].map { |b| b[:label] },
+        :created => @stats[:volume].map { |b| b[:created] },
+        :closed  => @stats[:volume].map { |b| b[:closed] }
+      },
+      :avgTrend => {
+        :labels        => @stats[:avg_trend].map { |b| b[:label] },
+        :firstResponse => @stats[:avg_trend].map { |b| b[:first_response] },
+        :resolution    => @stats[:avg_trend].map { |b| b[:resolution] }
+      },
+      :statusDwell => {
+        :labels => dwell.map { |s| hd_ticket_stats_status_name(s) },
+        :median => dwell.map { |s| s[:dwell_median] },
+        :mean   => dwell.map { |s| s[:dwell_mean] },
+        :count  => dwell.map { |s| s[:dwell_count] }
+      },
+      :conversation => {
+        :labels => conv[:buckets].map { |b| hd_ticket_stats_conversation_bucket_label(b[:key]) },
+        :data   => conv[:buckets].map { |b| b[:tickets] }
+      },
+      :busiestHours    => { :labels => (0..23).map { |h| format('%02d', h) }, :data => @stats[:busiest_hours] },
+      :busiestWeekdays => { :labels => (1..7).map { |i| hd_stats_weekday_name(i) }, :data => @stats[:busiest_weekdays] }
+    }
+  %>
+  <script type="application/json" id="hd-ticket-stats-data"><%= raw json_escape(chart_data.to_json) %></script>
+<% end %>

@@ -1,27 +1,25 @@
 /*
- * SLA-Statistik: rendert die Diagramme mit Chart.js (lokal gebundelt).
- * Daten kommen aus einem JSON-Insel-Element (#hd-sla-stats-data), es wird kein
- * inline ausfuehrbares Script benoetigt (CSP-freundlich).
+ * Ticket statistics: renders the charts with Chart.js (bundled locally).
+ * Data comes from a JSON island (#hd-ticket-stats-data), no inline executable
+ * script is needed (CSP friendly). Structure mirrors helpdesk_sla_stats.js.
  *
- * Beschriftungen: mengenbasierte Diagramme (Volumen/Stoßzeiten) zeigen absolute
- * Anzahlen auf den Balken (Prozente im Tooltip); die SLA-Erfüllung zeigt die
- * Erfüllungsquote (met%) als 0–100%-Balken. So entstehen keine irrefuehrenden
- * "100%" wenn alle Daten in einem Bucket/Segment liegen.
+ * Count based charts (volume, conversation length, busiest times) show absolute
+ * numbers on the bars and percentages in the tooltip; duration charts (trend,
+ * time in status) format minutes as "Xh Ym".
  */
 (function () {
   'use strict';
 
   var COLORS = {
-    created:  '#6ba36b', closed: '#9aa7b5',
-    reaction: '#4a90c7', solution: '#7d5ba6',
-    met:      '#5aa35a', breached: '#c0504d',
-    bar:      '#4a90c7', grid: 'rgba(0,0,0,0.06)'
+    created: '#6ba36b', closed: '#9aa7b5',
+    first:   '#4a90c7', resolution: '#7d5ba6',
+    bar:     '#4a90c7', dwell: '#e0a458', grid: 'rgba(0,0,0,0.06)'
   };
 
   var HAS_DL = typeof ChartDataLabels !== 'undefined';
 
   function readData() {
-    var el = document.getElementById('hd-sla-stats-data');
+    var el = document.getElementById('hd-ticket-stats-data');
     if (!el) { return null; }
     try { return JSON.parse(el.textContent); } catch (e) { return null; }
   }
@@ -33,7 +31,7 @@
 
   function plugins() { return HAS_DL ? [ChartDataLabels] : []; }
 
-  // Tooltip: "Label: Wert (P%)" relativ zur Datensatz-Summe.
+  // Tooltip: "Label: value (P%)" relative to the dataset sum.
   function tipDatasetPct(item) {
     var sum = item.chart.data.datasets[item.datasetIndex].data.reduce(function (a, b) { return a + (b || 0); }, 0);
     var p = sum ? Math.round(item.raw / sum * 100) : 0;
@@ -55,11 +53,18 @@
     };
   }
 
-  // Datalabels: absolute Anzahl ueber dem Balken (nur wenn > 0).
+  // Datalabels: absolute count above the bar (only when > 0).
   function countLabels() {
     return { anchor: 'end', align: 'end', offset: 0, clamp: true, display: 'auto',
              color: '#555', font: { size: 10, weight: 'bold' },
              formatter: function (v) { return v > 0 ? v : ''; } };
+  }
+
+  function fmtMinutes(m) {
+    if (m == null) { return '–'; }
+    m = Math.round(m);
+    var h = Math.floor(m / 60), r = m % 60;
+    return h > 0 ? (h + 'h ' + r + 'm') : (r + 'm');
   }
 
   function renderVolume(d) {
@@ -86,7 +91,7 @@
     var c = ctx('hd-chart-avg');
     if (!c || !d.avgTrend) { return; }
     var o = baseOptions();
-    o.plugins.datalabels = { display: false }; // Dauer, kein Prozent
+    o.plugins.datalabels = { display: false };
     o.plugins.tooltip = { callbacks: { label: function (i) { return i.dataset.label + ': ' + fmtMinutes(i.parsed.y); } } };
     o.scales.y.ticks = { precision: 0, callback: function (v) { return fmtMinutes(v); } };
     new Chart(c, {
@@ -95,47 +100,41 @@
       data: {
         labels: d.avgTrend.labels,
         datasets: [
-          { label: d.labels.reaction, data: d.avgTrend.reaction, borderColor: COLORS.reaction,
-            backgroundColor: COLORS.reaction, tension: 0.3, spanGaps: true, pointRadius: 3 },
-          { label: d.labels.solution, data: d.avgTrend.solution, borderColor: COLORS.solution,
-            backgroundColor: COLORS.solution, tension: 0.3, spanGaps: true, pointRadius: 3 }
+          { label: d.labels.firstResponse, data: d.avgTrend.firstResponse, borderColor: COLORS.first,
+            backgroundColor: COLORS.first, tension: 0.3, spanGaps: true, pointRadius: 3 },
+          { label: d.labels.resolution, data: d.avgTrend.resolution, borderColor: COLORS.resolution,
+            backgroundColor: COLORS.resolution, tension: 0.3, spanGaps: true, pointRadius: 3 }
         ]
       },
       options: o
     });
   }
 
-  // SLA-Erfuellung als Erfuellungsquote je Uhr (met% ueber abgeschlossene Uhren,
-  // 0–100%). Kein "100% wenn nur ein Segment" mehr; Tooltip zeigt die Anzahlen.
-  function renderCompliance(d) {
-    var c = ctx('hd-chart-compliance');
-    if (!c || !d.compliance) { return; }
-    var keys   = ['reaction', 'solution'];
-    var labels = [d.labels.reaction, d.labels.solution];
-    var ratio  = keys.map(function (k) {
-      var x = d.compliance[k], done = (x.met || 0) + (x.breached || 0);
-      return done ? Math.round(x.met / done * 1000) / 10 : null;
-    });
+  // Median time in status as horizontal bars; tooltip adds mean and the number
+  // of completed stays.
+  function renderStatusDwell(d) {
+    var c = ctx('hd-chart-status');
+    if (!c || !d.statusDwell || !d.statusDwell.labels.length) { return; }
+    var s = d.statusDwell;
     var o = baseOptions();
     o.indexAxis = 'y';
     o.plugins.legend = { display: false };
     o.plugins.datalabels = {
-      anchor: 'end', align: 'end', offset: 4, clamp: true, color: '#333', font: { weight: 'bold' },
-      formatter: function (v, c2) { var p = ratio[c2.dataIndex]; return p == null ? '–' : p + '%'; }
+      anchor: 'end', align: 'end', offset: 4, clamp: true, color: '#333', font: { size: 10, weight: 'bold' },
+      formatter: function (v) { return fmtMinutes(v); }
     };
     o.plugins.tooltip = { callbacks: { label: function (i) {
-      var x = d.compliance[keys[i.dataIndex]];
-      return d.labels.met + ': ' + (x.met || 0) + ' · ' + d.labels.breached + ': ' + (x.breached || 0);
+      var k = i.dataIndex;
+      return d.labels.median + ': ' + fmtMinutes(s.median[k]) + ' · Ø ' + fmtMinutes(s.mean[k]) + ' · n=' + s.count[k];
     } } };
-    o.scales.x = { beginAtZero: true, max: 100, grid: { color: COLORS.grid }, ticks: { callback: function (v) { return v + '%'; } } };
+    o.scales.x = { beginAtZero: true, grid: { color: COLORS.grid }, ticks: { precision: 0, callback: function (v) { return fmtMinutes(v); } } };
     o.scales.y = { grid: { display: false } };
     new Chart(c, {
       type: 'bar',
       plugins: plugins(),
       data: {
-        labels: labels,
-        datasets: [{ label: d.labels.met, data: ratio.map(function (p) { return p == null ? 0 : p; }),
-                     backgroundColor: COLORS.met, borderRadius: 3 }]
+        labels: s.labels,
+        datasets: [{ label: d.labels.median, data: s.median, backgroundColor: COLORS.dwell, borderRadius: 3 }]
       },
       options: o
     });
@@ -156,20 +155,16 @@
     });
   }
 
-  function fmtMinutes(m) {
-    if (m == null) { return '–'; }
-    m = Math.round(m);
-    var h = Math.floor(m / 60), r = m % 60;
-    return h > 0 ? (h + 'h ' + r + 'm') : (r + 'm');
-  }
-
   function init() {
     if (typeof Chart === 'undefined') { return; }
     var d = readData();
     if (!d) { return; }
     renderVolume(d);
     renderAvg(d);
-    renderCompliance(d);
+    renderStatusDwell(d);
+    if (d.conversation) {
+      renderBars('hd-chart-conversation', d.conversation.labels, d.conversation.data, d.labels.tickets);
+    }
     if (d.busiestHours) {
       renderBars('hd-chart-hours', d.busiestHours.labels, d.busiestHours.data, d.labels.hours);
     }
@@ -178,8 +173,8 @@
     }
   }
 
-  // Zeitraum-Presets nach ungefaehrer Spanne (Tage) und sinnvoller Default je
-  // Gruppierung, damit z. B. "Tag" nicht ein ganzes Jahr an Tagesbalken zeigt.
+  // Range presets by approximate span (days) and a sensible default per
+  // grouping, so "day" does not show a whole year of daily bars.
   var RANGE_SPAN = {
     last_7_days: 7, last_30_days: 30, last_90_days: 90,
     last_6_months: 182, last_12_months: 365, last_5_years: 1825
@@ -195,8 +190,8 @@
     var range  = form.querySelector('#hd-stats-range');
     var custom = document.getElementById('hd-stats-custom-dates');
 
-    // Datumsfelder nur im Modus "Benutzerdefiniert" zeigen; sonst deaktivieren,
-    // damit keine veralteten Datumswerte mitgesendet werden.
+    // Date fields only in "custom" mode; disabled otherwise so no stale dates
+    // are submitted.
     function toggleCustom() {
       var isCustom = !!(range && range.value === 'custom');
       if (!custom) { return; }
@@ -208,8 +203,6 @@
     if (range) { range.addEventListener('change', toggleCustom); }
     toggleCustom();
 
-    // Beim Gruppierungswechsel breite Presets auf ein passendes Fenster
-    // verengen; engere Auswahl und "Benutzerdefiniert" bleiben unangetastet.
     if (period && range) {
       period.addEventListener('change', function () {
         if (range.value === 'custom') { return; }

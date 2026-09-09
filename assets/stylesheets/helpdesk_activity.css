@@ -61,6 +61,12 @@ tr.issue.hd-awaiting td:first-child { box-shadow: inset 3px 0 0 #e0a800; }
 .hd-stats-busy { display: flex; flex-wrap: wrap; gap: 24px; }
 .hd-stats-busy-col { flex: 1 1 320px; min-width: 0; }
 
+/* Ticket statistics: tables and the time-basis note */
+.hd-stats-table th.num, .hd-stats-table td.num { text-align: right; white-space: nowrap; }
+.hd-stats-table td.num em { font-style: normal; }
+.hd-stats-note { margin: -0.6em 0 1em; }
+.hd-stats-basis { margin-left: 8px; }
+
 /*
  * Aktivitaets-Feed-Richtungsicons: ab Redmine 6 werden sie als SVG-Sprite gerendert
  * (activity_event_type_icon -> sprite_icon aus assets/icons.svg, fill="currentColor").

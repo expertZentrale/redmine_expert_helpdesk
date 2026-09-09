@@ -8,6 +8,38 @@
 
 ## [Unreleased]
 
+### Added
+
+- **"Ticket statistics" tab per project.** A third statistics page next to SLA and AI
+  statistics, available for every helpdesk project — SLA or not — and unlocked by the new
+  member permission **View ticket statistics** (`view_helpdesk_ticket_statistics`), meant for a
+  "helpdesk manager" role; without it the tab is hidden and the page answers 403. It covers
+  helpdesk tickets (issues with a ticket-info row) created in the selected period: ticket
+  volume, average/median first response and resolution, **time in status** (only statuses that
+  actually occur; completed stays plus the tickets currently sitting there), reopen counts,
+  tickets awaiting a response, **conversation length** (incoming mails per ticket, agent
+  replies, automatic mails, share of tickets solved with a single reply), a **per-agent**
+  table (assigned/open/closed, replies, closures, first-response and resolution medians) and a
+  **per-customer** table (top 20 contacts), plus busiest hours and weekdays. Durations are
+  calendar time; with SLA enabled a **time basis** switch shows the same figures in the
+  project's business hours. Charts use the bundled Chart.js, no CDN.
+
+### Changed
+
+- **The first reaction is recorded for every helpdesk ticket, not only under SLA.** A public
+  agent note or a customer reply mail now sets `first_response_at` on the ticket-info row
+  regardless of the project's SLA switch; only the business-minute figure, the deadlines, the
+  breach mails and the SLA chips remain SLA features. Without SLA no ticket-info row is created
+  for this — the timestamp only lands on tickets that already are helpdesk tickets. No backfill:
+  tickets of non-SLA projects answered before this version show no first-response figure.
+- Bucketing, mean/median/percentile and the busiest-hours histograms of the statistics pages
+  now live in one shared `StatisticsSupport` module; the filter form is a shared partial.
+
+### Fixed
+
+- **SLA statistics no longer count reopened tickets as closed.** Redmine keeps `closed_on`
+  after a reopen; the page now derives "closed" from the current status.
+
 ## [0.7.2] - 2026-09-08
 
 ### Fixed

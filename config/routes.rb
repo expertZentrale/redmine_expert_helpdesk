@@ -55,6 +55,9 @@ RedmineApp::Application.routes.draw do
     # SLA-Statistik je Projekt (nur sichtbar/erreichbar bei aktivem SLA)
     resources :helpdesk_sla_statistics, :only => [:index]
 
+    # Ticket statistics per project (member permission view_helpdesk_ticket_statistics)
+    resources :helpdesk_ticket_statistics, :only => [:index]
+
     # KI-Statistik je Projekt (nur mit globaler Berechtigung view_helpdesk_ai_statistics)
     resources :helpdesk_ai_statistics, :only => [:index]
 

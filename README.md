@@ -100,6 +100,13 @@ see [Tests](#tests).
   tab** shows KPIs and interactive, responsive charts (Chart.js, bundled locally —
   no CDN) for ticket volume, compliance, average/median response and resolution
   times, and busiest hours/weekdays, groupable by day/week/month/year.
+- **Ticket statistics**: A project **"Ticket statistics" tab** for every helpdesk
+  project, SLA or not, behind its own member permission (*View ticket statistics*,
+  for a "helpdesk manager" role): ticket volume, first response and resolution
+  times, time spent in each status, reopens, tickets awaiting a response,
+  conversation length (mails per ticket, agent replies, one-reply resolutions),
+  per-agent and per-customer tables, busiest hours/weekdays. Calendar time, or
+  the project's business hours when SLA is enabled.
 - **Phishing detection (PhishTank + Phishing.Database)**: Optional per-project check of incoming
   mail links against a local mirror of the PhishTank database and optionally
   the Phishing.Database community feed (downloaded periodically, interval
@@ -163,6 +170,14 @@ filtered by it.
 
 ![Ticket list with the additional columns Customer, SLA reaction and SLA solution, the SLA
 cells shown as green, red and blue status chips](docs/screenshots/en/09-issue-list.png)
+
+### Ticket statistics
+
+How the team works its tickets, for every helpdesk project — with or without SLA.
+
+![Ticket statistics dashboard: key figures for tickets, open, closed, reopened, awaiting
+response, first response and resolution, ticket volume, time in status, conversation
+length and tables per agent and per customer](docs/screenshots/en/11-ticket-dashboard.png)
 
 ### AI usage statistics
 
@@ -1453,6 +1468,8 @@ roles:
 | Send customer replies | Reply form + contact autocomplete + initial mail |
 | View helpdesk info | Info bar and sidebar on the ticket page |
 | Manage contacts | Customer list and customer profile |
+| View SLA statistics | The project's "SLA statistics" tab (shown when SLA is enabled) |
+| View ticket statistics | The project's "Ticket statistics" tab (member roles only, e.g. a "helpdesk manager" role) |
 
 No additional gems required (Ruby standard library only).
 
@@ -1663,6 +1680,6 @@ kept intact in the shipped files.
 | [chartjs-plugin-datalabels](https://chartjs-plugin-datalabels.netlify.app) | 2.2.0 | MIT | `assets/javascripts/chartjs-plugin-datalabels.min.js` |
 
 Both are served locally from the plugin's assets — no CDN request is made at runtime. They are only
-loaded on the SLA statistics and AI statistics pages.
+loaded on the SLA, ticket and AI statistics pages.
 
 No additional Ruby gems are required (Ruby standard library only).

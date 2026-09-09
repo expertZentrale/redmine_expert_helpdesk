@@ -102,6 +102,14 @@ siehe [Tests](#tests).
   responsive Diagramme (Chart.js, lokal gebundelt — kein CDN) für Ticketvolumen,
   Erfüllung, Ø-/Median-Reaktions- und -Lösungszeiten sowie Stoßzeiten nach
   Stunde/Wochentag, gruppierbar nach Tag/Woche/Monat/Jahr.
+- **Ticket-Statistik**: Ein Projekt-Reiter **„Ticket-Statistik"** für jedes
+  Helpdesk-Projekt, mit oder ohne SLA, hinter einer eigenen Mitglieds-Berechtigung
+  (*Ticket-Statistik ansehen*, für eine Rolle „Helpdesk-Manager“): Ticketvolumen,
+  Erstreaktions- und Lösungszeiten, Verweildauer je Status, Wiedereröffnungen,
+  Tickets mit ausstehender Antwort, Gesprächslänge (Mails je Ticket, Antworten
+  der Mitarbeiter, mit einer Antwort gelöste Tickets), Tabellen je Mitarbeiter und
+  je Kunde, Stoßzeiten nach Stunde/Wochentag. In Kalenderzeit oder – bei aktivem
+  SLA – in den Geschäftszeiten des Projekts.
 - **Phishing-Erkennung (PhishTank + Phishing.Database)**: Optionale, pro Projekt aktivierbare
   Prüfung der Links eingehender Mails gegen einen lokalen Spiegel der
   PhishTank-Datenbank und optional des Phishing.Database-Community-Feeds
@@ -167,6 +175,14 @@ sortieren und filtern.
 ![Ticketliste mit den zusätzlichen Spalten Kunde, SLA Reaktion und SLA Lösung, wobei die
 SLA-Zellen als grüne, rote und blaue Status-Chips dargestellt
 sind](docs/screenshots/de/09-issue-list.png)
+
+### Ticket-Statistik
+
+Wie das Team seine Tickets bearbeitet – für jedes Helpdesk-Projekt, mit oder ohne SLA.
+
+![Ticket-Statistik: Kennzahlen zu Tickets, offen, geschlossen, wiedereröffnet, Antwort
+ausstehend, Erstreaktion und Lösung, Ticketvolumen, Verweildauer je Status, Gesprächslänge
+sowie Tabellen je Mitarbeiter und je Kunde](docs/screenshots/de/11-ticket-dashboard.png)
 
 ### KI-Nutzungsstatistik
 
@@ -1522,6 +1538,8 @@ den Rollen zuordnen:
 | Kundenantworten senden | Antwortformular + Kontakt-Autocomplete |
 | Kundeninformationen anzeigen | Info-Leiste und Seitenleiste auf der Ticketseite |
 | Kontakte verwalten | Kundenliste und Kundenprofil |
+| SLA-Statistik ansehen | Der Reiter „SLA-Statistik“ des Projekts (bei aktivem SLA) |
+| Ticket-Statistik ansehen | Der Reiter „Ticket-Statistik“ des Projekts (nur Mitglieds-Rollen, z. B. „Helpdesk-Manager“) |
 
 Keine zusätzlichen Gems erforderlich (nur Ruby-Standardbibliothek).
 
@@ -1736,6 +1754,6 @@ bleiben in den ausgelieferten Dateien erhalten.
 | [chartjs-plugin-datalabels](https://chartjs-plugin-datalabels.netlify.app) | 2.2.0 | MIT | `assets/javascripts/chartjs-plugin-datalabels.min.js` |
 
 Beide werden lokal aus den Plugin-Assets ausgeliefert — zur Laufzeit erfolgt **kein** CDN-Aufruf.
-Geladen werden sie nur auf den Seiten der SLA- und der KI-Statistik.
+Geladen werden sie nur auf den Seiten der SLA-, der Ticket- und der KI-Statistik.
 
 Zusätzliche Ruby-Gems werden nicht benötigt (nur die Ruby-Standardbibliothek).
