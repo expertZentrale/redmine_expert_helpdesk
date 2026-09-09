@@ -44,7 +44,7 @@ module RedmineExpertHelpdesk
     ].freeze
 
     TicketRow  = Struct.new(:id, :created_on, :closed_on, :status_id, :assigned_to_id, :author_id,
-                            :first_response_at, :reaction_minutes, :solution_minutes,
+                            :first_response_at, :first_response_by_id, :reaction_minutes, :solution_minutes,
                             :awaiting_agent_since, :contact_id)
     MessageRow = Struct.new(:issue_id, :direction, :journal_id, :message_id, :at)
     JournalRow = Struct.new(:id, :issue_id, :user_id, :created_on, :private_notes, :has_notes,
@@ -180,11 +180,16 @@ module RedmineExpertHelpdesk
       timeline = status_timeline(ticket.created_on, ticket.status_id, transitions)
       segment_minutes = timeline.segments.map { |sid, from, to| [sid, duration.call(from, to) || 0] }
 
+      # Who reacted first: the user recorded with the timestamp; older rows fall
+      # back to the user of the first agent reply journal.
+      first_by = ticket.first_response_by_id || replies.first&.user_id
+      first_by = nil if first_by == anonymous_id
+
       TicketMetrics.new(
         ticket.id, ticket.created_on, closed, closed_on, ticket.assigned_to_id, ticket.contact_id,
         !ticket.awaiting_agent_since.nil?, first_response, resolution,
         kinds.count(:incoming), replies.size, kinds.count(:automated), !agent_created,
-        replies.first&.user_id, replies.map(&:user_id), closed_by,
+        first_by, replies.map(&:user_id), closed_by,
         reopen_count(transitions, closed_ids), timeline, segment_minutes
       )
     end
@@ -244,7 +249,8 @@ module RedmineExpertHelpdesk
     # Rows keyed by principal id (nil = unassigned, always last). Assigned/open/
     # closed/resolution follow the current assignee, replies and closed_by the
     # journal user (closed_by only when a status journal names one), first
-    # response the user of the first agent reply.
+    # response the user recorded with first_response_at (fallback: the user of
+    # the first agent reply).
     def self.agent_table(metrics)
       rows = Hash.new do |h, k|
         h[k] = { :principal_id => k, :assigned => 0, :open => 0, :closed => 0, :replies => 0,
@@ -353,7 +359,8 @@ module RedmineExpertHelpdesk
            .where(in_scope, *scope_args)
            .pluck("#{issues_t}.id", "#{issues_t}.created_on", "#{issues_t}.closed_on",
                   "#{issues_t}.status_id", "#{issues_t}.assigned_to_id", "#{issues_t}.author_id",
-                  'ti.first_response_at', 'ti.reaction_business_minutes', 'ti.solution_business_minutes',
+                  'ti.first_response_at', 'ti.first_response_by_id',
+                  'ti.reaction_business_minutes', 'ti.solution_business_minutes',
                   'ti.awaiting_agent_since',
                   Arel.sql(RedmineExpertHelpdesk::Patches::IssueQueryPatch::HELPDESK_CUSTOMER_CONTACT_ID_SQL))
            .map { |r| TicketRow.new(*r) }

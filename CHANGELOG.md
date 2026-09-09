@@ -32,6 +32,9 @@
   breach mails and the SLA chips remain SLA features. Without SLA no ticket-info row is created
   for this — the timestamp only lands on tickets that already are helpdesk tickets. No backfill:
   tickets of non-SLA projects answered before this version show no first-response figure.
+  The acting user is stored alongside as `first_response_by_id` (migration 049), so the per-agent
+  first-response figures do not depend on the note being saved after a reply mail; existing rows
+  are backfilled from the public note written at the recorded moment where one exists.
 - Bucketing, mean/median/percentile and the busiest-hours histograms of the statistics pages
   now live in one shared `StatisticsSupport` module; the filter form is a shared partial.
 

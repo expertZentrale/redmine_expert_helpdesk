@@ -303,8 +303,9 @@ nested registration would never fire in production.
   from `IssueStatus#is_closed` (Redmine keeps `issues.closed_on` after a reopen), builds time-in-status
   from `journal_details` status changes and keeps every fold a DB-free class method
   (`test/unit/ticket_statistics_test.rb`). **First response is recorded regardless of SLA**
-  (`Sla.record_first_response!` only *creates* the ticket-info row under SLA); deadlines, breach mails
-  and chips stay SLA-gated.
+  (`Sla.record_first_response!` only *creates* the ticket-info row under SLA) together with the acting
+  user (`first_response_by_id`, migration 049) — the reply mail and the note are two requests, so the
+  per-agent figure must not depend on the journal; deadlines, breach mails and chips stay SLA-gated.
 - **`phish*.rb` / `phishing_scanner.rb`** — download PhishTank + Phishing.Database feeds into
   a local `HelpdeskPhishingUrl` mirror; scan incoming links (decoding Microsoft SafeLinks
   locally). On hit: neutralize (warn banner + journal note) or quarantine, per project.

@@ -19,7 +19,7 @@ class TicketStatisticsTest < ActiveSupport::TestCase
   def ticket(**attrs)
     defaults = { :id => 1, :created_on => T0, :closed_on => nil, :status_id => NEW,
                  :assigned_to_id => AGENT, :author_id => CUSTOMER, :first_response_at => nil,
-                 :reaction_minutes => nil, :solution_minutes => nil, :awaiting_agent_since => nil,
+                 :first_response_by_id => nil, :reaction_minutes => nil, :solution_minutes => nil, :awaiting_agent_since => nil,
                  :contact_id => 100 }
     TS::TicketRow.new(*defaults.merge(attrs).values_at(*TS::TicketRow.members))
   end
@@ -145,6 +145,19 @@ class TicketStatisticsTest < ActiveSupport::TestCase
     m = fold(t)
     assert_equal 30, m.first_response_minutes
     assert_equal 60, m.resolution_minutes
+  end
+
+  def test_first_response_by_prefers_recorded_user_over_journal
+    t = ticket(:first_response_at => T0 + 60, :first_response_by_id => AGENT2)
+    m = fold(t, [journal(1, T0 + 120, AGENT)])
+    assert_equal AGENT2, m.first_reply_user_id
+    assert_equal 1, m.first_response_minutes
+
+    m = fold(ticket(:first_response_at => T0 + 60), [journal(1, T0 + 120, AGENT)])
+    assert_equal AGENT, m.first_reply_user_id, 'falls back to the first agent reply'
+
+    m = fold(ticket(:first_response_at => T0 + 60, :first_response_by_id => ANON))
+    assert_nil m.first_reply_user_id
   end
 
   def test_anonymous_close_is_unattributed
