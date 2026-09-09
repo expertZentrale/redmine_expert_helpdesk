@@ -6,18 +6,20 @@
 # Buckets/"Stosszeiten" in lokaler Serverzeit (konsistent mit SlaStatistics).
 #
 # Liefert reine Ruby-Datenstrukturen (to_h) ohne Rendering-Logik, damit die
-# Aggregation isoliert testbar bleibt. Bucketing/Mittelwerte werden aus
-# SlaStatistics wiederverwendet.
+# Aggregation isoliert testbar bleibt. Bucketing/Mittelwerte kommen aus
+# StatisticsSupport.
 module RedmineExpertHelpdesk
   class AiUsageStatistics
-    PERIODS = SlaStatistics::PERIODS
+    include StatisticsSupport
+
+    PERIODS = StatisticsSupport::PERIODS
 
     Row = Struct.new(:id, :request_type, :provider, :model,
                      :input_tokens, :output_tokens, :duration_ms, :success, :error_class, :created_at)
 
     def initialize(project, period: 'month', date_from: nil, date_to: nil)
       @project = project
-      @period  = PERIODS.include?(period.to_s) ? period.to_s : 'month'
+      @period  = StatisticsSupport.normalize_period(period)
       @date_to   = date_to   || Date.current
       @date_from = date_from || (@date_to - 30)
       @date_from, @date_to = @date_to, @date_from if @date_from > @date_to
@@ -68,7 +70,7 @@ module RedmineExpertHelpdesk
         :input_tokens  => input,
         :output_tokens => output,
         :total_tokens  => input + output,
-        :avg_latency_ms => SlaStatistics.mean(durations),
+        :avg_latency_ms => mean(durations),
         :p95_latency_ms => percentile(durations, 95),
         :summaries     => rows.count { |r| r.request_type == 'summary' },
         # Explicit prefix match: "everything that is not a summary" used to be the
@@ -126,16 +128,12 @@ module RedmineExpertHelpdesk
     end
 
     def busiest_hours(rows)
-      counts = Array.new(24, 0)
-      rows.each { |r| counts[local(r.created_at).hour] += 1 }
-      counts
+      StatisticsSupport.hour_histogram(rows.map(&:created_at))
     end
 
     # ISO-Wochentage 1=Mo .. 7=So.
     def busiest_weekdays(rows)
-      counts = Array.new(7, 0)
-      rows.each { |r| counts[((local(r.created_at).wday + 6) % 7)] += 1 }
-      counts
+      StatisticsSupport.weekday_histogram(rows.map(&:created_at))
     end
 
     # Zustaende der Wissensbasis-Eintraege des Projekts im Zeitraum.
@@ -146,44 +144,6 @@ module RedmineExpertHelpdesk
                  .where("created_at >= ? AND created_at < ?", @from_t, @to_t)
                  .group(:status).count
       base.merge(counts).transform_keys(&:to_sym)
-    end
-
-    # --- Buckets (wie SlaStatistics) ----------------------------------------
-
-    def local(time)
-      time.respond_to?(:getlocal) ? time.getlocal : time.to_time
-    end
-
-    def bucket_key(time)
-      SlaStatistics.bucket_key(time, @period)
-    end
-
-    def bucket_label(key)
-      @period == 'month' ? Date.strptime(key, '%Y-%m').strftime('%m/%Y') : key
-    end
-
-    def ordered_buckets
-      return @ordered_buckets if defined?(@ordered_buckets)
-
-      seen = {}
-      date = @date_from
-      while date <= @date_to
-        key = bucket_key(date.to_time)
-        seen[key] ||= bucket_label(key)
-        date += 1
-      end
-      @ordered_buckets = seen.to_a
-    end
-
-    # Lineare Interpolation (0..100). nil bei leerer Eingabe.
-    def percentile(arr, pct)
-      return nil if arr.empty?
-
-      sorted = arr.sort
-      rank   = pct / 100.0 * (sorted.size - 1)
-      lower  = sorted[rank.floor]
-      upper  = sorted[rank.ceil]
-      (lower + (upper - lower) * (rank - rank.floor)).round
     end
   end
 end

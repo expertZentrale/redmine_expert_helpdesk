@@ -8,7 +8,9 @@
 # Aggregation isoliert testbar bleibt.
 module RedmineExpertHelpdesk
   class SlaStatistics
-    PERIODS = %w[day week month year].freeze
+    include StatisticsSupport
+
+    PERIODS = StatisticsSupport::PERIODS
 
     # Eine ausgewertete Ticket-Zeile (Spalten-Reihenfolge = pluck unten).
     Row = Struct.new(:id, :created_on, :closed_on, :first_response_at,
@@ -18,7 +20,7 @@ module RedmineExpertHelpdesk
 
     def initialize(project, period: 'month', date_from: nil, date_to: nil)
       @project = project
-      @period  = PERIODS.include?(period.to_s) ? period.to_s : 'month'
+      @period  = StatisticsSupport.normalize_period(period)
       @date_to   = date_to   || Date.current
       @date_from = date_from || (@date_to - 30)
       @date_from, @date_to = @date_to, @date_from if @date_from > @date_to
@@ -50,6 +52,7 @@ module RedmineExpertHelpdesk
     def base_scope
       scope = Issue
                 .joins("INNER JOIN helpdesk_ticket_infos ti ON ti.issue_id = #{Issue.quoted_table_name}.id")
+        .joins("INNER JOIN #{IssueStatus.quoted_table_name} st ON st.id = #{Issue.quoted_table_name}.status_id")
                 .where(:project_id => @project.id)
       enabled_at = @setting.sla_enabled_at
       scope = scope.where("#{Issue.quoted_table_name}.created_on >= ?", enabled_at) if enabled_at
@@ -68,8 +71,15 @@ module RedmineExpertHelpdesk
                'ti.sla_reaction_due_at',
                'ti.sla_reaction_warn_at',
                'ti.sla_solution_due_at',
-               'ti.sla_solution_warn_at')
-        .map { |r| Row.new(*r) }
+               'ti.sla_solution_warn_at',
+               'st.is_closed')
+        .map do |*cols, closed|
+          row = Row.new(*cols)
+          # Redmine keeps closed_on after a reopen; only a currently closed
+          # status counts as closed here (same guard as Sla / IssuePatch).
+          row.closed_on = nil unless closed
+          row
+        end
     end
 
     def totals(rows)
@@ -156,18 +166,12 @@ module RedmineExpertHelpdesk
     end
 
     def busiest_hours
-      counts = Array.new(24, 0)
-      message_times.each { |t| counts[t.getlocal.hour] += 1 }
-      counts
+      StatisticsSupport.hour_histogram(message_times)
     end
 
     # ISO-Wochentage 1=Mo .. 7=So.
     def busiest_weekdays
-      counts = Array.new(7, 0)
-      message_times.each do |t|
-        counts[((t.getlocal.wday + 6) % 7)] += 1
-      end
-      counts
+      StatisticsSupport.weekday_histogram(message_times)
     end
 
     # Zeitpunkte eingehender Nachrichten SLA-relevanter Tickets im Zeitraum.
@@ -188,42 +192,11 @@ module RedmineExpertHelpdesk
                          .compact
     end
 
-    # --- Buckets ------------------------------------------------------------
+    # --- Buckets (Implementierung in StatisticsSupport) ----------------------
 
-    def bucket_key(time)
-      self.class.bucket_key(time, @period)
-    end
-
-    # Bucket-Schluessel eines Zeitpunkts in lokaler Zeit (Tag/Woche/Monat/Jahr).
+    # Klassenmethoden bleiben als Delegates erhalten (Tests, AiUsageStatistics).
     def self.bucket_key(time, period)
-      local = time.respond_to?(:getlocal) ? time.getlocal : time.to_time
-      case period
-      when 'day'  then local.strftime('%Y-%m-%d')
-      when 'week' then local.strftime('%G-W%V')
-      when 'year' then local.strftime('%Y')
-      else             local.strftime('%Y-%m')
-      end
-    end
-
-    def bucket_label(key)
-      case @period
-      when 'month' then Date.strptime(key, '%Y-%m').strftime('%m/%Y')
-      else key
-      end
-    end
-
-    # Geordnete Liste aller Buckets im Zeitraum (inkl. leerer), als [key, label].
-    def ordered_buckets
-      return @ordered_buckets if defined?(@ordered_buckets)
-
-      seen = {}
-      date = @date_from
-      while date <= @date_to
-        key = bucket_key(date.to_time)
-        seen[key] ||= bucket_label(key)
-        date += 1
-      end
-      @ordered_buckets = seen.to_a
+      StatisticsSupport.bucket_key(time, period)
     end
 
     # --- Ausgabe-Helfer ------------------------------------------------------
@@ -239,26 +212,12 @@ module RedmineExpertHelpdesk
       Sla.clock_status_from(r.solution_due_at, r.solution_warn_at, r.closed_on)
     end
 
-    def mean(arr)
-      self.class.mean(arr)
-    end
-
-    def median(arr)
-      self.class.median(arr)
-    end
-
     def self.mean(arr)
-      return nil if arr.empty?
-
-      (arr.sum.to_f / arr.size).round
+      StatisticsSupport.mean(arr)
     end
 
     def self.median(arr)
-      return nil if arr.empty?
-
-      sorted = arr.sort
-      mid = sorted.size / 2
-      sorted.size.odd? ? sorted[mid] : ((sorted[mid - 1] + sorted[mid]) / 2.0).round
+      StatisticsSupport.median(arr)
     end
   end
 end
