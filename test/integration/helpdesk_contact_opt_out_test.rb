@@ -55,6 +55,18 @@ class HelpdeskContactOptOutTest < Redmine::IntegrationTest
     assert_equal false, @contact.reload.info_request_opt_out?
   end
 
+  # An agent's decision has to be datable afterwards - the contact API hands out
+  # updated_on, and a flag written past the timestamp is invisible there.
+  def test_toggle_updates_the_timestamp
+    @contact.update_columns(:updated_at => 3.days.ago)
+    before = @contact.reload.updated_at
+
+    post "/projects/#{@project.identifier}/helpdesk_contacts/#{@contact.id}/toggle_info_request"
+
+    assert @contact.reload.updated_at > before,
+           'toggling the flag must bump updated_at'
+  end
+
   # Reading the customer info is not permission enough to change this.
   def test_toggle_denied_without_manage_permission
     Role.find(1).remove_permission!(:manage_helpdesk_contacts)

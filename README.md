@@ -973,8 +973,10 @@ an attachment reports no size at all, it is kept rather than discarded.
   *never ask* link next to the customer — one click, no detour through the customer list, and it
   returns to the ticket you were reading. Flagged customers show a *no follow-up* tag there and in
   the customer list (with *ask again* next to it), so a missing follow-up never looks like a broken
-  check. The link needs the *Manage customers* permission and is only offered while the check is
-  actually running in that project; the tag itself is visible to everyone.
+  check. Changing the flag needs the *Manage customers* permission — on the ticket, on the
+  contact form and over the API alike. The ticket link is additionally only *shown* while the check
+  is running in that project, so nobody is offered a switch that currently does nothing; the tag
+  itself is visible to everyone.
 
 **Safety properties worth knowing:**
 

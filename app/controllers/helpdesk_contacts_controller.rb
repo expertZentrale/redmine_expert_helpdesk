@@ -104,9 +104,18 @@ class HelpdeskContactsController < ApplicationController
   # header bar. The same flag as the checkbox on the edit form - agents meet this
   # decision on a Veeam report they are looking at, not in the customer list, and a
   # detour through the form loses the ticket they came from.
+  #
+  # Saved rather than written with update_column: this is an agent's decision, and
+  # updated_on is what a later reader (and the API) has to tell it happened.
   def toggle_info_request
-    @contact.update_column(:info_request_opt_out, !@contact.info_request_opt_out?)
-    flash[:notice] = l(:notice_successful_update)
+    @contact.info_request_opt_out = !@contact.info_request_opt_out?
+    if @contact.save
+      flash[:notice] = l(:notice_successful_update)
+    else
+      # A legacy row that cannot satisfy the validations must not 500 an agent who
+      # only clicked a toggle.
+      flash[:error] = @contact.errors.full_messages.join(', ')
+    end
     redirect_back_or_default helpdesk_contacts_path(:project_id => @project)
   end
 

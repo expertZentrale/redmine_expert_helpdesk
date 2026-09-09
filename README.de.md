@@ -1016,8 +1016,10 @@ weiterhin. Meldet ein Anhang gar keine Größe, wird er behalten statt verworfen
   neben dem Kunden den Link *nie fragen* — ein Klick, kein Umweg über die Kundenliste, und man
   landet wieder im gelesenen Ticket. Markierte Kunden tragen dort und in der Kundenliste die
   Kennzeichnung *keine Rückfrage* (im Ticket mit *wieder fragen* daneben), damit eine ausbleibende
-  Rückfrage nicht wie ein Fehler aussieht. Der Link setzt das Recht *Kunden verwalten* voraus und
-  erscheint nur, solange die Prüfung im Projekt tatsächlich läuft; die Kennzeichnung sieht jeder.
+  Rückfrage nicht wie ein Fehler aussieht. Das Setzen des Schalters setzt überall das Recht
+  *Kunden verwalten* voraus — im Ticket, im Kundenformular und über die API. Der Link im Ticket
+  wird zusätzlich nur *angezeigt*, solange die Prüfung im Projekt läuft, damit niemand einen
+  Schalter angeboten bekommt, der gerade nichts bewirkt; die Kennzeichnung sieht jeder.
 
 **Wichtige Sicherheitseigenschaften:**
 
