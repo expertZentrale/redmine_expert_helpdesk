@@ -88,7 +88,7 @@
     var o = baseOptions();
     o.plugins.datalabels = { display: false }; // Dauer, kein Prozent
     o.plugins.tooltip = { callbacks: { label: function (i) { return i.dataset.label + ': ' + fmtMinutes(i.parsed.y); } } };
-    o.scales.y.ticks = { callback: function (v) { return fmtMinutes(v); } };
+    o.scales.y.ticks = { precision: 0, callback: function (v) { return fmtMinutes(v); } };
     new Chart(c, {
       type: 'line',
       plugins: plugins(),

@@ -231,6 +231,18 @@ REPLIES = [
 # (created_on / updated_on on Issue and Journal, created_at / updated_at on the
 # plugin's own tables). update_all does. Everything that backdates a record goes
 # through these two helpers.
+# Status change as Redmine journals it (journal + journal_details row), backdated,
+# so the ticket statistics' time-in-status and "closed by" figures have history.
+def status_journal!(issue, user, at, old_status_id, new_status_id)
+  j = Journal.new(journalized: issue, user: user)
+  j.notify = false
+  j.details << JournalDetail.new(property: 'attr', prop_key: 'status_id',
+                                 old_value: old_status_id.to_s, value: new_status_id.to_s)
+  j.save!
+  backdate!(Journal, j.id, created_on: at)
+  j
+end
+
 def backdate_issue!(issue, attrs)
   Issue.where(id: issue.id).update_all(attrs)
 end
@@ -321,6 +333,9 @@ ISSUE_COUNT.times do |i|
     info.solution_business_minutes = sol_min
 
     backdate_issue!(issue, status_id: status_closed.id, closed_on: closed_at, updated_on: closed_at)
+    wip_at = info.first_response_at || (created + 1.hour)
+    status_journal!(issue, agents.sample, wip_at, status_new.id, status_wip.id) if wip_at < closed_at
+    status_journal!(issue, agents.sample, closed_at, status_wip.id, status_closed.id)
   else
     # Open tickets: leave a believable spread of running / warning / breached clocks.
     if rand < 0.55
@@ -331,6 +346,7 @@ ISSUE_COUNT.times do |i|
     # Mix the open statuses so the ticket list is not a wall of one value.
     open_status = i.even? ? status_wip : status_new
     backdate_issue!(issue, status_id: open_status.id, updated_on: created + 1.hour)
+    status_journal!(issue, agents.sample, created + 1.hour, status_new.id, status_wip.id) if open_status == status_wip
   end
 
   info.save!

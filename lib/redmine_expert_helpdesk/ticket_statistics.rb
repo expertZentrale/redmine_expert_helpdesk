@@ -243,7 +243,8 @@ module RedmineExpertHelpdesk
 
     # Rows keyed by principal id (nil = unassigned, always last). Assigned/open/
     # closed/resolution follow the current assignee, replies and closed_by the
-    # journal user, first response the user of the first agent reply.
+    # journal user (closed_by only when a status journal names one), first
+    # response the user of the first agent reply.
     def self.agent_table(metrics)
       rows = Hash.new do |h, k|
         h[k] = { :principal_id => k, :assigned => 0, :open => 0, :closed => 0, :replies => 0,
@@ -255,7 +256,9 @@ module RedmineExpertHelpdesk
         row[m.closed ? :closed : :open] += 1
         row[:resolution] << m.resolution_minutes if m.resolution_minutes
         m.reply_user_ids.each { |uid| rows[uid][:replies] += 1 }
-        rows[m.closed_by_user_id][:closed_by] += 1 if m.closed_by_user_id || m.closed
+        # Closures are attributed only when a journal names the user; a close by
+        # anonymous (mail keyword) or without status history stays unattributed.
+        rows[m.closed_by_user_id][:closed_by] += 1 if m.closed_by_user_id
         if m.first_response_minutes && m.first_reply_user_id
           rows[m.first_reply_user_id][:first_response] << m.first_response_minutes
         end

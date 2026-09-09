@@ -93,7 +93,7 @@
     var o = baseOptions();
     o.plugins.datalabels = { display: false };
     o.plugins.tooltip = { callbacks: { label: function (i) { return i.dataset.label + ': ' + fmtMinutes(i.parsed.y); } } };
-    o.scales.y.ticks = { callback: function (v) { return fmtMinutes(v); } };
+    o.scales.y.ticks = { precision: 0, callback: function (v) { return fmtMinutes(v); } };
     new Chart(c, {
       type: 'line',
       plugins: plugins(),
@@ -127,7 +127,7 @@
       var k = i.dataIndex;
       return d.labels.median + ': ' + fmtMinutes(s.median[k]) + ' · Ø ' + fmtMinutes(s.mean[k]) + ' · n=' + s.count[k];
     } } };
-    o.scales.x = { beginAtZero: true, grid: { color: COLORS.grid }, ticks: { callback: function (v) { return fmtMinutes(v); } } };
+    o.scales.x = { beginAtZero: true, grid: { color: COLORS.grid }, ticks: { precision: 0, callback: function (v) { return fmtMinutes(v); } } };
     o.scales.y = { grid: { display: false } };
     new Chart(c, {
       type: 'bar',
