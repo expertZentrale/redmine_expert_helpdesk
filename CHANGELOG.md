@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-09
+
 ### Added
 
 - **"Never ask this customer for more information" per contact.** The completeness check gets a

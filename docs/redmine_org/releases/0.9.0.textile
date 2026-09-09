@@ -1,0 +1,13 @@
+h3. Added
+
+* *"Never ask this customer for more information" per customer.* The completeness check already had a per-project list of senders it must never follow up on. That list needs an administrator and an address known in advance — but the Veeam job report, the monitoring alert or the cron mail is usually recognised by whoever is looking at the ticket it just produced. There is now a flag on the customer itself, and the ticket header carries it: one click on *never ask* next to the customer name, and you are back on the ticket you were reading. The same flag is a checkbox on the customer form and writable through the REST API as @info_request_opt_out@ on @helpdesk_contact@. Flagged customers are marked *no follow-up* in the ticket header and in the customer list, with *ask again* next to it — a follow-up that never went out therefore never looks like a broken check. Tickets from those senders are still created and still evaluated; only the mail to the customer is suppressed, in the rule-based and the AI mode alike. Setting the flag requires the *Manage customers* permission; the marker is visible to everyone.
+
+h3. Fixed
+
+* *"Never ask these senders" is editable in the AI mode again.* The field sat in the rule-based part of the project settings, which the mode switch hides as soon as the check runs on AI. The list still applied — the check reads it in both modes — it was simply invisible and could not be maintained there, which is worse than a missing field: entries made in the rule-based mode kept working with nothing on screen to say so. The field has moved next to the follow-up templates, which both modes share.
+
+h3. Upgrade notes
+
+One migration runs on upgrade (050). It adds @info_request_opt_out@ to @helpdesk_contacts@ with the default @false@, so no customer changes behaviour and no configuration is required: every customer keeps being asked exactly as before until somebody flags one.
+
+The *never ask* link in the ticket header is shown to members with the *Manage customers* permission, and only while the completeness check is actually running in that project — no new permission is introduced.

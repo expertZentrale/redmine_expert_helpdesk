@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-09
+
 ### Hinzugefügt
 
 - **„Nie nach weiteren Informationen fragen“ je Kunde.** Die Vollständigkeitsprüfung bekommt einen
