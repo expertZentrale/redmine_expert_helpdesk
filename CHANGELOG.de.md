@@ -7,6 +7,43 @@
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Reiter „Ticket-Statistik“ je Projekt.** Eine dritte Statistikseite neben SLA- und
+  KI-Statistik, verfügbar für jedes Helpdesk-Projekt — mit oder ohne SLA — und freigeschaltet
+  über die neue Mitglieds-Berechtigung **Ticket-Statistik ansehen**
+  (`view_helpdesk_ticket_statistics`), gedacht für eine Rolle „Helpdesk-Manager“; ohne sie ist
+  der Reiter unsichtbar und die Seite antwortet mit 403. Ausgewertet werden Helpdesk-Tickets
+  (Vorgänge mit Ticket-Info-Zeile), die im gewählten Zeitraum erstellt wurden: Ticketvolumen,
+  Ø/Median von Erstreaktion und Lösung, **Verweildauer je Status** (nur tatsächlich genutzte
+  Status; abgeschlossene Aufenthalte plus die aktuell dort stehenden Tickets), Wiedereröffnungen,
+  Tickets mit ausstehender Antwort, **Gesprächslänge** (eingehende Mails je Ticket, Antworten
+  der Mitarbeiter, automatische Mails, Anteil der mit einer Antwort gelösten Tickets), eine
+  Tabelle **je Mitarbeiter** (zugewiesen/offen/geschlossen, Antworten, Abschlüsse, Mediane von
+  Erstreaktion und Lösung) und eine Tabelle **je Kunde** (Top 20 Kontakte), dazu Stoßzeiten nach
+  Stunde und Wochentag. Zeitangaben in Kalenderzeit; bei aktivem SLA schaltet eine
+  **Zeitbasis**-Auswahl dieselben Kennzahlen auf die Geschäftszeiten des Projekts um. Diagramme
+  über das mitgelieferte Chart.js, kein CDN.
+
+### Geändert
+
+- **Die Erstreaktion wird für jedes Helpdesk-Ticket festgehalten, nicht nur bei SLA.** Ein
+  öffentlicher Mitarbeiter-Kommentar oder eine Kundenantwort-Mail setzt `first_response_at` auf
+  der Ticket-Info-Zeile jetzt unabhängig vom SLA-Schalter des Projekts; nur die
+  Geschäftsminuten, die Fälligkeiten, die Überschreitungs-Mails und die SLA-Chips bleiben
+  SLA-Funktionen. Ohne SLA wird dafür keine Ticket-Info-Zeile angelegt — der Zeitstempel landet
+  nur auf Tickets, die bereits Helpdesk-Tickets sind. Kein Backfill: Tickets von Projekten ohne
+  SLA, die vor dieser Version beantwortet wurden, zeigen keine Erstreaktionszeit.
+- Bucketing, Mittelwert/Median/Perzentil und die Stoßzeiten-Histogramme der Statistikseiten
+  liegen jetzt in einem gemeinsamen Modul `StatisticsSupport`; das Filterformular ist ein
+  gemeinsames Partial.
+
+### Behoben
+
+- **Die SLA-Statistik zählt wiedereröffnete Tickets nicht mehr als geschlossen.** Redmine behält
+  `closed_on` nach einer Wiedereröffnung; die Seite leitet „geschlossen“ jetzt vom aktuellen
+  Status ab.
+
 ## [0.7.2] - 2026-09-08
 
 ### Behoben

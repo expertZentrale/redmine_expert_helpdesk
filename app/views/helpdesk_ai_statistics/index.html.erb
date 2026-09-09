@@ -6,28 +6,12 @@
 
 <h2><%= l(:label_helpdesk_ai_statistics) %></h2>
 
-<%= form_tag helpdesk_ai_statistics_path(:project_id => @project), :method => :get,
-             :class => 'hd-stats-filter' do %>
-  <label><%= l(:label_helpdesk_stats_group_by) %>:
-    <%= select_tag :period,
-          options_for_select(
-            RedmineExpertHelpdesk::AiUsageStatistics::PERIODS.map { |p| [l("label_helpdesk_stats_#{p}"), p] },
-            @period), :id => 'hd-stats-period' %>
-  </label>
-  <label><%= l(:label_helpdesk_stats_range) %>:
-    <%= select_tag :range,
-          options_for_select(
-            HelpdeskAiStatisticsController::RANGES.map { |r| [l("label_helpdesk_stats_range_#{r}"), r] },
-            @range), :id => 'hd-stats-range' %>
-  </label>
-  <span id="hd-stats-custom-dates"<%= @range == 'custom' ? '' : raw(' style="display:none;"') %>>
-    <label><%= l(:label_helpdesk_stats_from) %>:
-      <%= date_field_tag :date_from, @date_from.iso8601 %></label>
-    <label><%= l(:label_helpdesk_stats_to) %>:
-      <%= date_field_tag :date_to, @date_to.iso8601 %></label>
-  </span>
-  <%= submit_tag l(:button_apply), :name => nil %>
-<% end %>
+<%= render :partial => 'helpdesk/stats_filter',
+           :locals => { :path => helpdesk_ai_statistics_path(:project_id => @project),
+                        :periods => RedmineExpertHelpdesk::AiUsageStatistics::PERIODS,
+                        :ranges => HelpdeskAiStatisticsController::RANGES,
+                        :period => @period, :range => @range,
+                        :date_from => @date_from, :date_to => @date_to } %>
 
 <% totals = @stats[:totals] %>
 <% if totals[:requests] == 0 %>

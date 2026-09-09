@@ -163,6 +163,11 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
     permission :view_helpdesk_sla_statistics, {
       :helpdesk_sla_statistics => [:index]
     }, :read => true
+    # Ticket statistics (per agent / per customer figures): member roles only,
+    # meant for a "helpdesk manager" role.
+    permission :view_helpdesk_ticket_statistics, {
+      :helpdesk_ticket_statistics => [:index]
+    }, :require => :member
   end
 
   # Globale Berechtigung fuer die KI-Statistik (Kostenrisiko der KI-Funktionen).
@@ -191,6 +196,15 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
            HelpdeskProjectSetting.for_project(p).sla_enabled?
        }
 
+  # Ticket statistics tab: helpdesk module enabled; the permission check is done
+  # by the menu manager from the controller/action mapping (like the SLA tab).
+  menu :project_menu, :helpdesk_ticket_statistics,
+       { :controller => 'helpdesk_ticket_statistics', :action => 'index' },
+       :caption  => :label_helpdesk_ticket_statistics,
+       :after    => :helpdesk_sla_statistics,
+       :param    => :project_id,
+       :if       => Proc.new { |p| p.module_enabled?(:helpdesk) }
+
   # AI statistics tab: visible with the helpdesk module enabled, at least one of the AI/KB
   # features switched on globally (the page reports both kinds of request, so either one alone
   # makes it meaningful), and the global view_helpdesk_ai_statistics permission (role "ai-admin").
@@ -198,7 +212,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
   menu :project_menu, :helpdesk_ai_statistics,
        { :controller => 'helpdesk_ai_statistics', :action => 'index' },
        :caption  => :label_helpdesk_ai_statistics,
-       :after    => :helpdesk_sla_statistics,
+       :after    => :helpdesk_ticket_statistics,
        :param    => :project_id,
        :if       => Proc.new { |p|
          p.module_enabled?(:helpdesk) &&

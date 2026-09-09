@@ -214,6 +214,14 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     `kb_proposal_display`; `HelpdeskKnowledgeController` for manual approve/ingest). Migrations 030–032.
     pgvector needs `gem 'pg'` in the deployment (kept out of `PluginGemfile`).
   - `business_hours.rb` / `sla.rb` / `sla_breach_check.rb` — SLA in *business minutes*.
+    **First response is recorded regardless of SLA** (`Sla.record_first_response!` only
+    *creates* the ticket-info row under SLA); deadlines, breach mails and chips stay SLA-gated.
+  - `statistics_support.rb` / `sla_statistics.rb` / `ticket_statistics.rb` / `ai_usage_statistics.rb` —
+    the three statistics tabs: pluck flat rows into Structs, fold in Ruby, `to_h` returns pure
+    hashes; bucketing/mean/median/histograms from the shared `StatisticsSupport` mixin, filter form
+    in `app/views/helpdesk/_stats_filter.html.erb`. `TicketStatistics` derives "closed" from
+    `IssueStatus#is_closed` (Redmine keeps `closed_on` after a reopen) and builds time-in-status
+    from `journal_details`; every fold is a DB-free class method.
   - `phish*.rb` / `phishing_scanner.rb` — PhishTank + Phishing.Database mirror, link scanning
     (decodes Microsoft SafeLinks locally), neutralize/quarantine.
   - `hooks.rb` — `ViewListener` view hooks (customer sidebar card, ticket-header info bar, reply
@@ -233,9 +241,11 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
   `/helpdesk/oauth/callback` is unchanged. Zeitwerk also derives constants with its default
   inflector — `oauth_token_provider.rb` must define `OauthTokenProvider`, not `OAuthTokenProvider`.
 - **`app/`** — standard Rails MVC. Controllers map to permissions in `init.rb`'s
-  `project_module :helpdesk` block. Key: `helpdesk_fetch`, `helpdesk_replies` (largest —
-  MIME / CID inline images / transport choice), `helpdesk_mailboxes`, `helpdesk_contacts`,
-  `helpdesk_init`, `helpdesk_project_settings`.
+  `project_module :helpdesk` block (`view_helpdesk_ticket_statistics` is `:require => :member`,
+  meant for a "helpdesk manager" role; `view_helpdesk_ai_statistics` is global). Key:
+  `helpdesk_fetch`, `helpdesk_replies` (largest — MIME / CID inline images / transport choice),
+  `helpdesk_mailboxes`, `helpdesk_contacts`, `helpdesk_init`, `helpdesk_project_settings`,
+  `helpdesk_sla_statistics` / `helpdesk_ticket_statistics` / `helpdesk_ai_statistics`.
 - **`app/models/`** — `HelpdeskMailbox`, `HelpdeskContact`, `HelpdeskMessage` (in/out/init log +
   `.eml`, powers the activity feed), `HelpdeskRule`, `HelpdeskProjectSetting`,
   `HelpdeskSlaPriority`, `HelpdeskTicketInfo`, `HelpdeskPhishingUrl`.
