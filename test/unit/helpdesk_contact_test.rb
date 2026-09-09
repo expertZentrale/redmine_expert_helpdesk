@@ -61,4 +61,23 @@ class HelpdeskContactTest < ActiveSupport::TestCase
     contact_b = HelpdeskContact.find_or_create_for('shared@example.de', 'Project B', project_b)
     assert_not_equal contact_a.id, contact_b.id
   end
+
+  # -----------------------------------------------------------------------
+  # info_request_opt_out (completeness check)
+  # -----------------------------------------------------------------------
+
+  # Opt-in: an auto-created contact is asked for missing information as before.
+  def test_info_request_opt_out_defaults_to_false
+    contact = HelpdeskContact.find_or_create_for('fresh@example.de', nil, nil)
+    assert_equal false, contact.reload.info_request_opt_out?
+  end
+
+  # Agents set the flag through the contact form, which goes through
+  # safe_attributes - an unlisted attribute would be dropped silently there.
+  def test_info_request_opt_out_is_writable_through_safe_attributes
+    contact = HelpdeskContact.find_or_create_for('robot@example.de', nil, nil)
+    contact.safe_attributes = { 'info_request_opt_out' => '1' }
+    contact.save!
+    assert_equal true, contact.reload.info_request_opt_out?
+  end
 end

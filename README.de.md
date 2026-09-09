@@ -995,7 +995,8 @@ weiterhin. Meldet ein Anhang gar keine Größe, wird er behalten statt verworfen
   `X-Autoreply`/`X-Autorespond`/`X-Autoresponder`), werden auch ohne Eintrag übersprungen –
   Unzustellbarkeitsberichte (NDR) dagegen nicht, denn ein Bounce ist etwas, worauf das Plugin
   reagieren muss. Die Prüfung läuft vor der Regelauswertung, der KI-Modus verbraucht dafür also
-  keinen Token.
+  keinen Token. Das Feld wird in beiden Modi angezeigt — es greift bei der KI-Prüfung genauso wie
+  bei der regelbasierten.
 - **Prompt-Modus** für die KI-Prüfung — erben / erweitern / ersetzen, genau wie beim Prompt der
   KI-Zusammenfassung.
 - **Betreff / Text** — optionale Übersteuerung der zentralen Vorlagen je Projekt.
@@ -1004,6 +1005,21 @@ weiterhin. Meldet ein Anhang gar keine Größe, wird er behalten statt verworfen
   unberührt.
 - **Status nach der Rückfrage** — optional; leer lässt den Status unverändert. **Angeboten werden
   nur offene Status**, siehe den SLA-Hinweis unten.
+
+**Je Kunde** (*Projekt → Kunden → Kunde bearbeiten*):
+- **Nie nach weiteren Informationen fragen** — dieselbe Entscheidung wie die Absenderliste, nur
+  dort getroffen, wo sie auffällt. Wer als Bearbeiter einen Veeam-Bericht als Ticket sieht, setzt
+  den Haken bei diesem Kunden, statt einen Administrator um eine Projekteinstellung zu bitten.
+  Tickets entstehen weiterhin und werden weiterhin bewertet; unterdrückt wird nur die Rückfragemail.
+  Über die REST-API als `info_request_opt_out` schreibbar.
+- **Derselbe Schalter sitzt direkt im Ticket.** Die Helpdesk-Leiste in der Ticket-Kopfzeile trägt
+  neben dem Kunden den Link *nie fragen* — ein Klick, kein Umweg über die Kundenliste, und man
+  landet wieder im gelesenen Ticket. Markierte Kunden tragen dort und in der Kundenliste die
+  Kennzeichnung *keine Rückfrage* (im Ticket mit *wieder fragen* daneben), damit eine ausbleibende
+  Rückfrage nicht wie ein Fehler aussieht. Das Setzen des Schalters setzt überall das Recht
+  *Kunden verwalten* voraus — im Ticket, im Kundenformular und über die API. Der Link im Ticket
+  wird zusätzlich nur *angezeigt*, solange die Prüfung im Projekt läuft, damit niemand einen
+  Schalter angeboten bekommt, der gerade nichts bewirkt; die Kennzeichnung sieht jeder.
 
 **Wichtige Sicherheitseigenschaften:**
 

@@ -149,10 +149,13 @@ class HelpdeskCompletenessJob < ActiveJob::Base
   end
 
   # Why this mail must not be answered, or nil when a human plausibly wrote it.
-  # Two independent signals, because neither covers the other: the project's list
-  # names the senders an admin already knows, the headers catch the ones nobody has
-  # entered yet.
+  # Three independent signals, because none covers the others: the contact flag
+  # holds what an agent marked on the customer, the project's list names the
+  # senders an admin already knows, and the headers catch the ones nobody has
+  # entered anywhere yet.
   def automated_sender_reason(setting, contact, message)
+    return "Kunde abgewaehlt: #{contact.email}" if contact.info_request_opt_out?
+
     entries = RedmineExpertHelpdesk::AutomatedMail.parse_list(setting.info_request_sender_blacklist)
     if entries.any? && RedmineExpertHelpdesk::AutomatedMail.list_matches?(entries, contact.email)
       return "Absender-Blacklist: #{contact.email}"

@@ -146,7 +146,7 @@ See the plugin `README` for these.
 
 Customers/contacts are **project-scoped** (the same email may exist once per
 project). `email` is required and is set only on **create** (immutable afterwards);
-`name`, `company`, `phone`, `notes` are writable.
+`name`, `company`, `phone`, `notes`, `info_request_opt_out` are writable.
 
 ### Endpoints
 
@@ -188,6 +188,7 @@ Response `200`:
       "company": "Acme",
       "phone": "+49 30 1234567",
       "notes": "VIP",
+      "info_request_opt_out": false,
       "project": { "id": 42 },
       "created_on": "2026-07-01T10:00:00Z",
       "updated_on": "2026-07-08T12:30:00Z"
@@ -219,6 +220,7 @@ Response `200` (XML):
   <company>Acme</company>
   <phone>+49 30 1234567</phone>
   <notes>VIP</notes>
+  <info_request_opt_out>false</info_request_opt_out>
   <project id="42"/>
   <created_on>2026-07-01T10:00:00Z</created_on>
   <updated_on>2026-07-08T12:30:00Z</updated_on>
@@ -238,6 +240,7 @@ Body — object key `helpdesk_contact`:
 | `company` | string | no | |
 | `phone` | string | no | |
 | `notes` | string | no | |
+| `info_request_opt_out` | boolean | no | `true` = the completeness check never mails this sender a follow-up. Default `false`. |
 
 ```bash
 curl -H "X-Redmine-API-Key: $KEY" -H "Content-Type: application/json" \
@@ -252,8 +255,8 @@ is blank or already exists in that project.
 
 `PUT /helpdesk/contacts/:id.{json,xml}`
 
-Body — `helpdesk_contact` with any of `name`, `company`, `phone`, `notes`
-(`email` is **ignored** on update).
+Body — `helpdesk_contact` with any of `name`, `company`, `phone`, `notes`,
+`info_request_opt_out` (`email` is **ignored** on update).
 
 ```bash
 curl -X PUT -H "X-Redmine-API-Key: $KEY" -H "Content-Type: application/json" \
@@ -808,6 +811,7 @@ or the backend rejected the connection. `sent_folder` is only present for IMAP m
 | `company` | string \| null | |
 | `phone` | string \| null | |
 | `notes` | string \| null | |
+| `info_request_opt_out` | boolean | `true` = excluded from the completeness follow-up (see the plugin README). |
 | `project` | object `{ id }` \| absent | Absent for global (project-less) contacts. |
 | `created_on` / `updated_on` | datetime (ISO 8601) | |
 

@@ -158,7 +158,8 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
     }, :require => :member
     permission :view_helpdesk_info, {}, :read => true
     permission :manage_helpdesk_contacts, {
-      :helpdesk_contacts => [:index, :edit, :update, :destroy, :autocomplete]
+      :helpdesk_contacts => [:index, :edit, :update, :destroy, :autocomplete,
+                             :toggle_info_request]
     }, :require => :member
     permission :view_helpdesk_sla_statistics, {
       :helpdesk_sla_statistics => [:index]

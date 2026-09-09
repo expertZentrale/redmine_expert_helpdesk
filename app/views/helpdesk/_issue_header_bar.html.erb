@@ -3,6 +3,7 @@
     Ausgehende Tickets (initiale Mail): Empfaenger (An/CC/BCC) und Sendezeitpunkt.
     Locals: issue, inbound (HelpdeskMessage|nil), outbound (HelpdeskMessage|nil), contact %>
 <% outbound = nil unless defined?(outbound) %>
+<% info_request_active = false unless defined?(info_request_active) %>
 <div class="helpdesk-issue-header">
   <span class="hih-from">
     <% recipients_tooltip = []
@@ -14,6 +15,35 @@
         edit_helpdesk_contact_path(contact, :project_id => issue.project),
         :title => l(:label_helpdesk_customer) %>
     (<%= mail_to contact.email, contact.email %>)
+    <%# "Never ask this customer for more information". The marker matters on its
+        own - without it the missing follow-up on a Veeam-style ticket looks like a
+        broken check - and the toggle sits here because this is where an agent
+        recognises the robot: on the ticket it just produced, not in the customer
+        list. Offered to whoever may edit contacts, and (when not yet set) only
+        while the check can run at all; the marker itself is shown to everybody. %>
+    <% may_toggle = User.current.allowed_to?(:manage_helpdesk_contacts, issue.project) %>
+    <% if contact.info_request_opt_out? %>
+      <span class="hih-addr-tag"
+            title="<%= h(l(:text_helpdesk_contact_info_request_opt_out_info)) %>"><%=
+        l(:label_helpdesk_contact_info_request_opt_out_short) %></span>
+      <% if may_toggle %>
+        <%= link_to hd_icon_label('email', "(#{l(:button_helpdesk_contact_info_request_resume)})"),
+              toggle_info_request_helpdesk_contact_path(contact,
+                :project_id => issue.project, :back_url => issue_path(issue)),
+              :method => :post,
+              :class  => 'icon icon-email hih-optout-toggle',
+              :title  => l(:text_helpdesk_contact_info_request_resume_info) %>
+      <% end %>
+    <% elsif may_toggle && info_request_active %>
+      <%# email-disabled says "no mail to this customer" at a glance; the word in
+          brackets stays, because an icon alone is guessed at, not read. %>
+      <%= link_to hd_icon_label('email-disabled', "(#{l(:button_helpdesk_contact_info_request_stop)})"),
+            toggle_info_request_helpdesk_contact_path(contact,
+              :project_id => issue.project, :back_url => issue_path(issue)),
+            :method => :post,
+            :class  => 'icon icon-email-disabled hih-optout-toggle',
+            :title  => l(:text_helpdesk_contact_info_request_opt_out_info) %>
+    <% end %>
   </span>
 
   <% if outbound %>
@@ -83,6 +113,9 @@
   border: 1px solid #c0d4ed;
 }
 a.hd-reply-btn { color: #2a7a2a !important; font-weight: bold; }
+a.hih-optout-toggle { font-size: 0.9em; }
+a.hih-optout-toggle .icon-label { text-decoration: underline; }
+a.hih-optout-toggle svg { vertical-align: text-bottom; }
 </style>
 
 <script>

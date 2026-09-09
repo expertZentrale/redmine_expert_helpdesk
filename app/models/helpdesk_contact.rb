@@ -15,7 +15,10 @@ class HelpdeskContact < HelpdeskApplicationRecord
   validates :email, :presence => true
   validates :email, :uniqueness => { :scope => :project_id, :case_sensitive => false }
 
-  safe_attributes 'name', 'company', 'phone', 'notes'
+  # info_request_opt_out marks a sender nobody could answer a follow-up for (Veeam
+  # job report, cron mail, monitoring alert). HelpdeskCompletenessJob reads it in
+  # both modes, next to the project-wide info_request_sender_blacklist.
+  safe_attributes 'name', 'company', 'phone', 'notes', 'info_request_opt_out'
 
   # Sucht oder erstellt einen Kontakt fuer die angegebene E-Mail-Adresse
   # im Kontext des angegebenen Projekts.

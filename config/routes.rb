@@ -44,6 +44,10 @@ RedmineApp::Application.routes.draw do
       collection do
         get :autocomplete
       end
+      member do
+        # One-click "never ask this customer" from the ticket header bar.
+        post :toggle_info_request
+      end
     end
 
     # Projekt-spezifische Helpdesk-Einstellungen (Antwort-Standardwerte)

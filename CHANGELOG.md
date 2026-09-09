@@ -8,6 +8,30 @@
 
 ## [Unreleased]
 
+### Added
+
+- **"Never ask this customer for more information" per contact.** The completeness check gets a
+  second, agent-operated way to keep a sender out: a checkbox on the customer itself
+  (*Project → Customers → edit*), next to the project-wide sender list an admin maintains. Whoever
+  sees a Veeam report, a monitoring alert or a cron mail land as a ticket flags that customer on
+  the spot instead of filing a request for a settings change. Tickets are still created and still
+  evaluated — only the follow-up mail is suppressed, in the rule-based and the AI mode alike.
+  Writable over the REST API as `info_request_opt_out` on `helpdesk_contact`. Migration 050.
+- **One-click "never ask" from the ticket.** The helpdesk bar in the ticket header carries the same
+  switch next to the customer, so the decision is taken where the robot is recognised — on the
+  ticket it just produced — without a detour through the customer list, and lands back on that
+  ticket. Flagged customers show a *no follow-up* tag there and in the customer list, with *ask
+  again* next to it; a missing follow-up therefore never reads as a broken check. The link requires
+  *Manage customers* and appears only while the check runs in that project; the tag is visible to
+  everyone.
+
+### Fixed
+
+- **"Never ask these senders" is now editable in the AI mode.** The field sat inside the
+  rule-based block of the project settings, which the mode switch hides when the check runs on AI —
+  the list still applied (the job reads it in both modes), it was just invisible and unmaintainable
+  there. It has moved next to the follow-up templates, which both modes share.
+
 ## [0.8.1] - 2026-09-09
 
 ### Added

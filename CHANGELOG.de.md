@@ -7,6 +7,32 @@
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **„Nie nach weiteren Informationen fragen“ je Kunde.** Die Vollständigkeitsprüfung bekommt einen
+  zweiten, von Bearbeitern bedienbaren Weg, einen Absender auszunehmen: ein Haken direkt am Kunden
+  (*Projekt → Kunden → bearbeiten*), neben der projektweiten Absenderliste, die ein Administrator
+  pflegt. Wer einen Veeam-Bericht, einen Monitoring-Alarm oder eine Cronjob-Mail als Ticket sieht,
+  markiert den Kunden sofort selbst, statt eine Änderung der Einstellungen anzufragen. Tickets
+  entstehen weiterhin und werden weiterhin bewertet — unterdrückt wird nur die Rückfragemail, im
+  regelbasierten wie im KI-Modus. Über die REST-API als `info_request_opt_out` am
+  `helpdesk_contact` schreibbar. Migration 050.
+- **„Nie fragen“ mit einem Klick aus dem Ticket.** Die Helpdesk-Leiste in der Ticket-Kopfzeile
+  trägt denselben Schalter neben dem Kunden — die Entscheidung fällt dort, wo der Automat auffällt:
+  im gerade erzeugten Ticket, ohne Umweg über die Kundenliste, und man landet wieder in diesem
+  Ticket. Markierte Kunden tragen dort und in der Kundenliste die Kennzeichnung *keine Rückfrage*,
+  daneben *wieder fragen*; eine ausbleibende Rückfrage wirkt damit nie wie ein Fehler. Der Link
+  setzt das Recht *Kunden verwalten* voraus und erscheint nur, solange die Prüfung im Projekt
+  läuft; die Kennzeichnung sieht jeder.
+
+### Behoben
+
+- **„Diese Absender nie fragen“ ist jetzt auch im KI-Modus bearbeitbar.** Das Feld lag im
+  regelbasierten Block der Projekteinstellungen, den die Modusumschaltung ausblendet, sobald die
+  Prüfung per KI läuft — die Liste griff weiterhin (der Job liest sie in beiden Modi), sie war dort
+  nur unsichtbar und nicht pflegbar. Es steht jetzt bei den Vorlagen der Rückfrage, die sich beide
+  Modi teilen.
+
 ## [0.8.1] - 2026-09-09
 
 ### Hinzugefügt
