@@ -85,7 +85,7 @@ siehe [Tests](#tests).
   und Mausnavigation, kommagetrennte Mehrfacheingabe). Display-Namen mit
   Komma werden automatisch RFC 2822-konform gequotet.
 - **Kontakte**: Absender werden automatisch als Kontakte gespeichert;
-  Kundenliste im Projekt (paginiert, konfigurierbare Einträge pro Seite),
+  Kundenliste im Projekt (paginiert, nach jeder Spalte sortierbar, konfigurierbare Einträge pro Seite),
   Kundeninfo-Panel mit früheren Tickets auf der Ticketseite. Die Ticketliste
   bietet sortierbare Spalten **„Kunde" und „Kunden-E-Mail"** sowie einen
   Kundenfilter auf Name oder E-Mail.

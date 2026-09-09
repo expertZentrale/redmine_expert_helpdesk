@@ -7,6 +7,14 @@
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Sortierbare Kundenliste und Statistik-Tabellen.** Die Kundenliste des Projekts sortiert über
+  die Spaltenköpfe nach jeder Spalte (Name, E-Mail, Firma, Telefon, Tickets, letztes Ticket),
+  serverseitig und über Seiten und Suche hinweg. Die drei Tabellen der Ticket-Statistik
+  (Verweildauer je Status, je Mitarbeiter, je Kunde) sortieren im Browser per Klick auf einen
+  Spaltenkopf; Dauern und Prozentwerte sortieren als Zahlen, leere Zellen zuletzt.
+
 ## [0.8.0] - 2026-09-09
 
 ### Hinzugefügt

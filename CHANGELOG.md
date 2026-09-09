@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Sortable customer list and statistics tables.** The project's customer list sorts by every
+  column (name, email, company, phone, ticket count, last ticket) through the column headers,
+  server-side and across pages and searches. The three tables of the ticket statistics (time in
+  status, per agent, per customer) sort in the browser by clicking a header; durations and
+  percentages sort as numbers, empty cells last.
+
 ## [0.8.0] - 2026-09-09
 
 ### Added

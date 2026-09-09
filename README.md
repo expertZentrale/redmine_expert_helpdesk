@@ -84,7 +84,7 @@ see [Tests](#tests).
   navigation, comma-separated multi-value). Display names containing commas
   are automatically quoted per RFC 2822.
 - **Contacts**: Senders are automatically saved as contacts; customer list in
-  the project (paginated, configurable entries per page), customer info panel
+  the project (paginated, sortable by every column, configurable entries per page), customer info panel
   with previous tickets on the ticket page. The issue list offers sortable
   **"Customer" and "Customer email" columns** plus a customer filter matching
   name or email.

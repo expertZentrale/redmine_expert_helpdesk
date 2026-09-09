@@ -7,12 +7,13 @@
     &nbsp;<% if @per_page == n %>
       <strong><%= n %></strong>
     <% else %>
-      <%= link_to n, helpdesk_contacts_path(:project_id => @project, :per_page => n, :search => @search.presence) %>
+      <%= link_to n, helpdesk_contacts_path(:project_id => @project, :per_page => n, :search => @search.presence, :sort => params[:sort].presence) %>
     <% end %>
   <% end %>
 </div>
 
 <%= form_tag helpdesk_contacts_path(:project_id => @project), :method => :get, :style => 'margin-bottom:0.8em;' do %>
+  <%= hidden_field_tag :sort, params[:sort] if params[:sort].present? %>
   <%= text_field_tag :search, @search, :size => 30, :placeholder => l(:label_helpdesk_contact_search) %>
   <%= submit_tag l(:button_apply), :name => nil %>
   <% if @search.present? %>
@@ -24,12 +25,12 @@
   <table class="list">
     <thead>
       <tr>
-        <th><%= l(:field_name) %></th>
-        <th><%= l(:label_helpdesk_email) %></th>
-        <th><%= l(:label_helpdesk_company) %></th>
-        <th><%= l(:label_helpdesk_phone) %></th>
-        <th><%= l(:label_helpdesk_ticket_count) %></th>
-        <th><%= l(:label_helpdesk_last_ticket) %></th>
+        <%= sort_header_tag('name', :caption => l(:field_name)) %>
+        <%= sort_header_tag('email', :caption => l(:label_helpdesk_email)) %>
+        <%= sort_header_tag('company', :caption => l(:label_helpdesk_company)) %>
+        <%= sort_header_tag('phone', :caption => l(:label_helpdesk_phone)) %>
+        <%= sort_header_tag('ticket_count', :caption => l(:label_helpdesk_ticket_count), :default_order => 'desc') %>
+        <%= sort_header_tag('last_ticket', :caption => l(:label_helpdesk_last_ticket), :default_order => 'desc') %>
         <th></th>
       </tr>
     </thead>
