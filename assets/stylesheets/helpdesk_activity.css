@@ -66,6 +66,9 @@ tr.issue.hd-awaiting td:first-child { box-shadow: inset 3px 0 0 #e0a800; }
 .hd-stats-table td.num em { font-style: normal; }
 .hd-stats-note { margin: -0.6em 0 1em; }
 .hd-stats-basis { margin-left: 8px; }
+.hd-stats-table th.hd-sortable { cursor: pointer; user-select: none; }
+.hd-stats-table th.hd-sort-asc::after { content: ' \25B4'; }
+.hd-stats-table th.hd-sort-desc::after { content: ' \25BE'; }
 
 /*
  * Aktivitaets-Feed-Richtungsicons: ab Redmine 6 werden sie als SVG-Sprite gerendert

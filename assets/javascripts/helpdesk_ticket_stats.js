@@ -215,8 +215,58 @@
     }
   }
 
+  // --- Sortable tables --------------------------------------------------------
+  // Click a header to sort the table by that column; numeric-looking cells
+  // ("22h 28m", "46m (n=1)", "100.0 %", "12") sort as numbers, "–" sorts last.
+  function cellValue(td) {
+    var t = (td.textContent || '').trim();
+    if (t === '' || t === '–') { return { n: null, s: '' }; }
+    var m = t.match(/^(?:(\d+)h\s*)?(\d+)m\b/);
+    if (m) { return { n: (parseInt(m[1] || '0', 10) * 60) + parseInt(m[2], 10), s: t }; }
+    m = t.match(/^-?\d+(?:[.,]\d+)?/);
+    if (m && /^-?\d+(?:[.,]\d+)?\s*(%|$)/.test(t)) { return { n: parseFloat(m[0].replace(',', '.')), s: t }; }
+    return { n: null, s: t.toLowerCase(), text: true };
+  }
+
+  function sortTable(table, col, dir) {
+    var tbody = table.tBodies[0];
+    if (!tbody) { return; }
+    var rows = Array.prototype.slice.call(tbody.rows);
+    rows.sort(function (a, b) {
+      var va = cellValue(a.cells[col]), vb = cellValue(b.cells[col]);
+      if (va.n == null && vb.n == null) { return va.s.localeCompare(vb.s) * dir; }
+      if (va.n == null) { return 1; }
+      if (vb.n == null) { return -1; }
+      return (va.n - vb.n) * dir;
+    });
+    rows.forEach(function (r, i) {
+      r.className = r.className.replace(/\b(odd|even)\b/g, '').trim() + (i % 2 ? ' even' : ' odd');
+      tbody.appendChild(r);
+    });
+  }
+
+  function wireSortableTables() {
+    Array.prototype.forEach.call(document.querySelectorAll('table.hd-stats-table'), function (table) {
+      var ths = table.tHead ? table.tHead.rows[0].cells : [];
+      Array.prototype.forEach.call(ths, function (th, col) {
+        th.classList.add('hd-sortable');
+        th.addEventListener('click', function () {
+          var numeric = th.classList.contains('num');
+          var wasAsc = th.classList.contains('hd-sort-asc');
+          var wasDesc = th.classList.contains('hd-sort-desc');
+          // numeric columns start descending, text columns ascending
+          var dir = wasAsc ? -1 : wasDesc ? 1 : (numeric ? -1 : 1);
+          Array.prototype.forEach.call(ths, function (h) { h.classList.remove('hd-sort-asc', 'hd-sort-desc'); });
+          th.classList.add(dir > 0 ? 'hd-sort-asc' : 'hd-sort-desc');
+          sortTable(table, col, dir);
+        });
+      });
+    });
+  }
+
   function boot() {
     wireFilter();
+    wireSortableTables();
     init();
   }
 

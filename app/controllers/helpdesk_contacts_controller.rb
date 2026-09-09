@@ -5,7 +5,29 @@ class HelpdeskContactsController < ApplicationController
   before_action :authorize
   before_action :find_contact, :only => [:edit, :update, :destroy]
 
+  helper :sort
+  include SortHelper
+
+  # Sortable columns of the customer list. Ticket count and last ticket are
+  # derived from the contact's messages (same definition as the list cells), so
+  # they sort through correlated subqueries.
+  TICKET_COUNT_SQL = "(SELECT COUNT(DISTINCT hm.issue_id) FROM helpdesk_messages hm" \
+                     " WHERE hm.helpdesk_contact_id = helpdesk_contacts.id)".freeze
+  LAST_TICKET_SQL  = "(SELECT MAX(hm.sent_at) FROM helpdesk_messages hm" \
+                     " WHERE hm.helpdesk_contact_id = helpdesk_contacts.id)".freeze
+  SORT_COLUMNS = {
+    'name'         => 'helpdesk_contacts.name',
+    'email'        => 'helpdesk_contacts.email',
+    'company'      => 'helpdesk_contacts.company',
+    'phone'        => 'helpdesk_contacts.phone',
+    'ticket_count' => TICKET_COUNT_SQL,
+    'last_ticket'  => LAST_TICKET_SQL
+  }.freeze
+
   def index
+    sort_init 'name', 'asc'
+    sort_update SORT_COLUMNS
+
     per_page_setting = Setting.plugin_redmine_expert_helpdesk['contacts_per_page'].to_i
     per_page_setting = 25 if per_page_setting <= 0
     @per_page = params[:per_page].to_i
@@ -23,8 +45,10 @@ class HelpdeskContactsController < ApplicationController
 
     @contact_count = scope.count
     @contact_pages = Redmine::Pagination::Paginator.new(@contact_count, @per_page, params[:page])
+    # sort_clause carries raw subquery SQL, hence Arel.sql; email as tie-breaker.
+    order = (Array(sort_clause) + ['helpdesk_contacts.email ASC']).join(', ')
     @contacts = scope
-                  .order(:name => :asc, :email => :asc)
+                  .order(Arel.sql(order))
                   .includes(:helpdesk_messages)
                   .limit(@per_page)
                   .offset(@contact_pages.offset)
