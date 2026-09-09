@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-09-09
+
 ### Hinzugefügt
 
 - **Sortierbare Kundenliste und Statistik-Tabellen.** Die Kundenliste des Projekts sortiert über

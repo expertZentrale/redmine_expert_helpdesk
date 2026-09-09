@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-09-09
+
 ### Added
 
 - **Sortable customer list and statistics tables.** The project's customer list sorts by every
