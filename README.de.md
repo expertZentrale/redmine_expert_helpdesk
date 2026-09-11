@@ -621,14 +621,25 @@ beim Badge eingehender Mails deren Sendezeitpunkt angezeigt wird. So lässt sich
 der Schriftwechsel in beide Richtungen auf einer Zeitachse verfolgen,
 unabhängig davon, wann der Journaleintrag selbst gespeichert wurde.
 
-**Automatische Feldaktualisierung nach dem Senden**: Optional können in den
-Projekteinstellungen (*expert Helpdesk → Antwort-Einstellungen*) ein Ziel-Status
-und die automatische Zuweisung an den Absender konfiguriert werden. Beide
-werden nach erfolgreichem Versand gesetzt, bevor das Ticket-Formular
-abgesendet wird. Die Zuweisung greift nur, solange das Ticket **niemandem
-gehört** — weder gespeichert (Benutzer oder Gruppe) noch im gerade abzusendenden
-Formular ausgewählt —, überschreibt also nie eine bereits getroffene
-Zuordnung.
+**Vorausgewählte Felder bei einer Antwort**: Optional können in den
+Projekteinstellungen (*expert Helpdesk → Antwort-Einstellungen*) ein Status und
+die automatische Zuweisung an einen selbst konfiguriert werden. Beide sind
+**Vorauswahl, keine Vorgabe**: Sie werden in die Status- und Bearbeiter-Felder
+des Tickets geschrieben, sobald *Als E-Mail an den Kunden senden* angehakt ist —
+also während man noch schreibt und nicht erst nach dem Versand —, sind damit
+sichtbar und lassen sich ändern. Ein selbst gewählter Status wird nie
+überschrieben, und das Abwählen des Hakens stellt die Felder wieder her.
+
+Dieser Unterschied zählt im Alltag. *In Bearbeitung* ist für die meisten
+Antworten richtig, nicht aber für die Antwort, die mit einer Rückfrage endet:
+Ein Ticket, das auf den Kunden wartet, gehört in einen Status wie *Feedback
+geschlossen* — raus aus der Liste der offenen Tickets, für die Wochen, die eine
+Antwort dauern kann, oder für immer, falls sie nie kommt. Die Vorauswahl macht
+den Normalfall einen Handgriff billiger, ohne die Entscheidung abzunehmen.
+
+Die Zuweisung greift nur, solange das Ticket **niemandem gehört** — weder
+gespeichert (Benutzer oder Gruppe) noch im Formular ausgewählt —, überschreibt
+also nie eine bereits getroffene Zuordnung.
 
 ### Tickets zuweisen
 
@@ -650,8 +661,9 @@ das Projekt, wird die Vorgabe still übersprungen, statt ungültige Tickets zu
 erzeugen.
 
 Alle drei gelten nur für **neue** Tickets. Eine Antwort weist ein Ticket nie neu
-zu — außer über *Ticket nach Antwort mir zuweisen* (siehe oben), und das auch nur,
-solange das Ticket niemandem gehört.
+zu — außer über *Ticket bei Antwort mir zuweisen* (siehe oben), und das wählt
+einen nur im Bearbeiter-Feld vor, solange das Ticket niemandem gehört; vor dem
+Speichern lässt es sich zurücknehmen.
 
 ### Bisherigen Inhalt zitieren
 

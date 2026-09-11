@@ -7,6 +7,22 @@
 
 ## [Unreleased]
 
+### Geändert
+- **„Status bei Antwort" wählt vor, statt zu erzwingen.** Der unter *Projekteinstellungen →
+  expert Helpdesk → Antwort-Einstellungen* konfigurierte Status wurde bisher im Erfolgs-Callback
+  des Versands in das Statusfeld geschrieben, eine Anweisung vor dem Absenden des Formulars — jede
+  Antwort landete also darauf, und der Bearbeiter bekam die Entscheidung nie zu sehen, geschweige
+  denn zu ändern. Gesetzt wird er jetzt, sobald *Als E-Mail an den Kunden senden* angehakt ist: als
+  Vorauswahl im normalen Statusfeld, während die Antwort noch geschrieben wird. Wer einen anderen
+  Status wählt, behält ihn; wer den Haken wieder entfernt, bekommt den ursprünglichen Status
+  zurück. Genau das braucht die Antwort, die mit einer Rückfrage endet — ein Ticket, das auf den
+  Kunden wartet, gehört aus der Liste der offenen Tickets heraus, in einen Status wie *Feedback
+  geschlossen*, für die Wochen, die eine Antwort dauern kann, oder für immer, falls sie nie kommt.
+  *Ticket bei Antwort mir zuweisen* wurde auf denselben Zeitpunkt verlegt und ist genauso
+  umkehrbar. Ein konfigurierter Status, den der Workflow der handelnden Rolle nicht erlaubt, wird
+  jetzt übersprungen, statt das Auswahlfeld zu leeren. Einstellung, Spalte und API-Feld bleiben
+  unverändert; bestehende Konfigurationen funktionieren weiter.
+
 ## [0.9.0] - 2026-09-09
 
 ### Hinzugefügt

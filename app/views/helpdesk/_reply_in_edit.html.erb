@@ -3,7 +3,10 @@
     Verwendet Redmines eigenes Notizfeld (issue_notes) als E-Mail-Inhalt.
     Beim Absenden wird die Mail zuerst per fetch() (JSON) gesendet,
     dann wird das Formular normal abgesendet (Notiz → Journal). %>
-<div id="hd-reply-section">
+<div id="hd-reply-section"
+     data-hd-reply-status="<%= reply_status_id.presence %>"
+     data-hd-assign-to-sender="<%= reply_assign_to_sender ? '1' : '' %>"
+     data-hd-current-user="<%= User.current.id %>">
   <div id="hd-send-error" style="display:none;"></div>
   <label class="hd-send-label">
     <%= check_box_tag 'hd_send_mail', '1', send_by_default, :id => 'hd-send-mail-cb' %>
@@ -271,12 +274,112 @@
       if (section) setTimeout(function() { section.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 150);
     }
 
+    // Status and assignee preselection from the project settings.
+    // A preselection, not a rule: set when the box is ticked, taken back when it
+    // is unticked, and never applied over a choice the agent made themselves.
+    // This used to run in the send callback instead, one statement before
+    // issueForm.submit() - the status was decided before anyone could see it.
+    var replySection  = document.getElementById('hd-reply-section');
+    var replyStatusId = replySection ? (replySection.dataset.hdReplyStatus || '') : '';
+    var assignToMe    = replySection ? replySection.dataset.hdAssignToSender === '1' : false;
+    var currentUserId = replySection ? (replySection.dataset.hdCurrentUser || '') : '';
+
+    // Looked up on every call, never cached: changing status, tracker or priority
+    // runs Redmine's updateIssueFrom(), which re-renders the attribute block and
+    // replaces these selects. A held reference would be detached from then on and
+    // every write would land on nothing.
+    function hdSelect(field) {
+      return issueForm.querySelector('select[name="issue[' + field + ']"]');
+    }
+
+    // What unticking restores: the value the server rendered, read from the
+    // selected attribute rather than the live value - the same source Redmine
+    // itself trusts, and unaffected by the browser restoring form state.
+    function hdRenderedValue(field) {
+      var sel = hdSelect(field);
+      if (!sel) return '';
+      var opt = sel.querySelector('option[selected]');
+      return opt ? opt.value : sel.value;
+    }
+
+    var statusBefore = hdRenderedValue('status_id');
+    var assignBefore = hdRenderedValue('assigned_to_id');
+
+    // The agent's own choice wins. Delegated so it survives the form re-render
+    // above; assigning .value fires no change event, so these flags only ever
+    // catch real input.
+    var statusTouched = false;
+    var assignTouched = false;
+    issueForm.addEventListener('change', function(e) {
+      var t = e.target;
+      if (!t || t.nodeName !== 'SELECT') return;
+      if (t.name === 'issue[status_id]')      statusTouched = true;
+      if (t.name === 'issue[assigned_to_id]') assignTouched = true;
+    });
+
+    // The configured status is often not a workflow transition the agent's role
+    // is allowed, and then it is not in the select at all. Without this check
+    // the assignment would silently blank the field.
+    function hdHasOption(sel, value) {
+      if (!sel || !value) return false;
+      return Array.prototype.some.call(sel.options, function(o) { return o.value === value; });
+    }
+
+    function applyReplyDefaults(checked) {
+      var statusSel = hdSelect('status_id');
+      var assignSel = hdSelect('assigned_to_id');
+
+      if (checked) {
+        if (statusSel && !statusTouched && hdHasOption(statusSel, replyStatusId)) {
+          statusSel.value = replyStatusId;
+        }
+        // Claim the ticket only while it is still unassigned - neither stored
+        // (user or group) nor just picked in this form.
+        if (assignSel && !assignTouched && assignToMe && !assignSel.value &&
+            hdHasOption(assignSel, currentUserId)) {
+          assignSel.value = currentUserId;
+        }
+      } else {
+        if (statusSel && !statusTouched) {
+          statusSel.value = statusBefore;
+        }
+        // Take back only what we put there ourselves.
+        if (assignSel && !assignTouched && assignBefore === '' &&
+            assignSel.value === currentUserId) {
+          assignSel.value = '';
+        }
+      }
+    }
+
     // Sichtbarkeit der Empfaengerfelder umschalten; Fehler-Banner zuruecksetzen
     cb.addEventListener('change', function() {
       extra.style.display = this.checked ? '' : 'none';
       var errBox = document.getElementById('hd-send-error');
       if (errBox) errBox.style.display = 'none';
+      applyReplyDefaults(this.checked);
     });
+
+    // The starting state: covers "send replies as email by default" and the
+    // ?hd_reply=1 entry point above, which sets cb.checked directly.
+    function applyInitialReplyDefaults() { applyReplyDefaults(cb.checked); }
+    applyInitialReplyDefaults();
+
+    // ... and again, last. Redmine's own inline script on the issue page undoes
+    // the status half of it:
+    //   $(document).ready(function(){
+    //     $("#issue_tracker_id, #issue_status_id").each(function(){
+    //       $(this).val($(this).find("option[selected=selected]").val()); }); ... });
+    // That is its defence against the browser restoring a stale form state, and
+    // it outlives both DOMContentLoaded and window load here. jQuery runs ready
+    // callbacks in registration order, and that script sits earlier in the page
+    // than this partial, so queueing ours the same way is what puts the
+    // preselection last. Re-applying is idempotent, and the touched flags still
+    // protect a choice the agent managed to make in between.
+    if (window.jQuery) {
+      window.jQuery(applyInitialReplyDefaults);
+    } else {
+      window.addEventListener('load', applyInitialReplyDefaults);
+    }
 
     // Form-Submit: erst Mail senden, dann normaler Redmine-Submit (Notiz → Journal)
     issueForm.addEventListener('submit', function(e) {
@@ -341,18 +444,9 @@
           issueForm.appendChild(idInput);
         }
 
-        // Status und Bearbeiter automatisch setzen (aus Projekteinstellungen)
-        <% if reply_status_id.present? %>
-        var statusSel = issueForm.querySelector('select[name="issue[status_id]"]');
-        if (statusSel) statusSel.value = '<%= reply_status_id.to_i %>';
-        <% end %>
-        <% if reply_assign_to_sender %>
-        // Claim the ticket only while it is still unassigned - neither stored
-        // (user or group) nor just picked in this form.
-        var assignSel = issueForm.querySelector('select[name="issue[assigned_to_id]"]');
-        if (assignSel && !assignSel.value) assignSel.value = '<%= User.current.id %>';
-        <% end %>
-
+        // Status and assignee are deliberately not touched here any more: both
+        // have been sitting in the form since the checkbox was ticked, and are
+        // therefore the agent's choice, not the plugin's.
         issueForm.submit(); // normaler Submit, bypasses event listener
       }).catch(function(err) {
         // Submit-Buttons wieder aktivieren, damit das Formular weiter nutzbar bleibt
