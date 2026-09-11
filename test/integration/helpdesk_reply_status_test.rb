@@ -83,7 +83,23 @@ class HelpdeskReplyStatusTest < Redmine::IntegrationTest
     get "/issues/#{@issue.id}/edit"
 
     assert_response :success
-    assert_match(/window\.jQuery\(applyInitialReplyDefaults\)/, response.body)
+
+    # Core's reset, app/views/issues/_form.html.erb - unchanged in 5.1 .. 7.0:
+    #   $(document).ready(function(){
+    #     $("#issue_tracker_id, #issue_status_id").each(function(){
+    #       $(this).val($(this).find("option[selected=selected]").val()); }); ... });
+    core = response.body.index('$("#issue_tracker_id, #issue_status_id")')
+    assert core, 'Redmine no longer resets the status select on ready - if that is ' \
+                 'really gone, the jQuery-ready detour here can go with it'
+
+    ours = response.body.index('window.jQuery(applyInitialReplyDefaults)')
+    assert ours, 'the preselect is no longer queued through the jQuery ready queue'
+
+    # The order is the whole point: jQuery runs ready callbacks in registration
+    # order, so ours only wins by being registered later in the document.
+    assert core < ours,
+           'the reply preselect must be registered after core\'s reset, otherwise ' \
+           'the agent sees the old status on page load'
   end
 
   # --- The project setting behind it -------------------------------------

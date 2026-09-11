@@ -20,7 +20,8 @@
   like *Feedback geschlossen*, for however many weeks the answer takes, or forever if it never
   comes. *Assign ticket to me when replying* moved to the same moment and is equally reversible.
   A configured status the acting role's workflow does not allow is now skipped instead of blanking
-  the select. No setting, column or API field changed; existing configurations keep working.
+  the select. No setting, column or API field changed and existing configurations keep working —
+  but `reply_status_id` now *means* "preselected rather than applied", and `API.md` says so.
 
 ## [0.9.0] - 2026-09-09
 

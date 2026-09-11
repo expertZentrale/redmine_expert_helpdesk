@@ -21,7 +21,8 @@
   *Ticket bei Antwort mir zuweisen* wurde auf denselben Zeitpunkt verlegt und ist genauso
   umkehrbar. Ein konfigurierter Status, den der Workflow der handelnden Rolle nicht erlaubt, wird
   jetzt übersprungen, statt das Auswahlfeld zu leeren. Einstellung, Spalte und API-Feld bleiben
-  unverändert; bestehende Konfigurationen funktionieren weiter.
+  unverändert, bestehende Konfigurationen funktionieren weiter — `reply_status_id` *bedeutet*
+  jetzt aber „vorausgewählt statt gesetzt", und `API.md` sagt das auch.
 
 ## [0.9.0] - 2026-09-09
 

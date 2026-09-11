@@ -416,7 +416,7 @@ en:
   label_helpdesk_send_reply_by_default: Send replies as email by default
   label_helpdesk_reply_subject_template: Subject template
   label_helpdesk_reply_status: "Status when replying"
-  text_helpdesk_reply_status_info: "Preselected in the ticket's status field as soon as \"Send as email to customer\" is ticked. A suggestion, not a rule: pick a different status before saving and yours is kept. Unticking the box restores the original status. Leave empty to preselect nothing."
+  text_helpdesk_reply_status_info: "Preselected in the ticket's status field as soon as \"Send as email to customer\" is ticked. A suggestion, not a rule: a status you pick yourself is kept, and unticking the box then leaves it alone. Unticking restores the original status only while you have not picked one yourself. Leave empty to preselect nothing."
   label_helpdesk_default_assignee: "Assign new tickets to"
   text_helpdesk_default_assignee_info: "Tickets created from incoming mail are assigned to this user or group. A matching mailbox rule overrides it. Groups are only offered when \"Allow issue assignment to groups\" is enabled in the Redmine settings."
   label_helpdesk_reply_assign_to_sender: "Assign ticket to me when replying, if it is still unassigned"

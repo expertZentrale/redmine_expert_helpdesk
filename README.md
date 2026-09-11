@@ -601,8 +601,9 @@ Reply settings*). Both are **preselections, not rules**: they are written into
 the ticket's own status and assignee fields the moment *Send as email to
 customer* is ticked — while you are still writing, not after the mail has gone
 out — so you see them and can pick something else. A status you choose yourself
-is never overwritten, and unticking the box puts the fields back the way they
-were.
+always wins: it is never overwritten while the box stays ticked, and unticking
+then leaves it alone. Unticking puts the fields back the way they were only
+while you have not picked anything yourself.
 
 That distinction matters in daily work. *In Bearbeitung* is the right status for
 most replies, but not for the answer that ends with a question: a ticket waiting

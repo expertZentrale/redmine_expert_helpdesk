@@ -627,8 +627,10 @@ die automatische Zuweisung an einen selbst konfiguriert werden. Beide sind
 **Vorauswahl, keine Vorgabe**: Sie werden in die Status- und Bearbeiter-Felder
 des Tickets geschrieben, sobald *Als E-Mail an den Kunden senden* angehakt ist —
 also während man noch schreibt und nicht erst nach dem Versand —, sind damit
-sichtbar und lassen sich ändern. Ein selbst gewählter Status wird nie
-überschrieben, und das Abwählen des Hakens stellt die Felder wieder her.
+sichtbar und lassen sich ändern. Ein selbst gewählter Status gewinnt immer: Er
+wird nicht überschrieben, solange der Haken gesetzt bleibt, und das Abwählen
+rührt ihn dann nicht mehr an. Die Felder werden nur zurückgestellt, solange man
+nicht selbst etwas gewählt hat.
 
 Dieser Unterschied zählt im Alltag. *In Bearbeitung* ist für die meisten
 Antworten richtig, nicht aber für die Antwort, die mit einer Rückfrage endet:

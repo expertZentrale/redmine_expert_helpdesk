@@ -575,7 +575,7 @@ A **partial** update — only the keys you send are changed. Body key
 |-------|------|-------|
 | `send_reply_by_default` | boolean | |
 | `reply_subject_template` | string | |
-| `reply_status_id` | integer \| null | Default status applied after a reply. |
+| `reply_status_id` | integer \| null | Status **preselected** in the ticket form once the agent ticks *send as email* — a suggestion they can override before saving, not a value this API or the reply endpoint applies. `null` = no preselection. |
 | `reply_assign_to_sender` | boolean | Assigns the replying agent, but only while the ticket is still unassigned. |
 | `default_assigned_to_id` | integer \| null | Principal (user **or** group) that new tickets from incoming mail are assigned to. `null` = do not assign. Not validated on write; a principal that is not assignable in the project is skipped when the ticket is created. |
 | `phishing_check_enabled` | boolean | |
