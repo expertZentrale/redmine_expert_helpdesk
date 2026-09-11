@@ -5,7 +5,9 @@ name: Release
 # Laeuft NUR auf Tags (nicht auf Branches/PRs) – Releases entstehen also nur,
 # wenn der Maintainer bewusst einen Tag pusht. Ablauf zum Veroeffentlichen:
 #   1. version '...' in init.rb setzen, committen, nach main pushen
-#   2. git tag vX.Y.Z (auf denselben Commit) && git push origin vX.Y.Z
+#   2. git tag -a vX.Y.Z -m 'Release X.Y.Z' (auf denselben Commit) && git push origin vX.Y.Z
+#      Annotiert (-a), nicht leichtgewichtig: git describe - und damit git submodule status
+#      im uebergeordneten Deployment-Repo - sieht nur annotierte Tags.
 # Die Versionsnummer lebt in init.rb (Single Source of Truth); der Workflow
 # PRUEFT nur, dass init.rb-Version und Tag uebereinstimmen, und paketiert unveraendert.
 

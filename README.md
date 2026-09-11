@@ -1479,8 +1479,8 @@ bump the version in `init.rb` and commit it, then push a matching semver tag:
 ```bash
 # 1. set `version '1.2.0'` in init.rb, then:
 git commit -am "release 1.2.0" && git push origin main
-# 2. tag the same commit and push the tag:
-git tag v1.2.0 && git push origin v1.2.0
+# 2. tag the same commit and push the tag (annotated, so `git describe` sees it):
+git tag -a v1.2.0 -m 'Release 1.2.0' && git push origin v1.2.0
 ```
 
 The [`release.yml`](.github/workflows/release.yml) workflow then **verifies** that the `init.rb`

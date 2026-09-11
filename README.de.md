@@ -1548,8 +1548,8 @@ die Version in `init.rb` setzen und committen, dann einen passenden semver-Tag p
 ```bash
 # 1. `version '1.2.0'` in init.rb setzen, dann:
 git commit -am "release 1.2.0" && git push origin main
-# 2. denselben Commit taggen und Tag pushen:
-git tag v1.2.0 && git push origin v1.2.0
+# 2. denselben Commit taggen und Tag pushen (annotiert, damit `git describe` ihn sieht):
+git tag -a v1.2.0 -m 'Release 1.2.0' && git push origin v1.2.0
 ```
 
 Der [`release.yml`](.github/workflows/release.yml)-Workflow **prüft** daraufhin, dass die

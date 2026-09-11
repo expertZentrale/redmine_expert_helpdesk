@@ -91,7 +91,11 @@ do **not** develop features directly on it.
 
 GitHub Releases are produced only by pushing a semver tag — never on normal pushes/PRs. The plugin
 version is the **single source of truth in `init.rb`** (`version '...'`): bump it and commit
-first, then tag the same commit and push (`git tag vX.Y.Z && git push origin vX.Y.Z`).
+first, then tag the same commit and push:
+`git tag -a vX.Y.Z -m 'Release X.Y.Z' && git push origin vX.Y.Z`.
+**Annotated (`-a`), not lightweight**: `git describe` — and `git submodule status` in the
+parent deployment repo, which uses it — considers annotated tags only, so a lightweight tag
+leaves the superproject naming an older release.
 `.github/workflows/release.yml` (triggered on `push: tags: v*`) **verifies** that the `init.rb`
 version equals the tag (fails on mismatch), builds `redmine_expert_helpdesk-<version>.{zip,tar.gz}`
 (top-level `redmine_expert_helpdesk/` dir, dev files excluded) from the tagged tree, and publishes

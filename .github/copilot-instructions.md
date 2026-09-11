@@ -88,7 +88,10 @@ Do not build features directly on it.
 
 GitHub Releases are produced only by pushing a semver tag, never on normal pushes/PRs. The plugin
 version is the **single source of truth in `init.rb`** (`version '...'`): bump + commit it, then
-tag the same commit and push (`git tag vX.Y.Z && git push origin vX.Y.Z`).
+tag the same commit and push (`git tag -a vX.Y.Z -m 'Release X.Y.Z' && git push origin vX.Y.Z`).
+**Annotated (`-a`), not lightweight**: `git describe` — and `git submodule status` in the parent
+deployment repo, which uses it — sees annotated tags only, so a lightweight tag makes the
+superproject report an older release.
 `.github/workflows/release.yml` (`push: tags: v*`) **verifies** `init.rb` version == tag (fails on
 mismatch), builds `redmine_expert_helpdesk-<version>.{zip,tar.gz}` (top-level
 `redmine_expert_helpdesk/` dir, dev files excluded) from the tagged tree, and publishes the release
