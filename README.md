@@ -595,13 +595,26 @@ page load (client-side, matched through the journal link stored in
 send time — so both directions of the conversation can be followed on one time
 axis, independently of when the journal entry itself was saved.
 
-**Automatic field update after sending**: Optionally, a target status and
-automatic assignment to the sender can be configured in the project settings
-(*Helpdesk → Reply settings*). Both are applied after a successful send,
-before the ticket form is submitted. The assignment only takes effect while the
-ticket is still **unassigned** — neither stored (user or group) nor picked in
-the form you are about to submit — so it never overrides a routing decision
-somebody has already made.
+**Preselected fields when replying**: Optionally, a status and an automatic
+assignment to yourself can be configured in the project settings (*Helpdesk →
+Reply settings*). Both are **preselections, not rules**: they are written into
+the ticket's own status and assignee fields the moment *Send as email to
+customer* is ticked — while you are still writing, not after the mail has gone
+out — so you see them and can pick something else. A status you choose yourself
+always wins: it is never overwritten while the box stays ticked, and unticking
+then leaves it alone. Unticking puts the fields back the way they were only
+while you have not picked anything yourself.
+
+That distinction matters in daily work. *In Bearbeitung* is the right status for
+most replies, but not for the answer that ends with a question: a ticket waiting
+on the customer belongs in something like *Feedback geschlossen*, out of the open
+list, for the weeks it may take them to answer — or forever, if they never do.
+The preselection makes the common case one keystroke cheaper without taking the
+decision away.
+
+The assignment only takes effect while the ticket is still **unassigned** —
+neither stored (user or group) nor picked in the form — so it never overrides a
+routing decision somebody has already made.
 
 ### Assigning tickets
 
@@ -621,8 +634,9 @@ one Redmine accepts. If the selected user or group later loses its role or
 leaves the project, it is silently skipped instead of producing invalid tickets.
 
 All three apply to **new** tickets only. A reply never re-assigns a ticket,
-except through *Assign ticket to me after reply* above, and that one only fires
-while the ticket is unassigned.
+except through *Assign ticket to me when replying* above — and that one only
+preselects you in the assignee field while the ticket is unassigned, so it is
+still yours to undo before you save.
 
 ### Quoting prior content
 
