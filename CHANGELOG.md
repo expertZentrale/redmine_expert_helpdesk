@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-09-11
+
 ### Changed
 - **"Status when replying" preselects instead of forcing.** The status configured under
   *Project settings → expert Helpdesk → Reply settings* used to be written into the ticket's

@@ -1,0 +1,12 @@
+h3. Changed
+
+* *"Status when replying" is a preselection now, not a rule.* The status configured under *Project settings → expert Helpdesk → Reply settings* used to be written into the ticket the moment the mail went out, one step before the form was saved — every reply landed on it, and the agent never saw the decision, let alone got to change it. It is now filled into the ticket's own status field as soon as *Send as email to customer* is ticked, while the reply is still being written. A status the agent picks instead is kept; unticking the box restores the original one only while they have not picked anything themselves. That difference matters for the answer that ends in a question: a ticket waiting on the customer belongs out of the list of open tickets, in a status such as *Feedback closed*, for however many weeks the answer takes — or forever, if it never comes. *Assign ticket to me when replying* was moved to the same moment and is just as reversible.
+
+h3. Fixed
+
+* *A reply no longer blanks the status field when the workflow forbids the configured status.* The status set in the reply settings is not filtered by the workflow, so it is easy to configure one the agent's role may not move the ticket to. The old code assigned it anyway; with no matching entry in the status list the field simply went empty, and the reply was saved with whatever Redmine made of that. The configured status is now skipped when the workflow does not offer it, and the ticket keeps the status it had.
+* *The preselection survives editing other ticket fields.* Changing status, tracker or priority makes Redmine re-render the attribute block of the form. The reply block held on to the old fields across that and wrote into elements that were no longer on the page, so the preselection quietly stopped working for the rest of the edit.
+
+h3. Upgrade notes
+
+No migration and no configuration change. The setting, its database column and its REST API field are unchanged, and existing configurations keep working — what changed is when and how the value is applied: it is offered to the agent instead of being written for them. Anything reading @reply_status_id@ over the REST API should note that it now describes a preselection in the ticket form, not a value the plugin applies after a reply; @API.md@ has been updated accordingly.

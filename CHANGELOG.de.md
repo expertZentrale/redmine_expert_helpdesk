@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-09-11
+
 ### Geändert
 - **„Status bei Antwort" wählt vor, statt zu erzwingen.** Der unter *Projekteinstellungen →
   expert Helpdesk → Antwort-Einstellungen* konfigurierte Status wurde bisher im Erfolgs-Callback
