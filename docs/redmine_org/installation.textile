@@ -1,7 +1,7 @@
 h3. Requirements
 
 * Redmine 5.1.x, 6.0.x, 6.1.x or 7.0.x
-* No additional gems — Ruby standard library only
+* Two gems: @base64@ (required — no longer a Ruby default gem on Ruby 4.0 / Redmine 7) and @pdf-reader@ (optional — PDF text for AI summaries, skipped when absent)
 
 Every release is tested against Redmine 5.1, 6.0, 6.1 and 7.0 on a clean MariaDB, and additionally booted inside the official @redmine@ Docker images for the same versions.
 

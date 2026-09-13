@@ -1571,7 +1571,16 @@ den Rollen zuordnen:
 | SLA-Statistik ansehen | Der Reiter „SLA-Statistik“ des Projekts (bei aktivem SLA) |
 | Ticket-Statistik ansehen | Der Reiter „Ticket-Statistik“ des Projekts (nur Mitglieds-Rollen, z. B. „Helpdesk-Manager“) |
 
-Keine zusätzlichen Gems erforderlich (nur Ruby-Standardbibliothek).
+Zwei Gems sind in `PluginGemfile` deklariert:
+
+| Gem | Erforderlich | Wofür |
+| --- | --- | --- |
+| `base64` | ja | Seit Ruby 4.0 — worauf Redmine 7 läuft — kein Default-Gem mehr. |
+| `pdf-reader` | nein | Extrahiert Text aus PDF-Anhängen für KI-Zusammenfassungen. Der Aufruf ist mit `LoadError` abgesichert; ohne das Gem werden solche Anhänge übersprungen. |
+
+Das pgvector-Backend der Wissensdatenbank braucht zusätzlich `gem 'pg'` in Ihrem
+Deployment. Es steht bewusst **nicht** in `PluginGemfile`, damit der
+voreingestellte Qdrant-Build nicht libpq mitzieht.
 
 ## Makros für Vorlagen
 
@@ -1786,4 +1795,13 @@ bleiben in den ausgelieferten Dateien erhalten.
 Beide werden lokal aus den Plugin-Assets ausgeliefert — zur Laufzeit erfolgt **kein** CDN-Aufruf.
 Geladen werden sie nur auf den Seiten der SLA-, der Ticket- und der KI-Statistik.
 
-Zusätzliche Ruby-Gems werden nicht benötigt (nur die Ruby-Standardbibliothek).
+Zwei Gems sind in `PluginGemfile` deklariert:
+
+| Gem | Erforderlich | Wofür |
+| --- | --- | --- |
+| `base64` | ja | Seit Ruby 4.0 — worauf Redmine 7 läuft — kein Default-Gem mehr. |
+| `pdf-reader` | nein | Extrahiert Text aus PDF-Anhängen für KI-Zusammenfassungen. Der Aufruf ist mit `LoadError` abgesichert; ohne das Gem werden solche Anhänge übersprungen. |
+
+Das pgvector-Backend der Wissensdatenbank braucht zusätzlich `gem 'pg'` in Ihrem
+Deployment. Es steht bewusst **nicht** in `PluginGemfile`, damit der
+voreingestellte Qdrant-Build nicht libpq mitzieht.

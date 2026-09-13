@@ -1501,7 +1501,16 @@ roles:
 | View SLA statistics | The project's "SLA statistics" tab (shown when SLA is enabled) |
 | View ticket statistics | The project's "Ticket statistics" tab (member roles only, e.g. a "helpdesk manager" role) |
 
-No additional gems required (Ruby standard library only).
+Two gems are declared in `PluginGemfile`:
+
+| Gem | Required | Why |
+| --- | --- | --- |
+| `base64` | yes | No longer a Ruby default gem as of Ruby 4.0, which is what Redmine 7 runs on. |
+| `pdf-reader` | no | Extracts text from PDF attachments for AI summaries. The call is `LoadError`-guarded, so without it those attachments are simply skipped. |
+
+The pgvector backend of the knowledge base additionally needs `gem 'pg'` in your
+deployment. It is deliberately **not** in `PluginGemfile`, so the default Qdrant
+build does not drag in libpq.
 
 ---
 
@@ -1712,4 +1721,13 @@ kept intact in the shipped files.
 Both are served locally from the plugin's assets — no CDN request is made at runtime. They are only
 loaded on the SLA, ticket and AI statistics pages.
 
-No additional Ruby gems are required (Ruby standard library only).
+Two gems are declared in `PluginGemfile`:
+
+| Gem | Required | Why |
+| --- | --- | --- |
+| `base64` | yes | No longer a Ruby default gem as of Ruby 4.0, which is what Redmine 7 runs on. |
+| `pdf-reader` | no | Extracts text from PDF attachments for AI summaries. The call is `LoadError`-guarded, so without it those attachments are simply skipped. |
+
+The pgvector backend of the knowledge base additionally needs `gem 'pg'` in your
+deployment. It is deliberately **not** in `PluginGemfile`, so the default Qdrant
+build does not drag in libpq.

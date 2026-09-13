@@ -38,7 +38,7 @@ h3. Features
 h3. Requirements
 
 * Redmine 5.1.x, 6.0.x, 6.1.x or 7.0.x
-* No additional gems — Ruby standard library only
+* Two gems: @base64@ (required — no longer a Ruby default gem on Ruby 4.0 / Redmine 7) and @pdf-reader@ (optional — PDF text for AI summaries, skipped when absent)
 
 The pgvector knowledge-base backend is the one exception and needs @gem 'pg'@ in your deployment; the default Qdrant backend does not.
 
