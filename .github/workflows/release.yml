@@ -42,7 +42,15 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           VER="${TAG#v}"
-          if ! echo "$VER" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$'; then
+          # SemVer 2.0.0 without build metadata. Spelled out rather than
+          # approximated, because every shortcut here has already let something
+          # through: '[-.]' on the suffix accepted v1.2.3.4, '[0-9A-Za-z.]+'
+          # accepted 1.2.3-a..b, and a bare '[0-9]+' accepts leading zeroes,
+          # which SemVer forbids in numeric identifiers (v01.2.3, v1.2.3-01).
+          SEMVER='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+          SEMVER="$SEMVER"'(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
+          SEMVER="$SEMVER"'(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$'
+          if ! echo "$VER" | grep -Eq "$SEMVER"; then
             echo "::error::Tag '$TAG' ist keine gueltige semver-Version (erwartet vX.Y.Z)"
             exit 1
           fi

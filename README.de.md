@@ -1526,9 +1526,16 @@ starten:
 cd /pfad/zu/redmine/plugins
 unzip redmine_expert_helpdesk-<version>.zip          # → plugins/redmine_expert_helpdesk/
 cd /pfad/zu/redmine
+bundle install                                       # zieht das PluginGemfile des Plugins
 bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=production
 # Redmine neu starten
 ```
+
+Das `bundle install` ist nicht optional: Das Plugin deklariert `base64`, das seit
+Ruby 4.0 kein Default-Gem mehr ist — und genau diese Ruby-Version bringt das
+offizielle Image `redmine:7` mit. Redmine liest das `PluginGemfile` eines Plugins
+automatisch, Ihrem eigenen `Gemfile` ist also nichts hinzuzufügen. Die
+vollständige Liste steht unter [Voraussetzungen](#voraussetzungen).
 
 ### Aus dem Quellcode (Deploy-Repo)
 
@@ -1571,7 +1578,16 @@ den Rollen zuordnen:
 | SLA-Statistik ansehen | Der Reiter „SLA-Statistik“ des Projekts (bei aktivem SLA) |
 | Ticket-Statistik ansehen | Der Reiter „Ticket-Statistik“ des Projekts (nur Mitglieds-Rollen, z. B. „Helpdesk-Manager“) |
 
-Keine zusätzlichen Gems erforderlich (nur Ruby-Standardbibliothek).
+Zwei Gems sind in `PluginGemfile` deklariert:
+
+| Gem | Erforderlich | Wofür |
+| --- | --- | --- |
+| `base64` | ja | Seit Ruby 4.0 kein Default-Gem mehr. Redmine 7 läuft auf Ruby 3.2–4.0, und das offizielle Docker-Image `redmine:7` bringt Ruby 4.0 mit — dort lädt das Plugin ohne dieses Gem nicht. Auf älteren Rubys unschädlich, dort ist es weiterhin ein Default-Gem. |
+| `pdf-reader` | nein | Extrahiert Text aus PDF-Anhängen für KI-Zusammenfassungen. Der Aufruf ist mit `LoadError` abgesichert; ohne das Gem werden solche Anhänge übersprungen. |
+
+Das pgvector-Backend der Wissensdatenbank braucht zusätzlich `gem 'pg'` in Ihrem
+Deployment. Es steht bewusst **nicht** in `PluginGemfile`, damit der
+voreingestellte Qdrant-Build nicht libpq mitzieht.
 
 ## Makros für Vorlagen
 
@@ -1786,4 +1802,13 @@ bleiben in den ausgelieferten Dateien erhalten.
 Beide werden lokal aus den Plugin-Assets ausgeliefert — zur Laufzeit erfolgt **kein** CDN-Aufruf.
 Geladen werden sie nur auf den Seiten der SLA-, der Ticket- und der KI-Statistik.
 
-Zusätzliche Ruby-Gems werden nicht benötigt (nur die Ruby-Standardbibliothek).
+Zwei Gems sind in `PluginGemfile` deklariert:
+
+| Gem | Erforderlich | Wofür |
+| --- | --- | --- |
+| `base64` | ja | Seit Ruby 4.0 kein Default-Gem mehr. Redmine 7 läuft auf Ruby 3.2–4.0, und das offizielle Docker-Image `redmine:7` bringt Ruby 4.0 mit — dort lädt das Plugin ohne dieses Gem nicht. Auf älteren Rubys unschädlich, dort ist es weiterhin ein Default-Gem. |
+| `pdf-reader` | nein | Extrahiert Text aus PDF-Anhängen für KI-Zusammenfassungen. Der Aufruf ist mit `LoadError` abgesichert; ohne das Gem werden solche Anhänge übersprungen. |
+
+Das pgvector-Backend der Wissensdatenbank braucht zusätzlich `gem 'pg'` in Ihrem
+Deployment. Es steht bewusst **nicht** in `PluginGemfile`, damit der
+voreingestellte Qdrant-Build nicht libpq mitzieht.

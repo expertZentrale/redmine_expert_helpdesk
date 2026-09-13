@@ -7,6 +7,17 @@
 
 ## [Unreleased]
 
+### Behoben
+- **Gem-Voraussetzungen in der Dokumentation korrigiert.** Beide READMEs und der
+  redmine.org-Eintrag behaupteten „keine zusätzlichen Gems erforderlich (nur
+  Ruby-Standardbibliothek)“ — das stimmt nicht mehr, seit `PluginGemfile` `base64` enthält
+  (erforderlich, seit Ruby 4.0 kein Default-Gem mehr — das offizielle Image `redmine:7` bringt Ruby 4.0 mit) sowie `pdf-reader` (optional,
+  PDF-Text für KI-Zusammenfassungen). Sechs Stellen, alle korrigiert.
+- **`release.yml` akzeptierte fehlerhafte Tags.** Die Semver-Prüfung erlaubte dem optionalen
+  Suffix, mit `.` zu beginnen, womit `v1.2.3.4` durchging, und ließ leere Bezeichner wie
+  `1.2.3-a..b` zu.
+
+
 ## [0.9.1] - 2026-09-11
 
 ### Geändert

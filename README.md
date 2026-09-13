@@ -1457,9 +1457,16 @@ top-level `redmine_expert_helpdesk/` folder), then migrate and restart:
 cd /path/to/redmine/plugins
 unzip redmine_expert_helpdesk-<version>.zip          # → plugins/redmine_expert_helpdesk/
 cd /path/to/redmine
+bundle install                                       # picks up the plugin's PluginGemfile
 bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=production
 # restart Redmine
 ```
+
+The `bundle install` is not optional: the plugin declares `base64`, which stopped
+being a Ruby default gem in Ruby 4.0 — the version the official `redmine:7` image
+ships. Redmine picks a plugin's `PluginGemfile` up automatically, so there is
+nothing to add to your own `Gemfile`. See [Requirements](#requirements) for the
+full list.
 
 ### From source (deploy repo)
 
@@ -1501,7 +1508,16 @@ roles:
 | View SLA statistics | The project's "SLA statistics" tab (shown when SLA is enabled) |
 | View ticket statistics | The project's "Ticket statistics" tab (member roles only, e.g. a "helpdesk manager" role) |
 
-No additional gems required (Ruby standard library only).
+Two gems are declared in `PluginGemfile`:
+
+| Gem | Required | Why |
+| --- | --- | --- |
+| `base64` | yes | Stopped being a Ruby default gem in Ruby 4.0. Redmine 7 runs on Ruby 3.2–4.0, and the official `redmine:7` Docker image ships Ruby 4.0 — so the plugin does not load there without it. Harmless on older Rubies, where it is still a default gem. |
+| `pdf-reader` | no | Extracts text from PDF attachments for AI summaries. The call is `LoadError`-guarded, so without it those attachments are simply skipped. |
+
+The pgvector backend of the knowledge base additionally needs `gem 'pg'` in your
+deployment. It is deliberately **not** in `PluginGemfile`, so the default Qdrant
+build does not drag in libpq.
 
 ---
 
@@ -1712,4 +1728,13 @@ kept intact in the shipped files.
 Both are served locally from the plugin's assets — no CDN request is made at runtime. They are only
 loaded on the SLA, ticket and AI statistics pages.
 
-No additional Ruby gems are required (Ruby standard library only).
+Two gems are declared in `PluginGemfile`:
+
+| Gem | Required | Why |
+| --- | --- | --- |
+| `base64` | yes | Stopped being a Ruby default gem in Ruby 4.0. Redmine 7 runs on Ruby 3.2–4.0, and the official `redmine:7` Docker image ships Ruby 4.0 — so the plugin does not load there without it. Harmless on older Rubies, where it is still a default gem. |
+| `pdf-reader` | no | Extracts text from PDF attachments for AI summaries. The call is `LoadError`-guarded, so without it those attachments are simply skipped. |
+
+The pgvector backend of the knowledge base additionally needs `gem 'pg'` in your
+deployment. It is deliberately **not** in `PluginGemfile`, so the default Qdrant
+build does not drag in libpq.
