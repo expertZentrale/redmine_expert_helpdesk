@@ -6,6 +6,16 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Fixed
+- **The *Reply* button did not preselect the status or the assignee.** Ticking *Send as email to
+  customer* by hand applied the configured reply status and claimed the ticket; the *Reply* button
+  in the contextual bar — which ticks that very box for you — did not. It set the checkbox from
+  script, and assigning `.checked` fires no `change` event, so the listener carrying the
+  preselection never ran: the mail fields opened, but the ticket kept its old status and stayed
+  unassigned. The button now dispatches the event, so both routes end in the same place.
+
 ## [0.9.2] - 2026-09-13
 
 ### Fixed

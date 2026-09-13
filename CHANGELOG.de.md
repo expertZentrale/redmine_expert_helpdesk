@@ -5,6 +5,17 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Behoben
+- **Der *Antworten*-Button hat Status und Bearbeiter nicht vorbelegt.** Wer *Als E-Mail an den
+  Kunden senden* von Hand angehakt hat, bekam den konfigurierten Antwort-Status vorbelegt und das
+  Ticket zugewiesen — über den *Antworten*-Button in der Kontextleiste, der genau dieses Häkchen
+  selbst setzt, passierte das nicht. Er hat die Checkbox per Skript gesetzt, und eine Zuweisung an
+  `.checked` löst kein `change`-Ereignis aus, sodass der Listener mit der Vorbelegung nie lief: Die
+  Mail-Felder gingen auf, das Ticket behielt aber seinen alten Status und blieb ohne Bearbeiter. Der
+  Button löst das Ereignis jetzt aus, beide Wege enden damit im selben Zustand.
+
 ## [0.9.2] - 2026-09-13
 
 ### Behoben

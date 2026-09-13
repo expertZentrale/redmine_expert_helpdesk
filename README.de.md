@@ -630,7 +630,8 @@ also während man noch schreibt und nicht erst nach dem Versand —, sind damit
 sichtbar und lassen sich ändern. Ein selbst gewählter Status gewinnt immer: Er
 wird nicht überschrieben, solange der Haken gesetzt bleibt, und das Abwählen
 rührt ihn dann nicht mehr an. Die Felder werden nur zurückgestellt, solange man
-nicht selbst etwas gewählt hat.
+nicht selbst etwas gewählt hat. Der *Antworten*-Button über dem Ticket setzt
+genau diesen Haken, eine Antwort über ihn belegt also identisch vor.
 
 Dieser Unterschied zählt im Alltag. *In Bearbeitung* ist für die meisten
 Antworten richtig, nicht aber für die Antwort, die mit einer Rückfrage endet:
