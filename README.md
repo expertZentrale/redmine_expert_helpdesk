@@ -1505,7 +1505,7 @@ Two gems are declared in `PluginGemfile`:
 
 | Gem | Required | Why |
 | --- | --- | --- |
-| `base64` | yes | No longer a Ruby default gem as of Ruby 4.0, which is what Redmine 7 runs on. |
+| `base64` | yes | Stopped being a Ruby default gem in Ruby 4.0. Redmine 7 runs on Ruby 3.2–4.0, and the official `redmine:7` Docker image ships Ruby 4.0 — so the plugin does not load there without it. Harmless on older Rubies, where it is still a default gem. |
 | `pdf-reader` | no | Extracts text from PDF attachments for AI summaries. The call is `LoadError`-guarded, so without it those attachments are simply skipped. |
 
 The pgvector backend of the knowledge base additionally needs `gem 'pg'` in your
@@ -1725,7 +1725,7 @@ Two gems are declared in `PluginGemfile`:
 
 | Gem | Required | Why |
 | --- | --- | --- |
-| `base64` | yes | No longer a Ruby default gem as of Ruby 4.0, which is what Redmine 7 runs on. |
+| `base64` | yes | Stopped being a Ruby default gem in Ruby 4.0. Redmine 7 runs on Ruby 3.2–4.0, and the official `redmine:7` Docker image ships Ruby 4.0 — so the plugin does not load there without it. Harmless on older Rubies, where it is still a default gem. |
 | `pdf-reader` | no | Extracts text from PDF attachments for AI summaries. The call is `LoadError`-guarded, so without it those attachments are simply skipped. |
 
 The pgvector backend of the knowledge base additionally needs `gem 'pg'` in your

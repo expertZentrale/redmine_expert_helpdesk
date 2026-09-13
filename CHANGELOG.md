@@ -11,8 +11,8 @@
 ### Fixed
 - **Corrected the gem requirements in the documentation.** Both READMEs and the redmine.org
   listing stated "no additional gems required (Ruby standard library only)", which has not been
-  true since `PluginGemfile` gained `base64` (required — no longer a Ruby default gem on Ruby 4.0
-  / Redmine 7) and `pdf-reader` (optional — PDF text for AI summaries). Six places, all corrected.
+  true since `PluginGemfile` gained `base64` (required — no longer a Ruby default gem as of Ruby 4.0,
+  which the official `redmine:7` image ships) and `pdf-reader` (optional — PDF text for AI summaries). Six places, all corrected.
 - **`release.yml` accepted malformed tags.** The semver check allowed the optional suffix to begin
   with `.`, so `v1.2.3.4` validated, and accepted empty identifiers such as `1.2.3-a..b`.
 

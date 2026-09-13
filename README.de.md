@@ -1575,7 +1575,7 @@ Zwei Gems sind in `PluginGemfile` deklariert:
 
 | Gem | Erforderlich | Wofür |
 | --- | --- | --- |
-| `base64` | ja | Seit Ruby 4.0 — worauf Redmine 7 läuft — kein Default-Gem mehr. |
+| `base64` | ja | Seit Ruby 4.0 kein Default-Gem mehr. Redmine 7 läuft auf Ruby 3.2–4.0, und das offizielle Docker-Image `redmine:7` bringt Ruby 4.0 mit — dort lädt das Plugin ohne dieses Gem nicht. Auf älteren Rubys unschädlich, dort ist es weiterhin ein Default-Gem. |
 | `pdf-reader` | nein | Extrahiert Text aus PDF-Anhängen für KI-Zusammenfassungen. Der Aufruf ist mit `LoadError` abgesichert; ohne das Gem werden solche Anhänge übersprungen. |
 
 Das pgvector-Backend der Wissensdatenbank braucht zusätzlich `gem 'pg'` in Ihrem
@@ -1799,7 +1799,7 @@ Zwei Gems sind in `PluginGemfile` deklariert:
 
 | Gem | Erforderlich | Wofür |
 | --- | --- | --- |
-| `base64` | ja | Seit Ruby 4.0 — worauf Redmine 7 läuft — kein Default-Gem mehr. |
+| `base64` | ja | Seit Ruby 4.0 kein Default-Gem mehr. Redmine 7 läuft auf Ruby 3.2–4.0, und das offizielle Docker-Image `redmine:7` bringt Ruby 4.0 mit — dort lädt das Plugin ohne dieses Gem nicht. Auf älteren Rubys unschädlich, dort ist es weiterhin ein Default-Gem. |
 | `pdf-reader` | nein | Extrahiert Text aus PDF-Anhängen für KI-Zusammenfassungen. Der Aufruf ist mit `LoadError` abgesichert; ohne das Gem werden solche Anhänge übersprungen. |
 
 Das pgvector-Backend der Wissensdatenbank braucht zusätzlich `gem 'pg'` in Ihrem
