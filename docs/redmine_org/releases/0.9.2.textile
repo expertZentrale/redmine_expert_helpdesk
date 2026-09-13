@@ -1,0 +1,9 @@
+h3. Fixed
+
+* *The documentation said the plugin needs no gems. It does.* Both READMEs and this listing stated "no additional gems — Ruby standard library only" in six places, which stopped being true when @PluginGemfile@ gained @base64@ and @pdf-reader@. @base64@ is required: it is no longer a Ruby default gem as of Ruby 4.0, and the official @redmine:7@ Docker image ships Ruby 4.0, so the plugin does not load there without it. @pdf-reader@ is optional and only extracts text from PDF attachments for the AI summaries; the call is guarded, so a missing gem just means those attachments are skipped. Anyone sizing up a deployment from the README was told they needed nothing and would then have hit a missing @base64@ on Redmine 7.
+* *The installation steps never ran @bundle install@.* They went from unzipping the archive straight to the migration, which fails on Redmine 7 for exactly the reason above. Redmine picks a plugin's @PluginGemfile@ up on its own, so there is nothing to add to your deployment's own @Gemfile@ — but the bundle has to be installed before the migration runs.
+* *The release workflow accepted tags that are not versions.* Its semver check let a fourth numeric component through (@v1.2.3.4@), accepted empty identifiers (@1.2.3-a..b@) and allowed leading zeroes (@v01.2.3@, @v1.2.3-01@). Any of those would have been packaged and published as a release.
+
+h3. Upgrade notes
+
+No migrations, no configuration changes and no behaviour changes — this release is documentation and one workflow. Replace the plugin directory and restart. If you are installing rather than upgrading, note the corrected step order: unzip, @bundle install@, @rake redmine:plugins:migrate@, restart.

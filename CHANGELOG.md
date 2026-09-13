@@ -6,7 +6,7 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
-## [Unreleased]
+## [0.9.2] - 2026-09-13
 
 ### Fixed
 - **Corrected the gem requirements in the documentation.** Both READMEs and the redmine.org
