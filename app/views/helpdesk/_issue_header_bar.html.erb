@@ -131,10 +131,16 @@ a.hih-optout-toggle svg { vertical-align: text-bottom; }
     link.className = 'icon icon-email hd-reply-btn';
     link.textContent = '<%= j(l(:button_helpdesk_reply)) %>';
     if (window.hdSpriteIcon) { link.insertAdjacentHTML('afterbegin', window.hdSpriteIcon('email')); }
+    // Ticking the box has to go through a change event: the reply panel
+    // (_reply_in_edit) hangs the status/assignee preselection off that listener,
+    // and setting .checked from script fires nothing by itself. Without the
+    // dispatch the mail fields open but the ticket keeps its old status and
+    // stays unassigned - the exact difference between this button and ticking
+    // the box by hand.
     link.setAttribute('onclick',
       "showAndScrollTo('update','hd-send-mail-cb');" +
       "var cb=document.getElementById('hd-send-mail-cb');" +
-      "if(cb&&!cb.checked){cb.checked=true;}" +
+      "if(cb&&!cb.checked){cb.checked=true;cb.dispatchEvent(new Event('change'));}" +
       "var ex=document.getElementById('hd-mail-extra');" +
       "if(ex)ex.style.display='';" +
       "return false;");

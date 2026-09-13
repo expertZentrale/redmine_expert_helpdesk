@@ -102,6 +102,27 @@ class HelpdeskReplyStatusTest < Redmine::IntegrationTest
            'the agent sees the old status on page load'
   end
 
+  # Two "Reply" buttons exist. This one is injected into the contextual bar by
+  # _issue_header_bar on the show page; _reply_in_edit carries a fallback that
+  # only appears when the header bar did not get there first (both claim the id
+  # #hd-reply-link, and the header bar registers its DOMContentLoaded listener
+  # earlier in the document, so in practice this is the button agents click).
+  # Both have to tick the box through a change event: the status and assignee
+  # preselection hangs off that listener, and assigning .checked from script
+  # fires nothing by itself. The header bar used to just assign it, so replying
+  # via the button opened the mail fields but left the ticket on its old status
+  # and unassigned - while ticking the same box by hand worked.
+  def test_reply_button_ticks_the_checkbox_through_a_change_event
+    set_reply_status(@status.id)
+    get "/issues/#{@issue.id}"
+
+    assert_response :success
+
+    onclick = response.body[/link\.setAttribute\('onclick',.*?return false;"\);/m]
+    assert onclick, 'the header-bar reply button no longer sets an inline onclick'
+    assert_include "cb.dispatchEvent(new Event('change'))", onclick
+  end
+
   # --- The project setting behind it -------------------------------------
 
   def test_reply_status_round_trips_through_the_settings_form
