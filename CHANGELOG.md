@@ -6,7 +6,7 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
-## [Unreleased]
+## [0.9.3] - 2026-09-13
 
 ### Fixed
 - **The *Reply* button did not preselect the status or the assignee.** Ticking *Send as email to

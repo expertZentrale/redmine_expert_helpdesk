@@ -1,0 +1,7 @@
+h3. Fixed
+
+* *The "Reply" button did not preselect the status or the assignee.* Ticking *Send as email to customer* by hand applied the status configured under *Project settings → expert Helpdesk → Reply settings* and, if enabled, assigned the ticket to you. The *Reply* button above the ticket — which ticks that very box for you — did not: it set the checkbox from script, which fires no @change@ event, and the preselection is what hangs off that event. The mail fields opened, but the ticket kept its old status and stayed unassigned, so an agent replying through the button silently lost both settings. Both routes now go through the same handler and end in the same place.
+
+h3. Upgrade notes
+
+No migrations, no configuration changes and no new settings. The behaviour is what *Reply settings* already promised — if you configured a reply status or *Assign ticket to me when replying* and only ever saw it apply when you ticked the checkbox yourself, it now applies via the button too. Replace the plugin directory and restart.
