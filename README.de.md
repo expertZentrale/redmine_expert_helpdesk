@@ -1526,9 +1526,16 @@ starten:
 cd /pfad/zu/redmine/plugins
 unzip redmine_expert_helpdesk-<version>.zip          # → plugins/redmine_expert_helpdesk/
 cd /pfad/zu/redmine
+bundle install                                       # zieht das PluginGemfile des Plugins
 bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=production
 # Redmine neu starten
 ```
+
+Das `bundle install` ist nicht optional: Das Plugin deklariert `base64`, das seit
+Ruby 4.0 kein Default-Gem mehr ist — und genau diese Ruby-Version bringt das
+offizielle Image `redmine:7` mit. Redmine liest das `PluginGemfile` eines Plugins
+automatisch, Ihrem eigenen `Gemfile` ist also nichts hinzuzufügen. Die
+vollständige Liste steht unter [Voraussetzungen](#voraussetzungen).
 
 ### Aus dem Quellcode (Deploy-Repo)
 

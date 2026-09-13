@@ -1457,9 +1457,16 @@ top-level `redmine_expert_helpdesk/` folder), then migrate and restart:
 cd /path/to/redmine/plugins
 unzip redmine_expert_helpdesk-<version>.zip          # → plugins/redmine_expert_helpdesk/
 cd /path/to/redmine
+bundle install                                       # picks up the plugin's PluginGemfile
 bundle exec rake redmine:plugins:migrate NAME=redmine_expert_helpdesk RAILS_ENV=production
 # restart Redmine
 ```
+
+The `bundle install` is not optional: the plugin declares `base64`, which stopped
+being a Ruby default gem in Ruby 4.0 — the version the official `redmine:7` image
+ships. Redmine picks a plugin's `PluginGemfile` up automatically, so there is
+nothing to add to your own `Gemfile`. See [Requirements](#requirements) for the
+full list.
 
 ### From source (deploy repo)
 
