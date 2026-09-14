@@ -165,7 +165,7 @@ module RedmineExpertHelpdesk
         InlineImages.rewrite!(object, mime)
 
         apply_new_issue_defaults(issue, subject, sender) if new_issue
-        reopened = new_issue ? false : reopen_if_closed(issue, (object.is_a?(Journal) ? object : nil))
+        reopened = new_issue ? false : apply_reply_status(issue, (object.is_a?(Journal) ? object : nil))
         contact = HelpdeskContact.find_or_create_for(sender, sender_name, @mailbox.project)
         HelpdeskTicketInfo.link!(issue, contact, @mailbox)
 
@@ -339,9 +339,21 @@ module RedmineExpertHelpdesk
       mime
     end
 
-    # Setzt den Status eines geschlossenen Tickets auf den konfigurierten Wiedereroeffnungs-Status.
-    # Wird nur aufgerufen, wenn reopen_status_id am Postfach gesetzt ist.
-    # Returns true when the ticket was actually reopened.
+    # Applies the mailbox's configured status for an inbound customer reply. Which
+    # status that is depends on the state the ticket is in when the mail arrives:
+    # a closed ticket is reopened with reopen_status_id, an open one is moved to
+    # open_reply_status_id. The two are separate settings because a helpdesk that keeps
+    # a ticket open while it waits for the customer ("waiting for customer") still
+    # wants the reply to move it on, and that is not the status a reopened ticket
+    # should land in. Either one blank means "leave the ticket's status alone".
+    #
+    # Returns true only for an actual reopen, meaning a closed ticket that ends up in
+    # an open status. The caller labels the awaiting-agent reason from that, and the
+    # two cases it deliberately excludes are a status change on an already open
+    # ticket, and a reopen status that is itself closed (a mailbox may well point at
+    # *Rejected*): neither leaves the ticket open, and TicketStatistics counts a
+    # reopen as a closed -> non-closed transition, so calling either one a reopen
+    # would label a ticket *Reopened* that the statistics never count.
     #
     # save(validate: false) is deliberate and must stay: the ticket is mutated from
     # arbitrary inbound mail, and a field made mandatory, a workflow transition or a
@@ -359,31 +371,34 @@ module RedmineExpertHelpdesk
     # sync_solution! returns early once solution_business_minutes is set. Making the
     # reopen reset it would change what the SLA statistics report, so do not "fix"
     # this without deciding that question first.
-    def reopen_if_closed(issue, journal = nil)
-      return false unless issue.status&.is_closed?
-      return false if @mailbox.reopen_status_id.blank?
+    def apply_reply_status(issue, journal = nil)
+      closed    = issue.status&.is_closed? ? true : false
+      status_id = closed ? @mailbox.reopen_status_id : @mailbox.open_reply_status_id
+      return false if status_id.blank?
 
-      reopen_status = IssueStatus.find_by(:id => @mailbox.reopen_status_id)
-      return false unless reopen_status
-      return false if reopen_status.id == issue.status_id
+      new_status = IssueStatus.find_by(:id => status_id)
+      return false unless new_status
+      return false if new_status.id == issue.status_id
 
+      reopened      = closed && !new_status.is_closed?
       old_status_id = issue.status_id
-      issue.status = reopen_status
+      issue.status = new_status
       issue.save(:validate => false)
-      record_reopen_journal(issue, journal, old_status_id, reopen_status.id)
-      Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): Ticket ##{issue.id} wiedereroffnet \u2013 Status \"#{reopen_status.name}\""
-      true
+      record_reply_status_journal(issue, journal, old_status_id, new_status.id)
+      Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): Ticket ##{issue.id} " \
+                        "#{reopened ? 'wiedereroffnet' : 'auf Antwortstatus gesetzt'} \u2013 Status \"#{new_status.name}\""
+      reopened
     end
 
-    # Makes the auto-reopen visible in the ticket history. Because the status is set
-    # without init_journal, Redmine writes no journal on its own.
+    # Makes the automatic status change visible in the ticket history. Because the
+    # status is set without init_journal, Redmine writes no journal on its own.
     #
     # Preferred path: attach the status detail to the journal MailHandler just created
     # for the customer reply. That shows one history entry (note + status change)
     # instead of two, and creates no new Journal record -- so it cannot notify anyone.
     # Using issue.init_journal instead would arm Redmine's notification after_save and
     # could send mail, which this feature explicitly must not do.
-    def record_reopen_journal(issue, journal, old_status_id, new_status_id)
+    def record_reply_status_journal(issue, journal, old_status_id, new_status_id)
       detail = {
         :property => 'attr', :prop_key => 'status_id',
         :old_value => old_status_id.to_s, :value => new_status_id.to_s
@@ -398,7 +413,7 @@ module RedmineExpertHelpdesk
         fallback.save!
       end
     rescue StandardError => e
-      Rails.logger.warn "Helpdesk: Wiedereroeffnungs-Journal fuer Ticket ##{issue.id} fehlgeschlagen: #{e.message}"
+      Rails.logger.warn "Helpdesk: Status-Journal fuer Ticket ##{issue.id} fehlgeschlagen: #{e.message}"
     end
 
     # True when the inbound mail was written by an agent (someone allowed to reply to

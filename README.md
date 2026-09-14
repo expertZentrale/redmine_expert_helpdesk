@@ -50,6 +50,10 @@ see [Tests](#tests).
 - **Email to ticket**: Mails from Microsoft 365 or any IMAP mailbox are created as tickets;
   replies are matched to existing tickets via `In-Reply-To` / `[#id]` subject
   patterns (uses Redmine's standard `MailHandler`, including attachments).
+- **Status on a customer reply**: Per mailbox, an inbound reply can move the ticket to a
+  status of its own — one for a closed ticket (the classic reopen), a separate one for a
+  ticket that is still open, e.g. *Waiting for customer* → *In progress*. See
+  [Status on a customer reply](#status-on-a-customer-reply).
 - **Embedded images in the ticket**: The inline images of a mail (signature logos,
   screenshots) are shown where the mail showed them instead of leaving a
   `[cid:…]` marker behind — see [Embedded images](#embedded-images).
@@ -371,7 +375,8 @@ Provider (source folder) — Graph API or IMAP
   Point the [cid:…] markers at the embedded images MailHandler stored
         │
         ├─ new ticket:  apply rules
-        └─ reply:       reopen the ticket if closed (per-mailbox reopen status)
+        └─ reply:       set the mailbox's status for a customer reply
+                        (closed ticket → reopen status, open one → reply status)
         │
         ▼
   Link contact + HelpdeskTicketInfo (contact, origin mailbox, SLA clocks)
@@ -434,6 +439,39 @@ The `MailHandler` checks in this order:
 > **Note**: The `MailHandler` also handles user creation and permission checks.
 > `unknown_user_mode` on the mailbox controls what happens with unknown senders
 > (`accept`, `create`, `ignore`).
+
+### Status on a customer reply
+
+When an inbound mail is appended to an existing ticket, the mailbox can move that ticket
+to a status of its own — configured under *Helpdesk → Mailbox → Status on customer reply*:
+
+| Ticket state when the mail arrives | Setting | Typical value |
+| --- | --- | --- |
+| closed | *Status (closed issue)* | `In progress` — the ticket is reopened |
+| open | *Status (open issue)* | `In progress` — the answer the ticket was waiting for arrived |
+
+Both are optional and independent; leaving one empty keeps the behaviour the plugin had
+before, namely that tickets in that state are not touched. The second one exists because a
+helpdesk does not necessarily close a ticket while it waits for the customer: with a status
+such as *Waiting for customer* or *On hold*, the reply has to move the ticket on without
+ever having been a reopen.
+
+Both changes are written into the ticket history — as a status change on the same journal
+entry that carries the customer's reply, so the history shows one entry, not two, and
+nobody is notified twice. The status is set without validation on purpose: a mandatory
+field or a workflow transition added after the ticket was created must not be able to
+swallow a customer reply.
+
+Only a closed ticket that ends up in an **open** status counts as a *reopen*: that is what the
+ticket statistics count under *Reopened*, and what the awaiting-response flag labels *Reopened*
+instead of *Customer replied*. A status change on an already open ticket is an ordinary reply, and
+so is a reopen status that is itself closed (pointing it at *Rejected* is allowed — the status is
+applied, the ticket just never becomes open).
+
+The *Max. age (days)* field in the same box is a different thing: it is checked **before**
+the mail is handed to Redmine's `MailHandler` and forces a **new** ticket for a reply to a
+long-closed one, in which case neither status applies (see
+[Matching email replies to existing tickets](#matching-email-replies-to-existing-tickets)).
 
 ### Tickets awaiting a response
 

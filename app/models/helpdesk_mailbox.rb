@@ -6,10 +6,11 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
   include Redmine::SafeAttributes
 
   belongs_to :project
-  belongs_to :default_tracker,  :class_name => 'Tracker',       :optional => true
-  belongs_to :default_priority, :class_name => 'IssuePriority', :optional => true
-  belongs_to :default_status,   :class_name => 'IssueStatus',   :optional => true
-  belongs_to :reopen_status,    :class_name => 'IssueStatus',   :optional => true
+  belongs_to :default_tracker,    :class_name => 'Tracker',       :optional => true
+  belongs_to :default_priority,   :class_name => 'IssuePriority', :optional => true
+  belongs_to :default_status,     :class_name => 'IssueStatus',   :optional => true
+  belongs_to :reopen_status,      :class_name => 'IssueStatus',   :optional => true
+  belongs_to :open_reply_status,  :class_name => 'IssueStatus',   :optional => true
   has_many :helpdesk_rules, :dependent => :destroy
   has_many :helpdesk_messages, :dependent => :nullify
 
@@ -98,7 +99,7 @@ class HelpdeskMailbox < HelpdeskApplicationRecord
                   'auto_reply_filter_enabled', 'auto_reply_sender_whitelist',
                   'auto_reply_header_whitelist',
                   'skipped_folder', 'failed_folder', 'sent_folder',
-                  'reopen_status_id', 'reopen_max_age_days',
+                  'reopen_status_id', 'open_reply_status_id', 'reopen_max_age_days',
                   'provider', 'credentials_source', 'auth_method',
                   'imap_host', 'imap_port', 'imap_security', 'imap_username',
                   'imap_verify_ssl', 'imap_unseen_only', 'imap_timeout',

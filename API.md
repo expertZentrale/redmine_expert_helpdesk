@@ -838,7 +838,7 @@ only.
 | Identity | `id`, `project {id,name}`, `mailbox_address`, `enabled` |
 | Backend | `provider` (`graph`\|`imap`), `reply_transport` (`provider`\|`graph`\|`smtp`), `outgoing_route` (resolved: `graph`\|`mailbox_smtp`\|`smtp`), `available_reply_transports` (array), `microsoft_hosted` |
 | Folders | `source_folder`, `processed_folder`, `skipped_folder`, `failed_folder`, `sent_folder` |
-| Ticket defaults | `default_tracker_id`, `default_priority_id`, `default_status_id`, `unknown_user_mode` (`accept`\|`create`\|`ignore`), `suppress_notifications`, `reopen_status_id`, `reopen_max_age_days` |
+| Ticket defaults | `default_tracker_id`, `default_priority_id`, `default_status_id`, `unknown_user_mode` (`accept`\|`create`\|`ignore`), `suppress_notifications`, `reopen_status_id`, `open_reply_status_id`, `reopen_max_age_days` |
 | Filters & replies | `allow_list`, `deny_list`, `auto_reply_filter_enabled`, `auto_reply_sender_whitelist`, `auto_reply_header_whitelist`, `autoresponder_enabled`, `autoresponder_subject`, `autoresponder_body`, `reply_header`, `reply_footer`, `footer_mode` (`inherit`\|`prepend`\|`override`) |
 | Connection | `credentials_source` (`global`\|`mailbox`), `auth_method` (`oauth2`\|`password`), `imap_host`, `imap_port`, `imap_security` (`ssl`\|`starttls`\|`plain`), `imap_username`, `imap_verify_ssl`, `imap_unseen_only`, `imap_timeout`, `smtp_host`, `smtp_port`, `smtp_security`, `smtp_username`, `smtp_verify_ssl` |
 | OAuth2 | `oauth_preset` (`microsoft`\|`google`\|`generic`), `oauth_grant` (`client_credentials`\|`authorization_code`\|`jwt_bearer`), `oauth_tenant_id`, `oauth_client_id`, `oauth_authorize_url`, `oauth_token_url`, `oauth_scope`, `oauth_sa_email`, `oauth_connected`, `oauth_connected_at`, `oauth_token_expires_at` |

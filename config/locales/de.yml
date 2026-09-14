@@ -127,9 +127,11 @@ de:
   error_helpdesk_missing_parameters: Parameter fehlen.
   error_helpdesk_access_denied: Zugriff verweigert.
 
-  label_helpdesk_reopen: Ticket-Wiedereroeffnung
-  field_helpdesk_reopen_status: Wiedereroeffnungs-Status
+  label_helpdesk_reopen: Status bei Kundenantwort
+  field_helpdesk_reopen_status: Status (geschlossenes Ticket)
   text_helpdesk_reopen_status_info: Status, auf den ein geschlossenes Ticket gesetzt wird, wenn eine neue Kundenantwort eingeht. Leer = Ticket bleibt geschlossen.
+  field_helpdesk_open_reply_status: Status (offenes Ticket)
+  text_helpdesk_open_reply_status_info: Status, auf den ein offenes Ticket gesetzt wird, wenn eine neue Kundenantwort eingeht. Leer = Status bleibt unveraendert.
   field_helpdesk_reopen_max_age_days: Max. Alter (Tage)
   text_helpdesk_reopen_max_age_days_info: Ist das Ticket aelter als diese Anzahl Tage (gemessen an der letzten Aktualisierung), wird stattdessen ein neues Ticket angelegt. Leer = kein Alterslimit.
   label_helpdesk_defaults: Standardwerte für neue Tickets

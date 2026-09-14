@@ -5,6 +5,27 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **Ein eigener Status für die Antwort auf ein *offenes* Ticket.** Bisher hatte ein Postfach genau
+  einen Status für eingehende Kundenantworten, und der griff ausschließlich bei einem
+  *geschlossenen* Ticket. Das setzt voraus, dass das Ticket geschlossen wird, während man auf den
+  Kunden wartet — wer es stattdessen mit einem Status wie *Warten auf Kunde* oder *Zurückgestellt*
+  offen lässt, hatte keine Möglichkeit, es durch die Antwort weiterzubewegen. Die
+  Wiedereröffnungs-Einstellung hat deshalb ein Geschwister bekommen: Unter *Helpdesk → Postfach →
+  Status bei Kundenantwort* stehen jetzt *Status (geschlossenes Ticket)* (der bisherige
+  Wiedereröffnungsstatus, unverändert) und *Status (offenes Ticket)*; welcher greift, entscheidet der
+  Zustand des Tickets beim Maileingang. Beide Felder sind optional und unabhängig voneinander; bleibt
+  das neue leer, verhält sich das Postfach exakt wie bisher. Wie die Wiedereröffnung wird die
+  Änderung als Statuswechsel an denselben Journaleintrag geschrieben, der die Kundenantwort trägt —
+  ein Historieneintrag, keine zusätzliche Benachrichtigung. Als Wiedereröffnung zählt weiterhin nur
+  der geschlossene Fall, und auch nur dann, wenn das Ticket in einem offenen Status landet: Ein
+  Wiedereröffnungsstatus, der selbst geschlossen ist, wird gesetzt, aber nicht als
+  *Wiedereröffnet* gekennzeichnet. Das gilt für die Ticket-Statistik wie für die Warte-Markierung. Über die REST-API als `open_reply_status_id` am
+  `helpdesk_mailbox` les- und schreibbar. Migration 051.
+
 ## [0.9.3] - 2026-09-13
 
 ### Behoben

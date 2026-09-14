@@ -51,6 +51,10 @@ siehe [Tests](#tests).
 - **E-Mail zu Ticket**: Mails aus Microsoft 365 oder beliebigen IMAP-Postfächern werden als Tickets angelegt;
   Antworten werden über `In-Reply-To` / `[#id]`-Betreff dem bestehenden Ticket
   zugeordnet (nutzt den Redmine-Standard-`MailHandler`, inkl. Anhänge).
+- **Status bei einer Kundenantwort**: Je Postfach kann eine eingehende Antwort das Ticket
+  auf einen eigenen Status setzen — einen für ein geschlossenes Ticket (die klassische
+  Wiedereröffnung) und einen getrennten für ein noch offenes, z. B. *Warten auf Kunde* →
+  *In Bearbeitung*. Siehe [Status bei einer Kundenantwort](#status-bei-einer-kundenantwort).
 - **Eingebettete Bilder im Ticket**: Die Inline-Bilder einer Mail (Signaturlogos,
   Screenshots) erscheinen dort, wo die Mail sie zeigte, statt eine
   `[cid:…]`-Markierung zu hinterlassen — siehe [Eingebettete Bilder](#eingebettete-bilder).
@@ -386,8 +390,9 @@ Graph API (Quellordner)
   [cid:…]-Markierungen auf die gespeicherten eingebetteten Bilder zeigen lassen
         │
         ├─ neues Ticket: Regeln anwenden
-        └─ Antwort:      Ticket wiedereröffnen, falls geschlossen
-                         (Wiedereröffnungsstatus pro Postfach)
+        └─ Antwort:      Status des Postfachs für Kundenantworten setzen
+                         (geschlossenes Ticket → Wiedereröffnungsstatus,
+                          offenes Ticket → Antwortstatus)
         │
         ▼
   Kontakt verknüpfen + HelpdeskTicketInfo (Kontakt, Herkunftspostfach, SLA-Uhren)
@@ -453,6 +458,41 @@ Der `MailHandler` prüft in dieser Reihenfolge:
 > **Hinweis**: Der `MailHandler` verwaltet auch Benutzeranlage und
 > Berechtigungsprüfungen. `unknown_user_mode` am Postfach steuert, was bei
 > unbekannten Absendern passiert (`accept`, `create`, `ignore`).
+
+### Status bei einer Kundenantwort
+
+Wird eine eingehende Mail an ein bestehendes Ticket angehängt, kann das Postfach dieses
+Ticket auf einen eigenen Status setzen — konfiguriert unter
+*Helpdesk → Postfach → Status bei Kundenantwort*:
+
+| Ticket-Zustand beim Maileingang | Einstellung | Typischer Wert |
+| --- | --- | --- |
+| geschlossen | *Status (geschlossenes Ticket)* | `In Bearbeitung` — das Ticket wird wiedereröffnet |
+| offen | *Status (offenes Ticket)* | `In Bearbeitung` — die erwartete Antwort ist da |
+
+Beide Felder sind optional und unabhängig voneinander; bleibt eines leer, verhält sich das
+Plugin wie bisher und lässt Tickets in diesem Zustand unangetastet. Das zweite Feld gibt es,
+weil ein Helpdesk ein Ticket nicht zwingend schließt, während er auf den Kunden wartet: Bei
+einem Status wie *Warten auf Kunde* oder *Zurückgestellt* muss die Antwort das Ticket
+weiterbewegen, ohne dass es je eine Wiedereröffnung war.
+
+Beide Änderungen landen in der Ticket-Historie — als Statuswechsel an demselben
+Journaleintrag, der die Kundenantwort trägt. Die Historie zeigt damit einen Eintrag statt
+zwei, und niemand wird doppelt benachrichtigt. Der Status wird bewusst ohne Validierung
+gesetzt: Ein nachträglich eingeführtes Pflichtfeld oder ein Workflow-Übergang darf keine
+Kundenantwort verschlucken.
+
+Als *Wiedereröffnung* gilt nur ein geschlossenes Ticket, das in einem **offenen** Status landet:
+Genau das zählt die Ticket-Statistik unter *Wiedereröffnet*, und genau das weist die
+Warte-Markierung als *Wiedereröffnet* statt *Kunde hat geantwortet* aus. Ein Statuswechsel an einem
+bereits offenen Ticket ist eine gewöhnliche Antwort — ebenso ein Wiedereröffnungsstatus, der selbst
+geschlossen ist (auf *Abgewiesen* zu zeigen ist erlaubt; der Status wird gesetzt, das Ticket wird
+nur nie offen).
+
+Das Feld *Max. Alter (Tage)* im selben Kasten ist etwas anderes: Es greift **vor** der
+Übergabe an Redmines `MailHandler` und erzwingt für die Antwort auf ein lange geschlossenes
+Ticket ein **neues** Ticket — dann greift keiner der beiden Status (siehe
+[Zuordnung von E-Mail-Antworten zu bestehenden Tickets](#zuordnung-von-e-mail-antworten-zu-bestehenden-tickets)).
 
 ### Tickets, die auf Bearbeitung warten
 
