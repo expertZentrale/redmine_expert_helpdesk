@@ -1,0 +1,11 @@
+h3. Added
+
+* *A separate status for a reply to an open ticket.* A mailbox had one status for inbound customer replies, and it only ever applied to a closed ticket — that assumes the ticket is closed while the helpdesk waits for the customer. Where a ticket instead stays open under a status such as *waiting for customer* or *on hold*, the reply had no way to move it on. *Helpdesk → Mailbox → Status on customer reply* now offers two fields: *Status (closed issue)*, the previous reopening status, and *Status (open issue)*, applied when the mail lands on a ticket that is still open. The ticket's state when the mail arrives decides which one is used. Both are optional and independent of each other. Like the reopening, the change is written onto the same history entry that carries the customer's reply, so the ticket history shows one entry and nobody is notified twice. Readable and writable over the REST API as @open_reply_status_id@ on @helpdesk_mailbox@.
+
+h3. Upgrade notes
+
+Migration 051 adds one column, @open_reply_status_id@ on @helpdesk_mailboxes@. Run the usual @redmine:plugins:migrate@ after replacing the plugin directory.
+
+No behaviour changes without configuration: the new field is empty on every existing mailbox, and an empty field leaves the status of an open ticket alone, exactly as before. The reopening status and its age limit are untouched.
+
+One detail worth knowing if you read the ticket statistics: only a closed ticket that ends up in an *open* status counts as a reopening, both for the *Reopened* figures and for the *Reopened* label on the awaiting-response flag. A status change on an already open ticket is an ordinary reply, and so is a reopening status that is itself closed — it is applied, the ticket simply never becomes open.

@@ -17,6 +17,7 @@ h3. Features
 
 * *Per-project mailboxes* — source and target folders, defaults for tracker, priority and status, handling of unknown senders.
 * *Autoresponder* — configurable confirmation mail for new tickets.
+* *Status on a customer reply* — per mailbox, an inbound reply moves the ticket to a status of its own: one for a closed ticket (the classic reopen) and a separate one for a ticket that is still open, so a *waiting for customer* status does not have to be closed to move on. Both are optional. An age limit can force a new ticket for a reply to a long-closed one.
 * *Customer replies* from the ticket page, with header/footer templates, inline images (CID), attachments and CC/BCC. Sent through the mailbox itself, so a copy lands in its Sent folder. A mailbox routed over Redmine's own SMTP settings can optionally send under a different address, for a distribution list that became a helpdesk mailbox.
 * *Address autocomplete* — To/CC/BCC suggest matching project contacts.
 * *Quoting and answer templates* — next to the formatting icons of the note field, a *Quote* button inserts the original mail, the complete conversation or only the mail exchange (private notes never among them), and a *Templates* button inserts a stored answer with its macros already resolved. Templates are maintained globally and per project.
