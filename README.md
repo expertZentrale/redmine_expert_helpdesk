@@ -462,9 +462,11 @@ nobody is notified twice. The status is set without validation on purpose: a man
 field or a workflow transition added after the ticket was created must not be able to
 swallow a customer reply.
 
-Only the closed case counts as a *reopen*: it is what the ticket statistics count under
-*Reopened*, and what the awaiting-response flag labels *Reopened* instead of
-*Customer replied*. A status change on an already open ticket is an ordinary reply.
+Only a closed ticket that ends up in an **open** status counts as a *reopen*: that is what the
+ticket statistics count under *Reopened*, and what the awaiting-response flag labels *Reopened*
+instead of *Customer replied*. A status change on an already open ticket is an ordinary reply, and
+so is a reopen status that is itself closed (pointing it at *Rejected* is allowed — the status is
+applied, the ticket just never becomes open).
 
 The *Max. age (days)* field in the same box is a different thing: it is checked **before**
 the mail is handed to Redmine's `MailHandler` and forces a **new** ticket for a reply to a

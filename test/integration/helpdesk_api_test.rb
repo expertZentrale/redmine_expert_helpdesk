@@ -318,6 +318,40 @@ class HelpdeskApiTest < Redmine::IntegrationTest
     assert_response :not_found
   end
 
+  # The two reply statuses are a pair, and the one that is easy to lose is the
+  # serializer entry for the newer of them: a mailbox keeps working without it, only
+  # the API stops reporting the field. Covers read, write and clearing, because a
+  # missing safe attribute fails silently -- the PUT still answers 204.
+  def test_mailbox_reply_statuses_round_trip
+    mailbox = create_mailbox!
+    id = mailbox['id']
+    assert_nil mailbox['open_reply_status_id'], 'a new mailbox has no open-reply status'
+    assert_includes mailbox.keys, 'reopen_status_id'
+
+    open_status   = IssueStatus.where(:is_closed => false).first
+    reopen_status = IssueStatus.where(:is_closed => false).where.not(:id => open_status.id).first
+
+    put "/helpdesk/mailboxes/#{id}.json",
+        :params => { :helpdesk_mailbox => { :open_reply_status_id => open_status.id,
+                                            :reopen_status_id    => reopen_status.id } },
+        :headers => auth
+    assert_response :no_content
+    assert_equal open_status.id, HelpdeskMailbox.find(id).open_reply_status_id
+    assert_equal reopen_status.id, HelpdeskMailbox.find(id).reopen_status_id
+
+    get "/helpdesk/mailboxes/#{id}.json", :headers => auth
+    assert_response :success
+    body = ActiveSupport::JSON.decode(@response.body)['helpdesk_mailbox']
+    assert_equal open_status.id, body['open_reply_status_id']
+    assert_equal reopen_status.id, body['reopen_status_id']
+
+    # Clearing it again -- "no status for an open ticket" has to stay reachable.
+    put "/helpdesk/mailboxes/#{id}.json",
+        :params => { :helpdesk_mailbox => { :open_reply_status_id => '' } }, :headers => auth
+    assert_response :no_content
+    assert_nil HelpdeskMailbox.find(id).open_reply_status_id
+  end
+
   # Der wichtigste Vertrag des Mailbox-APIs: Secrets gehen rein, nie wieder raus.
   def test_mailbox_never_serializes_secrets
     mailbox = create_mailbox!

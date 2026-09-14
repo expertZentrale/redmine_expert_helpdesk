@@ -482,10 +482,12 @@ zwei, und niemand wird doppelt benachrichtigt. Der Status wird bewusst ohne Vali
 gesetzt: Ein nachträglich eingeführtes Pflichtfeld oder ein Workflow-Übergang darf keine
 Kundenantwort verschlucken.
 
-Nur der geschlossene Fall gilt als *Wiedereröffnung*: Er ist es, was die Ticket-Statistik
-unter *Wiedereröffnet* zählt und was die Warte-Markierung als *Wiedereröffnet* statt
-*Kunde hat geantwortet* ausweist. Ein Statuswechsel an einem bereits offenen Ticket ist
-eine gewöhnliche Antwort.
+Als *Wiedereröffnung* gilt nur ein geschlossenes Ticket, das in einem **offenen** Status landet:
+Genau das zählt die Ticket-Statistik unter *Wiedereröffnet*, und genau das weist die
+Warte-Markierung als *Wiedereröffnet* statt *Kunde hat geantwortet* aus. Ein Statuswechsel an einem
+bereits offenen Ticket ist eine gewöhnliche Antwort — ebenso ein Wiedereröffnungsstatus, der selbst
+geschlossen ist (auf *Abgewiesen* zu zeigen ist erlaubt; der Status wird gesetzt, das Ticket wird
+nur nie offen).
 
 Das Feld *Max. Alter (Tage)* im selben Kasten ist etwas anderes: Es greift **vor** der
 Übergabe an Redmines `MailHandler` und erzwingt für die Antwort auf ein lange geschlossenes

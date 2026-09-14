@@ -21,8 +21,9 @@
   das neue leer, verhält sich das Postfach exakt wie bisher. Wie die Wiedereröffnung wird die
   Änderung als Statuswechsel an denselben Journaleintrag geschrieben, der die Kundenantwort trägt —
   ein Historieneintrag, keine zusätzliche Benachrichtigung. Als Wiedereröffnung zählt weiterhin nur
-  der geschlossene Fall, sowohl in der Ticket-Statistik als auch für die Kennzeichnung
-  *Wiedereröffnet* an der Warte-Markierung. Über die REST-API als `open_reply_status_id` am
+  der geschlossene Fall, und auch nur dann, wenn das Ticket in einem offenen Status landet: Ein
+  Wiedereröffnungsstatus, der selbst geschlossen ist, wird gesetzt, aber nicht als
+  *Wiedereröffnet* gekennzeichnet. Das gilt für die Ticket-Statistik wie für die Warte-Markierung. Über die REST-API als `open_reply_status_id` am
   `helpdesk_mailbox` les- und schreibbar. Migration 051.
 
 ## [0.9.3] - 2026-09-13
@@ -2146,7 +2147,7 @@
 
 
 ### Added
-- **Status und Bearbeiter nach Antwort automatisch setzen** (files: `db/migrate/015_add_reply_actions_to_helpdesk_project_settings.rb`, `app/models/helpdesk_project_setting.rb`, `app/controllers/helpdesk_project_settings_controller.rb`, `app/views/projects/settings/_helpdesk.html.erb`, `lib/redmine_expert_helpdesk/hooks.rb`, `app/views/helpdesk/_reply_in_edit.html.erb`, `config/locales/de.yml`, `config/locales/en.yml`) — Neue Spalten `open_reply_status_id` (integer, FK auf `issue_statuses`) und `reply_assign_to_sender` (boolean, default false) in `helpdesk_project_settings`. Im Projekteinstellungs-Tab zwei neue Felder: Dropdown „Status nach Antwort" und Checkbox „Ticket nach Antwort mir zuweisen". Nach erfolgreichem Mail-Versand setzt das JS im Antwortformular das Status-Select (`issue[status_id]`) und/oder das Bearbeiter-Select (`issue[assigned_to_id]`) auf die konfigurierten Werte, bevor `issueForm.submit()` aufgerufen wird. Die Änderungen landen damit im selben Journal-Eintrag wie die Notiz.
+- **Status und Bearbeiter nach Antwort automatisch setzen** (files: `db/migrate/015_add_reply_actions_to_helpdesk_project_settings.rb`, `app/models/helpdesk_project_setting.rb`, `app/controllers/helpdesk_project_settings_controller.rb`, `app/views/projects/settings/_helpdesk.html.erb`, `lib/redmine_expert_helpdesk/hooks.rb`, `app/views/helpdesk/_reply_in_edit.html.erb`, `config/locales/de.yml`, `config/locales/en.yml`) — Neue Spalten `reply_status_id` (integer, FK auf `issue_statuses`) und `reply_assign_to_sender` (boolean, default false) in `helpdesk_project_settings`. Im Projekteinstellungs-Tab zwei neue Felder: Dropdown „Status nach Antwort" und Checkbox „Ticket nach Antwort mir zuweisen". Nach erfolgreichem Mail-Versand setzt das JS im Antwortformular das Status-Select (`issue[status_id]`) und/oder das Bearbeiter-Select (`issue[assigned_to_id]`) auf die konfigurierten Werte, bevor `issueForm.submit()` aufgerufen wird. Die Änderungen landen damit im selben Journal-Eintrag wie die Notiz.
 
 ## [Unreleased] 2026-06-24 (3)
 

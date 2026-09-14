@@ -324,6 +324,18 @@ class HelpdeskAwaitingAgentTest < ActiveSupport::TestCase
     assert_equal target.id.to_s, detail.value
   end
 
+  # A mailbox may point the reopen status at a closed status (*Rejected*, say). The
+  # ticket then never becomes open, TicketStatistics counts no reopen for it, and the
+  # awaiting-agent reason must not claim one either.
+  def test_closed_to_closed_status_change_does_not_count_as_a_reopen
+    issue, closed = closed_issue
+    other_closed = IssueStatus.where(:is_closed => true).where.not(:id => closed.id).first
+    skip 'fixtures provide only one closed status' unless other_closed
+
+    assert_equal false, processor_for(other_closed.id).send(:apply_reply_status, issue, nil)
+    assert_equal other_closed.id, Issue.find(issue.id).status_id, 'the status is still applied'
+  end
+
   # Both settings side by side: the ticket's own state decides which one wins.
   def test_state_of_the_issue_selects_which_status_is_applied
     reopen_target = IssueStatus.where(:is_closed => false).first

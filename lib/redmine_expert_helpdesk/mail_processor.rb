@@ -347,9 +347,13 @@ module RedmineExpertHelpdesk
     # wants the reply to move it on, and that is not the status a reopened ticket
     # should land in. Either one blank means "leave the ticket's status alone".
     #
-    # Returns true only when a *closed* ticket was reopened -- the caller labels the
-    # awaiting-agent reason from that, and a status change on an already open ticket
-    # is not a reopen.
+    # Returns true only for an actual reopen, meaning a closed ticket that ends up in
+    # an open status. The caller labels the awaiting-agent reason from that, and the
+    # two cases it deliberately excludes are a status change on an already open
+    # ticket, and a reopen status that is itself closed (a mailbox may well point at
+    # *Rejected*): neither leaves the ticket open, and TicketStatistics counts a
+    # reopen as a closed -> non-closed transition, so calling either one a reopen
+    # would label a ticket *Reopened* that the statistics never count.
     #
     # save(validate: false) is deliberate and must stay: the ticket is mutated from
     # arbitrary inbound mail, and a field made mandatory, a workflow transition or a
@@ -376,13 +380,14 @@ module RedmineExpertHelpdesk
       return false unless new_status
       return false if new_status.id == issue.status_id
 
+      reopened      = closed && !new_status.is_closed?
       old_status_id = issue.status_id
       issue.status = new_status
       issue.save(:validate => false)
       record_reply_status_journal(issue, journal, old_status_id, new_status.id)
       Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): Ticket ##{issue.id} " \
-                        "#{closed ? 'wiedereroffnet' : 'auf Antwortstatus gesetzt'} \u2013 Status \"#{new_status.name}\""
-      closed
+                        "#{reopened ? 'wiedereroffnet' : 'auf Antwortstatus gesetzt'} \u2013 Status \"#{new_status.name}\""
+      reopened
     end
 
     # Makes the automatic status change visible in the ticket history. Because the
