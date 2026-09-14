@@ -84,6 +84,7 @@ module RedmineExpertHelpdesk
         api.unknown_user_mode    m.unknown_user_mode
         api.suppress_notifications m.suppress_notifications
         api.reopen_status_id     m.reopen_status_id
+        api.open_reply_status_id      m.open_reply_status_id
         api.reopen_max_age_days  m.reopen_max_age_days
 
         # --- Filters and replies ---

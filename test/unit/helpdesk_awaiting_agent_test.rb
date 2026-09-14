@@ -201,7 +201,7 @@ class HelpdeskAwaitingAgentTest < ActiveSupport::TestCase
   end
 
   # -----------------------------------------------------------------------
-  # Auto-reopen (MailProcessor)
+  # Automatic status on a customer reply (MailProcessor)
   # -----------------------------------------------------------------------
 
   # Minimal stand-in for the mail provider -- no provider calls happen here.
@@ -210,8 +210,9 @@ class HelpdeskAwaitingAgentTest < ActiveSupport::TestCase
     def respond_to_missing?(*); true; end
   end
 
-  def processor_for(reopen_status_id)
-    mailbox = HelpdeskMailbox.new(:reopen_status_id => reopen_status_id)
+  def processor_for(reopen_status_id, open_reply_status_id = nil)
+    mailbox = HelpdeskMailbox.new(:reopen_status_id => reopen_status_id,
+                                  :open_reply_status_id  => open_reply_status_id)
     RedmineExpertHelpdesk::MailProcessor.new(mailbox, NullProvider.new)
   end
 
@@ -222,31 +223,40 @@ class HelpdeskAwaitingAgentTest < ActiveSupport::TestCase
     [Issue.find(issue.id), closed]
   end
 
-  def test_reopen_is_a_noop_on_an_open_issue
+  def open_issue
     open_status = IssueStatus.where(:is_closed => false).first
     issue = Issue.find(1)
     issue.update_columns(:status_id => open_status.id)
+    [Issue.find(issue.id), open_status]
+  end
 
-    processor = processor_for(IssueStatus.where(:is_closed => false).last.id)
-    assert_equal false, processor.send(:reopen_if_closed, Issue.find(issue.id), nil)
+  # The reopen status belongs to the closed case only -- an open ticket must not be
+  # dragged into it just because the same mailbox has one configured.
+  def test_reopen_status_is_not_applied_to_an_open_issue
+    issue, open_status = open_issue
+    other_open = IssueStatus.where(:is_closed => false).where.not(:id => open_status.id).first
+
+    processor = processor_for(other_open.id)
+    assert_equal false, processor.send(:apply_reply_status, issue, nil)
+    assert_equal open_status.id, Issue.find(issue.id).status_id
   end
 
   def test_reopen_is_a_noop_without_a_configured_status
     issue, = closed_issue
-    assert_equal false, processor_for(nil).send(:reopen_if_closed, issue, nil)
+    assert_equal false, processor_for(nil).send(:apply_reply_status, issue, nil)
   end
 
   # Guard against writing an empty status detail.
   def test_reopen_is_a_noop_when_status_already_matches
     issue, closed = closed_issue
-    assert_equal false, processor_for(closed.id).send(:reopen_if_closed, issue, nil)
+    assert_equal false, processor_for(closed.id).send(:apply_reply_status, issue, nil)
   end
 
   def test_reopen_sets_the_configured_status
     issue, = closed_issue
     target = IssueStatus.where(:is_closed => false).first
 
-    assert_equal true, processor_for(target.id).send(:reopen_if_closed, issue, nil)
+    assert_equal true, processor_for(target.id).send(:apply_reply_status, issue, nil)
     assert_equal target.id, Issue.find(issue.id).status_id
   end
 
@@ -257,7 +267,7 @@ class HelpdeskAwaitingAgentTest < ActiveSupport::TestCase
     target = IssueStatus.where(:is_closed => false).first
     journal = Journal.create!(:journalized => issue, :user => User.find(1), :notes => 'Kundenantwort')
 
-    processor_for(target.id).send(:reopen_if_closed, issue, journal)
+    processor_for(target.id).send(:apply_reply_status, issue, journal)
 
     detail = journal.reload.details.detect { |d| d.prop_key == 'status_id' }
     assert_not_nil detail, 'expected a status_id detail on the reply journal'
@@ -271,7 +281,60 @@ class HelpdeskAwaitingAgentTest < ActiveSupport::TestCase
     target = IssueStatus.where(:is_closed => false).first
 
     assert_difference 'Journal.count', 1 do
-      processor_for(target.id).send(:reopen_if_closed, issue, nil)
+      processor_for(target.id).send(:apply_reply_status, issue, nil)
     end
+  end
+
+  # --- Open ticket: open_reply_status_id ---------------------------------------
+
+  def test_reply_status_is_a_noop_when_not_configured
+    issue, open_status = open_issue
+
+    assert_equal false, processor_for(nil).send(:apply_reply_status, issue, nil)
+    assert_equal open_status.id, Issue.find(issue.id).status_id
+  end
+
+  # Guard against writing an empty status detail.
+  def test_reply_status_is_a_noop_when_status_already_matches
+    issue, open_status = open_issue
+
+    assert_equal false, processor_for(nil, open_status.id).send(:apply_reply_status, issue, nil)
+  end
+
+  # False, not true: an open ticket that moves on has not been reopened, and the
+  # caller labels the awaiting-agent reason from this return value.
+  def test_reply_status_sets_the_configured_status_without_counting_as_a_reopen
+    issue, open_status = open_issue
+    target = IssueStatus.where(:is_closed => false).where.not(:id => open_status.id).first
+
+    assert_equal false, processor_for(nil, target.id).send(:apply_reply_status, issue, nil)
+    assert_equal target.id, Issue.find(issue.id).status_id
+  end
+
+  def test_reply_status_adds_a_status_detail_to_the_given_journal
+    issue, open_status = open_issue
+    target = IssueStatus.where(:is_closed => false).where.not(:id => open_status.id).first
+    journal = Journal.create!(:journalized => issue, :user => User.find(1), :notes => 'Kundenantwort')
+
+    processor_for(nil, target.id).send(:apply_reply_status, issue, journal)
+
+    detail = journal.reload.details.detect { |d| d.prop_key == 'status_id' }
+    assert_not_nil detail, 'expected a status_id detail on the reply journal'
+    assert_equal open_status.id.to_s, detail.old_value
+    assert_equal target.id.to_s, detail.value
+  end
+
+  # Both settings side by side: the ticket's own state decides which one wins.
+  def test_state_of_the_issue_selects_which_status_is_applied
+    reopen_target = IssueStatus.where(:is_closed => false).first
+    reply_target  = IssueStatus.where(:is_closed => false).where.not(:id => reopen_target.id).first
+
+    issue, = closed_issue
+    assert_equal true, processor_for(reopen_target.id, reply_target.id).send(:apply_reply_status, issue, nil)
+    assert_equal reopen_target.id, Issue.find(issue.id).status_id
+
+    issue = Issue.find(issue.id)
+    assert_equal false, processor_for(reopen_target.id, reply_target.id).send(:apply_reply_status, issue, nil)
+    assert_equal reply_target.id, Issue.find(issue.id).status_id
   end
 end

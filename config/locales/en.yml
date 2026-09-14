@@ -127,9 +127,11 @@ en:
   error_helpdesk_missing_parameters: Missing parameters.
   error_helpdesk_access_denied: Access denied.
 
-  label_helpdesk_reopen: Issue reopening
-  field_helpdesk_reopen_status: Reopen status
+  label_helpdesk_reopen: Status on customer reply
+  field_helpdesk_reopen_status: Status (closed issue)
   text_helpdesk_reopen_status_info: Status to set on a closed issue when a new customer reply is received. Empty = issue stays closed.
+  field_helpdesk_open_reply_status: Status (open issue)
+  text_helpdesk_open_reply_status_info: Status to set on an open issue when a new customer reply is received. Empty = status is left unchanged.
   field_helpdesk_reopen_max_age_days: Max. age (days)
   text_helpdesk_reopen_max_age_days_info: If the issue was last updated more than this many days ago, a new issue is created instead of reopening the existing one. Empty = no age limit.
   label_helpdesk_defaults: Defaults for new tickets

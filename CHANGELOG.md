@@ -6,6 +6,23 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Added
+
+- **A separate status for a reply to an *open* ticket.** Until now a mailbox had one status for
+  inbound customer replies, and it only ever applied to a *closed* ticket. That assumed the ticket
+  was closed while waiting for the customer — helpdesks that keep it open with a status such as
+  *Waiting for customer* or *On hold* had no way to have the reply move it on. The reopen setting
+  therefore got a sibling: *Helpdesk → Mailbox → Status on customer reply* now has *Status (closed
+  issue)* (the previous reopen status, unchanged) and *Status (open issue)*, and the ticket's state
+  when the mail arrives decides which one is applied. Both are optional and independent; leaving the
+  new one empty is what every existing mailbox does, so nothing changes until it is configured.
+  Like the reopen, the change is written as a status change onto the same journal entry that carries
+  the customer's reply — one history entry, no extra notification. Only the closed case still counts
+  as a reopen for the ticket statistics and for the *Reopened* label on the awaiting-response flag.
+  Readable and writable over the REST API as `open_reply_status_id` on `helpdesk_mailbox`. Migration 051.
+
 ## [0.9.3] - 2026-09-13
 
 ### Fixed

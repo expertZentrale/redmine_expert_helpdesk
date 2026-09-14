@@ -352,6 +352,13 @@
     <em class="info"><%= l(:text_helpdesk_reopen_status_info) %></em>
   </p>
   <p>
+    <label><%= l(:field_helpdesk_open_reply_status) %></label>
+    <%= select_tag 'helpdesk_mailbox[open_reply_status_id]',
+        options_from_collection_for_select(IssueStatus.sorted, :id, :name, @mailbox.open_reply_status_id),
+        :include_blank => true %>
+    <em class="info"><%= l(:text_helpdesk_open_reply_status_info) %></em>
+  </p>
+  <p>
     <label><%= l(:field_helpdesk_reopen_max_age_days) %></label>
     <%= number_field_tag 'helpdesk_mailbox[reopen_max_age_days]', @mailbox.reopen_max_age_days,
         :min => 1, :size => 6, :style => 'width:5em' %>

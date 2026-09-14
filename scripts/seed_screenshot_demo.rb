@@ -159,6 +159,7 @@ mailbox.assign_attributes(
   autoresponder_enabled: true,
   auto_reply_filter_enabled: true,
   reopen_status_id:   status_wip.id,
+  open_reply_status_id:    status_wip.id,
   reopen_max_age_days: 14,
   last_fetched_at:    TODAY - 12.minutes
 )
