@@ -426,6 +426,8 @@ en:
   label_helpdesk_mail_footer_preview: Signature preview
   label_helpdesk_reply_addresses_hint: "Separate multiple addresses with a comma"
   label_helpdesk_reply_attachments: "Attachments"
+  button_helpdesk_add_original_recipients: "original recipients"
+  title_helpdesk_original_recipients: "Recipients of the original customer mail"
   field_helpdesk_reply_transport: "Send via"
   label_helpdesk_transport_graph: "Microsoft Graph API (Exchange)"
   label_helpdesk_transport_smtp: "SMTP (Redmine default)"

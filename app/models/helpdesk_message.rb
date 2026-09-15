@@ -50,4 +50,46 @@ class HelpdeskMessage < HelpdeskApplicationRecord
   def project
     issue&.project
   end
+
+  # Recipients of the mail that opened this ticket, offered behind the To and Cc
+  # fields of the reply form. A customer mail is often addressed to several
+  # people, and having to look those addresses up in the original mail and
+  # retype them is what made agents drop them from the answer.
+  #
+  # Inbound Bcc does not exist - the sending MTA strips it - so only To and Cc
+  # are returned. recipient_to/_cc may be NULL: MailProcessor parses the MIME
+  # with a `rescue nil`, so a mail that failed to parse has no recipients stored
+  # rather than an empty string.
+  def self.original_recipients_for(issue, exclude: [])
+    issue_id = issue.is_a?(Issue) ? issue.id : issue
+    msg      = incoming.where(:issue_id => issue_id).order(:id => :asc).first
+    return { :to => [], :cc => [] } unless msg
+
+    blocked = Array(exclude).map { |a| a.to_s.strip.downcase }.reject(&:blank?)
+    to      = split_addresses(msg.recipient_to, blocked)
+    # An address in both headers is offered once. Adding it to To and Cc alike
+    # would put a duplicate recipient on the outgoing mail.
+    cc      = split_addresses(msg.recipient_cc, blocked + to.map(&:downcase))
+
+    { :to => to, :cc => cc }
+  end
+
+  # Splits a stored recipient header into single addresses. MailProcessor writes
+  # these as Mail#to.join(', '), so they are bare addresses - but a hand-written
+  # row or a future sender may still wrap them in angle brackets. Comparison is
+  # case-insensitive; the casing that comes back is the one that was stored.
+  def self.split_addresses(value, blocked = [])
+    seen = []
+    value.to_s.split(/[,;]+/).filter_map do |raw|
+      addr = raw.strip.sub(/\A.*</, '').sub(/>.*\z/, '').strip
+      next if addr.blank?
+
+      key = addr.downcase
+      next if blocked.include?(key) || seen.include?(key)
+
+      seen << key
+      addr
+    end
+  end
+  private_class_method :split_addresses
 end

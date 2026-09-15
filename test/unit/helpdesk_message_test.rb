@@ -69,4 +69,84 @@ class HelpdeskMessageTest < ActiveSupport::TestCase
     assert_not_includes HelpdeskMessage.outgoing, msg_in
     assert_not_includes HelpdeskMessage.outgoing, msg_init
   end
+
+  # -----------------------------------------------------------------------
+  # Original recipients (offered behind the reply form's To/Cc fields)
+  # -----------------------------------------------------------------------
+
+  def inbound(issue, to, cc = nil)
+    HelpdeskMessage.create!(:issue => issue, :direction => 'in',
+                            :recipient_to => to, :recipient_cc => cc)
+  end
+
+  def test_original_recipients_returns_to_and_cc_of_the_inbound_mail
+    issue = Issue.first
+    inbound(issue, 'support@example.com, chef@kunde.de', 'kollege@kunde.de')
+
+    result = HelpdeskMessage.original_recipients_for(issue)
+    assert_equal ['support@example.com', 'chef@kunde.de'], result[:to]
+    assert_equal ['kollege@kunde.de'], result[:cc]
+  end
+
+  # The mailbox that received the mail is always in its To, and the customer is
+  # already prefilled in the form - both are passed in as exclusions.
+  def test_original_recipients_filters_excluded_addresses_case_insensitively
+    issue = Issue.first
+    inbound(issue, 'Support@Example.com, chef@kunde.de', 'kunde@kunde.de')
+
+    result = HelpdeskMessage.original_recipients_for(
+      issue, :exclude => ['support@example.com', 'KUNDE@kunde.de']
+    )
+    assert_equal ['chef@kunde.de'], result[:to]
+    assert_equal [], result[:cc]
+  end
+
+  # Offering it twice would let the agent put a duplicate recipient on the mail.
+  def test_original_recipients_offers_an_address_in_both_headers_only_once
+    issue = Issue.first
+    inbound(issue, 'chef@kunde.de', 'chef@kunde.de, kollege@kunde.de')
+
+    result = HelpdeskMessage.original_recipients_for(issue)
+    assert_equal ['chef@kunde.de'], result[:to]
+    assert_equal ['kollege@kunde.de'], result[:cc]
+  end
+
+  # MailProcessor parses the MIME with a `rescue nil`, so a mail that failed to
+  # parse stores NULL rather than an empty string.
+  def test_original_recipients_handles_null_columns
+    issue = Issue.first
+    inbound(issue, nil, nil)
+
+    result = HelpdeskMessage.original_recipients_for(issue)
+    assert_equal [], result[:to]
+    assert_equal [], result[:cc]
+  end
+
+  def test_original_recipients_is_empty_without_an_inbound_mail
+    issue = Issue.first
+    HelpdeskMessage.create!(:issue => issue, :direction => 'out',
+                            :recipient_to => 'kunde@kunde.de')
+
+    result = HelpdeskMessage.original_recipients_for(issue)
+    assert_equal [], result[:to]
+    assert_equal [], result[:cc]
+  end
+
+  # The mail that opened the ticket, not the most recent one: a later reply may
+  # have dropped people the answer should still reach.
+  def test_original_recipients_uses_the_first_inbound_mail
+    issue = Issue.first
+    inbound(issue, 'first@kunde.de')
+    inbound(issue, 'second@kunde.de')
+
+    assert_equal ['first@kunde.de'], HelpdeskMessage.original_recipients_for(issue)[:to]
+  end
+
+  def test_original_recipients_strips_display_names_and_blank_entries
+    issue = Issue.first
+    inbound(issue, 'Chef <chef@kunde.de>, , kollege@kunde.de;')
+
+    assert_equal ['chef@kunde.de', 'kollege@kunde.de'],
+                 HelpdeskMessage.original_recipients_for(issue)[:to]
+  end
 end

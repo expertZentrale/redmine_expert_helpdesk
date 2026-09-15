@@ -5,6 +5,25 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **Die ursprünglichen Empfänger einer Kundenmail sind im Antwortformular jetzt einen Klick
+  entfernt.** Eine Kundenmail geht oft an mehrere Personen — eine Kollegin, ein Team-Postfach,
+  ein Kundenbetreuer in Cc. Das Antwortformular hat bisher nur den Kunden in *An* vorbelegt; wer
+  die übrigen Beteiligten wieder in den Verlauf holen wollte, musste die Originalmail öffnen und
+  die Adressen abtippen — und ließ sie in der Praxis weg: Die Antwort ging an eine Person, der
+  Rest des Verlaufs erfuhr nie davon. Hinter den Feldern *An* und *CC* liegt nun ein Button
+  **Originalempfänger**, der die Adressen der Mail auflistet, mit der das Ticket eröffnet wurde,
+  jede mit einer Checkbox — Anhaken fügt sie ins Feld ein, Abwählen entfernt sie wieder. *An*
+  bietet das ursprüngliche `To:`, *CC* das ursprüngliche `Cc:`, die Adressierung des Kunden
+  bleibt also erhalten. Die eigene Postfachadresse und der Kunde werden herausgefiltert, eine
+  Adresse aus beiden Headern wird einmal angeboten, und der Button fehlt ganz, wenn nichts übrig
+  bleibt. Keine Migration und keine neue Einstellung — diese Adressen werden bei jeder
+  eingehenden Mail ohnehin gespeichert. *BCC* hat keinen Button: Ein eingehendes `Bcc` entfernt
+  der versendende Server, es stand nie zur Verfügung.
+
 ## [0.10.0] - 2026-09-14
 
 ### Hinzugefügt
