@@ -22,6 +22,15 @@
         <th><%= l(:label_helpdesk_reply_to) %></th>
         <td>
           <input type="text" id="hd-to"  value="<%= h(contact.email) %>" class="hd-addr-field" />
+          <% if original_to.any? %>
+            <span class="hd-orig-wrap" data-hd-field="hd-to"
+                  data-hd-original="<%= h(original_to.to_json) %>">
+              <button type="button" class="hd-orig-btn"
+                      title="<%= h(l(:title_helpdesk_original_recipients)) %>"><%=
+                hd_icon_label('add', "(#{l(:button_helpdesk_add_original_recipients)})") %></button>
+              <ul class="hd-orig-dropdown" style="display:none;"></ul>
+            </span>
+          <% end %>
         </td>
       </tr>
       <tr>
@@ -29,6 +38,15 @@
         <td>
           <input type="text" id="hd-cc"  value="" class="hd-addr-field"
                  placeholder="<%= h(l(:label_helpdesk_reply_addresses_hint)) %>" />
+          <% if original_cc.any? %>
+            <span class="hd-orig-wrap" data-hd-field="hd-cc"
+                  data-hd-original="<%= h(original_cc.to_json) %>">
+              <button type="button" class="hd-orig-btn"
+                      title="<%= h(l(:title_helpdesk_original_recipients)) %>"><%=
+                hd_icon_label('add', "(#{l(:button_helpdesk_add_original_recipients)})") %></button>
+              <ul class="hd-orig-dropdown" style="display:none;"></ul>
+            </span>
+          <% end %>
         </td>
       </tr>
       <tr>
@@ -192,6 +210,53 @@
 }
 .hd-ac-dropdown li:hover,
 .hd-ac-dropdown li.hd-ac-active { background: #e8f0fc; }
+/* "Original recipients" behind the To/Cc fields. Its own positioning context:
+   the autocomplete re-parents the input into .hd-ac-wrap at runtime, so this
+   wrapper ends up a sibling of that and must anchor its own dropdown. */
+.hd-orig-wrap {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.hd-orig-btn {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  cursor: pointer;
+  font-size: 0.85em;
+  color: #628db6;
+  white-space: nowrap;
+}
+.hd-orig-btn:hover { color: #2a5d8f; text-decoration: underline; }
+.hd-orig-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 9999;
+  background: #fff;
+  border: 1px solid #aaa;
+  border-radius: 0 0 3px 3px;
+  min-width: 260px;
+  max-width: 480px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.hd-orig-dropdown li { padding: 0; }
+.hd-orig-dropdown label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 0.88em;
+  color: #333;
+  white-space: nowrap;
+}
+.hd-orig-dropdown label:hover { background: #e8f0fc; }
+.hd-orig-dropdown input[type=checkbox] { margin: 0; }
 </style>
 
 <script>
@@ -578,6 +643,131 @@
       var el = document.getElementById(id);
       if (el) setupField(el);
     });
+  });
+})();
+
+// "Original recipients" behind the To and Cc fields: the addresses the customer
+// mail that opened the ticket was sent to, minus our own mailbox and the
+// customer. Checking one adds it to the field, unchecking takes it back out -
+// per address, because the original recipients are not automatically the right
+// audience for the answer.
+(function() {
+  // Field values are comma/semicolon separated, but a separator inside quotes
+  // or angle brackets separates nothing: the contact autocomplete inserts RFC
+  // 2822 labels such as "Doe, Jane" <jane@doe.com>. The submit handler strips
+  // the trailing separator, so writing back "addr, " is safe.
+  function parseList(value) {
+    var tokens = [], current = '', quoted = false, angled = false, escaped = false;
+    for (var i = 0; i < value.length; i++) {
+      var ch = value[i];
+      // A backslash-escaped character is literal - \" does not close the quoted
+      // string. Toggling on it flips the parity and the next comma then splits
+      // the display name in half.
+      if (escaped) { current += ch; escaped = false; continue; }
+      if (ch === '\\')     { escaped = true; }
+      else if (ch === '"') { quoted = !quoted; }
+      else if (ch === '<') { angled = true; }
+      else if (ch === '>') { angled = false; }
+      else if ((ch === ',' || ch === ';') && !quoted && !angled) {
+        tokens.push(current);
+        current = '';
+        continue;
+      }
+      current += ch;
+    }
+    tokens.push(current);
+    return tokens.map(function(t) { return t.trim(); })
+                 .filter(function(t) { return t.length > 0; });
+  }
+
+  // The address out of `Name <addr>`, so a contact the autocomplete inserted in
+  // its labelled form still counts as present - comparing the raw token instead
+  // left the box unticked and ticking it added the same person a second time.
+  function bareAddress(token) {
+    var m = token.match(/<([^>]*)>/);
+    return (m ? m[1] : token).trim().toLowerCase();
+  }
+
+  function hasAddress(input, addr) {
+    var needle = addr.toLowerCase();
+    return parseList(input.value).some(function(a) { return bareAddress(a) === needle; });
+  }
+
+  // Tokens are written back as they were typed: the agent's own display names
+  // survive, only our own entry is appended bare.
+  function addAddress(input, addr) {
+    if (hasAddress(input, addr)) return;
+    var current = parseList(input.value);
+    current.push(addr);
+    input.value = current.join(', ') + ', ';
+  }
+
+  function removeAddress(input, addr) {
+    var needle = addr.toLowerCase();
+    var kept   = parseList(input.value).filter(function(a) { return bareAddress(a) !== needle; });
+    input.value = kept.length ? kept.join(', ') + ', ' : '';
+  }
+
+  function setupWrap(wrap) {
+    var btn      = wrap.querySelector('.hd-orig-btn');
+    var dropdown = wrap.querySelector('.hd-orig-dropdown');
+    // By id, not by DOM position: the autocomplete moves the input into a
+    // generated wrapper at DOMContentLoaded, so the two run in any order.
+    var input    = document.getElementById(wrap.getAttribute('data-hd-field'));
+    if (!btn || !dropdown || !input) return;
+
+    var addresses = [];
+    try {
+      addresses = JSON.parse(wrap.getAttribute('data-hd-original') || '[]');
+    } catch (e) {
+      addresses = [];
+    }
+    if (!addresses.length) return;
+
+    function close() {
+      dropdown.style.display = 'none';
+      btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function open() {
+      dropdown.innerHTML = '';
+      addresses.forEach(function(addr) {
+        var li    = document.createElement('li');
+        var label = document.createElement('label');
+        var box   = document.createElement('input');
+        box.type = 'checkbox';
+        // Read the field every time the list opens, so a tick never contradicts
+        // an address the agent removed or typed by hand in between.
+        box.checked = hasAddress(input, addr);
+        box.addEventListener('change', function() {
+          if (box.checked) { addAddress(input, addr); } else { removeAddress(input, addr); }
+        });
+        label.appendChild(box);
+        label.appendChild(document.createTextNode(addr));
+        li.appendChild(label);
+        dropdown.appendChild(li);
+      });
+      dropdown.style.display = 'block';
+      btn.setAttribute('aria-expanded', 'true');
+    }
+
+    btn.setAttribute('aria-expanded', 'false');
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (dropdown.style.display === 'block') { close(); } else { open(); }
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!wrap.contains(e.target)) close();
+    });
+
+    wrap.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') { close(); btn.focus(); }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.hd-orig-wrap').forEach(setupWrap);
   });
 })();
 //]]>

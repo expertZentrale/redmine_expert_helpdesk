@@ -88,6 +88,12 @@ siehe [Tests](#tests).
   Kontakte des Projekts vorgeschlagen (ab 2 Zeichen, Dropdown mit Tastatur-
   und Mausnavigation, kommagetrennte Mehrfacheingabe). Display-Namen mit
   Komma werden automatisch RFC 2822-konform gequotet.
+- **Originalempfänger**: Ein Button **Originalempfänger** hinter den Feldern
+  An/CC listet die Adressen auf, an die die eröffnende Mail ging, jede mit
+  Checkbox — Anhaken fügt sie ins Feld ein, Abwählen entfernt sie wieder. An
+  bietet das ursprüngliche `To:`, CC das ursprüngliche `Cc:`; die eigene
+  Postfachadresse und der Kunde werden herausgefiltert. BCC hat keinen Button,
+  da ein eingehendes `Bcc` vom versendenden Server entfernt wird.
 - **Kontakte**: Absender werden automatisch als Kontakte gespeichert;
   Kundenliste im Projekt (paginiert, nach jeder Spalte sortierbar, konfigurierbare Einträge pro Seite),
   Kundeninfo-Panel mit früheren Tickets auf der Ticketseite. Die Ticketliste

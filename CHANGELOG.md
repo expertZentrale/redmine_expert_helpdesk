@@ -6,6 +6,24 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Added
+
+- **The original recipients of a customer mail are now one click away in the reply form.** A
+  customer mail is often addressed to more than one person — a colleague, a shared team address,
+  an account manager in Cc. The reply form only ever prefilled the customer in *To*, so putting
+  those people back on the thread meant opening the original mail and retyping their addresses.
+  In practice they were dropped: the answer went to one person while the rest of the thread never
+  heard it. Behind the *To* and *Cc* fields there is now an **original recipients** button listing
+  the addresses of the mail that opened the ticket, each with a checkbox — ticking one adds it to
+  the field, unticking takes it back out. *To* offers the original `To:` and *Cc* the original
+  `Cc:`, so the customer's own addressing is preserved. Your own mailbox address and the customer
+  are filtered out, an address that appeared in both headers is offered once, and the button is
+  absent when nothing is left to offer. No migration and no new setting — these addresses have
+  been stored with every incoming mail all along. *BCC* has no button: an inbound `Bcc` is
+  stripped by the sending server and was never available.
+
 ## [0.10.0] - 2026-09-14
 
 ### Added

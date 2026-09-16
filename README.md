@@ -87,6 +87,12 @@ see [Tests](#tests).
   project contacts (from 2 characters, dropdown with keyboard and mouse
   navigation, comma-separated multi-value). Display names containing commas
   are automatically quoted per RFC 2822.
+- **Original recipients**: An **original recipients** button behind the To/CC
+  fields lists the addresses the mail that opened the ticket was sent to, each
+  with a checkbox — ticking one adds it to the field, unticking removes it. To
+  offers the original `To:`, CC the original `Cc:`; your own mailbox address and
+  the customer are filtered out. BCC has no button, because an inbound `Bcc` is
+  stripped by the sending server.
 - **Contacts**: Senders are automatically saved as contacts; customer list in
   the project (paginated, sortable by every column, configurable entries per page), customer info panel
   with previous tickets on the ticket page. The issue list offers sortable

@@ -293,6 +293,17 @@ module RedmineExpertHelpdesk
       project_setting  = HelpdeskProjectSetting.for_project(project)
       send_by_default  = project_setting.send_reply_by_default
 
+      # Recipients of the mail that opened the ticket. Our own addresses and the
+      # customer drop out: the original To always contains the mailbox that
+      # received the mail, and the customer is already prefilled in To.
+      # from_address and reply_to_address differ from mailbox_address when an
+      # SMTP From override is configured, so all three have to go.
+      original = HelpdeskMessage.original_recipients_for(
+        issue,
+        :exclude => [contact.email, mailbox&.mailbox_address,
+                     mailbox&.from_address, mailbox&.reply_to_address]
+      )
+
       context[:controller].send(:render_to_string, {
         :partial => 'helpdesk/reply_in_edit',
         :locals  => {
@@ -302,7 +313,9 @@ module RedmineExpertHelpdesk
           :footer_text            => footer_text.to_s,
           :send_by_default        => send_by_default,
           :reply_status_id        => project_setting.reply_status_id,
-          :reply_assign_to_sender => project_setting.reply_assign_to_sender
+          :reply_assign_to_sender => project_setting.reply_assign_to_sender,
+          :original_to            => original[:to],
+          :original_cc            => original[:cc]
         }
       })
     end
