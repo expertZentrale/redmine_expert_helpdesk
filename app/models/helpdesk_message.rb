@@ -108,9 +108,20 @@ class HelpdeskMessage < HelpdeskApplicationRecord
     current = +''
     quoted  = false
     angled  = false
+    escaped = false
 
     value.to_s.each_char do |ch|
+      # A backslash-escaped character is literal - in particular \" does not
+      # close the quoted string. Toggling on it flips the parity, and the next
+      # comma then looks unquoted and splits the display name in half.
+      if escaped
+        current << ch
+        escaped = false
+        next
+      end
+
       case ch
+      when '\\'     then escaped = true
       when '"'      then quoted = !quoted
       when '<'      then angled = true
       when '>'      then angled = false

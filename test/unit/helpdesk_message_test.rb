@@ -160,6 +160,17 @@ class HelpdeskMessageTest < ActiveSupport::TestCase
                  HelpdeskMessage.original_recipients_for(issue)[:to]
   end
 
+  # An escaped quote does not close the quoted string. Toggling on it flipped
+  # the parity, so the comma after the first address looked unquoted and split
+  # the display name in half - offering '"Doe \" Jane' as a recipient.
+  def test_original_recipients_survives_an_escaped_quote_in_the_display_name
+    issue = Issue.first
+    inbound(issue, '"Doe \" Jane, X" <jane@doe.com>, chef@kunde.de')
+
+    assert_equal ['jane@doe.com', 'chef@kunde.de'],
+                 HelpdeskMessage.original_recipients_for(issue)[:to]
+  end
+
   # The caller passes the mailbox it would reply *from*, and reply_form falls
   # back to the first enabled project mailbox once the ticket's original mailbox
   # is disabled. The receiving mailbox must drop out regardless, or we offer our
