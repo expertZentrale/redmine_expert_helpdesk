@@ -149,4 +149,33 @@ class HelpdeskMessageTest < ActiveSupport::TestCase
     assert_equal ['chef@kunde.de', 'kollege@kunde.de'],
                  HelpdeskMessage.original_recipients_for(issue)[:to]
   end
+
+  # A comma inside a quoted display name separates nothing. Splitting on every
+  # comma tore this into '"Doe' and 'Jane" <jane@doe.com>' and offered both.
+  def test_original_recipients_keeps_a_quoted_display_name_with_a_comma_intact
+    issue = Issue.first
+    inbound(issue, '"Doe, Jane" <jane@doe.com>, chef@kunde.de')
+
+    assert_equal ['jane@doe.com', 'chef@kunde.de'],
+                 HelpdeskMessage.original_recipients_for(issue)[:to]
+  end
+
+  # The caller passes the mailbox it would reply *from*, and reply_form falls
+  # back to the first enabled project mailbox once the ticket's original mailbox
+  # is disabled. The receiving mailbox must drop out regardless, or we offer our
+  # own helpdesk address back and the answer loops into the helpdesk.
+  def test_original_recipients_excludes_the_mailbox_that_received_the_mail
+    issue   = Issue.first
+    mailbox = HelpdeskMailbox.create!(:project         => issue.project,
+                                      :mailbox_address => 'support@expert.local',
+                                      :provider        => 'imap',
+                                      :imap_host       => 'mail.example.com')
+    HelpdeskMessage.create!(:issue            => issue,
+                            :direction        => 'in',
+                            :helpdesk_mailbox => mailbox,
+                            :recipient_to     => 'support@expert.local, chef@kunde.de')
+
+    # Deliberately no :exclude - the message knows which mailbox received it.
+    assert_equal ['chef@kunde.de'], HelpdeskMessage.original_recipients_for(issue)[:to]
+  end
 end

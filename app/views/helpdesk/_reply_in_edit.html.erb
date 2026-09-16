@@ -652,19 +652,44 @@
 // per address, because the original recipients are not automatically the right
 // audience for the answer.
 (function() {
-  // Field values are comma/semicolon separated. The submit handler strips the
-  // trailing separator, so writing back "addr, " is safe.
+  // Field values are comma/semicolon separated, but a separator inside quotes
+  // or angle brackets separates nothing: the contact autocomplete inserts RFC
+  // 2822 labels such as "Doe, Jane" <jane@doe.com>. The submit handler strips
+  // the trailing separator, so writing back "addr, " is safe.
   function parseList(value) {
-    return value.split(/[,;]+/)
-                .map(function(s) { return s.trim(); })
-                .filter(function(s) { return s.length > 0; });
+    var tokens = [], current = '', quoted = false, angled = false;
+    for (var i = 0; i < value.length; i++) {
+      var ch = value[i];
+      if (ch === '"')      { quoted = !quoted; }
+      else if (ch === '<') { angled = true; }
+      else if (ch === '>') { angled = false; }
+      else if ((ch === ',' || ch === ';') && !quoted && !angled) {
+        tokens.push(current);
+        current = '';
+        continue;
+      }
+      current += ch;
+    }
+    tokens.push(current);
+    return tokens.map(function(t) { return t.trim(); })
+                 .filter(function(t) { return t.length > 0; });
+  }
+
+  // The address out of `Name <addr>`, so a contact the autocomplete inserted in
+  // its labelled form still counts as present - comparing the raw token instead
+  // left the box unticked and ticking it added the same person a second time.
+  function bareAddress(token) {
+    var m = token.match(/<([^>]*)>/);
+    return (m ? m[1] : token).trim().toLowerCase();
   }
 
   function hasAddress(input, addr) {
     var needle = addr.toLowerCase();
-    return parseList(input.value).some(function(a) { return a.toLowerCase() === needle; });
+    return parseList(input.value).some(function(a) { return bareAddress(a) === needle; });
   }
 
+  // Tokens are written back as they were typed: the agent's own display names
+  // survive, only our own entry is appended bare.
   function addAddress(input, addr) {
     if (hasAddress(input, addr)) return;
     var current = parseList(input.value);
@@ -674,7 +699,7 @@
 
   function removeAddress(input, addr) {
     var needle = addr.toLowerCase();
-    var kept   = parseList(input.value).filter(function(a) { return a.toLowerCase() !== needle; });
+    var kept   = parseList(input.value).filter(function(a) { return bareAddress(a) !== needle; });
     input.value = kept.length ? kept.join(', ') + ', ' : '';
   }
 

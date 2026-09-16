@@ -65,7 +65,13 @@ class HelpdeskMessage < HelpdeskApplicationRecord
     msg      = incoming.where(:issue_id => issue_id).order(:id => :asc).first
     return { :to => [], :cc => [] } unless msg
 
-    blocked = Array(exclude).map { |a| a.to_s.strip.downcase }.reject(&:blank?)
+    # The mailbox that actually received this mail is always in its To. The
+    # caller passes the mailbox it would reply *from*, and reply_form falls back
+    # to the first enabled project mailbox once the original one is disabled -
+    # so take the addresses off the message itself too, or we offer our own
+    # helpdesk address back to the agent and the answer loops into the helpdesk.
+    blocked = (Array(exclude) + mailbox_addresses(msg.helpdesk_mailbox))
+              .map { |a| a.to_s.strip.downcase }.reject(&:blank?)
     to      = split_addresses(msg.recipient_to, blocked)
     # An address in both headers is offered once. Adding it to To and Cc alike
     # would put a duplicate recipient on the outgoing mail.
@@ -76,12 +82,13 @@ class HelpdeskMessage < HelpdeskApplicationRecord
 
   # Splits a stored recipient header into single addresses. MailProcessor writes
   # these as Mail#to.join(', '), so they are bare addresses - but a hand-written
-  # row or a future sender may still wrap them in angle brackets. Comparison is
-  # case-insensitive; the casing that comes back is the one that was stored.
+  # or legacy row can carry the RFC 2822 `"Name" <addr>` form, whose display
+  # name may itself contain a comma. Comparison is case-insensitive; the casing
+  # that comes back is the one that was stored.
   def self.split_addresses(value, blocked = [])
     seen = []
-    value.to_s.split(/[,;]+/).filter_map do |raw|
-      addr = raw.strip.sub(/\A.*</, '').sub(/>.*\z/, '').strip
+    scan_tokens(value).filter_map do |token|
+      addr = bare_address(token)
       next if addr.blank?
 
       key = addr.downcase
@@ -92,4 +99,50 @@ class HelpdeskMessage < HelpdeskApplicationRecord
     end
   end
   private_class_method :split_addresses
+
+  # A comma or semicolon inside quotes or angle brackets separates nothing -
+  # splitting on every one of them tears `"Doe, Jane" <jane@doe.com>` into two
+  # fragments and offers both as recipients.
+  def self.scan_tokens(value)
+    tokens  = []
+    current = +''
+    quoted  = false
+    angled  = false
+
+    value.to_s.each_char do |ch|
+      case ch
+      when '"'      then quoted = !quoted
+      when '<'      then angled = true
+      when '>'      then angled = false
+      when ',', ';'
+        unless quoted || angled
+          tokens << current
+          current = +''
+          next
+        end
+      end
+      current << ch
+    end
+
+    tokens << current
+  end
+  private_class_method :scan_tokens
+
+  # The address out of `Name <addr>`, or the token itself when it is bare.
+  def self.bare_address(token)
+    text  = token.to_s.strip
+    match = text.match(/<([^>]*)>/)
+    (match ? match[1] : text).strip
+  end
+  private_class_method :bare_address
+
+  # Every address that is us, for a mailbox that may be nil. from_address and
+  # reply_to_address differ from mailbox_address only under an SMTP From
+  # override, but then they are what the customer actually saw.
+  def self.mailbox_addresses(mailbox)
+    return [] unless mailbox
+
+    [mailbox.mailbox_address, mailbox.from_address, mailbox.reply_to_address].compact
+  end
+  private_class_method :mailbox_addresses
 end
