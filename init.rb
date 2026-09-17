@@ -11,6 +11,20 @@
 # Pro Projekt koennen Postfaecher konfiguriert werden, deren Mails als Tickets
 # bzw. Ticket-Antworten verarbeitet werden.
 
+# Keep this plugin's credentials out of the Rails parameter log.
+#
+# Redmine filters :password and :secret, which happens to cover client_secret -
+# but every API key this plugin stores is posted under a name ending in
+# _api_key or _app_key and was written to the log in clear text: the AI and
+# embedding keys, the Qdrant key, and the fetch/SLA endpoint keys. Rails matches
+# these entries as substrings of the parameter name, so the two below cover all
+# of them, present and future, without swallowing legitimate settings (":key"
+# would also filter info_request_keywords).
+#
+# Mailbox passwords are already covered by Redmine's :password filter, and are
+# encrypted at rest by SecretBox in any case.
+Rails.application.config.filter_parameters += [:api_key, :app_key]
+
 require File.expand_path('../lib/redmine_expert_helpdesk/secret_box', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/provider_presets', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/xoauth2', __FILE__)

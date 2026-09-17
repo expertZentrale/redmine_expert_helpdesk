@@ -54,6 +54,19 @@
   drafts are logged in `helpdesk_ai_requests` as `answer_draft`, now including *which agent*
   asked for them, and show up in the project's AI statistics. Migrations 052–056.
 
+### Fixed
+
+- **The plugin's API keys no longer appear in the request log.** Redmine filters `password`
+  and `secret`, which happened to cover the Azure `client_secret` — but every key this plugin
+  stores is named `*_api_key` or `*_app_key` and was written to the Rails parameter log in
+  clear text whenever an administrator saved the settings form: the AI provider key, the
+  embedding key, the Qdrant key and the fetch/SLA endpoint keys. On a container deployment
+  that log is shipped to wherever stdout goes, with a retention that has nothing to do with
+  the ticket data. The two matching patterns are now registered as parameter filters, so the
+  keys log as `[FILTERED]`; ordinary settings such as the model name or `info_request_keywords`
+  are deliberately left readable. **Rotate the affected keys if your logs were retained**, as
+  the fix stops new leaks but cannot unwrite old ones.
+
 ## [0.11.0] - 2026-09-16
 
 ### Added
