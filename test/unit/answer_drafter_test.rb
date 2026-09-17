@@ -239,7 +239,8 @@ class AnswerDrafterTest < ActiveSupport::TestCase
     issue = Issue.find(1)
     note  = Journal.create!(:journalized => issue, :user => User.find(1), :notes => 'VON HAND')
 
-    RedmineExpertHelpdesk::Hooks.new.controller_issues_edit_after_save(
+    # Hooks is a Redmine::Hook::Listener, i.e. a Singleton - .new is private.
+    RedmineExpertHelpdesk::Hooks.instance.controller_issues_edit_after_save(
       :journal => note,
       :issue => issue,
       :params => { :hd_ai_drafted => '1', :hd_ai_draft_base_text => "VON HAND\r\n" }
@@ -252,7 +253,8 @@ class AnswerDrafterTest < ActiveSupport::TestCase
     issue = Issue.find(1)
     note  = Journal.create!(:journalized => issue, :user => User.find(1), :notes => 'KI ENTWURF, VON HAND UEBERARBEITET')
 
-    RedmineExpertHelpdesk::Hooks.new.controller_issues_edit_after_save(
+    # Hooks is a Redmine::Hook::Listener, i.e. a Singleton - .new is private.
+    RedmineExpertHelpdesk::Hooks.instance.controller_issues_edit_after_save(
       :journal => note,
       :issue => issue,
       :params => { :hd_ai_drafted => '1', :hd_ai_draft_base_text => 'MANUELLE VORNOTIZ' }

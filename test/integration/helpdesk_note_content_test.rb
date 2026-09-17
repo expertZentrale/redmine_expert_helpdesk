@@ -398,6 +398,31 @@ class HelpdeskNoteContentTest < Redmine::IntegrationTest
     assert_nil put_min_score('').ai_answer_min_score
   end
 
+  # The same rule through the real request path: an agent is expected to rework a
+  # draft before saving, and a reworked draft is still model output that must
+  # stay out of the knowledge base. This flip-flopped twice during review, so it
+  # is pinned end to end and not only at the hook.
+  def test_edited_draft_is_still_marked_and_kept_out_of_the_knowledge_base
+    Role.find(1).add_permission!(:edit_issues)
+    put "/issues/#{@issue.id}",
+        :params => { :issue => { :notes => 'Guten Tag, VOM BEARBEITER STARK UEBERARBEITET.' },
+                     :hd_ai_drafted => '1', :hd_ai_draft_base_text => '' }
+
+    journal = @issue.reload.journals.order(:id).last
+    assert_not_nil journal
+    assert_includes HelpdeskAiDraftedJournal.journal_ids_for(@issue.id), journal.id
+    assert_not_includes RedmineExpertHelpdesk::KnowledgeExtractor.ticket_text(@issue),
+                        'VOM BEARBEITER STARK UEBERARBEITET'
+  end
+
+  def test_note_saved_without_the_marker_is_not_flagged
+    Role.find(1).add_permission!(:edit_issues)
+    put "/issues/#{@issue.id}", :params => { :issue => { :notes => 'Ganz normale Notiz.' } }
+
+    journal = @issue.reload.journals.order(:id).last
+    assert_not_includes HelpdeskAiDraftedJournal.journal_ids_for(@issue.id), journal.id
+  end
+
   # --- Access control ----------------------------------------------------
 
   def test_forbidden_without_send_helpdesk_reply
