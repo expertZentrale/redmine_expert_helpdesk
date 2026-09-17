@@ -370,18 +370,19 @@
   var form  = field && field.form;
   var error = document.getElementById('settings_ai_answer_min_score_error');
   if (!field || !form || !error) return;
-  field.setAttribute('aria-describedby', 'settings_ai_answer_min_score_error');
 
   function clearError() {
     error.textContent = '';
     error.style.display = 'none';
     field.removeAttribute('aria-invalid');
+    field.removeAttribute('aria-describedby');
   }
 
   function showError(message) {
     error.textContent = message;
     error.style.display = '';
     field.setAttribute('aria-invalid', 'true');
+    field.setAttribute('aria-describedby', 'settings_ai_answer_min_score_error');
   }
 
   function normalize(raw) {
