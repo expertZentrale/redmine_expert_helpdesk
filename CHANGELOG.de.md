@@ -55,7 +55,7 @@
   Plugins synchron und hat deshalb ein eigenes, kürzeres Zeitlimit (20 s) und ein eigenes
   Ausgabebudget. Entwürfe werden in `helpdesk_ai_requests` als `answer_draft` protokolliert —
   jetzt samt *anfragendem Bearbeiter* — und erscheinen in der KI-Statistik des Projekts.
-  Migrationen 052–054.
+  Migrationen 052–056.
 
 ## [0.11.0] - 2026-09-16
 

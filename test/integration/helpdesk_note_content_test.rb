@@ -354,6 +354,33 @@ class HelpdeskNoteContentTest < Redmine::IntegrationTest
     assert_equal RedmineExpertHelpdesk::AnswerDrafter::VARIANTS.keys, variants.map { |v| v['key'] }
   end
 
+  # A typo must not silently switch the grounding requirement off: to_f would
+  # turn "o,7" into 0.0, which is a valid threshold meaning "anything grounds a
+  # customer-facing draft" (Copilot review on PR #29).
+  def put_min_score(value)
+    Role.find(1).add_permission!(:manage_helpdesk)
+    put "/projects/#{@project.identifier}/helpdesk_project_setting",
+        :params => { :ai_answer_form => '1',
+                     :helpdesk_project_setting => { :ai_answer_min_score => value } }
+    HelpdeskProjectSetting.find_by(:project_id => @project.id)
+  end
+
+  def test_invalid_project_min_score_is_rejected_instead_of_becoming_zero
+    setting = put_min_score('o,7')
+
+    # Nothing stored at all is fine; 0.0 is not - that would mean "any hit may
+    # ground a customer-facing draft".
+    assert_nil setting&.ai_answer_min_score
+  end
+
+  def test_valid_project_min_score_is_stored_and_blank_clears_it
+    setting = put_min_score('0,85')
+    assert_not_nil setting, 'the settings row should exist after a valid update'
+    assert_in_delta 0.85, setting.ai_answer_min_score.to_f, 0.0001
+
+    assert_nil put_min_score('').ai_answer_min_score
+  end
+
   # --- Access control ----------------------------------------------------
 
   def test_forbidden_without_send_helpdesk_reply

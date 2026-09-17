@@ -40,6 +40,8 @@ module RedmineExpertHelpdesk
     def self.ticket_text(issue, max_chars: MAX_CHARS, include_private: true)
       skip = HelpdeskAiSummary.where(:issue_id => issue.id).pluck(:journal_id).compact.to_set
       skip.merge(ai_drafted_journal_ids(issue))
+      # Saved drafts that were never mailed - the second half of the same rule.
+      skip.merge(HelpdeskAiDraftedJournal.journal_ids_for(issue.id))
 
       parts = []
       # The subject often carries the device and the error that the body only

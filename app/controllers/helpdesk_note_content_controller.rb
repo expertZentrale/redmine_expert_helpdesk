@@ -15,7 +15,12 @@ class HelpdeskNoteContentController < ApplicationController
   # answer_draft is the only source that spends money, talks to the network and
   # can take seconds, so it carries its own gate chain, its own throttle and its
   # own rescues below. Everything else here is string concatenation.
-  DRAFT_LOCK_SECONDS = 20
+  #
+  # The lease has to outlive the whole operation, not just the chat call:
+  # embedding and the vector-store query happen first, and ai_answer_timeout is
+  # configurable up to 45 s. A lease that expires mid-request would let a second
+  # paid draft through for the same ticket.
+  DRAFT_LOCK_MARGIN = 15
 
   def create
     source = params[:source].to_s
@@ -109,11 +114,13 @@ class HelpdeskNoteContentController < ApplicationController
   # both get through, and a hanging provider would otherwise pin one Puma thread
   # per click. Redmine's default pool is five.
   def claim_draft_slot
-    @draft_lock_keys = ["hd:ai_draft:u#{User.current.id}", "hd:ai_draft:i#{@issue.id}"]
+    @draft_lock_token = SecureRandom.hex(8)
+    @draft_lock_keys  = ["hd:ai_draft:u#{User.current.id}", "hd:ai_draft:i#{@issue.id}"]
+    ttl = draft_lock_seconds
     taken = []
     @draft_lock_keys.each do |key|
-      unless Rails.cache.write(key, 1, :expires_in => DRAFT_LOCK_SECONDS, :unless_exist => true)
-        taken.each { |k| Rails.cache.delete(k) }
+      unless Rails.cache.write(key, @draft_lock_token, :expires_in => ttl, :unless_exist => true)
+        taken.each { |k| release_key(k) }
         @draft_lock_keys = []
         render_error(l(:error_helpdesk_ai_answer_busy), :too_many_requests)
         return false
@@ -127,8 +134,27 @@ class HelpdeskNoteContentController < ApplicationController
     true
   end
 
+  # Whole-operation budget: embedding, then the vector store, then the model.
+  def draft_lock_seconds
+    settings = Setting.plugin_redmine_expert_helpdesk
+    chat     = settings['ai_answer_timeout'].to_i
+    chat     = 20 unless chat.positive?
+    chat.clamp(5, 45) +
+      RedmineExpertHelpdesk::AnswerDrafter::EMBED_TIMEOUT +
+      RedmineExpertHelpdesk::AnswerDrafter::STORE_READ_TIMEOUT +
+      DRAFT_LOCK_MARGIN
+  end
+
   def release_draft_slot
-    Array(@draft_lock_keys).each { |key| Rails.cache.delete(key) }
+    Array(@draft_lock_keys).each { |key| release_key(key) }
+  rescue StandardError
+    nil
+  end
+
+  # Only ever drop our own lease. If ours already expired and somebody else took
+  # the key, deleting it unconditionally would hand a third request a free pass.
+  def release_key(key)
+    Rails.cache.delete(key) if Rails.cache.read(key) == @draft_lock_token
   rescue StandardError
     nil
   end

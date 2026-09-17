@@ -106,9 +106,21 @@ class HelpdeskProjectSettingsController < ApplicationController
     mode = hp[:ai_answer_prompt_mode].to_s
     setting.ai_answer_prompt_mode = mode if HelpdeskProjectSetting::AI_PROMPT_MODES.include?(mode)
     setting.ai_answer_prompt = hp[:ai_answer_prompt].to_s.strip.presence
-    # blank => nil => inherit the central value; the model validates the range
+    # blank => nil => inherit the central value; the model validates the range.
+    # Parsed strictly on purpose: to_f would turn a typo like "o,7" into 0.0,
+    # which is a *valid* threshold meaning "any hit may ground a customer-facing
+    # draft" - a slip of the finger would silently switch the safety gate off.
     raw = hp[:ai_answer_min_score].to_s.strip.tr(',', '.')
-    setting.ai_answer_min_score = raw.presence && raw.to_f
+    setting.ai_answer_min_score =
+      if raw.blank?
+        nil
+      else
+        begin
+          Float(raw)
+        rescue ArgumentError, TypeError
+          raise ArgumentError, l(:error_helpdesk_ai_answer_min_score_invalid)
+        end
+      end
   end
 
   # Completeness check / follow-up (fifth form in the tab)

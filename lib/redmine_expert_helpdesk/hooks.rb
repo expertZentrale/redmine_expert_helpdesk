@@ -215,6 +215,17 @@ module RedmineExpertHelpdesk
         msg&.update_column(:journal_id, journal.id)
       end
 
+      # Der eingefuegte KI-Entwurf wurde gespeichert - unabhaengig davon, ob er
+      # auch als Mail rausging. Ohne diese Markierung liest der
+      # KnowledgeExtractor den Text beim Schliessen als Loesung wieder ein.
+      if journal && journal.notes.present? &&
+         context[:params] && context[:params][:hd_ai_drafted].to_s == '1'
+        HelpdeskAiDraftedJournal.find_or_create_by!(:journal_id => journal.id) do |r|
+          r.issue_id = journal.journalized_id
+          r.user_id  = (journal.user || User.current)&.id
+        end
+      end
+
       # SLA: oeffentlicher Kommentar eines Mitarbeiters stoppt die Reaktionsuhr
       if issue && journal && journal.notes.present? && !journal.private_notes?
         RedmineExpertHelpdesk::Sla.record_first_response!(issue, journal.created_on || Time.current,

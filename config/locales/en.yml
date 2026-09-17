@@ -372,6 +372,7 @@ en:
   error_helpdesk_ai_answer_kb_unavailable: 'The knowledge base is switched off or not configured – without it no draft is created. Use an answer template, or "Ask for missing details".'
   error_helpdesk_ai_answer_no_grounding: 'No matching knowledge base entry found – no draft was created. Please use an answer template, or "Ask for missing details".'
   error_helpdesk_ai_answer_no_grounding_score: 'No sufficiently similar knowledge base entry (best match %{best}%, %{needed}% required) – no draft was created. Use an answer template, or "Ask for missing details".'
+  error_helpdesk_ai_answer_min_score_invalid: 'Minimum match: please enter a number between 0 and 1 (e.g. 0.65).'
   field_helpdesk_ai_answer_min_score: 'Minimum match (draft)'
   text_helpdesk_ai_answer_min_score_info: 'How similar a knowledge base entry has to be before it may carry a customer-facing draft (0 to 1). Independent of the knowledge base minimum score, which governs the proposals shown to agents. Higher means fewer but better-grounded drafts.'
   text_helpdesk_ai_answer_min_score_project_info: 'Leave blank to use the central value. Worth raising in projects whose knowledge base is still small.'

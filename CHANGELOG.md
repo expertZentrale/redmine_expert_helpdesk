@@ -52,7 +52,7 @@
   project under *Settings → expert Helpdesk*. The call runs synchronously, unlike every other AI
   call in the plugin, so it has its own shorter timeout (20 s) and its own output budget;
   drafts are logged in `helpdesk_ai_requests` as `answer_draft`, now including *which agent*
-  asked for them, and show up in the project's AI statistics. Migrations 052–054.
+  asked for them, and show up in the project's AI statistics. Migrations 052–056.
 
 ## [0.11.0] - 2026-09-16
 

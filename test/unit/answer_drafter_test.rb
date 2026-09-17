@@ -202,4 +202,19 @@ class AnswerDrafterTest < ActiveSupport::TestCase
     assert_in_delta 0.61, e.best_score, 0.0001
     assert_in_delta 0.65, e.threshold, 0.0001
   end
+
+  # Ein gespeicherter, nie versendeter Entwurf darf nicht als Loesung
+  # zurueck in die Wissensbasis wandern (Copilot-Review zu PR #29).
+  def test_saved_draft_journal_is_excluded_from_knowledge_base_input
+    issue = Issue.find(1)
+    keep  = Journal.create!(:journalized => issue, :user => User.find(1), :notes => 'ECHTE LOESUNG')
+    draft = Journal.create!(:journalized => issue, :user => User.find(1), :notes => 'KI ENTWURF TEXT')
+    HelpdeskAiDraftedJournal.create!(:journal_id => draft.id, :issue_id => issue.id, :user_id => 1)
+    issue.reload
+
+    text = RedmineExpertHelpdesk::KnowledgeExtractor.ticket_text(issue)
+    assert_includes text, 'ECHTE LOESUNG'
+    assert_not_includes text, 'KI ENTWURF TEXT'
+    assert_equal [draft.id], HelpdeskAiDraftedJournal.journal_ids_for(issue.id)
+  end
 end

@@ -112,6 +112,19 @@
     });
   }
 
+  // The reply request carries its own flag, but a draft that is merely *saved*
+  // never goes through that request. This hidden field rides along with the
+  // ordinary issue update so the journal can be marked either way.
+  function markIssueFormAsDrafted(textarea) {
+    var form = (textarea && textarea.form) || document.getElementById('issue-form');
+    if (!form || form.querySelector('input[name="hd_ai_drafted"]')) { return; }
+    var field = document.createElement('input');
+    field.type  = 'hidden';
+    field.name  = 'hd_ai_drafted';
+    field.value = '1';
+    form.appendChild(field);
+  }
+
   // Shown above the note field and kept there: an in-text marker would be the
   // one string that gets mailed when somebody forgets to delete it.
   function showDraftWarning() {
@@ -166,6 +179,7 @@
       if (opts.isDraft) {
         draftText = String(data.content || '').replace(/\s+$/, '');
         draftUsed = true;
+        markIssueFormAsDrafted(textarea);
         showDraftWarning();
       }
       if (data.truncated) { flash(opts.truncatedLabel || t('truncated'), false); }

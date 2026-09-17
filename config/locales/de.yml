@@ -372,6 +372,7 @@ de:
   error_helpdesk_ai_answer_kb_unavailable: 'Die Wissensbasis ist ausgeschaltet oder nicht konfiguriert – ohne sie wird kein Entwurf erzeugt. Bitte eine Antwortvorlage verwenden oder „Fehlende Angaben erfragen“.'
   error_helpdesk_ai_answer_no_grounding: 'Kein passender Wissensbasis-Eintrag gefunden – es wurde kein Entwurf erzeugt. Bitte eine Antwortvorlage verwenden oder „Fehlende Angaben erfragen“.'
   error_helpdesk_ai_answer_no_grounding_score: 'Kein ausreichend ähnlicher Wissensbasis-Eintrag (bester Treffer %{best} %, nötig sind %{needed} %) – es wurde kein Entwurf erzeugt. Bitte eine Antwortvorlage verwenden oder „Fehlende Angaben erfragen“.'
+  error_helpdesk_ai_answer_min_score_invalid: 'Mindest-Übereinstimmung: bitte eine Zahl zwischen 0 und 1 eingeben (z. B. 0,65).'
   field_helpdesk_ai_answer_min_score: 'Mindest-Übereinstimmung (Entwurf)'
   text_helpdesk_ai_answer_min_score_info: 'Wie ähnlich ein Wissensbasis-Eintrag sein muss, damit er einen kundengerichteten Entwurf tragen darf (0 bis 1). Unabhängig von der Mindest-Übereinstimmung der Wissensbasis, die die Vorschläge an die Bearbeiter steuert. Höher bedeutet weniger, dafür besser belegte Entwürfe.'
   text_helpdesk_ai_answer_min_score_project_info: 'Leer lassen, um den zentralen Wert zu verwenden. In Projekten mit noch kleiner Wissensbasis ist ein höherer Wert sinnvoll.'
