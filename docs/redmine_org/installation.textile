@@ -65,6 +65,7 @@ Under *Administration → Plugins → Redmine expert Helpdesk*, or via the *expe
 | Embedded images | Rewrites the @[cid:…]@ markers of incoming mails to the stored image attachment (on by default) |
 | Custom fields as macros | Issue custom fields that may be used as @{{issue.cf.…}}@ in templates. Nothing is enabled by default; a field's own Redmine visibility still applies on top |
 | Completeness check | Master switch for the automatic follow-up when an incoming mail carries too little information, plus the central texts and check prompt. Off by default, and each project additionally chooses its own mode |
+| AI answer drafts | Master switch for the customer-facing draft button, plus its prompt, minimum match, output budget and timeout. Off by default, and each project opts in separately. Requires the AI settings, and the knowledge base for every variant except "ask for missing details" |
 
 Nothing here is required for a mailbox that carries its own credentials — see the next step.
 
