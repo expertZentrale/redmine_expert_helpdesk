@@ -24,11 +24,16 @@ class ParameterFilteringTest < ActiveSupport::TestCase
     end
   end
 
-  def test_client_secret_and_passwords_stay_filtered
+  # Registered by the plugin itself rather than inherited: the host's filter list
+  # differs across the supported Redmine versions, and on 5.1/6.0 client_secret
+  # is not covered by it at all - which CI caught when this test relied on it.
+  def test_client_secret_and_mailbox_passwords_are_filtered
     result = filtered('settings' => { 'client_secret' => 'azure-secret' },
-                      'helpdesk_mailbox' => { 'imap_password' => 'mailbox-secret' })
+                      'helpdesk_mailbox' => { 'imap_password' => 'mailbox-secret',
+                                              'smtp_password' => 'mailbox-secret' })
     assert_equal '[FILTERED]', result['settings']['client_secret']
     assert_equal '[FILTERED]', result['helpdesk_mailbox']['imap_password']
+    assert_equal '[FILTERED]', result['helpdesk_mailbox']['smtp_password']
   end
 
   # The filter matches substrings, so an over-broad ":key" would also hide

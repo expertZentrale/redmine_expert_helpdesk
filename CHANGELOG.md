@@ -56,11 +56,11 @@
 
 ### Fixed
 
-- **The plugin's API keys no longer appear in the request log.** Redmine filters `password`
-  and `secret`, which happened to cover the Azure `client_secret` — but every key this plugin
-  stores is named `*_api_key` or `*_app_key` and was written to the Rails parameter log in
-  clear text whenever an administrator saved the settings form: the AI provider key, the
-  embedding key, the Qdrant key and the fetch/SLA endpoint keys. On a container deployment
+- **The plugin's secrets no longer appear in the request log.** Every secret this plugin stores was written
+  to the Rails parameter log in clear text whenever an administrator saved the settings form:
+  the AI provider key, the embedding key, the Qdrant key, the fetch/SLA endpoint keys — and,
+  on Redmine 5.1 and 6.0, the Azure `client_secret` as well, which is only covered by the
+  host's own filter list on 6.1 and 7.0. On a container deployment
   that log is shipped to wherever stdout goes, with a retention that has nothing to do with
   the ticket data. The two matching patterns are now registered as parameter filters, so the
   keys log as `[FILTERED]`; ordinary settings such as the model name or `info_request_keywords`

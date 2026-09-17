@@ -59,12 +59,12 @@
 
 ### Behoben
 
-- **Die API-Schlüssel des Plugins stehen nicht mehr im Request-Log.** Redmine filtert
-  `password` und `secret`, womit zufällig das Azure-`client_secret` abgedeckt war — jeder
-  Schlüssel, den dieses Plugin speichert, heißt jedoch `*_api_key` oder `*_app_key` und landete
-  im Klartext im Rails-Parameter-Log, sobald eine Administratorin das Einstellungsformular
-  speicherte: der KI-Schlüssel, der Embedding-Schlüssel, der Qdrant-Schlüssel sowie die
-  Schlüssel für die Fetch- und SLA-Endpunkte. In einer Container-Installation geht dieses Log
+- **Die Geheimnisse des Plugins stehen nicht mehr im Request-Log.** Jedes Geheimnis, das dieses Plugin
+  speichert, landete im Klartext im Rails-Parameter-Log, sobald eine Administratorin das
+  Einstellungsformular speicherte: der KI-Schlüssel, der Embedding-Schlüssel, der
+  Qdrant-Schlüssel, die Schlüssel für die Fetch- und SLA-Endpunkte — und unter Redmine 5.1
+  und 6.0 zusätzlich das Azure-`client_secret`, das nur unter 6.1 und 7.0 von der Filterliste
+  der Anwendung selbst erfasst wird. In einer Container-Installation geht dieses Log
   dorthin, wohin stdout geht — mit einer Aufbewahrung, die mit den Ticketdaten nichts zu tun
   hat. Die beiden passenden Muster sind jetzt als Parameterfilter registriert, die Schlüssel
   erscheinen als `[FILTERED]`; gewöhnliche Einstellungen wie der Modellname oder

@@ -13,17 +13,21 @@
 
 # Keep this plugin's credentials out of the Rails parameter log.
 #
-# Redmine filters :password and :secret, which happens to cover client_secret -
-# but every API key this plugin stores is posted under a name ending in
-# _api_key or _app_key and was written to the log in clear text: the AI and
-# embedding keys, the Qdrant key, and the fetch/SLA endpoint keys. Rails matches
-# these entries as substrings of the parameter name, so the two below cover all
-# of them, present and future, without swallowing legitimate settings (":key"
-# would also filter info_request_keywords).
+# Every secret the plugin stores is posted through an ordinary settings form and
+# was written to the log in clear text: the AI and embedding keys, the Qdrant
+# key, the fetch/SLA endpoint keys, and the Azure client secret.
 #
-# Mailbox passwords are already covered by Redmine's :password filter, and are
-# encrypted at rest by SecretBox in any case.
-Rails.application.config.filter_parameters += [:api_key, :app_key]
+# Everything the plugin cares about is listed here rather than relying on the
+# host's filter list. That list differs between the supported Redmine versions -
+# on 6.1 and 7.0 client_secret happens to be caught by their :secret entry, on
+# 5.1 and 6.0 it is not - so inheriting it would mean the secret leaks on half
+# the matrix. Entries match as substrings of the parameter name, so these four
+# cover the current keys and any future ones. ":key" is deliberately absent: it
+# would also hide settings that are not secrets, such as info_request_keywords.
+#
+# Mailbox passwords are additionally encrypted at rest by SecretBox.
+Rails.application.config.filter_parameters +=
+  [:api_key, :app_key, :client_secret, :password]
 
 require File.expand_path('../lib/redmine_expert_helpdesk/secret_box', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/provider_presets', __FILE__)
