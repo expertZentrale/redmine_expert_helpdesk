@@ -3,7 +3,24 @@ require File.expand_path('../../test_helper', __FILE__)
 # Tests fuer die KI-Helfer auf HelpdeskProjectSetting: effektiver Prompt
 # (erben/erweitern/ersetzen) und der Antworten-Umfang.
 class HelpdeskProjectSettingAiTest < ActiveSupport::TestCase
+
+  # Plugin settings live in one global hash that survives the transaction
+  # rollback between tests, so a test that writes one leaks into whatever runs
+  # next. Snapshot and restore instead of merging a key back: CI caught exactly
+  # this as a seed-dependent failure of the "falls back to the default" test.
+  def setup_plugin_settings_snapshot
+    @plugin_settings_snapshot = Setting.plugin_redmine_expert_helpdesk.dup
+  end
+
+  def restore_plugin_settings_snapshot
+    Setting.plugin_redmine_expert_helpdesk = @plugin_settings_snapshot if @plugin_settings_snapshot
+  end
+
+  def teardown
+    restore_plugin_settings_snapshot
+  end
   def setup
+    setup_plugin_settings_snapshot
     @ps = HelpdeskProjectSetting.new
   end
 

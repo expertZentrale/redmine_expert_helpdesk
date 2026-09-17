@@ -3,15 +3,28 @@ require File.expand_path('../../test_helper', __FILE__)
 # Tests fuer die gemeinsame RAG-Suche von Zusammenfassung und Antwortvorschlag.
 # Store und Client werden gestubbt - kein HTTP, keine Vektordatenbank.
 class KnowledgeRetrievalTest < ActiveSupport::TestCase
+
+  # Plugin settings live in one global hash that survives the transaction
+  # rollback between tests, so a test that writes one leaks into whatever runs
+  # next. Snapshot and restore instead of merging a key back: CI caught exactly
+  # this as a seed-dependent failure of the "falls back to the default" test.
+  def setup_plugin_settings_snapshot
+    @plugin_settings_snapshot = Setting.plugin_redmine_expert_helpdesk.dup
+  end
+
+  def restore_plugin_settings_snapshot
+    Setting.plugin_redmine_expert_helpdesk = @plugin_settings_snapshot if @plugin_settings_snapshot
+  end
   Retrieval = RedmineExpertHelpdesk::KnowledgeRetrieval
 
   def setup
+    setup_plugin_settings_snapshot
     @issue = Issue.find(1)
     Setting.plugin_redmine_expert_helpdesk = Setting.plugin_redmine_expert_helpdesk.merge('kb_enabled' => '1')
   end
 
   def teardown
-    Setting.plugin_redmine_expert_helpdesk = Setting.plugin_redmine_expert_helpdesk.merge('kb_enabled' => '0')
+    restore_plugin_settings_snapshot
   end
 
   # Ein Store, der die uebergebenen Treffer zurueckgibt und Aufrufe mitschreibt.

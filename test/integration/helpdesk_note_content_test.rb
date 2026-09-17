@@ -3,11 +3,28 @@ require File.expand_path('../../test_helper', __FILE__)
 # Endpoint delivering quotes and expanded answer templates for the note field.
 # Session-authenticated (no API key), always answers with JSON.
 class HelpdeskNoteContentTest < Redmine::IntegrationTest
+
+  # Plugin settings live in one global hash that survives the transaction
+  # rollback between tests, so a test that writes one leaks into whatever runs
+  # next. Snapshot and restore instead of merging a key back: CI caught exactly
+  # this as a seed-dependent failure of the "falls back to the default" test.
+  def setup_plugin_settings_snapshot
+    @plugin_settings_snapshot = Setting.plugin_redmine_expert_helpdesk.dup
+  end
+
+  def restore_plugin_settings_snapshot
+    Setting.plugin_redmine_expert_helpdesk = @plugin_settings_snapshot if @plugin_settings_snapshot
+  end
+
+  def teardown
+    restore_plugin_settings_snapshot
+  end
   fixtures :projects, :users, :email_addresses, :members, :member_roles, :roles,
            :enabled_modules, :trackers, :projects_trackers, :issue_statuses,
            :enumerations, :issues, :journals, :journal_details
 
   def setup
+    setup_plugin_settings_snapshot
     @project = Project.find(1)
     @project.enable_module!(:helpdesk)
     Role.find(1).add_permission!(:send_helpdesk_reply, :view_helpdesk_info)
