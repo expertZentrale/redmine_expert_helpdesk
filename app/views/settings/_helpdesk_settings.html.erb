@@ -350,6 +350,7 @@
         @settings['ai_answer_min_score'].presence || RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE,
         :size => 8, :id => 'settings_ai_answer_min_score' %>
   <em class="info"><%= l(:text_helpdesk_ai_answer_min_score_info) %></em>
+  <span class="error" id="settings_ai_answer_min_score_error" style="display:none;"></span>
 </p>
 <p>
   <label><%= l(:field_helpdesk_ai_answer_max_tokens) %></label>
@@ -366,7 +367,21 @@
 (function () {
   var field = document.getElementById('settings_ai_answer_min_score');
   var form  = field && field.form;
-  if (!field || !form) return;
+  var error = document.getElementById('settings_ai_answer_min_score_error');
+  if (!field || !form || !error) return;
+  field.setAttribute('aria-describedby', 'settings_ai_answer_min_score_error');
+
+  function clearError() {
+    error.textContent = '';
+    error.style.display = 'none';
+    field.removeAttribute('aria-invalid');
+  }
+
+  function showError(message) {
+    error.textContent = message;
+    error.style.display = '';
+    field.setAttribute('aria-invalid', 'true');
+  }
 
   function normalize(raw) {
     var value = String(raw || '').replace(/,/g, '.').trim();
@@ -381,12 +396,15 @@
   form.addEventListener('submit', function (e) {
     try {
       field.value = normalize(field.value);
+      clearError();
     } catch (err) {
       e.preventDefault();
-      alert(err.message || err);
+      showError(err.message || String(err));
       field.focus();
     }
   });
+  field.addEventListener('input', clearError);
+  clearError();
 }());
 //]]>
 </script>
