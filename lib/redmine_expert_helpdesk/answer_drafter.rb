@@ -260,10 +260,10 @@ module RedmineExpertHelpdesk
         if issue.project
           HelpdeskProjectSetting.for_project(issue.project).effective_ai_answer_min_score
         else
-          @settings['ai_answer_min_score'].to_s.presence&.to_f
+          HelpdeskProjectSetting.parse_ai_answer_min_score(@settings['ai_answer_min_score'])
         end
       (value || DRAFT_MIN_SCORE).to_f.clamp(0.0, 1.0)
-    rescue StandardError
+    rescue ArgumentError, TypeError
       DRAFT_MIN_SCORE
     end
 

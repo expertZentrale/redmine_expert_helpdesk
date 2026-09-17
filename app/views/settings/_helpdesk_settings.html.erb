@@ -348,7 +348,7 @@
   <label><%= l(:field_helpdesk_ai_answer_min_score) %></label>
   <%= text_field_tag 'settings[ai_answer_min_score]',
         @settings['ai_answer_min_score'].presence || RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE,
-        :size => 8 %>
+        :size => 8, :id => 'settings_ai_answer_min_score' %>
   <em class="info"><%= l(:text_helpdesk_ai_answer_min_score_info) %></em>
 </p>
 <p>
@@ -361,6 +361,35 @@
   <%= text_field_tag 'settings[ai_answer_timeout]', @settings['ai_answer_timeout'].presence || '20', :size => 8 %>
   <em class="info"><%= l(:text_helpdesk_ai_answer_timeout_info) %></em>
 </p>
+<script type="text/javascript">
+//<![CDATA[
+(function () {
+  var field = document.getElementById('settings_ai_answer_min_score');
+  var form  = field && field.form;
+  if (!field || !form) return;
+
+  function normalize(raw) {
+    var value = String(raw || '').replace(/,/g, '.').trim();
+    if (value === '') return '';
+    var parsed = Number(value);
+    if (!isFinite(parsed) || parsed < 0 || parsed > 1) {
+      throw new Error('<%= j(l(:error_helpdesk_ai_answer_min_score_invalid)) %>');
+    }
+    return value;
+  }
+
+  form.addEventListener('submit', function (e) {
+    try {
+      field.value = normalize(field.value);
+    } catch (err) {
+      e.preventDefault();
+      alert(err.message || err);
+      field.focus();
+    }
+  });
+}());
+//]]>
+</script>
 
 <hr />
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_info_request) %></h3>

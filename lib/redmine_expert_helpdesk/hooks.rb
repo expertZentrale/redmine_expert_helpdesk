@@ -209,6 +209,7 @@ module RedmineExpertHelpdesk
       journal = context[:journal]
       issue   = context[:issue]
       msg_id  = context[:params] && context[:params][:hd_sent_message_id].presence
+      draft   = normalized_ai_draft_text(context[:params] && context[:params][:hd_ai_draft_text])
 
       if journal && msg_id
         msg = HelpdeskMessage.outgoing.find_by(:id => msg_id.to_i, :issue_id => journal.journalized_id, :journal_id => nil)
@@ -219,7 +220,8 @@ module RedmineExpertHelpdesk
       # auch als Mail rausging. Ohne diese Markierung liest der
       # KnowledgeExtractor den Text beim Schliessen als Loesung wieder ein.
       if journal && journal.notes.present? &&
-         context[:params] && context[:params][:hd_ai_drafted].to_s == '1'
+         context[:params] && context[:params][:hd_ai_drafted].to_s == '1' &&
+         draft.present? && normalized_ai_draft_text(journal.notes).include?(draft)
         HelpdeskAiDraftedJournal.find_or_create_by!(:journal_id => journal.id) do |r|
           r.issue_id = journal.journalized_id
           r.user_id  = (journal.user || User.current)&.id
@@ -238,6 +240,10 @@ module RedmineExpertHelpdesk
       RedmineExpertHelpdesk::Sla.sync_solution!(issue) if issue&.saved_change_to_status_id?
     rescue StandardError => e
       Rails.logger.warn("Helpdesk: edit_after_save-Hook fehlgeschlagen: #{e.message}")
+    end
+
+    def normalized_ai_draft_text(text)
+      text.to_s.gsub(/\r\n?/, "\n").rstrip
     end
 
     # Button "Neues Helpdesk-Ticket" in der Ticket-Liste (neben "Neues Ticket").

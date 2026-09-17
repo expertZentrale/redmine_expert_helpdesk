@@ -234,4 +234,17 @@ class AnswerDrafterTest < ActiveSupport::TestCase
     assert_not_includes text, 'KI ENTWURF TEXT'
     assert_equal [draft.id], HelpdeskAiDraftedJournal.journal_ids_for(issue.id)
   end
+
+  def test_saved_manual_note_is_not_marked_by_a_stale_ai_flag
+    issue = Issue.find(1)
+    note  = Journal.create!(:journalized => issue, :user => User.find(1), :notes => 'VON HAND')
+
+    RedmineExpertHelpdesk::Hooks.new.controller_issues_edit_after_save(
+      :journal => note,
+      :issue => issue,
+      :params => { :hd_ai_drafted => '1', :hd_ai_draft_text => "KI ENTWURF\r\nTEXT" }
+    )
+
+    assert_empty HelpdeskAiDraftedJournal.where(:journal_id => note.id)
+  end
 end

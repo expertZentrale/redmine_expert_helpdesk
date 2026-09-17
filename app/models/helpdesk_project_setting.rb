@@ -64,6 +64,18 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
     find_or_initialize_by(:project_id => project.id)
   end
 
+  def self.parse_ai_answer_min_score(raw)
+    value = raw.to_s.strip.tr(',', '.')
+    return nil if value.blank?
+
+    parsed = Float(value)
+    raise ArgumentError, I18n.t(:error_helpdesk_ai_answer_min_score_invalid) unless parsed.finite?
+
+    parsed
+  rescue ArgumentError, TypeError
+    raise ArgumentError, I18n.t(:error_helpdesk_ai_answer_min_score_invalid)
+  end
+
   # ISO-Wochentage (Mo=1..So=7) als Integer-Array
   def sla_work_days_array
     sla_work_days.to_s.split(',').map(&:to_i).select { |d| (1..7).cover?(d) }
@@ -177,10 +189,12 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   # des Drafters. Bewusst unabhaengig von kb_min_score - der steuert die
   # Vorschlaege *an die Bearbeiter*, dieser hier Text *an den Kunden*.
   def effective_ai_answer_min_score
-    return ai_answer_min_score.to_f if has_own_ai_answer_min_score?
+    return ai_answer_min_score.to_f.clamp(0.0, 1.0) if has_own_ai_answer_min_score?
 
-    central = Setting.plugin_redmine_expert_helpdesk['ai_answer_min_score'].to_s.strip
-    central.present? ? central.to_f : RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE
+    central = self.class.parse_ai_answer_min_score(Setting.plugin_redmine_expert_helpdesk['ai_answer_min_score'])
+    central.nil? ? RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE : central.clamp(0.0, 1.0)
+  rescue ArgumentError
+    RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE
   end
 
   def has_own_ai_answer_min_score?

@@ -49,7 +49,7 @@ class HelpdeskProjectSettingsApiController < ApplicationController
     @setting.ai_answer_enabled      = %w[1 true].include?(hp[:ai_answer_enabled].to_s) if hp.key?(:ai_answer_enabled)
     @setting.ai_answer_prompt_mode  = hp[:ai_answer_prompt_mode]      if hp.key?(:ai_answer_prompt_mode)
     @setting.ai_answer_prompt       = hp[:ai_answer_prompt]           if hp.key?(:ai_answer_prompt)
-    @setting.ai_answer_min_score    = hp[:ai_answer_min_score].presence if hp.key?(:ai_answer_min_score)
+    @setting.ai_answer_min_score    = HelpdeskProjectSetting.parse_ai_answer_min_score(hp[:ai_answer_min_score]) if hp.key?(:ai_answer_min_score)
     @setting.kb_ingest_mode         = hp[:kb_ingest_mode]             if hp.key?(:kb_ingest_mode)
     @setting.kb_proposal_display    = hp[:kb_proposal_display]        if hp.key?(:kb_proposal_display)
     if hp.key?(:sla_work_days)

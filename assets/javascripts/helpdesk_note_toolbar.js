@@ -115,14 +115,34 @@
   // The reply request carries its own flag, but a draft that is merely *saved*
   // never goes through that request. This hidden field rides along with the
   // ordinary issue update so the journal can be marked either way.
-  function markIssueFormAsDrafted(textarea) {
-    var form = (textarea && textarea.form) || document.getElementById('issue-form');
-    if (!form || form.querySelector('input[name="hd_ai_drafted"]')) { return; }
-    var field = document.createElement('input');
-    field.type  = 'hidden';
-    field.name  = 'hd_ai_drafted';
-    field.value = '1';
+  function ensureHiddenField(form, name) {
+    var field = form.querySelector('input[name="' + name + '"]');
+    if (field) { return field; }
+    field = document.createElement('input');
+    field.type = 'hidden';
+    field.name = name;
     form.appendChild(field);
+    return field;
+  }
+
+  function setIssueFormDraftState(textarea) {
+    var form = (textarea && textarea.form) || document.getElementById('issue-form');
+    if (!form) { return; }
+
+    var marker = form.querySelector('input[name="hd_ai_drafted"]');
+    var source = form.querySelector('input[name="hd_ai_draft_text"]');
+    var hasDraft = !!draftText && textarea.value.replace(/\s+$/, '').indexOf(draftText) !== -1;
+
+    if (!hasDraft) {
+      if (marker && marker.parentNode) { marker.parentNode.removeChild(marker); }
+      if (source && source.parentNode) { source.parentNode.removeChild(source); }
+      return;
+    }
+
+    marker = ensureHiddenField(form, 'hd_ai_drafted');
+    marker.value = '1';
+    source = ensureHiddenField(form, 'hd_ai_draft_text');
+    source.value = draftText;
   }
 
   // Shown above the note field and kept there: an in-text marker would be the
@@ -179,7 +199,7 @@
       if (opts.isDraft) {
         draftText = String(data.content || '').replace(/\s+$/, '');
         draftUsed = true;
-        markIssueFormAsDrafted(textarea);
+        setIssueFormDraftState(textarea);
         showDraftWarning();
       }
       if (data.truncated) { flash(opts.truncatedLabel || t('truncated'), false); }
@@ -505,6 +525,7 @@
     // linked: a button that can never do anything is just a question.
     if (CONF.aiDraft && (CONF.aiDraft.variants || []).length) {
       buttons.push(makeButton('aidraft', t('aiAnswer'), aiDraftEntries(textarea)));
+      textarea.addEventListener('input', function () { setIssueFormDraftState(textarea); });
       guardUneditedDraft(textarea);
     }
     mount(toolbar, buttons);

@@ -91,4 +91,16 @@ class HelpdeskProjectSettingAiTest < ActiveSupport::TestCase
     assert_not ps.valid?
     assert ps.errors[:ai_answer_prompt_mode].present?
   end
+
+  def test_parse_ai_answer_min_score_accepts_comma_and_rejects_garbage
+    assert_in_delta 0.85, HelpdeskProjectSetting.parse_ai_answer_min_score('0,85'), 0.0001
+    assert_raises(ArgumentError) { HelpdeskProjectSetting.parse_ai_answer_min_score('o,7') }
+  end
+
+  def test_effective_ai_answer_min_score_falls_back_to_default_on_invalid_global_value
+    Setting.plugin_redmine_expert_helpdesk =
+      Setting.plugin_redmine_expert_helpdesk.merge('ai_answer_min_score' => 'o,7')
+    ps = HelpdeskProjectSetting.new(:project_id => 1, :ai_answer_min_score => nil)
+    assert_equal RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE, ps.effective_ai_answer_min_score
+  end
 end
