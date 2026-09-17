@@ -350,7 +350,8 @@
         @settings['ai_answer_min_score'].presence || RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE,
         :size => 8, :id => 'settings_ai_answer_min_score' %>
   <em class="info"><%= l(:text_helpdesk_ai_answer_min_score_info) %></em>
-  <span class="error" id="settings_ai_answer_min_score_error" style="display:none;"></span>
+  <span class="error" id="settings_ai_answer_min_score_error" style="display:none;"
+        role="alert" aria-live="polite"></span>
 </p>
 <p>
   <label><%= l(:field_helpdesk_ai_answer_max_tokens) %></label>
