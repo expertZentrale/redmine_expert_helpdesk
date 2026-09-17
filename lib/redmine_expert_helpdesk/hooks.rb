@@ -139,7 +139,7 @@ module RedmineExpertHelpdesk
       info    = HelpdeskTicketInfo.for_issue(issue)
       contact = info&.helpdesk_contact
 
-      parts = [note_toolbar(context, issue, project)]
+      parts = [note_toolbar(context, issue, project, contact)]
       parts << reply_form(context, issue, project, info, contact) if contact
       parts.join.html_safe
     end
@@ -209,10 +209,23 @@ module RedmineExpertHelpdesk
       journal = context[:journal]
       issue   = context[:issue]
       msg_id  = context[:params] && context[:params][:hd_sent_message_id].presence
+      base    = normalized_ai_draft_text(context[:params] && context[:params][:hd_ai_draft_base_text])
 
       if journal && msg_id
         msg = HelpdeskMessage.outgoing.find_by(:id => msg_id.to_i, :issue_id => journal.journalized_id, :journal_id => nil)
         msg&.update_column(:journal_id, journal.id)
+      end
+
+      # Der eingefuegte KI-Entwurf wurde gespeichert - unabhaengig davon, ob er
+      # auch als Mail rausging. Ohne diese Markierung liest der
+      # KnowledgeExtractor den Text beim Schliessen als Loesung wieder ein.
+      if journal && journal.notes.present? &&
+         context[:params] && context[:params][:hd_ai_drafted].to_s == '1' &&
+         normalized_ai_draft_text(journal.notes) != base
+        HelpdeskAiDraftedJournal.find_or_create_by!(:journal_id => journal.id) do |r|
+          r.issue_id = journal.journalized_id
+          r.user_id  = (journal.user || User.current)&.id
+        end
       end
 
       # SLA: oeffentlicher Kommentar eines Mitarbeiters stoppt die Reaktionsuhr
@@ -227,6 +240,10 @@ module RedmineExpertHelpdesk
       RedmineExpertHelpdesk::Sla.sync_solution!(issue) if issue&.saved_change_to_status_id?
     rescue StandardError => e
       Rails.logger.warn("Helpdesk: edit_after_save-Hook fehlgeschlagen: #{e.message}")
+    end
+
+    def normalized_ai_draft_text(text)
+      text.to_s.gsub(/\r\n?/, "\n").rstrip
     end
 
     # Button "Neues Helpdesk-Ticket" in der Ticket-Liste (neben "Neues Ticket").
@@ -261,8 +278,8 @@ module RedmineExpertHelpdesk
 
     private
 
-    # Quote and template buttons in the toolbar of the note field.
-    def note_toolbar(context, issue, project)
+    # Quote, template and AI-draft buttons in the toolbar of the note field.
+    def note_toolbar(context, issue, project, contact)
       manage_url = nil
       if User.current.allowed_to?(:manage_helpdesk, project)
         manage_url = context[:controller].send(:settings_project_path, project, :tab => 'expert_helpdesk')
@@ -274,7 +291,11 @@ module RedmineExpertHelpdesk
           :issue      => issue,
           :project    => project,
           :templates  => HelpdeskReplyTemplate.active.available_for(project).to_a,
-          :manage_url => manage_url
+          :manage_url => manage_url,
+          # Empty unless a customer is linked and the feature is on: a
+          # customer-facing draft on a ticket with no customer is unsendable
+          # text that ends up saved as a public note instead.
+          :ai_draft_variants => RedmineExpertHelpdesk::AnswerDrafter.menu_variants(project, contact)
         }
       })
     end

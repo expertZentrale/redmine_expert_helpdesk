@@ -34,6 +34,7 @@ see [Tests](#tests).
 - [Plugin Settings](#plugin-settings)
 - [REST API](#rest-api)
 - [AI summaries](#ai-summaries)
+- [AI answer drafts](#ai-answer-drafts)
 - [Completeness check for incoming mail](#completeness-check-for-incoming-mail)
 - [Knowledge base (RAG)](#knowledge-base-rag)
 - [Tests](#tests) — what CI runs
@@ -77,6 +78,10 @@ see [Tests](#tests).
   whichever backend it uses — Graph or its own SMTP server — and filed in its
   "Sent Items" either way. Supports inline images (CID method), regular
   attachments and multiple recipients in CC/BCC.
+- **AI answer drafts**: A third toolbar button drafts the reply **to the customer** for
+  this ticket — grounded in the project's knowledge base, never sent automatically, and
+  refused outright when no knowledge base entry matches. See
+  [AI answer drafts](#ai-answer-drafts).
 - **Quoting and answer templates**: A **Quote** button next to the formatting
   icons of the note field inserts the original email, the complete conversation
   or only the mail exchange — private notes never among them. A **Templates**
@@ -741,6 +746,10 @@ render empty — templates still work there, as does quoting.
 Inserting a quote or a template requires the `send_helpdesk_reply` permission,
 the same one that gates the reply form.
 
+> Templates and [AI answer drafts](#ai-answer-drafts) solve different halves of the same
+> problem: a template is the right tool when the wording must not vary (legal notices, standard
+> processes), a draft when the answer depends on what this particular ticket says.
+
 ## Contacts / Customer List
 
 Senders are automatically saved as `HelpdeskContact` records on the first
@@ -950,6 +959,79 @@ feature. The regenerate button appears only when *Generate AI summaries for this
 > configured provider. For a fully on-premise flow, use the **Custom** provider pointed at
 > a self-hosted, OpenAI-compatible endpoint. The feature is off by default and opt-in per
 > project.
+
+## AI answer drafts
+
+The AI features above all write **for the agent**. This one writes **for the customer**: a third
+button, **AI answer**, next to *Quote* and *Templates* in the note toolbar drafts a reply for the
+ticket in front of you — what the customer should do, in order — grounded in the project's own
+knowledge base, and appends it to the note field, which is also the body of the outgoing mail.
+
+Nothing is ever sent automatically. The draft is inserted for the agent to read, edit and send
+through the normal reply form.
+
+**Four variants** in the button's menu:
+
+| Variant | What it produces | Needs a knowledge base match |
+|---|---|---|
+| Draft answer | The standard reply: picks up the request, then the concrete steps. | yes |
+| Step-by-step instructions | A numbered list of single, checkable actions. | yes |
+| Short and to the point | At most five sentences, the most important next step only. | yes |
+| Ask for missing details | Asks precisely for what is missing and proposes nothing. | **no** |
+
+**No match, no draft.** An ungrounded reply is exactly the artefact that invents a repair date,
+so the three variants that propose a fix refuse and name the answer templates as the alternative.
+*Ask for missing details* proposes nothing, needs no grounding, and therefore works on day one
+against an empty knowledge base.
+
+**What the model is and is not given.** Subject, description and the **public** conversation —
+never private notes, never attachments. This is deliberately narrower than the knowledge
+extractor, whose output stays inside the project; this text is one click from a customer's inbox.
+The knowledge base cases are passed **without their ticket numbers**: a foreign ticket number in
+a customer mail discloses the existence, and by inference the content, of another customer's
+ticket. The prompt additionally forbids prices, dates, deadlines, supplier and colleague names,
+internal tooling, and any promise of repair, replacement, goodwill or warranty that is not
+already in the ticket. Which tickets a draft was built on is shown to the agent in the toolbar
+status line — never written into the mail.
+
+**No double salutation.** The mailbox's reply header and footer are rendered and handed to the
+model, which is told they will be placed around its text, so the customer does not get two
+greetings or two signatures. With neither configured, the draft writes its own.
+
+**Marked, not silently inserted.** A warning bar appears above the note field, and sending or
+saving a draft that has not been edited asks for confirmation first — which also keeps unreviewed
+model prose out of the knowledge base, since replies that came from a draft are excluded when the
+ticket is later ingested.
+
+**How good a match has to be.** `ai_answer_min_score` (default 0.65) decides from which
+similarity a knowledge base entry may carry a draft. It is **not** the same as the knowledge
+base's own `kb_min_score`, which governs the proposals shown to agents inside a summary — you
+can tighten what reaches customers without suppressing internal suggestions. A project may
+override it: one with 75 curated entries can trust 0.65, one with a handful should ask for more.
+When a draft is refused, the message names the near miss (*"best match 86%, 95% required"*), so
+the threshold can be calibrated from real cases rather than guessed; the accepted match is shown
+the same way in the toolbar status line after a successful draft.
+
+**Central configuration** (*Administration → Plugins → Redmine expert Helpdesk → AI answer
+drafts*): master switch, the answer prompt, the minimum match, max. output tokens (900 by
+default — an answer needs more room than a summary), and a timeout. This call is the only AI call in the plugin that runs
+**synchronously** in the web request, so its timeout defaults to 20 s and should stay well below
+the timeout of any reverse proxy in front of Redmine. Concurrent drafts are throttled per user
+and per ticket.
+
+**Per project** (*Settings → expert Helpdesk*): enable the button, optionally raise the minimum
+match (blank inherits the central value), and inherit, extend or override the central prompt —
+the same three prompt modes as the AI summary.
+
+The button is only shown when the feature is on centrally **and** for the project, the AI client
+is configured, and the ticket has a linked customer — a customer-facing draft on a ticket with no
+customer would be unsendable text. Every call is logged in `helpdesk_ai_requests` as
+`answer_draft`, including which agent requested it, and appears in the project's AI statistics.
+
+> **Data protection:** the public ticket conversation and the matching knowledge base entries are
+> sent to the configured AI provider. For a fully on-premise flow use the **Custom** provider
+> pointed at a self-hosted, OpenAI-compatible endpoint. The feature is off by default and opted
+> into per project.
 
 ## Completeness check for incoming mail
 

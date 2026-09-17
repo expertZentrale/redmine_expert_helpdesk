@@ -182,6 +182,18 @@ class HelpdeskApiTest < Redmine::IntegrationTest
     assert_equal 'auto', body['kb_ingest_mode']
   end
 
+  def test_project_settings_api_rejects_invalid_ai_answer_min_score
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :ai_answer_min_score => 'o,7' } }, :headers => auth
+    assert_response :unprocessable_entity
+    assert_nil HelpdeskProjectSetting.for_project(@project).ai_answer_min_score
+
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :ai_answer_min_score => '0,85' } }, :headers => auth
+    assert_response :success
+    assert_in_delta 0.85, HelpdeskProjectSetting.for_project(@project).ai_answer_min_score.to_f, 0.0001
+  end
+
   # The info_request_* fields were documented as writable but silently ignored
   # (issue #17). Every documented key must round-trip.
   def test_project_settings_info_request_round_trip

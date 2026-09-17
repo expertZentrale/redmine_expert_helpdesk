@@ -3,11 +3,28 @@ require File.expand_path('../../test_helper', __FILE__)
 # Endpoint delivering quotes and expanded answer templates for the note field.
 # Session-authenticated (no API key), always answers with JSON.
 class HelpdeskNoteContentTest < Redmine::IntegrationTest
+
+  # Plugin settings live in one global hash that survives the transaction
+  # rollback between tests, so a test that writes one leaks into whatever runs
+  # next. Snapshot and restore instead of merging a key back: CI caught exactly
+  # this as a seed-dependent failure of the "falls back to the default" test.
+  def setup_plugin_settings_snapshot
+    @plugin_settings_snapshot = Setting.plugin_redmine_expert_helpdesk.dup
+  end
+
+  def restore_plugin_settings_snapshot
+    Setting.plugin_redmine_expert_helpdesk = @plugin_settings_snapshot if @plugin_settings_snapshot
+  end
+
+  def teardown
+    restore_plugin_settings_snapshot
+  end
   fixtures :projects, :users, :email_addresses, :members, :member_roles, :roles,
            :enabled_modules, :trackers, :projects_trackers, :issue_statuses,
            :enumerations, :issues, :journals, :journal_details
 
   def setup
+    setup_plugin_settings_snapshot
     @project = Project.find(1)
     @project.enable_module!(:helpdesk)
     Role.find(1).add_permission!(:send_helpdesk_reply, :view_helpdesk_info)
@@ -170,6 +187,240 @@ class HelpdeskNoteContentTest < Redmine::IntegrationTest
 
     assert_response :success
     assert_nil toolbar_island
+  end
+
+  # --- AI answer draft ---------------------------------------------------
+  #
+  # The drafter itself is stubbed: these tests are about the endpoint's gate
+  # chain and its error contract, not about prompt assembly (see
+  # test/unit/answer_drafter_test.rb).
+
+  def enable_answer_drafts(project_enabled: true)
+    Setting.plugin_redmine_expert_helpdesk = Setting.plugin_redmine_expert_helpdesk.merge(
+      'ai_enabled' => '1', 'ai_answer_enabled' => '1',
+      'ai_api_key' => 'k', 'ai_model' => 'm', 'ai_provider' => 'openai'
+    )
+    ps = HelpdeskProjectSetting.find_or_initialize_by(:project_id => @project.id)
+    ps.ai_answer_enabled = project_enabled
+    ps.save!
+    link_contact
+  end
+
+  def link_contact
+    contact = HelpdeskContact.find_or_create_by!(:project_id => @project.id,
+                                                 :email => 'kunde@example.com') do |c|
+      c.name = 'Kunde'
+    end
+    info = HelpdeskTicketInfo.find_or_initialize_by(:issue_id => @issue.id)
+    info.helpdesk_contact = contact
+    info.save!
+    contact
+  end
+
+  # Replaces AnswerDrafter#draft for the duration of the block. The drafter has
+  # its own unit test; here only the endpoint's behaviour is of interest.
+  def with_stubbed_draft(stub)
+    klass    = RedmineExpertHelpdesk::AnswerDrafter
+    original = klass.instance_method(:draft)
+    klass.send(:define_method, :draft) { |*args, **kwargs| stub.call(*args, **kwargs) }
+    yield
+  ensure
+    klass.send(:define_method, :draft, original)
+  end
+
+  def test_answer_draft_is_unavailable_while_globally_off
+    link_contact
+    post_content(:source => 'answer_draft')
+
+    assert_response :unprocessable_entity
+    assert json['error'].present?
+  end
+
+  def test_answer_draft_is_unavailable_when_the_project_did_not_opt_in
+    enable_answer_drafts(:project_enabled => false)
+    post_content(:source => 'answer_draft')
+
+    assert_response :unprocessable_entity
+  end
+
+  # A customer-facing draft on a ticket with no customer would be unsendable
+  # text that ends up saved as a public note instead.
+  def test_answer_draft_needs_a_linked_customer
+    Setting.plugin_redmine_expert_helpdesk = Setting.plugin_redmine_expert_helpdesk.merge(
+      'ai_enabled' => '1', 'ai_answer_enabled' => '1',
+      'ai_api_key' => 'k', 'ai_model' => 'm', 'ai_provider' => 'openai'
+    )
+    HelpdeskTicketInfo.where(:issue_id => @issue.id).delete_all
+    post_content(:source => 'answer_draft')
+
+    assert_response :unprocessable_entity
+    assert_equal I18n.t(:error_helpdesk_ai_answer_no_contact), json['error']
+  end
+
+  def test_answer_draft_returns_the_text_and_its_sources
+    enable_answer_drafts
+    result = RedmineExpertHelpdesk::AnswerDrafter::Result.new(
+      :content => 'Guten Tag, bitte pruefen Sie das Netzteil.',
+      :omitted => 0, :truncated => false,
+      :sources => [{ :issue_id => 2, :score => 0.87 }]
+    )
+    with_stubbed_draft(->(*_a, **_k) { result }) do
+      post_content(:source => 'answer_draft', :variant => 'steps')
+    end
+
+    assert_response :success
+    assert_equal 'Guten Tag, bitte pruefen Sie das Netzteil.', json['content']
+    assert_equal false, json['truncated']
+    assert_equal 1, json['sources'].size
+    assert_equal 2, json['sources'][0]['issue_id']
+    assert json['sources'][0]['url'].present?
+  end
+
+  def test_answer_draft_reports_a_missing_knowledge_base_match
+    enable_answer_drafts
+    with_stubbed_draft(->(*_a, **_k) { raise RedmineExpertHelpdesk::AnswerDrafter::NoGroundingError }) do
+      post_content(:source => 'answer_draft')
+    end
+
+    assert_response :unprocessable_entity
+    assert_equal I18n.t(:error_helpdesk_ai_answer_no_grounding), json['error']
+  end
+
+  # The provider body carries endpoints and sometimes prompt fragments: it goes
+  # to the log, never to the browser.
+  # A near miss tells the agent the bar may be too high; a blank tells them the
+  # case is new. The message has to distinguish them.
+  def test_refusal_names_the_best_rejected_score
+    enable_answer_drafts
+    err = RedmineExpertHelpdesk::AnswerDrafter::NoGroundingError.new(:best_score => 0.61, :threshold => 0.65)
+    with_stubbed_draft(->(*_a, **_k) { raise err }) do
+      post_content(:source => 'answer_draft')
+    end
+
+    assert_response :unprocessable_entity
+    assert_includes json['error'], '61'
+    assert_includes json['error'], '65'
+  end
+
+  def test_refusal_without_any_candidate_uses_the_plain_message
+    enable_answer_drafts
+    with_stubbed_draft(->(*_a, **_k) { raise RedmineExpertHelpdesk::AnswerDrafter::NoGroundingError }) do
+      post_content(:source => 'answer_draft')
+    end
+
+    assert_response :unprocessable_entity
+    assert_equal I18n.t(:error_helpdesk_ai_answer_no_grounding), json['error']
+  end
+
+  def test_provider_failure_does_not_leak_the_response_body
+    enable_answer_drafts
+    err = RedmineExpertHelpdesk::AiClient::AiError.new('kaputt', 500, 'SECRET-ENDPOINT-BODY')
+    with_stubbed_draft(->(*_a, **_k) { raise err }) do
+      post_content(:source => 'answer_draft')
+    end
+
+    assert_response :bad_gateway
+    assert_not_includes response.body, 'SECRET-ENDPOINT-BODY'
+    assert json['error'].present?
+  end
+
+  def test_transport_failure_is_reported_as_a_timeout
+    enable_answer_drafts
+    err = RedmineExpertHelpdesk::AiClient::TransportError.new('weg', nil, 'x')
+    with_stubbed_draft(->(*_a, **_k) { raise err }) do
+      post_content(:source => 'answer_draft')
+    end
+
+    assert_response :gateway_timeout
+    assert_equal I18n.t(:error_helpdesk_ai_answer_timeout), json['error']
+  end
+
+  # "We looked and found nothing" sends the agent to the answer templates;
+  # "there is nothing to look in" sends an administrator to the settings.
+  def test_switched_off_knowledge_base_is_not_reported_as_a_missing_match
+    enable_answer_drafts
+    with_stubbed_draft(->(*_a, **_k) { raise RedmineExpertHelpdesk::AnswerDrafter::KbUnavailableError }) do
+      post_content(:source => 'answer_draft')
+    end
+
+    assert_response :unprocessable_entity
+    assert_equal I18n.t(:error_helpdesk_ai_answer_kb_unavailable), json['error']
+    assert_not_equal I18n.t(:error_helpdesk_ai_answer_no_grounding), json['error']
+  end
+
+  def test_unreachable_knowledge_base_is_not_reported_as_a_missing_match
+    enable_answer_drafts
+    with_stubbed_draft(->(*_a, **_k) { raise RedmineExpertHelpdesk::KnowledgeStore::StoreError, 'weg' }) do
+      post_content(:source => 'answer_draft')
+    end
+
+    assert_response :bad_gateway
+    assert_equal I18n.t(:error_helpdesk_ai_answer_store_unreachable), json['error']
+  end
+
+  def test_island_advertises_the_button_only_when_the_feature_is_on
+    link_contact
+    get "/issues/#{@issue.id}/edit"
+    assert_response :success
+    assert_nil toolbar_island['aiDraft']
+
+    enable_answer_drafts
+    get "/issues/#{@issue.id}/edit"
+    assert_response :success
+    variants = toolbar_island['aiDraft']['variants']
+    assert_equal RedmineExpertHelpdesk::AnswerDrafter::VARIANTS.keys, variants.map { |v| v['key'] }
+  end
+
+  # A typo must not silently switch the grounding requirement off: to_f would
+  # turn "o,7" into 0.0, which is a valid threshold meaning "anything grounds a
+  # customer-facing draft" (Copilot review on PR #29).
+  def put_min_score(value)
+    Role.find(1).add_permission!(:manage_helpdesk)
+    put "/projects/#{@project.identifier}/helpdesk_project_setting",
+        :params => { :ai_answer_form => '1',
+                     :helpdesk_project_setting => { :ai_answer_min_score => value } }
+    HelpdeskProjectSetting.find_by(:project_id => @project.id)
+  end
+
+  def test_invalid_project_min_score_is_rejected_instead_of_becoming_zero
+    setting = put_min_score('o,7')
+
+    # Nothing stored at all is fine; 0.0 is not - that would mean "any hit may
+    # ground a customer-facing draft".
+    assert_nil setting&.ai_answer_min_score
+  end
+
+  def test_valid_project_min_score_is_stored_and_blank_clears_it
+    setting = put_min_score('0,85')
+    assert_not_nil setting, 'the settings row should exist after a valid update'
+    assert_in_delta 0.85, setting.ai_answer_min_score.to_f, 0.0001
+
+    assert_nil put_min_score('').ai_answer_min_score
+  end
+
+  # The same rule through the real request path: an agent is expected to rework a
+  # draft before saving, and a reworked draft is still model output that must
+  # stay out of the knowledge base. This flip-flopped twice during review, so it
+  # is pinned end to end and not only at the hook.
+  def test_edited_draft_is_still_marked_and_kept_out_of_the_knowledge_base
+    Role.find(1).add_permission!(:edit_issues)
+    put "/issues/#{@issue.id}",
+        :params => { :issue => { :notes => 'Guten Tag, VOM BEARBEITER STARK UEBERARBEITET.' },
+                     :hd_ai_drafted => '1', :hd_ai_draft_base_text => '' }
+
+    journal = @issue.reload.journals.order(:id).last
+    assert_not_nil journal
+    assert_includes HelpdeskAiDraftedJournal.journal_ids_for(@issue.id), journal.id
+    assert_not_includes RedmineExpertHelpdesk::KnowledgeExtractor.ticket_text(@issue),
+                        'VOM BEARBEITER STARK UEBERARBEITET'
+  end
+
+  def test_note_saved_without_the_marker_is_not_flagged
+    Role.find(1).add_permission!(:edit_issues)
+    put "/issues/#{@issue.id}", :params => { :issue => { :notes => 'Ganz normale Notiz.' } }
+
+    journal = @issue.reload.journals.order(:id).last
+    assert_not_includes HelpdeskAiDraftedJournal.journal_ids_for(@issue.id), journal.id
   end
 
   # --- Access control ----------------------------------------------------

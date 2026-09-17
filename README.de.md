@@ -35,6 +35,7 @@ siehe [Tests](#tests).
 - [Plugin-Einstellungen](#plugin-einstellungen)
 - [REST-API](#rest-api)
 - [KI-Zusammenfassungen](#ki-zusammenfassungen)
+- [KI-Antwortvorschläge](#ki-antwortvorschläge)
 - [Vollständigkeitsprüfung eingehender Mails](#vollständigkeitsprüfung-eingehender-mails)
 - [Wissensbasis (RAG)](#wissensbasis-rag)
 - [Tests](#tests) — was die CI ausführt
@@ -78,6 +79,10 @@ siehe [Tests](#tests).
   über dessen jeweiliges Backend — Graph oder der eigene SMTP-Server — und in beiden
   Fällen abgelegt in „Gesendete Elemente". Unterstützt Inline-Bilder (via CID),
   normale Anhänge sowie mehrere Empfänger in CC/BCC.
+- **KI-Antwortvorschläge**: Ein dritter Button in der Werkzeugleiste entwirft die Antwort
+  **an den Kunden** für dieses Ticket — gestützt auf die Wissensbasis des Projekts, nie
+  automatisch versendet und ohne passenden Eintrag bewusst verweigert. Siehe
+  [KI-Antwortvorschläge](#ki-antwortvorschläge).
 - **Zitieren und Antwortvorlagen**: Ein **Zitieren**-Button neben den
   Formatierungsicons des Notizfeldes fügt die originale Mail, den kompletten
   Verlauf oder nur den Mailwechsel ein — private Notizen nie. Ein
@@ -774,6 +779,11 @@ ebenso das Zitieren.
 Zitate und Vorlagen einzufügen erfordert die Berechtigung `send_helpdesk_reply`,
 dieselbe, die auch das Antwortformular schützt.
 
+> Vorlagen und [KI-Antwortvorschläge](#ki-antwortvorschläge) lösen zwei Hälften desselben
+> Problems: Eine Vorlage ist das richtige Werkzeug, wenn der Wortlaut nicht variieren darf
+> (rechtliche Hinweise, Standardabläufe), ein Entwurf dann, wenn die Antwort davon abhängt, was
+> in genau diesem Ticket steht.
+
 ## Kontakte / Kundenliste
 
 Absender werden beim ersten Postfachabruf automatisch als `HelpdeskContact`
@@ -990,6 +1000,84 @@ fehlgeschlagenen Lauf oder für Tickets, die vor Aktivierung der Funktion eingin
 > ist standardmäßig aus und pro Projekt zu aktivieren.
 
 ---
+
+## KI-Antwortvorschläge
+
+Die bisherigen KI-Funktionen schreiben alle **für die Bearbeiter**. Diese schreibt **für den
+Kunden**: Neben *Zitieren* und *Vorlagen* sitzt in der Werkzeugleiste des Notizfeldes ein dritter
+Knopf, **KI-Antwort**. Er entwirft für das gerade offene Ticket eine Antwort — was der Kunde tun
+soll, der Reihe nach — gestützt auf die Wissensbasis des Projekts, und fügt sie in das Notizfeld
+ein, das zugleich der Text der ausgehenden Mail ist.
+
+Gesendet wird nie automatisch. Der Entwurf wird eingefügt, gelesen, bearbeitet und über das
+normale Antwortformular verschickt.
+
+**Vier Varianten** im Menü des Knopfes:
+
+| Variante | Ergebnis | Braucht Wissensbasis-Treffer |
+|---|---|---|
+| Antwort entwerfen | Die Standardantwort: Anliegen aufgreifen, dann die konkreten Schritte. | ja |
+| Schritt-für-Schritt-Anleitung | Nummerierte Liste einzeln überprüfbarer Handlungen. | ja |
+| Kurz und knapp | Höchstens fünf Sätze, nur der wichtigste nächste Schritt. | ja |
+| Fehlende Angaben erfragen | Fragt gezielt nach, schlägt ausdrücklich nichts vor. | **nein** |
+
+**Kein Treffer, kein Entwurf.** Eine Antwort ohne Grundlage ist genau der Text, der einen
+Reparaturtermin erfindet; die drei Varianten, die eine Lösung vorschlagen, verweigern deshalb und
+nennen die Antwortvorlagen als Alternative. *Fehlende Angaben erfragen* schlägt nichts vor,
+braucht keine Grundlage und funktioniert damit vom ersten Tag an, auch bei leerer Wissensbasis.
+
+**Was das Modell sieht — und was nicht.** Betreff, Beschreibung und den **öffentlichen** Verlauf —
+nie interne Notizen, nie Anhänge. Das ist bewusst enger gefasst als beim Wissens-Extraktor, dessen
+Ergebnis im Projekt bleibt; dieser Text ist einen Klick vom Postfach des Kunden entfernt. Die
+Fälle aus der Wissensbasis werden **ohne Ticketnummern** übergeben: Eine fremde Ticketnummer in
+einer Kundenmail verrät die Existenz und damit indirekt den Inhalt des Tickets eines anderen
+Kunden. Der Prompt verbietet zusätzlich Preise, Termine, Fristen, Lieferanten- und Kollegennamen,
+interne Werkzeuge sowie jede Zusage zu Reparatur, Austausch, Kulanz oder Garantie, die nicht schon
+im Ticket steht. Auf welchen Tickets ein Entwurf beruht, steht in der Statuszeile der
+Werkzeugleiste — nie im Mailtext.
+
+**Keine doppelte Anrede.** Kopf- und Fußtext des Postfachs werden gerendert und dem Modell
+mitgegeben, mit dem Hinweis, dass sie um seinen Text herum gesetzt werden. So bekommt der Kunde
+weder zwei Anreden noch zwei Signaturen. Ist beides nicht konfiguriert, schreibt der Entwurf sie
+selbst.
+
+**Gekennzeichnet, nicht stillschweigend eingefügt.** Über dem Notizfeld erscheint ein
+Warnhinweis; wer einen unbearbeiteten Entwurf abschickt oder speichert, wird vorher gefragt. Das
+hält zugleich ungeprüften KI-Text aus der Wissensbasis heraus, denn Antworten, die aus einem
+Entwurf stammen, werden beim späteren Einlesen des Tickets ausgelassen.
+
+**Wie gut ein Treffer sein muss.** `ai_answer_min_score` (Standard 0,65) legt fest, ab welcher
+Ähnlichkeit ein Wissensbasis-Eintrag einen Entwurf tragen darf. Das ist **nicht** dasselbe wie
+`kb_min_score` der Wissensbasis, der die Vorschläge an die Bearbeiter innerhalb der
+Zusammenfassung steuert — was an Kunden geht, lässt sich damit strenger stellen, ohne die
+internen Vorschläge abzuwürgen. Je Projekt überschreibbar: Ein Projekt mit 75 gepflegten
+Einträgen kann 0,65 vertrauen, eines mit einer Handvoll sollte mehr verlangen. Wird ein Entwurf
+abgelehnt, nennt die Meldung den knappen Verfehler (*„bester Treffer 86 %, nötig sind 95 %“*),
+sodass sich die Schwelle an echten Fällen einstellen lässt; der angenommene Treffer erscheint
+nach einem erfolgreichen Entwurf genauso in der Statuszeile.
+
+**Zentrale Konfiguration** (*Administration → Plugins → Redmine expert Helpdesk →
+KI-Antwortvorschläge*): Hauptschalter, Prompt für die Antwort, Mindest-Übereinstimmung, max.
+Ausgabe-Token (Standard 900 — eine Antwort braucht mehr Platz als eine Zusammenfassung) und ein
+Zeitlimit. Dieser Aufruf läuft
+als einziger KI-Aufruf des Plugins **synchron** im Web-Request; sein Zeitlimit liegt deshalb
+standardmäßig bei 20 s und sollte deutlich unter dem Zeitlimit eines vorgelagerten Reverse Proxy
+bleiben. Gleichzeitige Entwürfe werden je Benutzer und je Ticket gedrosselt.
+
+**Je Projekt** (*Einstellungen → expert Helpdesk*): Knopf aktivieren, wahlweise die
+Mindest-Übereinstimmung anheben (leer = zentraler Wert) und den zentralen Prompt erben,
+erweitern oder ersetzen — dieselben drei Prompt-Modi wie bei der KI-Zusammenfassung.
+
+Der Knopf erscheint nur, wenn die Funktion zentral **und** im Projekt aktiv ist, der KI-Client
+konfiguriert ist und dem Ticket ein Kunde zugeordnet wurde — ein kundengerichteter Entwurf ohne
+Kunden wäre Text, der nicht versendet werden kann. Jeder Aufruf wird in `helpdesk_ai_requests` als
+`answer_draft` protokolliert, samt anfragendem Bearbeiter, und erscheint in der KI-Statistik des
+Projekts.
+
+> **Datenschutz:** Der öffentliche Ticketverlauf und die passenden Einträge der Wissensbasis
+> werden an den konfigurierten KI-Provider übertragen. Für einen vollständig lokalen Betrieb den
+> Provider **Custom** auf einen selbst gehosteten, OpenAI-kompatiblen Endpunkt richten. Die
+> Funktion ist standardmäßig aus und wird je Projekt aktiviert.
 
 ## Vollständigkeitsprüfung eingehender Mails
 

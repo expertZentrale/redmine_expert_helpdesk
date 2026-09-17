@@ -34,6 +34,11 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   validates :phishing_action, :inclusion => { :in => PHISHING_ACTIONS }, :allow_nil => true
   validates :ai_summary_scope, :inclusion => { :in => AI_SCOPES }, :allow_nil => true
   validates :ai_prompt_mode,   :inclusion => { :in => AI_PROMPT_MODES }, :allow_nil => true
+  validates :ai_answer_prompt_mode, :inclusion => { :in => AI_PROMPT_MODES }, :allow_nil => true
+  # A similarity score, so only 0..1 is meaningful. Blank inherits the central value.
+  validates :ai_answer_min_score,
+            :numericality => { :greater_than_or_equal_to => 0, :less_than_or_equal_to => 1 },
+            :allow_nil => true
   validates :kb_ingest_mode,      :inclusion => { :in => KB_INGEST_MODES }, :allow_nil => true
   validates :kb_proposal_display, :inclusion => { :in => KB_DISPLAY_MODES }, :allow_nil => true
   validates :info_request_mode, :inclusion => { :in => INFO_REQUEST_MODES }, :allow_nil => true
@@ -57,6 +62,18 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
 
   def self.for_project(project)
     find_or_initialize_by(:project_id => project.id)
+  end
+
+  def self.parse_ai_answer_min_score(raw)
+    value = raw.to_s.strip.tr(',', '.')
+    return nil if value.blank?
+
+    parsed = Float(value)
+    raise ArgumentError, I18n.t(:error_helpdesk_ai_answer_min_score_invalid) unless parsed.finite?
+
+    parsed
+  rescue ArgumentError, TypeError
+    raise ArgumentError, I18n.t(:error_helpdesk_ai_answer_min_score_invalid)
   end
 
   # ISO-Wochentage (Mo=1..So=7) als Integer-Array
@@ -101,6 +118,16 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
 
   def kb_show_in_sidebar?
     %w[sidebar both].include?(kb_proposal_display.to_s)
+  end
+
+  # --- KI-Antwortvorschlag (kundengerichtet) ---
+
+  # Guard auf die Spalte: das Modell wird auch geladen, bevor Migration 052
+  # gelaufen ist (Redmine migriert Plugins nach dem Boot).
+  def ai_answer_enabled?
+    return false unless self.class.column_names.include?('ai_answer_enabled')
+
+    !!ai_answer_enabled
   end
 
   # --- Completeness check / follow-up ---
@@ -154,6 +181,32 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
       Setting.plugin_redmine_expert_helpdesk['ai_prompt'].to_s,
       ai_prompt.to_s,
       ai_prompt_mode
+    )
+  end
+
+  # Ab welcher Aehnlichkeit ein Wissensbasis-Treffer einen kundengerichteten
+  # Entwurf tragen darf: Projektwert, sonst zentraler Wert, sonst der Default
+  # des Drafters. Bewusst unabhaengig von kb_min_score - der steuert die
+  # Vorschlaege *an die Bearbeiter*, dieser hier Text *an den Kunden*.
+  def effective_ai_answer_min_score
+    return ai_answer_min_score.to_f.clamp(0.0, 1.0) if has_own_ai_answer_min_score?
+
+    central = self.class.parse_ai_answer_min_score(Setting.plugin_redmine_expert_helpdesk['ai_answer_min_score'])
+    central.nil? ? RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE : central.clamp(0.0, 1.0)
+  rescue ArgumentError
+    RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE
+  end
+
+  def has_own_ai_answer_min_score?
+    self.class.column_names.include?('ai_answer_min_score') && !ai_answer_min_score.nil?
+  end
+
+  # Wie effective_ai_prompt, aber fuer den kundengerichteten Antwortentwurf.
+  def effective_ai_answer_prompt
+    combine_prompts(
+      Setting.plugin_redmine_expert_helpdesk['ai_answer_prompt'].to_s,
+      ai_answer_prompt.to_s,
+      ai_answer_prompt_mode
     )
   end
 

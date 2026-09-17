@@ -471,6 +471,10 @@
       formData.append('reply_to',     toVal);
       formData.append('reply_cc',     ccVal);
       formData.append('reply_bcc',    bccVal);
+      // Kennzeichnet die gesendete Mail als KI-entworfen (siehe Migration 054).
+      if (window.hdAiDraft && window.hdAiDraft.used()) {
+        formData.append('hd_ai_drafted', '1');
+      }
 
       document.querySelectorAll('#hd-attachments-list .hd-att-cb:checked').forEach(function(attCb) {
         formData.append('attachment_ids[]', attCb.value);

@@ -29,8 +29,18 @@ module RedmineExpertHelpdesk
 
     # ---- Qdrant -----------------------------------------------------------
     class QdrantStore
+      DEFAULT_OPEN_TIMEOUT = 10
+      DEFAULT_READ_TIMEOUT = 30
+
+      # Ueberschreibbar, weil der Antwortentwurf synchron in einem Web-Request
+      # laeuft: dort sind 30 s Lesezeit fuer die Vektorsuche allein zu viel, in
+      # den Hintergrund-Jobs bleibt es beim bisherigen Wert.
+      attr_accessor :open_timeout, :read_timeout
+
       def initialize(settings)
-        @settings = settings
+        @settings     = settings
+        @open_timeout = DEFAULT_OPEN_TIMEOUT
+        @read_timeout = DEFAULT_READ_TIMEOUT
       end
 
       def base_url
@@ -86,8 +96,8 @@ module RedmineExpertHelpdesk
         uri = URI("#{base_url}#{path}")
         http = Net::HTTP.new(uri.host, uri.port)
         http.use_ssl = (uri.scheme == 'https')
-        http.open_timeout = 10
-        http.read_timeout = 30
+        http.open_timeout = open_timeout
+        http.read_timeout = read_timeout
 
         req = case method
               when :get    then Net::HTTP::Get.new(uri)
@@ -116,8 +126,17 @@ module RedmineExpertHelpdesk
     class PgvectorStore
       TABLE = 'helpdesk_kb_vectors'.freeze
 
+      DEFAULT_CONNECT_TIMEOUT = 10
+
+      # Siehe QdrantStore: derselbe Regler, damit der synchrone Antwortentwurf
+      # ein Zeitbudget durchsetzen kann. PG.connect kennt von sich aus KEIN
+      # Limit - ein toter Host blockiert sonst bis zum TCP-Timeout des Systems,
+      # und das sind zwei Minuten an einem Puma-Thread.
+      attr_accessor :connect_timeout
+
       def initialize(settings)
-        @settings = settings
+        @settings        = settings
+        @connect_timeout = DEFAULT_CONNECT_TIMEOUT
       end
 
       # gem 'pg' ist optional (nur fuer dieses Backend). Fehlt es, gilt der Store
@@ -198,8 +217,17 @@ module RedmineExpertHelpdesk
       def conn
         @conn ||= begin
           require 'pg'
-          PG.connect(@settings['kb_pg_url'].to_s.strip)
+          PG.connect(connect_url)
         end
+      end
+
+      # connect_timeout nur ergaenzen, wenn die konfigurierte URL keines mitbringt:
+      # ein ausdruecklich gesetzter Wert gehoert dem Betreiber.
+      def connect_url
+        url = @settings['kb_pg_url'].to_s.strip
+        return url if url.include?('connect_timeout=')
+
+        url + (url.include?('?') ? '&' : '?') + "connect_timeout=#{connect_timeout.to_i}"
       end
     end
   end

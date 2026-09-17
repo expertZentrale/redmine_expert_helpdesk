@@ -11,6 +11,8 @@ class HelpdeskProjectSettingsController < ApplicationController
       update_sla_settings(setting)
     elsif params[:ai_form].present?
       update_ai_settings(setting)
+    elsif params[:ai_answer_form].present?
+      update_ai_answer_settings(setting)
     elsif params[:kb_form].present?
       update_kb_settings(setting)
     elsif params[:info_request_form].present?
@@ -93,6 +95,18 @@ class HelpdeskProjectSettingsController < ApplicationController
     setting.ai_min_image_kb    = hp[:ai_min_image_kb].presence&.to_i
     setting.ai_include_journal       = hp[:ai_include_journal] == '1'
     setting.ai_include_private_notes = hp[:ai_include_private_notes] == '1'
+  end
+
+  # KI-Antwortvorschlag (eigenes Formular im Tab). Teilt sich die Prompt-Modi mit
+  # der Zusammenfassung (AI_PROMPT_MODES).
+  def update_ai_answer_settings(setting)
+    hp = params[:helpdesk_project_setting] || {}
+
+    setting.ai_answer_enabled = hp[:ai_answer_enabled] == '1'
+    mode = hp[:ai_answer_prompt_mode].to_s
+    setting.ai_answer_prompt_mode = mode if HelpdeskProjectSetting::AI_PROMPT_MODES.include?(mode)
+    setting.ai_answer_prompt = hp[:ai_answer_prompt].to_s.strip.presence
+    setting.ai_answer_min_score = HelpdeskProjectSetting.parse_ai_answer_min_score(hp[:ai_answer_min_score])
   end
 
   # Completeness check / follow-up (fifth form in the tab)

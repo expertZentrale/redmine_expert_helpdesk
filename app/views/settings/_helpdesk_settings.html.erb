@@ -328,6 +328,90 @@
 <p><em class="info"><%= l(:text_helpdesk_ai_privacy_info) %></em></p>
 
 <hr />
+<h3 style="margin-top:1em;"><%= l(:label_helpdesk_ai_answer_settings) %></h3>
+<p>
+  <%= hidden_field_tag 'settings[ai_answer_enabled]', '0', :id => nil %>
+  <%= check_box_tag 'settings[ai_answer_enabled]', '1',
+        @settings['ai_answer_enabled'] == '1', :id => 'settings_ai_answer_enabled' %>
+  <%= label_tag 'settings_ai_answer_enabled', l(:field_helpdesk_ai_answer_enabled_global) %>
+  <em class="info"><%= l(:text_helpdesk_ai_answer_enabled_global_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_answer_prompt) %></label>
+  <%= text_area_tag 'settings[ai_answer_prompt]',
+        @settings['ai_answer_prompt'].presence || RedmineExpertHelpdesk::AnswerDrafter::DEFAULT_PROMPT,
+        :rows => 12, :cols => 70, :id => 'settings_ai_answer_prompt' %>
+  <%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'settings_ai_answer_prompt' } %>
+  <em class="info"><%= l(:text_helpdesk_ai_answer_prompt_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_answer_min_score) %></label>
+  <%= text_field_tag 'settings[ai_answer_min_score]',
+        @settings['ai_answer_min_score'].presence || RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE,
+        :size => 8, :id => 'settings_ai_answer_min_score' %>
+  <em class="info"><%= l(:text_helpdesk_ai_answer_min_score_info) %></em>
+  <span class="error" id="settings_ai_answer_min_score_error" style="display:none;"
+        role="alert" aria-live="polite"></span>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_answer_max_tokens) %></label>
+  <%= text_field_tag 'settings[ai_answer_max_tokens]', @settings['ai_answer_max_tokens'].presence || '900', :size => 8 %>
+  <em class="info"><%= l(:text_helpdesk_ai_answer_max_tokens_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_answer_timeout) %></label>
+  <%= text_field_tag 'settings[ai_answer_timeout]', @settings['ai_answer_timeout'].presence || '20', :size => 8 %>
+  <em class="info"><%= l(:text_helpdesk_ai_answer_timeout_info) %></em>
+</p>
+<script type="text/javascript">
+//<![CDATA[
+(function () {
+  var field = document.getElementById('settings_ai_answer_min_score');
+  var form  = field && field.form;
+  var error = document.getElementById('settings_ai_answer_min_score_error');
+  if (!field || !form || !error) return;
+
+  function clearError() {
+    error.textContent = '';
+    error.style.display = 'none';
+    field.removeAttribute('aria-invalid');
+    field.removeAttribute('aria-describedby');
+  }
+
+  function showError(message) {
+    error.textContent = message;
+    error.style.display = '';
+    field.setAttribute('aria-invalid', 'true');
+    field.setAttribute('aria-describedby', 'settings_ai_answer_min_score_error');
+  }
+
+  function normalize(raw) {
+    var value = String(raw || '').replace(/,/g, '.').trim();
+    if (value === '') return '';
+    var parsed = Number(value);
+    if (!isFinite(parsed) || parsed < 0 || parsed > 1) {
+      throw new Error('<%= j(l(:error_helpdesk_ai_answer_min_score_invalid)) %>');
+    }
+    return value;
+  }
+
+  form.addEventListener('submit', function (e) {
+    try {
+      field.value = normalize(field.value);
+      clearError();
+    } catch (err) {
+      e.preventDefault();
+      showError(err.message || String(err));
+      field.focus();
+    }
+  });
+  field.addEventListener('input', clearError);
+  clearError();
+}());
+//]]>
+</script>
+
+<hr />
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_info_request) %></h3>
 <p>
   <%= hidden_field_tag 'settings[info_request_enabled]', '0', :id => nil %>

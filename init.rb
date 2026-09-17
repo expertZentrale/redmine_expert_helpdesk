@@ -11,6 +11,24 @@
 # Pro Projekt koennen Postfaecher konfiguriert werden, deren Mails als Tickets
 # bzw. Ticket-Antworten verarbeitet werden.
 
+# Keep this plugin's credentials out of the Rails parameter log.
+#
+# Every secret the plugin stores is posted through an ordinary settings form and
+# was written to the log in clear text: the AI and embedding keys, the Qdrant
+# key, the fetch/SLA endpoint keys, and the Azure client secret.
+#
+# Everything the plugin cares about is listed here rather than relying on the
+# host's filter list. That list differs between the supported Redmine versions -
+# on 6.1 and 7.0 client_secret happens to be caught by their :secret entry, on
+# 5.1 and 6.0 it is not - so inheriting it would mean the secret leaks on half
+# the matrix. Entries match as substrings of the parameter name, so these four
+# cover the current keys and any future ones. ":key" is deliberately absent: it
+# would also hide settings that are not secrets, such as info_request_keywords.
+#
+# Mailbox passwords are additionally encrypted at rest by SecretBox.
+Rails.application.config.filter_parameters +=
+  [:api_key, :app_key, :client_secret, :password]
+
 require File.expand_path('../lib/redmine_expert_helpdesk/secret_box', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/provider_presets', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/xoauth2', __FILE__)
@@ -33,6 +51,8 @@ require File.expand_path('../lib/redmine_expert_helpdesk/completeness_check', __
 require File.expand_path('../lib/redmine_expert_helpdesk/info_request_mailer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_store', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_extractor', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_retrieval', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/answer_drafter', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/template_renderer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/inline_images', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/reply_images', __FILE__)
@@ -116,6 +136,15 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'ai_log_level'         => RedmineExpertHelpdesk::AiLogger::DEFAULT_LEVEL,
              'ai_max_output_tokens' => '500',
              'ai_timeout'           => '60',
+             # Kundengerichteter Antwortentwurf (Knopf in der Notiz-Werkzeugleiste).
+             # Eigenes Zeitbudget, weil dieser Aufruf - anders als alle anderen -
+             # synchron in einem Web-Request laeuft: 60 s haengen einen Puma-Thread
+             # und laufen ausserdem in das Upstream-Timeout des Reverse Proxy.
+             'ai_answer_enabled'    => '0',
+             'ai_answer_prompt'     => RedmineExpertHelpdesk::AnswerDrafter::DEFAULT_PROMPT,
+             'ai_answer_min_score'  => RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE.to_s,
+             'ai_answer_max_tokens' => '900',
+             'ai_answer_timeout'    => '20',
              # Completeness check of incoming first mails ("follow-up").
              # Central master switch; mode and rules live per project.
              'info_request_enabled'   => '0',
