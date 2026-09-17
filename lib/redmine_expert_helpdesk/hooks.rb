@@ -139,7 +139,7 @@ module RedmineExpertHelpdesk
       info    = HelpdeskTicketInfo.for_issue(issue)
       contact = info&.helpdesk_contact
 
-      parts = [note_toolbar(context, issue, project)]
+      parts = [note_toolbar(context, issue, project, contact)]
       parts << reply_form(context, issue, project, info, contact) if contact
       parts.join.html_safe
     end
@@ -261,8 +261,8 @@ module RedmineExpertHelpdesk
 
     private
 
-    # Quote and template buttons in the toolbar of the note field.
-    def note_toolbar(context, issue, project)
+    # Quote, template and AI-draft buttons in the toolbar of the note field.
+    def note_toolbar(context, issue, project, contact)
       manage_url = nil
       if User.current.allowed_to?(:manage_helpdesk, project)
         manage_url = context[:controller].send(:settings_project_path, project, :tab => 'expert_helpdesk')
@@ -274,7 +274,11 @@ module RedmineExpertHelpdesk
           :issue      => issue,
           :project    => project,
           :templates  => HelpdeskReplyTemplate.active.available_for(project).to_a,
-          :manage_url => manage_url
+          :manage_url => manage_url,
+          # Empty unless a customer is linked and the feature is on: a
+          # customer-facing draft on a ticket with no customer is unsendable
+          # text that ends up saved as a public note instead.
+          :ai_draft_variants => RedmineExpertHelpdesk::AnswerDrafter.menu_variants(project, contact)
         }
       })
     end

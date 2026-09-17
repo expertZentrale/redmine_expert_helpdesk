@@ -20,6 +20,13 @@ module RedmineExpertHelpdesk
       settings['kb_enabled'].to_s == '1'
     end
 
+    # Customer-facing answer drafts. Deliberately requires the AI master switch
+    # too: without a configured client there is nothing to draft with, and an
+    # admin who switched AI off does not expect one feature to keep calling out.
+    def answer_draft_enabled?
+      ai_enabled? && settings['ai_answer_enabled'].to_s == '1'
+    end
+
     # True when at least one of the two is on. The AI statistics page reports both AI summary
     # and knowledge-base requests, so either feature alone makes it meaningful.
     def any_enabled?

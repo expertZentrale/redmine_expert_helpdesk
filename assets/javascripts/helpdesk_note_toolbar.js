@@ -1,5 +1,6 @@
 /*
- * Toolbar additions for the note field: quoting and answer templates.
+ * Toolbar additions for the note field: quoting, answer templates and the AI
+ * answer draft.
  *
  * The configuration comes from a JSON island (#hd-note-toolbar-data), so no
  * inline executable script is needed (CSP-friendly) - the same pattern as
@@ -18,6 +19,15 @@
   var CONF = null;
   var open = null; // { btn: HTMLElement, menu: HTMLElement }
   var busy = false;
+  var buttons = [];          // every toolbar button, disabled while a call runs
+  var draftText = null;      // last inserted AI draft, for the submit-time check
+  var draftUsed = false;     // a draft was inserted at all - reported to the reply form
+
+  // The AI call is a network round trip to a third party, not a string
+  // concatenation like the other sources. fetch() has no timeout of its own, so
+  // without this a hung connection would leave busy === true forever and brick
+  // the quote and template buttons for the rest of the page.
+  var CLIENT_TIMEOUT_MS = 60000;
 
   // --- Helpers -------------------------------------------------------------
 
@@ -67,43 +77,107 @@
 
   // --- Status line ---------------------------------------------------------
 
-  function flash(message, isError) {
+  function flash(message, isError, isBusy) {
     var box = document.getElementById('hd-tb-flash');
     if (!box) { return; }
     box.textContent = message || '';
-    box.className   = 'hd-tb-flash' + (isError ? ' hd-tb-flash-error' : '');
+    box.className   = 'hd-tb-flash'
+                    + (isError ? ' hd-tb-flash-error' : '')
+                    + (isBusy  ? ' hd-tb-flash-busy'  : '');
     box.style.display = message ? 'block' : 'none';
+  }
+
+  // The provenance of a draft belongs to the agent, never to the note field -
+  // that field is the body of the outgoing mail, and the ticket numbers of other
+  // customers have no business in it. Built from DOM nodes rather than
+  // innerHTML: subjects are customer-supplied text.
+  function flashSources(prefix, list) {
+    var box = document.getElementById('hd-tb-flash');
+    if (!box) { return; }
+    box.className = 'hd-tb-flash';
+    box.style.display = 'block';
+    box.textContent = prefix + ' ';
+    list.forEach(function (src, i) {
+      if (i > 0) { box.appendChild(document.createTextNode(', ')); }
+      var a = document.createElement('a');
+      a.href = src.url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = '#' + src.issue_id;
+      if (src.subject) { a.title = src.subject; }
+      box.appendChild(a);
+      if (typeof src.score === 'number') {
+        box.appendChild(document.createTextNode(' (' + Math.round(src.score * 100) + '%)'));
+      }
+    });
+  }
+
+  // Shown above the note field and kept there: an in-text marker would be the
+  // one string that gets mailed when somebody forgets to delete it.
+  function showDraftWarning() {
+    var bar = document.getElementById('hd-tb-ai-warning');
+    if (!bar) { return; }
+    bar.textContent = t('aiAnswerWarning');
+    bar.style.display = 'block';
+  }
+
+  function setBusy(state) {
+    busy = state;
+    buttons.forEach(function (b) { b.disabled = state; });
   }
 
   // --- Fetching content from the server ------------------------------------
 
-  function loadContent(textarea, params) {
+  function loadContent(textarea, params, opts) {
     if (busy) { return; }
-    busy = true;
-    flash(t('loading'), false);
+    opts = opts || {};
+    setBusy(true);
+    flash(opts.loadingLabel || t('loading'), false, !!opts.loadingLabel);
 
     var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
     var body = new FormData();
     Object.keys(params).forEach(function (key) { body.append(key, params[key]); });
 
+    // AbortController is not just belt and braces here: a reverse proxy that
+    // gives up on a slow AI call answers with an HTML error page, and without a
+    // deadline the request can also simply never settle.
+    var ctrl  = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = ctrl ? window.setTimeout(function () { ctrl.abort(); }, CLIENT_TIMEOUT_MS) : null;
+
     fetch(CONF.postUrl, {
       method:      'POST',
       credentials: 'same-origin',
       headers:     { 'X-CSRF-Token': csrf, 'Accept': 'application/json' },
-      body:        body
+      body:        body,
+      signal:      ctrl ? ctrl.signal : undefined
     }).then(function (resp) {
-      return resp.json().then(function (data) {
+      // The body is not guaranteed to be JSON: a proxy 502/504 or a Rails error
+      // page is HTML, and an unguarded resp.json() would surface to the agent as
+      // "Unexpected token '<'".
+      return resp.json().catch(function () {
+        throw new Error(resp.statusText || String(resp.status));
+      }).then(function (data) {
         if (!resp.ok) { throw new Error(data.error || resp.statusText); }
         return data;
       });
     }).then(function (data) {
       appendToNotes(textarea, data.content);
       flash('', false);
-      if (data.truncated) { flash(t('truncated'), false); }
+      if (opts.isDraft) {
+        draftText = String(data.content || '').replace(/\s+$/, '');
+        draftUsed = true;
+        showDraftWarning();
+      }
+      if (data.truncated) { flash(opts.truncatedLabel || t('truncated'), false); }
+      if (!data.truncated && data.sources && data.sources.length) {
+        flashSources(t('aiAnswerSources'), data.sources);
+      }
     }).catch(function (err) {
-      flash(t('failed') + ' ' + err.message, true);
+      var msg = (err && err.name === 'AbortError') ? t('aiAnswerTimeout') : (err.message || '');
+      flash(t('failed') + ' ' + msg, true);
     }).then(function () {
-      busy = false;
+      if (timer) { window.clearTimeout(timer); }
+      setBusy(false);
     });
   }
 
@@ -333,6 +407,38 @@
     };
   }
 
+  function aiDraftEntries(textarea) {
+    return function () {
+      return (CONF.aiDraft.variants || []).map(function (v) {
+        return {
+          label: v.label,
+          run:   function () {
+            loadContent(textarea, { source: 'answer_draft', variant: v.key },
+                        { loadingLabel:   t('aiAnswerLoading'),
+                          truncatedLabel: t('aiAnswerTruncated'),
+                          isDraft:        true });
+          }
+        };
+      });
+    };
+  }
+
+  // One check covers both bad outcomes: the draft mailed unedited, and the draft
+  // saved unedited as a public note under an employee's name - which the
+  // knowledge base would then ingest as ground truth when the ticket closes.
+  function guardUneditedDraft(textarea) {
+    var form = textarea.form || document.getElementById('issue-form');
+    if (!form) { return; }
+    form.addEventListener('submit', function (ev) {
+      if (!draftText) { return; }
+      if (textarea.value.replace(/\s+$/, '').indexOf(draftText) === -1) { return; }
+      if (!window.confirm(t('aiAnswerConfirm'))) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+    });
+  }
+
   // --- Mounting ------------------------------------------------------------
 
   function findToolbar(textarea) {
@@ -377,11 +483,26 @@
     if (!textarea) { return; }
 
     var toolbar = findToolbar(textarea) || makeStandaloneToolbar(textarea);
-    mount(toolbar, [
+    buttons = [
       makeButton('quote', t('quote'), quoteEntries(textarea)),
       makeButton('templates', t('templates'), templateEntries(textarea))
-    ]);
+    ];
+    // Absent rather than disabled when the feature is off or no customer is
+    // linked: a button that can never do anything is just a question.
+    if (CONF.aiDraft && (CONF.aiDraft.variants || []).length) {
+      buttons.push(makeButton('aidraft', t('aiAnswer'), aiDraftEntries(textarea)));
+      guardUneditedDraft(textarea);
+    }
+    mount(toolbar, buttons);
   }
+
+  // Read by the reply form, which posts the mail in its own request. Deliberately
+  // "a draft was inserted at all" rather than "the text still matches": a draft
+  // the agent rewrote still originated from the model, and that is what the flag
+  // on the sent message is meant to record.
+  window.hdAiDraft = {
+    used: function () { return draftUsed; }
+  };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

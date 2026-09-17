@@ -42,4 +42,20 @@ class AiFeaturesTest < ActiveSupport::TestCase
     assert_not RedmineExpertHelpdesk::AiFeatures.kb_enabled?
     assert_not RedmineExpertHelpdesk::AiFeatures.any_enabled?
   end
+
+  # Der Antwortvorschlag haengt bewusst am KI-Hauptschalter mit: wer KI abschaltet,
+  # erwartet nicht, dass ein Feature weiter nach draussen telefoniert.
+  def test_answer_draft_requires_the_ai_master_switch
+    Setting.plugin_redmine_expert_helpdesk =
+      Setting.plugin_redmine_expert_helpdesk.merge('ai_enabled' => '0', 'ai_answer_enabled' => '1')
+    assert_not RedmineExpertHelpdesk::AiFeatures.answer_draft_enabled?
+
+    Setting.plugin_redmine_expert_helpdesk =
+      Setting.plugin_redmine_expert_helpdesk.merge('ai_enabled' => '1', 'ai_answer_enabled' => '1')
+    assert RedmineExpertHelpdesk::AiFeatures.answer_draft_enabled?
+
+    Setting.plugin_redmine_expert_helpdesk =
+      Setting.plugin_redmine_expert_helpdesk.merge('ai_answer_enabled' => '0')
+    assert_not RedmineExpertHelpdesk::AiFeatures.answer_draft_enabled?
+  end
 end

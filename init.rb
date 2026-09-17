@@ -33,6 +33,8 @@ require File.expand_path('../lib/redmine_expert_helpdesk/completeness_check', __
 require File.expand_path('../lib/redmine_expert_helpdesk/info_request_mailer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_store', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_extractor', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_retrieval', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/answer_drafter', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/template_renderer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/inline_images', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/reply_images', __FILE__)
@@ -116,6 +118,15 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'ai_log_level'         => RedmineExpertHelpdesk::AiLogger::DEFAULT_LEVEL,
              'ai_max_output_tokens' => '500',
              'ai_timeout'           => '60',
+             # Kundengerichteter Antwortentwurf (Knopf in der Notiz-Werkzeugleiste).
+             # Eigenes Zeitbudget, weil dieser Aufruf - anders als alle anderen -
+             # synchron in einem Web-Request laeuft: 60 s haengen einen Puma-Thread
+             # und laufen ausserdem in das Upstream-Timeout des Reverse Proxy.
+             'ai_answer_enabled'    => '0',
+             'ai_answer_prompt'     => RedmineExpertHelpdesk::AnswerDrafter::DEFAULT_PROMPT,
+             'ai_answer_min_score'  => RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE.to_s,
+             'ai_answer_max_tokens' => '900',
+             'ai_answer_timeout'    => '20',
              # Completeness check of incoming first mails ("follow-up").
              # Central master switch; mode and rules live per project.
              'info_request_enabled'   => '0',

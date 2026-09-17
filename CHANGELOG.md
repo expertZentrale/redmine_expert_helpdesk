@@ -6,6 +6,54 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Added
+
+- **The AI can now draft the answer to the customer, not just the summary for the agent.**
+  Every AI feature so far pointed inward: the summary condenses the customer's mail for the
+  agent, the completeness check judges it, and the knowledge base files *"PSU replaced,
+  firmware 2.14 flashed"* — a repair note written for a colleague. The one customer-facing
+  feature, answer templates, is static and knows nothing about the ticket in front of you. So
+  the agent still wrote every real answer by hand, even when the identical case had been solved
+  and filed last month.
+  A third button, **AI answer**, now sits next to *Quote* and *Templates* in the note toolbar.
+  It writes a reply addressed to the customer for this ticket — what *they* should do, in
+  order — grounded in the project's own knowledge base, and appends it to the note field, which
+  is also the body of the outgoing mail. Four variants: a standard answer, step-by-step
+  instructions, a short version, and one that asks for missing details. Nothing is ever sent
+  automatically: the draft is inserted for the agent to read, edit and send through the normal
+  reply form.
+  **Without a knowledge base match there is no draft.** An ungrounded reply is exactly the
+  artefact that invents a repair date, so the three variants that propose a fix refuse and point
+  at the answer templates instead. *Ask for missing details* is the exception — it proposes
+  nothing, so it needs no grounding and works on day one against an empty knowledge base.
+  **Internal information stays internal.** Unlike the knowledge extractor, whose output never
+  leaves the project, the drafter is never given private notes or attachments, and the knowledge
+  base cases it works from are passed without their ticket numbers — a foreign ticket number in
+  a customer mail discloses the existence, and by inference the content, of another customer's
+  ticket. The prompt forbids prices, dates, deadlines, supplier and colleague names, internal
+  tooling and any promise of repair, replacement or goodwill that is not already in the ticket.
+  The knowledge base tickets a draft was built on are shown to the agent in the toolbar status
+  line, never written into the mail.
+  The draft also knows what will be wrapped around it: the mailbox's reply header and footer are
+  rendered and handed to the model, so the customer never gets two salutations or two
+  signatures. Inserted text is marked by a warning bar above the field, and sending or saving a
+  draft that has not been touched asks for confirmation first.
+  **How good a match has to be is configurable.** `ai_answer_min_score` (default 0.65) decides
+  from which similarity a knowledge base entry may carry a customer-facing draft, centrally and
+  optionally per project — a project with 75 curated entries can trust 0.65, one with a handful
+  should not. It is deliberately separate from `kb_min_score`, which governs the proposals shown
+  to agents inside a summary: tightening what goes to customers must not also suppress internal
+  suggestions. When a draft is refused the message now names the near miss — *"bester Treffer
+  86 %, nötig sind 95 %"* — so the difference between "the bar is too high" and "this case is
+  genuinely new" is visible instead of guessed.
+  Off by default and enabled twice — centrally under *Administration → Plugins*, then per
+  project under *Settings → expert Helpdesk*. The call runs synchronously, unlike every other AI
+  call in the plugin, so it has its own shorter timeout (20 s) and its own output budget;
+  drafts are logged in `helpdesk_ai_requests` as `answer_draft`, now including *which agent*
+  asked for them, and show up in the project's AI statistics. Migrations 052–054.
+
 ## [0.11.0] - 2026-09-16
 
 ### Added

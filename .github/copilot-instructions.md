@@ -216,6 +216,25 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     "Lösungsvorschlag" and/or writes `HelpdeskKbProposal` rows (per-project `kb_ingest_mode` /
     `kb_proposal_display`; `HelpdeskKnowledgeController` for manual approve/ingest). Migrations 030–032.
     pgvector needs `gem 'pg'` in the deployment (kept out of `PluginGemfile`).
+  - `knowledge_retrieval.rb` — the one RAG search path, shared by the summary job and the answer
+    drafter. `KnowledgeRetrieval.search` holds the settings defaults, the self-hit rejection and the
+    all-or-nothing `min_results` rule; callers keep their own gate. `format_hits(with_issue_ids:)`
+    matters: the summary names the source ticket, a customer-facing draft must never, because a
+    foreign ticket number discloses another customer's ticket. Optional `diagnostics:` reports the
+    best *rejected* score so a refusal can say "near miss" instead of "nothing found".
+  - `answer_drafter.rb` — customer-facing answer drafts ("KI-Antwortvorschlag"), the only AI feature
+    writing to the customer rather than the agent. Synchronous via `HelpdeskNoteContentController`'s
+    `answer_draft` source (an agent is waiting), so it carries its own timeout (`ai_answer_timeout`,
+    default 20 s), token budget (`ai_answer_max_tokens`) and per-user/per-issue throttle — all applied
+    by `AiClient.new(settings.merge(...))`, so no other call site is affected. Input is deliberately
+    narrower than the extractor's: subject + description + **public** notes only, no attachments, and
+    replies that came from a draft are skipped (`HelpdeskMessage#ai_drafted`) so the model never
+    re-ingests its own output. **No knowledge-base hit means no draft** (`NoGroundingError`); only the
+    `ask` variant runs ungrounded because it proposes nothing. `ai_answer_min_score` (central + per
+    project, default 0.65) is separate from `kb_min_score`: one governs text to customers, the other
+    proposals to agents. Mailbox reply header/footer are rendered into the prompt to avoid a double
+    salutation. Off by default, opt-in per project; logged as `answer_draft` in `helpdesk_ai_requests`
+    including the acting `user_id`. Migrations 052–055.
   - `business_hours.rb` / `sla.rb` / `sla_breach_check.rb` — SLA in *business minutes*.
     **First response is recorded regardless of SLA** (`Sla.record_first_response!` only
     *creates* the ticket-info row under SLA) together with the acting user (`first_response_by_id`,

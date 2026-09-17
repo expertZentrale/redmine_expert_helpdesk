@@ -28,6 +28,12 @@ module RedmineExpertHelpdesk
 
     class ConfigurationError < AiError; end
 
+    # Der Dienst war nicht erreichbar (Timeout, DNS, TLS, Connection refused) -
+    # im Unterschied zu einer Anfrage, die der Provider inhaltlich abgelehnt hat.
+    # Der Bearbeiter kann aus dem Unterschied etwas machen: gleich noch einmal
+    # versuchen, oder in die Einstellungen schauen.
+    class TransportError < AiError; end
+
     PROVIDERS = %w[openai anthropic custom].freeze
 
     DEFAULT_ENDPOINTS = {
@@ -64,6 +70,13 @@ module RedmineExpertHelpdesk
 
     # Token-Verbrauch des letzten summarize-Aufrufs: { :input => Integer|nil, :output => Integer|nil }.
     attr_reader :last_usage
+
+    # Warum das Modell aufgehoert hat ('stop', 'length', ...), normalisiert ueber
+    # beide Provider. Ohne das ist eine bei max_output_tokens abgeschnittene
+    # Antwort von einer vollstaendigen nicht zu unterscheiden - bei einer
+    # Zusammenfassung Kosmetik, in einer Kundenmail ein halber Satz, der wie
+    # eine Zusage aussieht.
+    attr_reader :last_finish_reason
 
     def initialize(settings = nil)
       @settings = settings || Setting.plugin_redmine_expert_helpdesk
@@ -120,6 +133,8 @@ module RedmineExpertHelpdesk
     def summarize(system_prompt, user_text, image_parts = [], log_context: nil)
       raise ConfigurationError, 'KI ist nicht konfiguriert (API-Key, Modell oder Endpunkt fehlt)' unless configured?
 
+      # Zuruecksetzen, damit ein Aufruf nie den Abbruchgrund des vorherigen erbt.
+      @last_finish_reason = nil
       with_request_log(log_context, :provider => provider, :model => model, :default_type => 'summary') do
         if provider == 'anthropic'
           summarize_anthropic(system_prompt, user_text, image_parts)
@@ -216,6 +231,7 @@ module RedmineExpertHelpdesk
                        'Authorization' => "Bearer #{api_key}")
       usage = body['usage'] || {}
       @last_usage = { :input => usage['prompt_tokens'], :output => usage['completion_tokens'] }
+      @last_finish_reason = body.dig('choices', 0, 'finish_reason').to_s.presence
       text = body.dig('choices', 0, 'message', 'content').to_s.strip
       raise AiError.new('Leere Antwort vom KI-Provider', nil, body.to_s) if text.blank?
 
@@ -246,11 +262,24 @@ module RedmineExpertHelpdesk
                        'x-api-key' => api_key, 'anthropic-version' => ANTHROPIC_VERSION)
       usage = body['usage'] || {}
       @last_usage = { :input => usage['input_tokens'], :output => usage['output_tokens'] }
+      # Anthropic says 'max_tokens'; normalise to OpenAI's 'length' so callers
+      # only ever compare against one vocabulary.
+      raw_stop = body['stop_reason'].to_s
+      @last_finish_reason = raw_stop == 'max_tokens' ? 'length' : raw_stop.presence
       text = Array(body['content']).map { |c| c['text'] }.compact.join.strip
       raise AiError.new('Leere Antwort vom KI-Provider', nil, body.to_s) if text.blank?
 
       text
     end
+
+    # Netzwerkfehler, die Net::HTTP wirft und die vor dem Antwortentwurf niemand
+    # gesehen hat: die Jobs laufen im Hintergrund, dort landet alles im Log. Aus
+    # einem Web-Request heraus wuerde eine unbehandelte Ausnahme die HTML-
+    # Fehlerseite liefern, und der JSON-Client im Browser zeigt dem Bearbeiter
+    # "Unexpected token '<'".
+    NETWORK_ERRORS = [Net::OpenTimeout, Net::ReadTimeout, SocketError,
+                      Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH,
+                      OpenSSL::SSL::SSLError].freeze
 
     # POST JSON, parse JSON, raise AiError on non-2xx. Analog zu GraphClient#request.
     def post_json(url, payload, extra_headers = {})
@@ -274,6 +303,8 @@ module RedmineExpertHelpdesk
       JSON.parse(response.body)
     rescue JSON::ParserError => e
       raise AiError.new("KI-Antwort nicht lesbar: #{e.message}")
+    rescue *NETWORK_ERRORS => e
+      raise TransportError.new("KI-Dienst nicht erreichbar: #{e.class}", nil, e.message)
     end
 
     # Fuehrt den KI-Aufruf aus und protokolliert ihn (Erfolg wie Fehler) in
@@ -315,6 +346,8 @@ module RedmineExpertHelpdesk
         :model         => model,
         :project_id    => context[:project_id],
         :issue_id      => context[:issue_id],
+        # Nur der Antwortentwurf setzt das; die Jobs laufen ohne handelnden Nutzer.
+        :user_id       => context[:user_id],
         :input_tokens  => input,
         :output_tokens => output,
         :duration_ms   => duration_ms,

@@ -257,6 +257,11 @@ module RedmineExpertHelpdesk
         api.info_request_body               s.info_request_body
         api.info_request_note_visibility    s.info_request_note_visibility
         api.info_request_status_id          s.info_request_status_id
+        # KI-Antwortvorschlag (kundengerichtet).
+        api.ai_answer_enabled       s.ai_answer_enabled?
+        api.ai_answer_prompt_mode   s.ai_answer_prompt_mode
+        api.ai_answer_prompt        s.ai_answer_prompt
+        api.ai_answer_min_score     s.ai_answer_min_score
         # Wissensbasis (RAG).
         api.kb_ingest_mode          s.kb_ingest_mode
         api.kb_proposal_display     s.kb_proposal_display

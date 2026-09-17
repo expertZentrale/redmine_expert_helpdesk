@@ -328,6 +328,41 @@
 <p><em class="info"><%= l(:text_helpdesk_ai_privacy_info) %></em></p>
 
 <hr />
+<h3 style="margin-top:1em;"><%= l(:label_helpdesk_ai_answer_settings) %></h3>
+<p>
+  <%= hidden_field_tag 'settings[ai_answer_enabled]', '0', :id => nil %>
+  <%= check_box_tag 'settings[ai_answer_enabled]', '1',
+        @settings['ai_answer_enabled'] == '1', :id => 'settings_ai_answer_enabled' %>
+  <%= label_tag 'settings_ai_answer_enabled', l(:field_helpdesk_ai_answer_enabled_global) %>
+  <em class="info"><%= l(:text_helpdesk_ai_answer_enabled_global_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_answer_prompt) %></label>
+  <%= text_area_tag 'settings[ai_answer_prompt]',
+        @settings['ai_answer_prompt'].presence || RedmineExpertHelpdesk::AnswerDrafter::DEFAULT_PROMPT,
+        :rows => 12, :cols => 70, :id => 'settings_ai_answer_prompt' %>
+  <%= render :partial => 'helpdesk/macro_chips', :locals => { :field_id => 'settings_ai_answer_prompt' } %>
+  <em class="info"><%= l(:text_helpdesk_ai_answer_prompt_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_answer_min_score) %></label>
+  <%= text_field_tag 'settings[ai_answer_min_score]',
+        @settings['ai_answer_min_score'].presence || RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE,
+        :size => 8 %>
+  <em class="info"><%= l(:text_helpdesk_ai_answer_min_score_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_answer_max_tokens) %></label>
+  <%= text_field_tag 'settings[ai_answer_max_tokens]', @settings['ai_answer_max_tokens'].presence || '900', :size => 8 %>
+  <em class="info"><%= l(:text_helpdesk_ai_answer_max_tokens_info) %></em>
+</p>
+<p>
+  <label><%= l(:field_helpdesk_ai_answer_timeout) %></label>
+  <%= text_field_tag 'settings[ai_answer_timeout]', @settings['ai_answer_timeout'].presence || '20', :size => 8 %>
+  <em class="info"><%= l(:text_helpdesk_ai_answer_timeout_info) %></em>
+</p>
+
+<hr />
 <h3 style="margin-top:1em;"><%= l(:label_helpdesk_info_request) %></h3>
 <p>
   <%= hidden_field_tag 'settings[info_request_enabled]', '0', :id => nil %>

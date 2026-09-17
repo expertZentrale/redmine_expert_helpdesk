@@ -51,4 +51,27 @@ class HelpdeskProjectSettingAiTest < ActiveSupport::TestCase
     @ps.ai_summary_scope = 'initial_and_replies'
     assert @ps.ai_summary_for_replies?
   end
+
+  # --- Antwortvorschlag (teilt sich die Prompt-Modi mit der Zusammenfassung) ---
+
+  def test_effective_ai_answer_prompt_inherits_extends_and_overrides
+    Setting.plugin_redmine_expert_helpdesk =
+      Setting.plugin_redmine_expert_helpdesk.merge('ai_answer_prompt' => 'ZENTRAL')
+    ps = HelpdeskProjectSetting.new(:project_id => 1, :ai_answer_prompt => 'PROJEKT')
+
+    ps.ai_answer_prompt_mode = 'inherit'
+    assert_equal 'ZENTRAL', ps.effective_ai_answer_prompt
+
+    ps.ai_answer_prompt_mode = 'extend'
+    assert_equal "ZENTRAL\n\nPROJEKT", ps.effective_ai_answer_prompt
+
+    ps.ai_answer_prompt_mode = 'override'
+    assert_equal 'PROJEKT', ps.effective_ai_answer_prompt
+  end
+
+  def test_invalid_ai_answer_prompt_mode_is_rejected
+    ps = HelpdeskProjectSetting.new(:project_id => 1, :ai_answer_prompt_mode => 'nonsense')
+    assert_not ps.valid?
+    assert ps.errors[:ai_answer_prompt_mode].present?
+  end
 end

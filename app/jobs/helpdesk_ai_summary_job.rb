@@ -363,29 +363,9 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
   # (strikte Isolation ueber den Store). Liefert nur, wenn genug Treffer ueber
   # dem Score-Schwellwert liegen. Fehler blockieren die Zusammenfassung nicht.
   def retrieve_proposals(issue, ps, settings, client, query_text)
-    return [] unless RedmineExpertHelpdesk::AiFeatures.kb_enabled?
     return [] unless ps.kb_show_in_summary? || ps.kb_show_in_sidebar?
-    return [] if query_text.blank?
 
-    store = RedmineExpertHelpdesk::KnowledgeStore.for(settings)
-    return [] unless store.configured? && client.embed_configured?
-
-    top_k = settings['kb_top_k'].to_i
-    top_k = 3 unless top_k.positive?
-    min_score   = settings['kb_min_score'].to_f
-    min_results = settings['kb_min_results'].to_i
-    min_results = 1 unless min_results.positive?
-
-    vec  = client.embed(query_text.to_s[0, 8000],
-                        :log_context => { :request_type => 'kb_retrieve',
-                                          :project_id => issue.project_id, :issue_id => issue.id })
-    hits = store.search(issue.project_id, vec, top_k)
-    hits = hits.select { |h| h[:score].to_f >= min_score }
-    hits = hits.reject { |h| (h[:payload] || {})['issue_id'].to_i == issue.id }
-    hits.size >= min_results ? hits : []
-  rescue => e
-    Rails.logger.warn("[helpdesk][kb] Retrieval fehlgeschlagen (Issue ##{issue.id}): #{e.message}")
-    []
+    RedmineExpertHelpdesk::KnowledgeRetrieval.search(issue, settings, client, query_text)
   end
 
   def persist_proposals(issue, proposals)
@@ -403,11 +383,10 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
   end
 
   def kb_context_block(proposals)
-    lines = proposals.each_with_index.map do |h, i|
-      p = h[:payload] || {}
-      "#{i + 1}. (Ticket ##{p['issue_id']}) Problem: #{p['problem']}\n   Loesung: #{p['solution']}"
-    end
-    "\n\n---\nAehnliche frueher geloeste Faelle aus der Wissensbasis:\n#{lines.join("\n")}\n\n" \
+    # with_issue_ids: the summary is internal and names the ticket so the agent
+    # can follow it up - unlike the customer-facing answer draft.
+    lines = RedmineExpertHelpdesk::KnowledgeRetrieval.format_hits(proposals, :with_issue_ids => true)
+    "\n\n---\nAehnliche frueher geloeste Faelle aus der Wissensbasis:\n#{lines}\n\n" \
       'Wenn einer dieser Faelle zum aktuellen Anliegen passt, ergaenze am Ende der Zusammenfassung ' \
       'einen Abschnitt "Loesungsvorschlag" mit dem passenden Vorgehen und nenne die Ticketnummer(n). ' \
       'Passt nichts, lasse den Abschnitt weg.'

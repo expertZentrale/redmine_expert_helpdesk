@@ -103,7 +103,11 @@ class HelpdeskRepliesController < ApplicationController
       :recipient_to      => reply_to,
       :recipient_cc      => reply_cc.presence,
       :recipient_bcc     => reply_bcc.presence,
-      :sent_attachments  => sent_filenames.join(', ').presence
+      :sent_attachments  => sent_filenames.join(', ').presence,
+      # Der Text kam aus einem KI-Antwortvorschlag - auch wenn der Bearbeiter ihn
+      # ueberarbeitet hat. KnowledgeExtractor laesst solche Antworten spaeter aus,
+      # damit das Modell nicht seine eigene Ausgabe als Wahrheit einliest.
+      :ai_drafted        => params[:hd_ai_drafted].to_s == '1'
     )
 
     # ID zurueckgeben: das Formular schickt sie beim Issue-Update als Hidden-Field

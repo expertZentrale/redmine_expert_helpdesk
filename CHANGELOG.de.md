@@ -5,6 +5,58 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **Die KI entwirft jetzt auch die Antwort an den Kunden, nicht nur die Zusammenfassung für die
+  Bearbeiter.** Alle bisherigen KI-Funktionen zeigten nach innen: Die Zusammenfassung verdichtet
+  die Kundenmail für den Bearbeiter, die Vollständigkeitsprüfung bewertet sie, und die
+  Wissensbasis legt *„Netzteil getauscht, Firmware 2.14 geflasht“* ab — eine Reparaturnotiz für
+  Kolleginnen und Kollegen. Die einzige kundengerichtete Funktion, die Antwortvorlagen, ist
+  statisch und weiß nichts über das Ticket, das gerade offen ist. Jede echte Antwort wurde also
+  weiterhin von Hand geschrieben, auch wenn derselbe Fall im letzten Monat schon gelöst und
+  abgelegt worden war.
+  Neben *Zitieren* und *Vorlagen* sitzt in der Werkzeugleiste des Notizfeldes jetzt ein dritter
+  Knopf: **KI-Antwort**. Er formuliert für dieses Ticket eine Antwort an den Kunden — was *er*
+  tun soll, der Reihe nach — gestützt auf die Wissensbasis des Projekts, und fügt sie in das
+  Notizfeld ein, das zugleich der Text der ausgehenden Mail ist. Vier Varianten: Standardantwort,
+  Schritt-für-Schritt-Anleitung, Kurzfassung und eine Rückfrage nach fehlenden Angaben. Gesendet
+  wird nie automatisch: Der Entwurf wird eingefügt, gelesen, bearbeitet und über das normale
+  Antwortformular verschickt.
+  **Ohne Treffer in der Wissensbasis gibt es keinen Entwurf.** Eine Antwort ohne Grundlage ist
+  genau der Text, der einen Reparaturtermin erfindet; die drei Varianten, die eine Lösung
+  vorschlagen, verweigern deshalb und verweisen auf die Antwortvorlagen. Ausnahme ist *Fehlende
+  Angaben erfragen* — diese Variante schlägt nichts vor, braucht also keine Grundlage und
+  funktioniert vom ersten Tag an, auch bei leerer Wissensbasis.
+  **Internes bleibt intern.** Anders als der Wissens-Extraktor, dessen Ergebnis das Projekt nie
+  verlässt, bekommt der Entwurf weder interne Notizen noch Anhänge zu sehen, und die Fälle aus
+  der Wissensbasis werden ohne Ticketnummern übergeben — eine fremde Ticketnummer in einer
+  Kundenmail verrät die Existenz und damit indirekt den Inhalt des Tickets eines anderen Kunden.
+  Der Prompt verbietet Preise, Termine, Fristen, Lieferanten- und Kollegennamen, interne
+  Werkzeuge sowie jede Zusage zu Reparatur, Austausch oder Kulanz, die nicht schon im Ticket
+  steht. Auf welchen Tickets der Entwurf beruht, steht in der Statuszeile der Werkzeugleiste —
+  nie im Mailtext.
+  Der Entwurf weiß außerdem, was beim Versand um ihn herum gesetzt wird: Kopf- und Fußtext des
+  Postfachs werden gerendert und dem Modell mitgegeben, damit der Kunde nicht zwei Anreden oder
+  zwei Signaturen erhält. Eingefügter Text wird durch einen Warnhinweis über dem Feld
+  gekennzeichnet; wer einen unbearbeiteten Entwurf abschickt oder speichert, wird vorher gefragt.
+  **Wie gut ein Treffer sein muss, ist einstellbar.** `ai_answer_min_score` (Standard 0,65) legt
+  fest, ab welcher Ähnlichkeit ein Wissensbasis-Eintrag einen kundengerichteten Entwurf tragen
+  darf — zentral und wahlweise je Projekt. Ein Projekt mit 75 gepflegten Einträgen kann 0,65
+  vertrauen, eines mit einer Handvoll sollte das nicht. Der Wert ist bewusst getrennt von
+  `kb_min_score`, der die Vorschläge an die Bearbeiter innerhalb der Zusammenfassung steuert:
+  Wer strenger werden will, was an Kunden geht, darf damit nicht zugleich die internen
+  Vorschläge abwürgen. Wird ein Entwurf abgelehnt, nennt die Meldung jetzt den knappen Verfehler
+  — *„bester Treffer 86 %, nötig sind 95 %“* — damit der Unterschied zwischen „die Hürde ist zu
+  hoch“ und „dieser Fall ist wirklich neu“ sichtbar ist und nicht geraten werden muss.
+  Standardmäßig aus und zweifach zu aktivieren — zentral unter *Administration → Plugins*, dann
+  je Projekt unter *Einstellungen → expert Helpdesk*. Der Aufruf läuft als einziger KI-Aufruf des
+  Plugins synchron und hat deshalb ein eigenes, kürzeres Zeitlimit (20 s) und ein eigenes
+  Ausgabebudget. Entwürfe werden in `helpdesk_ai_requests` als `answer_draft` protokolliert —
+  jetzt samt *anfragendem Bearbeiter* — und erscheinen in der KI-Statistik des Projekts.
+  Migrationen 052–054.
+
 ## [0.11.0] - 2026-09-16
 
 ### Hinzugefügt

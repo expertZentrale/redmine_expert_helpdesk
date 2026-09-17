@@ -6,10 +6,13 @@ class HelpdeskAiRequest < HelpdeskApplicationRecord
   # Nur created_at (kein updated_at) – Protokolleintrag ist unveraenderlich.
   self.record_timestamps = false
 
-  REQUEST_TYPES = %w[summary completeness kb_extract kb_embed kb_retrieve].freeze
+  REQUEST_TYPES = %w[summary completeness kb_extract kb_embed kb_retrieve answer_draft].freeze
 
   belongs_to :project, :optional => true
   belongs_to :issue,   :optional => true
+  # Nil for the background jobs (no acting user); set for the answer draft, which
+  # an agent triggers by hand and whose output is proposed to a customer.
+  belongs_to :user,    :optional => true
 
   validates :request_type, :presence => true
 
