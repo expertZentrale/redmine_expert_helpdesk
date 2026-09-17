@@ -242,9 +242,22 @@ class AnswerDrafterTest < ActiveSupport::TestCase
     RedmineExpertHelpdesk::Hooks.new.controller_issues_edit_after_save(
       :journal => note,
       :issue => issue,
-      :params => { :hd_ai_drafted => '1', :hd_ai_draft_text => "KI ENTWURF\r\nTEXT" }
+      :params => { :hd_ai_drafted => '1', :hd_ai_draft_base_text => "VON HAND\r\n" }
     )
 
     assert_empty HelpdeskAiDraftedJournal.where(:journal_id => note.id)
+  end
+
+  def test_saved_edited_draft_stays_marked_for_knowledge_base_exclusion
+    issue = Issue.find(1)
+    note  = Journal.create!(:journalized => issue, :user => User.find(1), :notes => 'KI ENTWURF, VON HAND UEBERARBEITET')
+
+    RedmineExpertHelpdesk::Hooks.new.controller_issues_edit_after_save(
+      :journal => note,
+      :issue => issue,
+      :params => { :hd_ai_drafted => '1', :hd_ai_draft_base_text => 'MANUELLE VORNOTIZ' }
+    )
+
+    assert_equal [note.id], HelpdeskAiDraftedJournal.where(:journal_id => note.id).pluck(:journal_id)
   end
 end

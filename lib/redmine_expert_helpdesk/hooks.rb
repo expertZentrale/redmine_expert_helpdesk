@@ -209,7 +209,7 @@ module RedmineExpertHelpdesk
       journal = context[:journal]
       issue   = context[:issue]
       msg_id  = context[:params] && context[:params][:hd_sent_message_id].presence
-      draft   = normalized_ai_draft_text(context[:params] && context[:params][:hd_ai_draft_text])
+      base    = normalized_ai_draft_text(context[:params] && context[:params][:hd_ai_draft_base_text])
 
       if journal && msg_id
         msg = HelpdeskMessage.outgoing.find_by(:id => msg_id.to_i, :issue_id => journal.journalized_id, :journal_id => nil)
@@ -221,7 +221,7 @@ module RedmineExpertHelpdesk
       # KnowledgeExtractor den Text beim Schliessen als Loesung wieder ein.
       if journal && journal.notes.present? &&
          context[:params] && context[:params][:hd_ai_drafted].to_s == '1' &&
-         draft.present? && normalized_ai_draft_text(journal.notes).include?(draft)
+         normalized_ai_draft_text(journal.notes) != base
         HelpdeskAiDraftedJournal.find_or_create_by!(:journal_id => journal.id) do |r|
           r.issue_id = journal.journalized_id
           r.user_id  = (journal.user || User.current)&.id

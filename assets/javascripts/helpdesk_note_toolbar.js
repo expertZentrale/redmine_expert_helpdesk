@@ -22,6 +22,8 @@
   var buttons = [];          // every toolbar button, disabled while a call runs
   var draftText = null;      // last inserted AI draft, for the submit-time check
   var draftUsed = false;     // a draft was inserted at all - reported to the reply form
+  var draftBaseText = null;  // note text before the current draft session started
+  var draftSaveUsed = false; // saved journals keep the marker until the draft is removed
 
   // The AI call is a network round trip to a third party, not a string
   // concatenation like the other sources. fetch() has no timeout of its own, so
@@ -130,10 +132,9 @@
     if (!form) { return; }
 
     var marker = form.querySelector('input[name="hd_ai_drafted"]');
-    var source = form.querySelector('input[name="hd_ai_draft_text"]');
-    var hasDraft = !!draftText && textarea.value.replace(/\s+$/, '').indexOf(draftText) !== -1;
+    var source = form.querySelector('input[name="hd_ai_draft_base_text"]');
 
-    if (!hasDraft) {
+    if (!draftSaveUsed) {
       if (marker && marker.parentNode) { marker.parentNode.removeChild(marker); }
       if (source && source.parentNode) { source.parentNode.removeChild(source); }
       return;
@@ -141,8 +142,15 @@
 
     marker = ensureHiddenField(form, 'hd_ai_drafted');
     marker.value = '1';
-    source = ensureHiddenField(form, 'hd_ai_draft_text');
-    source.value = draftText;
+    source = ensureHiddenField(form, 'hd_ai_draft_base_text');
+    source.value = draftBaseText || '';
+  }
+
+  function syncIssueFormDraftState(textarea) {
+    if (draftSaveUsed && textarea.value.replace(/\s+$/, '') === (draftBaseText || '')) {
+      draftSaveUsed = false;
+    }
+    setIssueFormDraftState(textarea);
   }
 
   // Shown above the note field and kept there: an in-text marker would be the
@@ -194,11 +202,14 @@
         return data;
       });
     }).then(function (data) {
+      var before = textarea.value.replace(/\s+$/, '');
       appendToNotes(textarea, data.content);
       flash('', false);
       if (opts.isDraft) {
         draftText = String(data.content || '').replace(/\s+$/, '');
         draftUsed = true;
+        if (!draftSaveUsed) { draftBaseText = before; }
+        draftSaveUsed = true;
         setIssueFormDraftState(textarea);
         showDraftWarning();
       }
@@ -525,7 +536,7 @@
     // linked: a button that can never do anything is just a question.
     if (CONF.aiDraft && (CONF.aiDraft.variants || []).length) {
       buttons.push(makeButton('aidraft', t('aiAnswer'), aiDraftEntries(textarea)));
-      textarea.addEventListener('input', function () { setIssueFormDraftState(textarea); });
+      textarea.addEventListener('input', function () { syncIssueFormDraftState(textarea); });
       guardUneditedDraft(textarea);
     }
     mount(toolbar, buttons);
