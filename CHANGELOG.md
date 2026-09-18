@@ -49,7 +49,7 @@
   attachments*, with the name and size of the copy that was blocked, who blocked it, and how
   often the filter has dropped a file since — so an entry that never earns its keep is visible
   and can be removed again. Blocking needs `manage_helpdesk`; the project is always taken from
-  the ticket the attachment hangs on, never from a parameter. Migration 057.
+  the ticket the attachment hangs on, never from a parameter. Migrations 057–058.
 
 ## [0.12.0] - 2026-09-17
 

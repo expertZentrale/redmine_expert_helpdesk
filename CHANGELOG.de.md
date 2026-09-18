@@ -49,7 +49,7 @@
   Gesperrte Anhänge*, mit Name und Größe der gesperrten Kopie, wer sie gesperrt hat und wie oft
   der Filter seither eine Datei verworfen hat – so ist sichtbar, welcher Eintrag sich nicht lohnt,
   und er lässt sich wieder entfernen. Sperren erfordert `manage_helpdesk`; das Projekt stammt
-  immer vom Ticket, an dem der Anhang hängt, nie aus einem Parameter. Migration 057.
+  immer vom Ticket, an dem der Anhang hängt, nie aus einem Parameter. Migrationen 057–058.
 
 ## [0.12.0] - 2026-09-17
 

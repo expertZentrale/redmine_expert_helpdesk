@@ -46,10 +46,12 @@ module RedmineExpertHelpdesk
     # May this attachment be blacklisted at all? Checked when the button is drawn
     # and again when it is used - the page may have been open since the settings
     # changed, and the request does not have to come from the page.
-    def eligible?(attachment, project)
+    # +setting+ is optional so a caller checking a whole ticket can resolve the
+    # project's settings once instead of per attachment.
+    def eligible?(attachment, project, setting = nil)
       return false if attachment.nil? || project.nil?
 
-      setting = HelpdeskProjectSetting.for_project(project)
+      setting ||= HelpdeskProjectSetting.for_project(project)
       size_allowed?(attachment, setting) && type_allowed?(attachment, setting)
     end
 
@@ -62,7 +64,11 @@ module RedmineExpertHelpdesk
       return [] if issue.nil?
 
       project = issue.project
-      rendered_attachments(issue).select { |a| eligible?(a, project) }.map(&:id)
+      # One settings lookup for the whole ticket: for_project does a
+      # find_or_initialize_by, and a mail thread can leave dozens of rows to check
+      # while the page renders.
+      setting = HelpdeskProjectSetting.for_project(project)
+      rendered_attachments(issue).select { |a| eligible?(a, project, setting) }.map(&:id)
     end
 
     def rendered_attachments(issue)

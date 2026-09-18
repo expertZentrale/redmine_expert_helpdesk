@@ -356,6 +356,23 @@ class AttachmentBlacklistTest < ActiveSupport::TestCase
     assert_not AB.eligible?(attach(@issue, 'x.pdf', 'application/pdf', 'x'), @project)
   end
 
+  # The central field is free text, and "abc".to_i is 0 - the value that switches the
+  # guard off. A typo in the admin form must not widen the button instead.
+  def test_a_malformed_central_size_limit_falls_back_to_the_default
+    big = attach(@issue, 'logo.png', 'image/png', 'x' * (120 * 1024))
+    settings(:blacklist_max_kb => 'abc')
+
+    assert_equal RedmineExpertHelpdesk::AttachmentBlacklist::DEFAULT_MAX_KB,
+                 HelpdeskProjectSetting.for_project(@project).effective_blacklist_max_kb
+    assert_not AB.eligible?(big, @project)
+  end
+
+  def test_an_explicit_central_zero_still_disables_the_limit
+    big = attach(@issue, 'logo.png', 'image/png', 'x' * (120 * 1024))
+    settings(:blacklist_max_kb => '0')
+    assert AB.eligible?(big, @project)
+  end
+
   def test_eligible_ids_covers_the_issue_and_its_journals
     png = attach_png(@issue)
     pdf = attach(@issue, 'handbuch.pdf', 'application/pdf', '%PDF')
