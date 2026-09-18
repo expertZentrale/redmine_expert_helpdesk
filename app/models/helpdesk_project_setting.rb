@@ -46,6 +46,9 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
             :inclusion => { :in => INFO_REQUEST_NOTE_VISIBILITIES }, :allow_nil => true
   validates :info_request_ai_prompt_mode,
             :inclusion => { :in => AI_PROMPT_MODES }, :allow_nil => true
+  validates :blacklist_max_kb,
+            :numericality => { :only_integer => true, :greater_than_or_equal_to => 0 },
+            :allow_nil => true
   validates :ai_min_image_kb,
             :numericality => { :only_integer => true, :greater_than_or_equal_to => 0 },
             :allow_nil => true
@@ -199,6 +202,45 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
 
   def has_own_ai_answer_min_score?
     self.class.column_names.include?('ai_answer_min_score') && !ai_answer_min_score.nil?
+  end
+
+  # Which attachments the "block" button may be offered for. Blank here inherits the
+  # central setting, blank there falls back to the constant - a key added to
+  # init.rb's :default hash reads nil until the settings form is saved again, and an
+  # empty allow list would offer the button on every attachment there is.
+  def effective_blacklist_types
+    return blacklist_types.to_s if has_own_blacklist_types?
+
+    central = Setting.plugin_redmine_expert_helpdesk['blacklist_types'].to_s
+    central.presence || RedmineExpertHelpdesk::AttachmentBlacklist::DEFAULT_TYPES
+  end
+
+  def has_own_blacklist_types?
+    self.class.column_names.include?('blacklist_types') && blacklist_types.present?
+  end
+
+  # Upper size bound for the same button; 0 turns the guard off.
+  #
+  # The central value is a free-text plugin setting, so it is parsed strictly rather
+  # than with to_i: "abc".to_i is 0, and 0 is precisely the value that disables the
+  # guard — a typo in the admin form would otherwise offer the block button on every
+  # file in every project. An explicitly configured 0 keeps working as the off
+  # switch; anything unparseable falls back to the default.
+  def effective_blacklist_max_kb
+    return blacklist_max_kb.to_i if has_own_blacklist_max_kb?
+
+    central = Setting.plugin_redmine_expert_helpdesk['blacklist_max_kb'].to_s.strip
+    return central.to_i if central.match?(/\A\d+\z/)
+
+    RedmineExpertHelpdesk::AttachmentBlacklist::DEFAULT_MAX_KB
+  end
+
+  # A negative value counts as unset rather than as an override: it could only come
+  # from outside the form (the validation rejects it), and treating it as an
+  # override would resolve to "guard off".
+  def has_own_blacklist_max_kb?
+    self.class.column_names.include?('blacklist_max_kb') &&
+      !blacklist_max_kb.nil? && blacklist_max_kb.to_i >= 0
   end
 
   # Wie effective_ai_prompt, aber fuer den kundengerichteten Antwortentwurf.

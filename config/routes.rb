@@ -56,6 +56,10 @@ RedmineApp::Application.routes.draw do
     # Answer templates of this project (tab "expert Helpdesk")
     resources :helpdesk_reply_templates, :except => [:show]
 
+    # Blacklist of attachment contents (list and removal live in the project
+    # settings; entries are added from the ticket page, see below)
+    resources :helpdesk_attachment_blacklists, :only => [:destroy]
+
     # SLA-Statistik je Projekt (nur sichtbar/erreichbar bei aktivem SLA)
     resources :helpdesk_sla_statistics, :only => [:index]
 
@@ -101,6 +105,20 @@ RedmineApp::Application.routes.draw do
 
   # Antwort an den Kunden aus dem Ticket heraus
   post 'issues/:issue_id/helpdesk_reply', :to => 'helpdesk_replies#create', :as => 'issue_helpdesk_reply'
+
+  # Blacklisting an attachment's content from the ticket page. Keyed by the
+  # attachment, not by a project: the project is the ticket's, so it cannot be
+  # aimed at one the agent does not manage.
+  # Under /helpdesk, not under /attachments: plugin routes are drawn after the core
+  # ones, and core's "attachments/:id/:filename" (filename matches /.*/ ) would
+  # swallow any GET below /attachments/<id>/ before it reaches us.
+  #
+  # Own route names as well, because the project-scoped resources above already
+  # claim helpdesk_attachment_blacklist_path for their member routes.
+  post 'helpdesk/attachments/:attachment_id/blacklist',
+       :to => 'helpdesk_attachment_blacklists#create', :as => 'blacklist_helpdesk_attachment'
+  get  'helpdesk/attachments/:attachment_id/blacklist/preview',
+       :to => 'helpdesk_attachment_blacklists#preview', :as => 'blacklist_helpdesk_attachment_preview'
 
   # Quotes and answer templates for the note field (toolbar of the edit form)
   post 'issues/:issue_id/helpdesk_note_content', :to => 'helpdesk_note_content#create',

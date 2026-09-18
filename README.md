@@ -58,6 +58,9 @@ see [Tests](#tests).
 - **Embedded images in the ticket**: The inline images of a mail (signature logos,
   screenshots) are shown where the mail showed them instead of leaving a
   `[cid:…]` marker behind — see [Embedded images](#embedded-images).
+- **Blocked attachments**: A signature logo, icon or tracking pixel is blocked once from
+  the ticket page; every copy in the project is removed and later mails arrive without
+  it — see [Blocked attachments](#blocked-attachments).
 - **Per-project mailboxes**: Each project configures its mailboxes under the
   *Helpdesk* tab in project settings (source/target folder, defaults for
   tracker/priority/status, handling of unknown senders).
@@ -542,6 +545,51 @@ Worth knowing:
   attachment list.
 
 Turn the feature off under *Administration → Plugins → Redmine expert Helpdesk → Embedded images*.
+
+### Blocked attachments
+
+Every business mail carries the sender's signature logo, a row of social-media icons and a
+tracking pixel, and `MailHandler` stores each one as a real attachment. A thread of ten mails
+therefore leaves thirty files on the ticket and buries the one screenshot the customer actually
+sent.
+
+Each attachment row on a ticket has a **Block** button (permission `manage_helpdesk`). It blocks
+that file for the project and deletes every copy already attached to a ticket of that project;
+the confirmation names the number of files first. Later mails carrying the same file arrive
+without it.
+
+**Which attachments get the button** is decided by two guards, so the evidence on a ticket is
+never one misclick away from deletion:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| Blockable file types | `png, gif, jpg, jpeg, bmp, webp, tif, tiff, ico` | Extensions (`gif`) or MIME types (`image/gif`, `image/*`), comma-separated. `*` allows every type. |
+| Largest blockable file | 100 KB | Above this the button is hidden. `0` turns the limit off. |
+
+Both live under *Administration → Plugins → Redmine expert Helpdesk* and can be overridden per
+project (leave a field empty there to inherit the central value). They are a guard on the
+**button**, not a filter on incoming mail — nothing is dropped because of them. An `.eml`, a
+`.msg`, a PDF or a log therefore never gets the button at all, and neither does any image above
+the size limit — which is where screenshots normally sit. They narrow what the button can reach;
+they do not classify content, so a small screenshot saved as a PNG *is* still eligible, and the
+confirmation naming the file and the number of copies is the last check before it goes. The
+server rechecks both guards when the button is used, so a page left open since the settings
+changed cannot bypass them.
+
+Worth knowing:
+
+- **The match is the file content (SHA-256), not the file name.** Outlook numbers embedded images
+  per mail, so `image001.png` is simply whatever that sender's client put first — blocking by name
+  would hit another customer's logo, and eventually a screenshot. A logo that a mail client
+  re-encodes for every mail is therefore not caught: the filter may lose a logo, never a screenshot.
+- Removing a file also removes the image markup that pointed at it (Textile, Markdown, surviving
+  `<img>` tags), so a blocked signature logo does not leave a broken image behind. The text is
+  written past the callbacks — no journal entry, no *edited* marker, no notification.
+- Entries are **per project** and listed under *Project settings → expert Helpdesk → Blocked
+  attachments*, with the blocked file's name and size, who blocked it, and how often the filter
+  has dropped a copy since. Removing an entry there stops the filter; it does not restore files.
+- Only ticket attachments can be blocked — wiki and document attachments have no helpdesk project
+  to scope the entry to.
 
 ### EML attachment and journal link
 

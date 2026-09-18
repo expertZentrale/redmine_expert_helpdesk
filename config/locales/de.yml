@@ -705,6 +705,26 @@ de:
   label_helpdesk_ticket_stats_no_contact: 'Ohne Kontakt'
   text_helpdesk_ticket_stats_top_customers: 'Die %{n} Kunden mit den meisten Tickets im Zeitraum.'
 
+  # --- Anhang-Sperrliste (Signaturlogos, Icons, Zaehlpixel) ---
+  label_helpdesk_attachment_blacklist: 'Gesperrte Anhänge'
+  text_helpdesk_attachment_blacklist_info: 'Hier gesperrte Dateien werden aus eingehenden Mails dieses Projekts entfernt. Einträge entstehen über den Button „Sperren“ neben einem Anhang im Ticket. Verglichen wird der Dateiinhalt (SHA-256), nicht der Dateiname.'
+  label_helpdesk_blacklist_hits: 'Treffer'
+  button_helpdesk_blacklist_attachment: 'Sperren'
+  label_helpdesk_blacklist_attachment_title: 'Diese Datei im Projekt sperren (Signaturlogo, Icon, Zählpixel) und alle bereits an Tickets hängenden Kopien löschen.'
+  text_helpdesk_blacklist_confirm_one: "\u201e%{file}\u201c in diesem Projekt sperren?\n\n1 Anhang wird gelöscht. Spätere Mails mit derselben Datei hängen sie nicht mehr an."
+  text_helpdesk_blacklist_confirm_many: "\u201e%{file}\u201c in diesem Projekt sperren?\n\n%{count} Anhänge werden gelöscht. Spätere Mails mit derselben Datei hängen sie nicht mehr an."
+  notice_helpdesk_attachment_blacklisted: '„%{file}“ ist in diesem Projekt gesperrt, %{count} Anhang/Anhänge entfernt.'
+  field_helpdesk_blacklist_types: 'Sperrbare Dateitypen'
+  text_helpdesk_blacklist_types_info: 'Endungen (gif, png) oder MIME-Typen (image/gif, image/*), kommagetrennt. Nur diese erhalten im Ticket den Button „Sperren“ – eine .eml, .msg oder ein PDF lässt sich so nicht versehentlich sperren. „*“ erlaubt jeden Typ.'
+  text_helpdesk_blacklist_types_project_info: 'Leer lassen, um die zentrale Einstellung zu verwenden (%{value}).'
+  field_helpdesk_blacklist_max_kb: 'Größte sperrbare Datei (KB)'
+  text_helpdesk_blacklist_max_kb_info: 'Oberhalb dieser Größe wird der Button ausgeblendet. Signaturlogos sind das Größte, was sich zu sperren lohnt; Screenshots fangen darüber an. 0 schaltet die Grenze ab.'
+  text_helpdesk_blacklist_max_kb_project_info: 'Leer lassen, um die zentrale Einstellung zu verwenden (%{value} KB).'
+  text_helpdesk_blacklist_guard_info: 'Diese beiden Grenzen entscheiden, für welche Anhänge Bearbeitern der Button „Sperren“ überhaupt angeboten wird. Sie sind eine Absicherung des Buttons, kein Filter auf eingehende Mails. Jedes Projekt kann sie überschreiben.'
+  error_helpdesk_blacklist_max_kb_invalid: 'Größte sperrbare Datei muss eine ganze Zahl in KB sein (0 schaltet die Grenze ab).'
+  error_helpdesk_attachment_not_blacklistable: '„%{file}“ gehört nicht zu den sperrbaren Dateitypen oder überschreitet die Größengrenze.'
+  error_helpdesk_attachment_unreadable: 'Die Datei konnte nicht gelesen werden und kann daher nicht gesperrt werden.'
+
   # Verschachtelter Key, nicht die flache label_*-Konvention: Redmines Blockauswahl
   # auf "Meine Seite" sucht das Label unter my.blocks.<Partial-Name>.
   my:

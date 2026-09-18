@@ -5,6 +5,54 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **Signaturlogos und Icons lassen sich jetzt einmal sperren, statt sie ewig zu löschen.**
+  Eine Geschäftsmail führt das Signaturlogo des Absenders, eine Reihe Social-Media-Icons und ein
+  Zählpixel mit sich, und Redmines `MailHandler` legt jedes einzelne davon als echten Anhang ab.
+  Zehn Mails in einem Verlauf hinterlassen so dreißig Dateien am Ticket, keine davon ein Nachweis,
+  und der eine Screenshot, den der Kunde tatsächlich geschickt hat, geht darin unter. Diese
+  Dateien hielt das Plugin bereits vom Vision-Modell (`ImageRelevance`) und aus der
+  Vollständigkeitsprüfung fern, im Ticket standen sie aber weiterhin – also löschten die
+  Bearbeiter dasselbe Logo in jedem Ticket von Hand.
+  Jede Anhangszeile eines Tickets hat nun einen Button **Sperren**. Ein Klick sperrt die Datei im
+  Projekt und löscht jede Kopie, die bereits an einem Ticket dieses Projekts hängt – die
+  Rückfrage nennt vorher die tatsächliche Zahl („*3 Anhänge werden gelöscht*“), die der Server
+  zuvor ermittelt. Ab dann kommen eingehende Mails mit derselben Datei ohne sie an.
+  **Verglichen wird der Dateiinhalt, nicht der Name.** Outlook nummeriert eingebettete Bilder pro
+  Mail durch; `image001.png` ist also das, was das Mailprogramm des Absenders zufällig zuerst
+  einsortiert hat. Eine Sperre über den Namen träfe im nächsten Ticket das Logo eines anderen
+  Kunden und früher oder später einen Screenshot. Jeder Eintrag ist daher der SHA-256 der Bytes:
+  Gesperrt ist genau die Datei, die Byte für Byte dieselbe ist. Ein Logo, das ein Mailprogramm pro
+  Mail neu kodiert, wird bewusst *nicht* erfasst – ein Filter, der rät, darf ein Logo verlieren,
+  niemals einen Screenshot.
+  **Die Datei zu löschen ist nur die halbe Arbeit.** Wenn ein Bearbeiter das Ticket sieht, hat das
+  Plugin die `[cid:…]`-Marken der Mail längst in Bild-Syntax auf den Anhang umgeschrieben; nur die
+  Datei zu entfernen, tauschte das Signaturlogo also gegen ein kaputtes Bild. Jede Entfernung
+  räumt deshalb auch die Auszeichnung weg, die sie benannt hat – in Textile, Markdown und
+  überlebenden `<img>`-Tags, ebenso in der Download-Pfad-Schreibweise für Journalnotizen – und
+  schreibt den Text an den Callbacks vorbei: Die Bereinigung erzeugt keinen Journaleintrag, keine
+  *bearbeitet*-Markierung und keine Benachrichtigung zu einem Text, den der Kunde geschrieben hat.
+  **Der Button wird nicht überall angeboten.** Sperren löscht eine Datei aus jedem Ticket des
+  Projekts, darf also nicht neben dem Nachweis stehen. Zwei Grenzen in den Einstellungen
+  entscheiden, für welche Anhänge Bearbeitern der Button überhaupt erscheint: eine Positivliste
+  von Dateitypen (Endungen wie `gif, png` oder MIME-Typen wie `image/gif`, `image/*`; `*` erlaubt
+  alles) und eine Obergrenze für die Dateigröße, standardmäßig die Bildformate von Logos und
+  100 KB. Ein Signaturlogo ist das Größte, was sich zu sperren lohnt – Screenshots fangen
+  üblicherweise darüber an –, also bekommt eine `.eml`, eine `.msg`, ein PDF oder ein Log den
+  Button gar nicht erst, und ein Bild oberhalb der Grenze ebenso wenig. Die Grenzen verkleinern
+  die Reichweite des Buttons, sie bewerten keine Inhalte: Ein kleiner Screenshot als PNG bleibt
+  sperrbar, die Rückfrage ist die letzte Kontrolle. Beides wird zentral unter *Administration → Plugins* gesetzt, ist je Projekt
+  überschreibbar und wird serverseitig erneut geprüft: Eine Seite, die seit der Änderung offen
+  steht, kann dem Server keine Datei unterschieben, die er nun ablehnt.
+  Die Einträge gelten **je Projekt** und stehen unter *Projekt-Einstellungen → expert Helpdesk →
+  Gesperrte Anhänge*, mit Name und Größe der gesperrten Kopie, wer sie gesperrt hat und wie oft
+  der Filter seither eine Datei verworfen hat – so ist sichtbar, welcher Eintrag sich nicht lohnt,
+  und er lässt sich wieder entfernen. Sperren erfordert `manage_helpdesk`; das Projekt stammt
+  immer vom Ticket, an dem der Anhang hängt, nie aus einem Parameter. Migrationen 057–058.
+
 ## [0.12.0] - 2026-09-17
 
 ### Hinzugefügt

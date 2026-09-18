@@ -187,3 +187,21 @@ div#activity dt.icon-helpdesk-message-init svg.icon-svg { color: #777;    fill: 
   color: #6b5200;
   border: 1px solid #e0c56b;
 }
+
+/* "Block this file" next to Redmine's own attachment actions. Muted until
+ * hovered: it deletes files off tickets, so it must not compete with Download
+ * for an absent-minded click. */
+a.hd-blacklist-attachment {
+  font-size: 0.9em;
+  color: #888;
+  white-space: nowrap;
+  /* Redmine's own delete link in this cell is icon-only, so without a divider the
+   * trash icon reads as the label of this one. */
+  margin-left: 6px;
+  padding-left: 8px;
+  border-left: 1px solid #ccc;
+}
+a.hd-blacklist-attachment:hover {
+  color: #bb0000;
+  text-decoration: underline;
+}

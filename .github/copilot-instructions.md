@@ -162,6 +162,22 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     Redmine builds from the HTML part (its HTML-to-text parser has no `img` rule and would drop
     the reference); it edits only the copy handed to `MailHandler`, never the archived `.eml`.
     Off switch: plugin setting `inline_images_enabled`.
+  - `attachment_blacklist.rb` — per-project blacklist of attachment *contents* (signature logos,
+    icons, tracking pixels), keyed by the SHA-256 of the bytes in `HelpdeskAttachmentBlacklist`.
+    `filter!` runs during ingestion right after `InlineImages.rewrite!`; `purge!` removes every
+    copy already on a ticket of the project when an agent blacklists one. Both go through `drop!`,
+    which **strips the image markup before it deletes the file** — the rewrite has by then pointed
+    the text at the attachment, so deleting alone would leave a broken image — and writes the text
+    via `InlineImages.store_text`, so the cleanup produces no journal and no notification. The
+    digest is computed here, never read from `Attachment#digest`: that column was MD5 before
+    Redmine 3.4, and a future change there would silently stop every existing entry from matching.
+    The button on the ticket page is placed client-side (`helpdesk_attachment_blacklist.js`) —
+    Redmine's attachment partial has no view hook and its markup moved between Redmine 5, 6 and 7.
+    `eligible?` guards which attachments get the button at all (allow list of extensions/MIME types
+    plus a size ceiling; central setting, per-project override, constants as the real fallback), so
+    an .eml/.msg/PDF/log never shows it, nor does an image over the limit (where screenshots
+    normally sit) — the guards bound reach, they do not classify content. The hook resolves the eligible ids server-side and
+    ships them in the config island; the controller rechecks. Migration 058.
   - `init_mailer.rb` — outbound "initial" mail (contact-assign / "New Helpdesk Ticket" flow).
   - `mail_logger.rb` — one log line per outgoing mail incl. the transport used. Every send site
     wraps its send in `MailLogger.track` (replies, init mail, autoresponder, info request, SLA
