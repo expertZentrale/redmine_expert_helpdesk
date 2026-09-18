@@ -242,7 +242,9 @@ nested registration would never fire in production.
   central plugin setting, overridable per project via `HelpdeskProjectSetting#effective_blacklist_*`,
   with `DEFAULT_TYPES`/`DEFAULT_MAX_KB` as the real floor (a key added to init.rb's `:default` hash
   reads nil until the settings form is saved again, and a nil allow list would offer the button on
-  everything). The **hook computes the eligible ids server-side** and ships them in the config
+  everything). The guards bound what the button can reach; they do not judge content, so a small
+  screenshot saved as a PNG is still eligible and the confirmation dialog is the last check.
+  The **hook computes the eligible ids server-side** and ships them in the config
   island rather than handing the script the rules: the row renders its size as "(139 Bytes)" in the
   user's locale, and re-parsing that to enforce a limit would be guesswork. The controller rechecks
   `eligible?` — the page may have been open since the settings changed. Migration 058.

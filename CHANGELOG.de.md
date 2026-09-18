@@ -40,9 +40,11 @@
   entscheiden, für welche Anhänge Bearbeitern der Button überhaupt erscheint: eine Positivliste
   von Dateitypen (Endungen wie `gif, png` oder MIME-Typen wie `image/gif`, `image/*`; `*` erlaubt
   alles) und eine Obergrenze für die Dateigröße, standardmäßig die Bildformate von Logos und
-  100 KB. Ein Signaturlogo ist das Größte, was sich zu sperren lohnt – Screenshots fangen darüber
-  an –, also bekommt eine `.eml`, eine `.msg`, ein PDF oder der Screenshot eines Kunden den Button
-  gar nicht erst. Beides wird zentral unter *Administration → Plugins* gesetzt, ist je Projekt
+  100 KB. Ein Signaturlogo ist das Größte, was sich zu sperren lohnt – Screenshots fangen
+  üblicherweise darüber an –, also bekommt eine `.eml`, eine `.msg`, ein PDF oder ein Log den
+  Button gar nicht erst, und ein Bild oberhalb der Grenze ebenso wenig. Die Grenzen verkleinern
+  die Reichweite des Buttons, sie bewerten keine Inhalte: Ein kleiner Screenshot als PNG bleibt
+  sperrbar, die Rückfrage ist die letzte Kontrolle. Beides wird zentral unter *Administration → Plugins* gesetzt, ist je Projekt
   überschreibbar und wird serverseitig erneut geprüft: Eine Seite, die seit der Änderung offen
   steht, kann dem Server keine Datei unterschieben, die er nun ablehnt.
   Die Einträge gelten **je Projekt** und stehen unter *Projekt-Einstellungen → expert Helpdesk →

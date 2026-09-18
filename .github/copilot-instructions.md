@@ -175,7 +175,8 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     Redmine's attachment partial has no view hook and its markup moved between Redmine 5, 6 and 7.
     `eligible?` guards which attachments get the button at all (allow list of extensions/MIME types
     plus a size ceiling; central setting, per-project override, constants as the real fallback), so
-    an .eml/.msg/PDF/screenshot never shows it. The hook resolves the eligible ids server-side and
+    an .eml/.msg/PDF/log never shows it, nor does an image over the limit (where screenshots
+    normally sit) — the guards bound reach, they do not classify content. The hook resolves the eligible ids server-side and
     ships them in the config island; the controller rechecks. Migration 058.
   - `init_mailer.rb` — outbound "initial" mail (contact-assign / "New Helpdesk Ticket" flow).
   - `mail_logger.rb` — one log line per outgoing mail incl. the transport used. Every send site

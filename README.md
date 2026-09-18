@@ -569,9 +569,12 @@ never one misclick away from deletion:
 Both live under *Administration → Plugins → Redmine expert Helpdesk* and can be overridden per
 project (leave a field empty there to inherit the central value). They are a guard on the
 **button**, not a filter on incoming mail — nothing is dropped because of them. An `.eml`, a
-`.msg`, a PDF or a customer's screenshot therefore never gets the button, and the server rechecks
-both guards when the button is used, so a page left open since the settings changed cannot
-bypass them.
+`.msg`, a PDF or a log therefore never gets the button at all, and neither does any image above
+the size limit — which is where screenshots normally sit. They narrow what the button can reach;
+they do not classify content, so a small screenshot saved as a PNG *is* still eligible, and the
+confirmation naming the file and the number of copies is the last check before it goes. The
+server rechecks both guards when the button is used, so a page left open since the settings
+changed cannot bypass them.
 
 Worth knowing:
 

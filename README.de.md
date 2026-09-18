@@ -594,9 +594,12 @@ Ticket nie einen Fehlklick vom Löschen entfernt ist:
 Beides steht unter *Administration → Plugins → Redmine expert Helpdesk* und ist je Projekt
 überschreibbar (dort ein Feld leer lassen, um den zentralen Wert zu übernehmen). Es ist eine
 Absicherung des **Buttons**, kein Filter auf eingehende Mails – verworfen wird dadurch nichts.
-Eine `.eml`, eine `.msg`, ein PDF oder der Screenshot eines Kunden bekommt den Button also gar
-nicht erst, und der Server prüft beide Grenzen beim Klick erneut: Eine seit der Änderung offene
-Seite kann sie nicht umgehen.
+Eine `.eml`, eine `.msg`, ein PDF oder ein Log bekommt den Button also gar nicht erst, und ein
+Bild oberhalb der Größengrenze ebenso wenig – dort liegen Screenshots üblicherweise. Die Grenzen
+verkleinern die Reichweite des Buttons, sie bewerten aber keine Inhalte: Ein kleiner Screenshot
+als PNG *ist* weiterhin sperrbar, und die Rückfrage mit Dateiname und Anzahl der Kopien ist die
+letzte Kontrolle davor. Der Server prüft beide Grenzen beim Klick erneut: Eine seit der Änderung
+offene Seite kann sie nicht umgehen.
 
 Wissenswertes:
 

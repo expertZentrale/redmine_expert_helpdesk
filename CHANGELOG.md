@@ -40,8 +40,11 @@
   attachments an agent is even shown the button for: an allow list of file types (extensions
   such as `gif, png`, or MIME types such as `image/gif`, `image/*`; `*` allows all) and an upper
   size limit, defaulting to the image formats logos arrive in and 100 KB. A signature logo is the
-  largest thing worth blocking — screenshots start above that — so an `.eml`, a `.msg`, a PDF or a
-  customer's screenshot never gets the button in the first place. Both are set centrally under
+  largest thing worth blocking — screenshots normally start above that — so an `.eml`, a `.msg`, a
+  PDF or a log never gets the button in the first place, and neither does an image above the
+  limit. The guards narrow what the button can reach rather than judging content, so a small
+  screenshot saved as a PNG is still eligible and the confirmation is the last check. Both are set
+  centrally under
   *Administration → Plugins* and can be overridden per project, and both are enforced again on the
   server: a page left open since the settings changed cannot talk the server into a file it now
   refuses.
