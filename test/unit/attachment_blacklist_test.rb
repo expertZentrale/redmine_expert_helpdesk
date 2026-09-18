@@ -218,6 +218,51 @@ class AttachmentBlacklistTest < ActiveSupport::TestCase
     assert Attachment.exists?(foreign.id)
   end
 
+  # A reply's attachments are stored on the issue but journalized onto the note that
+  # brought them, and that note - not the description - holds their markup. Cleaning
+  # the container alone would delete the file and leave the note showing a broken
+  # image, which is exactly what this feature exists to prevent.
+  def test_purge_cleans_the_note_a_reply_attachment_belongs_to
+    with_settings :text_formatting => 'textile' do
+      journal = reply_with_attachment('image001.png')
+      attachment = journal.attachments.first
+      Journal.where(:id => journal.id).update_all(:notes => "Gruss\n\n!image001.png!")
+      entry = blacklist(attachment)
+
+      AB.purge!(@project, entry)
+      assert_equal 'Gruss', journal.reload.notes
+    end
+  end
+
+  # "image001.png" is whatever the sender's Outlook numbered first, so the bare name
+  # in the markup does not name a specific file - Redmine resolves it against the
+  # whole container. Stripping it when a sibling shares the name would blank the
+  # markup of a screenshot that is merely called image001.png too.
+  def test_stripping_spares_the_markup_of_a_same_named_attachment
+    with_settings :text_formatting => 'textile' do
+      logo = attach_png(@issue, 'image001.png')
+      screenshot = attach_other_png(@issue, 'image001.png')
+      set_description("!image001.png!")
+      entry = blacklist(logo)
+
+      AB.purge!(@project, entry)
+      assert Attachment.exists?(screenshot.id), 'the screenshot must survive'
+      assert_equal '!image001.png!', @issue.reload.description
+    end
+  end
+
+  # With no sibling of that name the bare form is unambiguous and must still go.
+  def test_stripping_removes_the_bare_name_when_it_is_unambiguous
+    with_settings :text_formatting => 'textile' do
+      logo = attach_png(@issue, 'image001.png')
+      set_description("!image001.png!")
+      entry = blacklist(logo)
+
+      AB.purge!(@project, entry)
+      assert_equal '', @issue.reload.description
+    end
+  end
+
   def test_count_copies_predicts_the_purge
     attach_png(@issue)
     entry = blacklist(attach_png(@issue, 'logo.png'))

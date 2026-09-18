@@ -147,6 +147,34 @@ class HelpdeskAttachmentBlacklistTest < Redmine::IntegrationTest
     end
   end
 
+  # 0 switches the size guard off, so a typo must not be coerced into it.
+  def test_a_malformed_size_limit_is_rejected
+    log_user('jsmith', 'jsmith')
+
+    put "/projects/#{@project.identifier}/helpdesk_project_setting",
+        :params => { :blacklist_form => '1',
+                     :helpdesk_project_setting => { :blacklist_max_kb => 'abc' } }
+
+    assert HelpdeskProjectSetting.for_project(@project).blacklist_max_kb.nil?,
+           'a malformed limit must not be stored'
+    assert_equal 100, HelpdeskProjectSetting.for_project(@project).effective_blacklist_max_kb
+    assert flash[:error].present?
+  end
+
+  def test_an_emptied_size_limit_falls_back_to_the_central_one
+    log_user('jsmith', 'jsmith')
+    put "/projects/#{@project.identifier}/helpdesk_project_setting",
+        :params => { :blacklist_form => '1',
+                     :helpdesk_project_setting => { :blacklist_max_kb => '250' } }
+    assert_equal 250, HelpdeskProjectSetting.for_project(@project).effective_blacklist_max_kb
+
+    put "/projects/#{@project.identifier}/helpdesk_project_setting",
+        :params => { :blacklist_form => '1',
+                     :helpdesk_project_setting => { :blacklist_max_kb => '' } }
+    assert_nil HelpdeskProjectSetting.for_project(@project).blacklist_max_kb
+    assert_equal 100, HelpdeskProjectSetting.for_project(@project).effective_blacklist_max_kb
+  end
+
   # --- Settings tab ----------------------------------------------------------
 
   def test_settings_tab_lists_the_entries_and_removes_them

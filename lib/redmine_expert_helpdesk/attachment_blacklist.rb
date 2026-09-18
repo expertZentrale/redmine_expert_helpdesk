@@ -121,7 +121,7 @@ module RedmineExpertHelpdesk
         entry = entry_for(entries, attachment)
         next false if entry.nil?
 
-        drop!(object, attachment)
+        drop!(attachment, object)
         entry.register_hit!
         true
       end
@@ -142,8 +142,7 @@ module RedmineExpertHelpdesk
     # of deleted files.
     def purge!(project, entry)
       matching_attachments(project, entry).count do |attachment|
-        container = attachment.container
-        drop!(container, attachment)
+        drop!(attachment, containers_of(attachment))
         true
       end
     end
@@ -202,9 +201,34 @@ module RedmineExpertHelpdesk
     #
     # Attachment#destroy on its own does not journalize - Redmine's
     # AttachmentsController calls init_journal before it, we deliberately do not.
-    def drop!(container, attachment)
-      strip_references!(container, attachment)
+    def drop!(attachment, containers)
+      Array(containers).each { |container| strip_references!(container, attachment) }
       attachment.destroy
+    end
+
+    # Every text that may show this attachment.
+    #
+    # Not simply Attachment#container: MailHandler files a *reply's* attachments on
+    # the issue and journalizes them onto the note it just created, so the markup
+    # InlineImages wrote for them sits in that note while the container is the
+    # issue. Cleaning only the container would delete the file and leave the note
+    # showing a broken image - which is the whole thing this feature exists to
+    # avoid. The owning notes are found through the journal detail that records the
+    # attachment, so unrelated notes are left alone.
+    def containers_of(attachment)
+      container = attachment.container
+      return [container] unless container.is_a?(Issue)
+
+      [container] + owning_journals(container, attachment)
+    end
+
+    def owning_journals(issue, attachment)
+      Journal.joins(:details)
+             .where(:journalized_type => 'Issue', :journalized_id => issue.id)
+             .where(:journal_details => { :property => 'attachment',
+                                          :prop_key => attachment.id.to_s })
+             .distinct
+             .to_a
     end
 
     # Removes the image syntax pointing at +attachment+ from the text of its
@@ -213,26 +237,46 @@ module RedmineExpertHelpdesk
       text = InlineImages.stored_text(container)
       return false if text.blank?
 
-      cleaned = markup_targets(attachment).inject(text) { |current, t| remove_target(current, t) }
-      # A marker that sat alone on its line leaves the blank line behind.
-      cleaned = cleaned.gsub(/\n{3,}/, "\n\n").strip
+      cleaned = markup_targets(attachment, container)
+                .inject(text) { |current, t| remove_target(current, t) }
+      # Nothing of this file was named here - leave the text exactly as it is
+      # rather than rewriting it for the whitespace pass below.
       return false if cleaned == text
 
+      # A marker that sat alone on its line leaves the blank line behind.
+      cleaned = cleaned.gsub(/\n{3,}/, "\n\n").strip
       InlineImages.store_text(container, cleaned)
     end
 
-    # Everything the markup may name the file by: the plain file name (what Redmine
-    # resolves against the container's attachments) and the download path
-    # (InlineImages falls back to it for a journal without own attachment details),
-    # each also in the percent-escaped spelling InlineImages writes.
-    def markup_targets(attachment)
+    # Everything the markup may name the file by: the download path (InlineImages
+    # falls back to it for a journal without own attachment details) and the plain
+    # file name, each also in the percent-escaped spelling InlineImages writes.
+    #
+    # The download path carries the id and so names exactly this file. The bare file
+    # name does not - Redmine resolves it against the whole container, and
+    # "image001.png" is what every Outlook numbers its first embedded image. Where a
+    # sibling shares the name it is therefore left alone: stripping it would blank
+    # the markup of a screenshot that merely happens to be called image001.png too,
+    # and after the delete that markup simply resolves to the sibling instead.
+    def markup_targets(attachment, container)
       name = attachment.filename.to_s
       return [] if name.blank?
 
-      escaped = InlineImages.escape_target(name)
-      [name, escaped].uniq.flat_map do |spelling|
-        [spelling, "/attachments/download/#{attachment.id}/#{spelling}"]
-      end
+      spellings = [name, InlineImages.escape_target(name)].uniq
+      targets = spellings.map { |s| "/attachments/download/#{attachment.id}/#{s}" }
+      targets += spellings unless name_shared?(attachment, container)
+      targets
+    end
+
+    # Does another attachment Redmine would resolve this text against carry the same
+    # file name? Compared case-insensitively, the way Redmine's own lookup does.
+    def name_shared?(attachment, container)
+      siblings, = InlineImages.attachment_scope(container)
+      name = attachment.filename.to_s
+      siblings.any? { |a| a.id != attachment.id && a.filename.to_s.casecmp(name).zero? }
+    rescue StandardError
+      # Unable to tell - assume it is shared and only strip the unambiguous form.
+      true
     end
 
     def remove_target(text, target)

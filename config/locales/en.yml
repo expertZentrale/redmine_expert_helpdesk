@@ -721,6 +721,7 @@ en:
   text_helpdesk_blacklist_max_kb_info: 'The button is hidden above this size. Signature logos are the largest thing worth blocking; screenshots start above it. 0 turns the limit off.'
   text_helpdesk_blacklist_max_kb_project_info: 'Leave empty to use the central setting (%{value} KB).'
   text_helpdesk_blacklist_guard_info: 'These two limits decide which attachments an agent is offered the "Block" button for. They are a guard on the button, not a filter on incoming mail. Each project can override them.'
+  error_helpdesk_blacklist_max_kb_invalid: 'Largest blockable file must be a whole number of KB (0 disables the limit).'
   error_helpdesk_attachment_not_blacklistable: '"%{file}" is not one of the blockable file types, or exceeds the size limit.'
   error_helpdesk_attachment_unreadable: 'The file could not be read and can therefore not be blocked.'
 

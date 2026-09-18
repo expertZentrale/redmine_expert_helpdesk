@@ -169,8 +169,17 @@ class HelpdeskProjectSettingsController < ApplicationController
     types = params.dig(:helpdesk_project_setting, :blacklist_types).to_s.strip
     setting.blacklist_types = types.presence
 
+    # Parsed strictly rather than with to_i: "abc" and "1.5" would become 0 and 1,
+    # and 0 is the value that switches the size guard off entirely — a typo would
+    # silently offer the block button on every file in the project.
     max_kb = params.dig(:helpdesk_project_setting, :blacklist_max_kb).to_s.strip
-    setting.blacklist_max_kb = max_kb.present? ? max_kb.to_i : nil
+    if max_kb.blank?
+      setting.blacklist_max_kb = nil
+    elsif max_kb.match?(/\A\d+\z/)
+      setting.blacklist_max_kb = max_kb.to_i
+    else
+      raise ArgumentError, l(:error_helpdesk_blacklist_max_kb_invalid)
+    end
   end
 
   def update_sla_priorities
