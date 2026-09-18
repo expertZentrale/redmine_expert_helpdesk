@@ -6,6 +6,51 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Added
+
+- **Signature logos and icons can now be blocked once instead of deleted forever.**
+  A business mail carries the sender's signature logo, a row of social-media icons and a
+  tracking pixel, and Redmine's `MailHandler` stores every single one as a real attachment.
+  Ten mails in a thread therefore leave thirty files on the ticket, none of them evidence, and
+  the one screenshot the customer actually sent is buried among them. The plugin already kept
+  those files away from the vision model (`ImageRelevance`) and out of the completeness check,
+  but the ticket still showed them, so agents deleted the same logo by hand on every ticket.
+  Every attachment row on a ticket now carries a **Block** button. One click blocks that file
+  in the project and deletes every copy already attached to a ticket of that project — the
+  agent confirms against the real number first ("*3 attachments are deleted*"), which the
+  server counts before it asks. From then on, incoming mail carrying the same file arrives
+  without it.
+  **The match is the file content, not the name.** Outlook numbers embedded images per mail, so
+  `image001.png` is whatever that sender's client happened to put first: blocking by name would
+  hit a different customer's logo on the next ticket and, sooner or later, a screenshot. Each
+  entry is the SHA-256 of the bytes, so a blocked file is blocked exactly when it is byte-for-byte
+  the same one. A logo that a mail client re-encodes per mail is deliberately *not* caught — a
+  filter that guesses may lose a logo, never a screenshot.
+  **Deleting the file is only half of it.** By the time an agent sees the ticket, the plugin has
+  turned the mail's `[cid:…]` markers into image syntax pointing at the attachment, so removing
+  the file alone would trade a signature logo for a broken image. Every removal therefore also
+  strips the markup that named it — in Textile, Markdown and surviving `<img>` tags, and in the
+  download-path spelling used for journal notes — and writes the text past the callbacks, so the
+  cleanup produces no journal entry, no *edited* marker and no notification for text the customer
+  wrote.
+  **The button is not offered on everything.** Blocking deletes a file from every ticket in the
+  project, so it must not sit next to the evidence. Two guards in the settings decide which
+  attachments an agent is even shown the button for: an allow list of file types (extensions
+  such as `gif, png`, or MIME types such as `image/gif`, `image/*`; `*` allows all) and an upper
+  size limit, defaulting to the image formats logos arrive in and 100 KB. A signature logo is the
+  largest thing worth blocking — screenshots start above that — so an `.eml`, a `.msg`, a PDF or a
+  customer's screenshot never gets the button in the first place. Both are set centrally under
+  *Administration → Plugins* and can be overridden per project, and both are enforced again on the
+  server: a page left open since the settings changed cannot talk the server into a file it now
+  refuses.
+  Entries are **per project** and listed under *Project settings → expert Helpdesk → Blocked
+  attachments*, with the name and size of the copy that was blocked, who blocked it, and how
+  often the filter has dropped a file since — so an entry that never earns its keep is visible
+  and can be removed again. Blocking needs `manage_helpdesk`; the project is always taken from
+  the ticket the attachment hangs on, never from a parameter. Migration 057.
+
 ## [0.12.0] - 2026-09-17
 
 ### Added

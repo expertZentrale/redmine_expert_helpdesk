@@ -220,6 +220,32 @@ nested registration would never fire in production.
   the reference would vanish) — it rewrites `<img>` to the same `[cid:…]` marker and touches only
   the copy handed to `MailHandler`, never the `.eml` archived on the ticket. Unknown references
   are left in place; the plugin setting `inline_images_enabled` switches the whole thing off.
+- **`attachment_blacklist.rb`** — per-project blacklist of attachment *contents*: the signature
+  logos, social-media icons and tracking pixels `MailHandler` stores as real attachments on every
+  mail. An agent blacklists one from the ticket page; `HelpdeskAttachmentBlacklist` keys the entry
+  by the SHA-256 of the bytes, because file names are worthless here (Outlook numbers embedded
+  images per mail, so `image001.png` collides across senders). `filter!` runs during ingestion
+  **right after `InlineImages.rewrite!`**, `purge!` retroactively clears the project when an entry
+  is created. Both go through `drop!`, which **strips the image markup before deleting the file** —
+  the rewrite has by then pointed the text at that attachment, so deleting alone would trade a
+  signature logo for a broken image — and writes the text through `InlineImages.store_text`, so
+  the cleanup produces no journal, no *edited* marker and no notification for text the customer
+  wrote. The digest is computed here rather than read from `Attachment#digest`: that column held
+  MD5 before Redmine 3.4, and if its algorithm moves again every existing entry would silently
+  stop matching. The ticket-page button is placed **client-side**
+  (`assets/javascripts/helpdesk_attachment_blacklist.js`, config island from `hooks.rb`) because
+  Redmine's `attachments/_links` partial has no view hook and its markup moved between Redmine 5,
+  6 and 7 — the script finds rows by their `/attachments/<id>` link instead of by structure.
+  Migration 057.
+  **The button is guarded, not universal**: `eligible?` gates it on an allow list of file types
+  (extension, or MIME when the entry has a slash; `*` allows all) and an upper size limit —
+  central plugin setting, overridable per project via `HelpdeskProjectSetting#effective_blacklist_*`,
+  with `DEFAULT_TYPES`/`DEFAULT_MAX_KB` as the real floor (a key added to init.rb's `:default` hash
+  reads nil until the settings form is saved again, and a nil allow list would offer the button on
+  everything). The **hook computes the eligible ids server-side** and ships them in the config
+  island rather than handing the script the rules: the row renders its size as "(139 Bytes)" in the
+  user's locale, and re-parsing that to enforce a limit would be guesswork. The controller rechecks
+  `eligible?` — the page may have been open since the settings changed. Migration 058.
 - **`init_mailer.rb`** — outbound "initial" mail when an agent assigns a contact to a ticket
   and opts to email them (also used by the "New Helpdesk Ticket" flow).
 - **`mail_logger.rb`** — one log line per outgoing mail, naming the transport it took.
@@ -381,7 +407,8 @@ replies, largest controller — handles MIME/CID inline images/transport choice)
 `HelpdeskContact` (auto-saved senders, per project), `HelpdeskMessage` (in/out/init message
 log with `.eml` + sent attachments, powers the activity feed), `HelpdeskRule`,
 `HelpdeskProjectSetting` (reply/SLA/phishing defaults), `HelpdeskSlaPriority`,
-`HelpdeskTicketInfo` (contact link + SLA tracking per issue), `HelpdeskPhishingUrl`.
+`HelpdeskTicketInfo` (contact link + SLA tracking per issue), `HelpdeskPhishingUrl`,
+`HelpdeskAttachmentBlacklist` (blocked attachment contents per project).
 
 ### Schema (`db/migrate/`)
 Sequential numbered migrations (`001_...` onward). Add the next number when changing schema;

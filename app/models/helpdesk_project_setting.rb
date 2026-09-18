@@ -46,6 +46,9 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
             :inclusion => { :in => INFO_REQUEST_NOTE_VISIBILITIES }, :allow_nil => true
   validates :info_request_ai_prompt_mode,
             :inclusion => { :in => AI_PROMPT_MODES }, :allow_nil => true
+  validates :blacklist_max_kb,
+            :numericality => { :only_integer => true, :greater_than_or_equal_to => 0 },
+            :allow_nil => true
   validates :ai_min_image_kb,
             :numericality => { :only_integer => true, :greater_than_or_equal_to => 0 },
             :allow_nil => true
@@ -199,6 +202,33 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
 
   def has_own_ai_answer_min_score?
     self.class.column_names.include?('ai_answer_min_score') && !ai_answer_min_score.nil?
+  end
+
+  # Which attachments the "block" button may be offered for. Blank here inherits the
+  # central setting, blank there falls back to the constant - a key added to
+  # init.rb's :default hash reads nil until the settings form is saved again, and an
+  # empty allow list would offer the button on every attachment there is.
+  def effective_blacklist_types
+    return blacklist_types.to_s if has_own_blacklist_types?
+
+    central = Setting.plugin_redmine_expert_helpdesk['blacklist_types'].to_s
+    central.presence || RedmineExpertHelpdesk::AttachmentBlacklist::DEFAULT_TYPES
+  end
+
+  def has_own_blacklist_types?
+    self.class.column_names.include?('blacklist_types') && blacklist_types.present?
+  end
+
+  # Upper size bound for the same button; 0 turns the guard off.
+  def effective_blacklist_max_kb
+    return blacklist_max_kb.to_i if has_own_blacklist_max_kb?
+
+    central = Setting.plugin_redmine_expert_helpdesk['blacklist_max_kb'].to_s
+    central.present? ? central.to_i : RedmineExpertHelpdesk::AttachmentBlacklist::DEFAULT_MAX_KB
+  end
+
+  def has_own_blacklist_max_kb?
+    self.class.column_names.include?('blacklist_max_kb') && !blacklist_max_kb.nil?
   end
 
   # Wie effective_ai_prompt, aber fuer den kundengerichteten Antwortentwurf.

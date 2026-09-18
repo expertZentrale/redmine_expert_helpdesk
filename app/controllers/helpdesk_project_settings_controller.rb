@@ -17,6 +17,8 @@ class HelpdeskProjectSettingsController < ApplicationController
       update_kb_settings(setting)
     elsif params[:info_request_form].present?
       update_info_request_settings(setting)
+    elsif params[:blacklist_form].present?
+      update_blacklist_settings(setting)
     else
       update_reply_settings(setting)
     end
@@ -160,6 +162,17 @@ class HelpdeskProjectSettingsController < ApplicationController
   end
 
   # Prioritaets-Overrides: leere Zeilen loeschen, gefuellte anlegen/aktualisieren
+  # Guards on the attachment "block" button. Both are stored blank/NULL when the
+  # field is emptied, which is what makes the project fall back to the central
+  # setting again - "" and 0 are meaningful values here, so they must not be it.
+  def update_blacklist_settings(setting)
+    types = params.dig(:helpdesk_project_setting, :blacklist_types).to_s.strip
+    setting.blacklist_types = types.presence
+
+    max_kb = params.dig(:helpdesk_project_setting, :blacklist_max_kb).to_s.strip
+    setting.blacklist_max_kb = max_kb.present? ? max_kb.to_i : nil
+  end
+
   def update_sla_priorities
     (params[:sla_priorities] || {}).each do |priority_id, values|
       reaction = values[:reaction_minutes].presence

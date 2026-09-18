@@ -59,6 +59,9 @@ siehe [Tests](#tests).
 - **Eingebettete Bilder im Ticket**: Die Inline-Bilder einer Mail (Signaturlogos,
   Screenshots) erscheinen dort, wo die Mail sie zeigte, statt eine
   `[cid:…]`-Markierung zu hinterlassen — siehe [Eingebettete Bilder](#eingebettete-bilder).
+- **Gesperrte Anhänge**: Ein Signaturlogo, Icon oder Zählpixel wird einmal aus dem Ticket
+  heraus gesperrt; alle Kopien im Projekt verschwinden und spätere Mails kommen ohne die
+  Datei an — siehe [Gesperrte Anhänge](#gesperrte-anhänge).
 - **Postfach pro Projekt**: Jedes Projekt konfiguriert seine Postfächer im
   Reiter *Helpdesk* der Projekteinstellungen (Quell-/Zielordner, Standardwerte
   für Tracker/Priorität/Status, Umgang mit unbekannten Absendern).
@@ -567,6 +570,51 @@ Wissenswert:
 
 Abschalten lässt sich das unter
 *Administration → Plugins → Redmine expert Helpdesk → Eingebettete Bilder*.
+
+### Gesperrte Anhänge
+
+Jede Geschäftsmail führt das Signaturlogo des Absenders, eine Reihe Social-Media-Icons und ein
+Zählpixel mit sich, und `MailHandler` legt jedes davon als echten Anhang ab. Ein Verlauf aus zehn
+Mails hinterlässt so dreißig Dateien am Ticket und begräbt den einen Screenshot, den der Kunde
+tatsächlich geschickt hat.
+
+Jede Anhangszeile eines Tickets hat einen Button **Sperren** (Berechtigung `manage_helpdesk`). Er
+sperrt die Datei für das Projekt und löscht jede Kopie, die bereits an einem Ticket dieses Projekts
+hängt; die Rückfrage nennt vorher die Anzahl der Dateien. Spätere Mails mit derselben Datei kommen
+ohne sie an.
+
+**Welche Anhänge den Button bekommen**, entscheiden zwei Grenzen – damit der Nachweis an einem
+Ticket nie einen Fehlklick vom Löschen entfernt ist:
+
+| Einstellung | Standard | Bedeutung |
+| --- | --- | --- |
+| Sperrbare Dateitypen | `png, gif, jpg, jpeg, bmp, webp, tif, tiff, ico` | Endungen (`gif`) oder MIME-Typen (`image/gif`, `image/*`), kommagetrennt. `*` erlaubt jeden Typ. |
+| Größte sperrbare Datei | 100 KB | Darüber wird der Button ausgeblendet. `0` schaltet die Grenze ab. |
+
+Beides steht unter *Administration → Plugins → Redmine expert Helpdesk* und ist je Projekt
+überschreibbar (dort ein Feld leer lassen, um den zentralen Wert zu übernehmen). Es ist eine
+Absicherung des **Buttons**, kein Filter auf eingehende Mails – verworfen wird dadurch nichts.
+Eine `.eml`, eine `.msg`, ein PDF oder der Screenshot eines Kunden bekommt den Button also gar
+nicht erst, und der Server prüft beide Grenzen beim Klick erneut: Eine seit der Änderung offene
+Seite kann sie nicht umgehen.
+
+Wissenswertes:
+
+- **Verglichen wird der Dateiinhalt (SHA-256), nicht der Dateiname.** Outlook nummeriert
+  eingebettete Bilder pro Mail durch; `image001.png` ist also schlicht das, was das Mailprogramm
+  des Absenders zuerst einsortiert hat — eine Sperre über den Namen träfe das Logo eines anderen
+  Kunden und irgendwann einen Screenshot. Ein Logo, das ein Mailprogramm für jede Mail neu kodiert,
+  wird deshalb nicht erfasst: Der Filter darf ein Logo verlieren, niemals einen Screenshot.
+- Mit der Datei verschwindet auch die Bild-Auszeichnung, die auf sie zeigte (Textile, Markdown,
+  überlebende `<img>`-Tags) — ein gesperrtes Signaturlogo hinterlässt also kein kaputtes Bild. Der
+  Text wird an den Callbacks vorbei geschrieben: kein Journaleintrag, keine *bearbeitet*-Markierung,
+  keine Benachrichtigung.
+- Die Einträge gelten **je Projekt** und stehen unter *Projekt-Einstellungen → expert Helpdesk →
+  Gesperrte Anhänge*, mit Name und Größe der gesperrten Datei, wer sie gesperrt hat und wie oft der
+  Filter seither eine Kopie verworfen hat. Einen Eintrag dort zu entfernen beendet den Filter; die
+  gelöschten Dateien kommen dadurch nicht zurück.
+- Sperren lassen sich nur Ticket-Anhänge — Wiki- und Dokument-Anhänge haben kein Helpdesk-Projekt,
+  auf das der Eintrag begrenzt werden könnte.
 
 ### EML-Anhang und Journalverlinkung
 

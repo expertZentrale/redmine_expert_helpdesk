@@ -27,9 +27,12 @@ module RedmineExpertHelpdesk
 
       project = issue.project
       return '' unless project.module_enabled?(:helpdesk)
-      return '' unless User.current.allowed_to?(:view_helpdesk_info, project)
 
-      parts = []
+      # Attachment blacklist button: its own permission, so it is emitted before
+      # the view_helpdesk_info gate below rather than inside it.
+      parts = [attachment_blacklist_assets(issue, project)]
+
+      return parts.join.html_safe unless User.current.allowed_to?(:view_helpdesk_info, project)
 
       # SLA-Box (unabhaengig vom Kundenkontakt)
       sla_state = RedmineExpertHelpdesk::Sla.state_for(issue)
@@ -277,6 +280,40 @@ module RedmineExpertHelpdesk
     end
 
     private
+
+    # Config island + script for the "blacklist this file" button on every
+    # attachment row. Redmine's attachment partial has no view hook and its markup
+    # moved between Redmine 5, 6 and 7, so the button is placed client-side.
+    #
+    # The URLs carry __ID__ placeholders rather than a route per attachment: both
+    # routes constrain :attachment_id to digits, so Rails refuses to generate a path
+    # for the placeholder, and the script stays static and cacheable either way.
+    def attachment_blacklist_assets(issue, project)
+      return '' unless User.current.allowed_to?(:manage_helpdesk, project)
+
+      # Which rows may carry the button is decided here, not in the script: the size
+      # guard would otherwise have to be re-derived from the rendered "(139 Bytes)".
+      # No eligible attachment means nothing to draw and nothing to ship.
+      eligible = RedmineExpertHelpdesk::AttachmentBlacklist.eligible_ids(issue)
+      return '' if eligible.empty?
+
+      root = Redmine::Utils.relative_url_root.to_s
+      config = {
+        :eligible    => eligible,
+        :postUrl     => "#{root}/helpdesk/attachments/__ID__/blacklist",
+        :previewUrl  => "#{root}/helpdesk/attachments/__ID__/blacklist/preview",
+        :label       => l(:button_helpdesk_blacklist_attachment),
+        :title       => l(:label_helpdesk_blacklist_attachment_title),
+        :confirmOne  => l(:text_helpdesk_blacklist_confirm_one),
+        :confirmMany => l(:text_helpdesk_blacklist_confirm_many),
+        :error       => l(:error_helpdesk_attachment_unreadable)
+      }
+
+      content_tag(:script, config.to_json.html_safe,
+                  :type => 'application/json', :id => 'helpdesk-attachment-blacklist-config') +
+        javascript_include_tag('helpdesk_attachment_blacklist',
+                               :plugin => 'redmine_expert_helpdesk')
+    end
 
     # Quote, template and AI-draft buttons in the toolbar of the note field.
     def note_toolbar(context, issue, project, contact)
