@@ -54,5 +54,10 @@ class HelpdeskReplyBoxTest < Redmine::IntegrationTest
     assert_response :success
     assert_select 'input#hd_reply_box_color'
     assert_select 'input#hd_reply_hazard_color'
+    # The swatch is a convenience on top of the text field, which stays the field
+    # that is submitted - a colour input could never express "blank = inherit".
+    assert_select 'input.hd-color-swatch[type=color][data-hd-for=hd_reply_box_color]'
+    assert_select 'input.hd-color-swatch[type=color][data-hd-for=hd_reply_hazard_color]'
+    assert_select '.hd-color-preview'
   end
 end

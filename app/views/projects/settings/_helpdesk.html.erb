@@ -94,20 +94,27 @@
   <%= form_tag helpdesk_project_setting_path(:project_id => @project), :method => :put do %>
     <p>
       <label for="hd_reply_box_color"><%= l(:field_helpdesk_reply_box_color) %></label>
-      <%= text_field_tag 'helpdesk_project_setting[reply_box_color]',
-                         hd_setting.reply_box_color,
-                         :id => 'hd_reply_box_color', :size => 10 %>
+      <%= render :partial => 'helpdesk/color_field',
+                 :locals => { :name  => 'helpdesk_project_setting[reply_box_color]',
+                              :id    => 'hd_reply_box_color',
+                              :value => hd_setting.reply_box_color,
+                              :fallback => hd_setting.effective_reply_box_color } %>
       <em class="info"><%= l(:text_helpdesk_reply_box_color_project_info,
                              :value => hd_setting.effective_reply_box_color) %></em>
     </p>
     <p>
       <label for="hd_reply_hazard_color"><%= l(:field_helpdesk_reply_hazard_color) %></label>
-      <%= text_field_tag 'helpdesk_project_setting[reply_hazard_color]',
-                         hd_setting.reply_hazard_color,
-                         :id => 'hd_reply_hazard_color', :size => 10 %>
+      <%= render :partial => 'helpdesk/color_field',
+                 :locals => { :name  => 'helpdesk_project_setting[reply_hazard_color]',
+                              :id    => 'hd_reply_hazard_color',
+                              :value => hd_setting.reply_hazard_color,
+                              :fallback => hd_setting.effective_reply_hazard_color } %>
       <em class="info"><%= l(:text_helpdesk_reply_hazard_color_project_info,
                              :value => hd_setting.effective_reply_hazard_color) %></em>
     </p>
+    <%= render :partial => 'helpdesk/color_preview',
+               :locals => { :box_id => 'hd_reply_box_color',
+                            :hazard_id => 'hd_reply_hazard_color' } %>
     <%= hidden_field_tag 'reply_box_form', '1' %>
     <p><%= submit_tag l(:button_save) %></p>
   <% end %>

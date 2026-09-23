@@ -707,6 +707,8 @@ en:
 
   # --- Customer-facing reply block (colours of the edit-form block) ---
   label_helpdesk_reply_box: 'Reply block'
+  label_helpdesk_pick_color: 'Pick a colour'
+  label_helpdesk_reply_box_preview: 'Preview'
   text_helpdesk_reply_box_info: 'While a reply is switched on, the mail fields, the note editor and the signature preview are shown as one block with a hazard border, so it is obvious that this text goes to the customer. Both colours can be overridden per project.'
   field_helpdesk_reply_box_color: 'Background colour'
   text_helpdesk_reply_box_color_info: 'Hex colour of the block, e.g. #edf2fa. Anything else falls back to the default.'

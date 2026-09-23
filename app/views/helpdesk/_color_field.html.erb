@@ -1,0 +1,18 @@
+<%# A colour swatch that opens the browser's picker, next to the hex field.
+    Locals: name (form field name), value (may be blank), id, fallback (the colour
+    that applies when the field is left blank).
+
+    The text field stays the source of truth and keeps its id, because blank has to
+    remain expressible: an empty value means "inherit", and a native colour input
+    always holds a colour and could never say that. The swatch is a convenience on
+    top - it writes into the text field, and shows the inherited colour while the
+    field is empty. %>
+<span class="hd-color-field">
+  <input type="color" class="hd-color-swatch"
+         data-hd-for="<%= id %>"
+         value="<%= RedmineExpertHelpdesk::ReplyBox.color(value.presence || fallback, fallback) %>"
+         aria-label="<%= h(l(:label_helpdesk_pick_color)) %>" />
+  <%= text_field_tag name, value, :id => id, :size => 9,
+                     :class => 'hd-color-text', :placeholder => fallback,
+                     :data => { :hd_fallback => fallback } %>
+</span>

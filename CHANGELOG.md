@@ -24,7 +24,11 @@
   validated as hex colours and anything else falls back to the default — the values are
   interpolated into a stylesheet, where an unchecked string would be a style injection rather than
   a colour. Both are also readable and writable through the project settings REST endpoint
-  (`reply_box_color`, `reply_hazard_color`). Migration 059.
+  (`reply_box_color`, `reply_hazard_color`). Both settings forms offer a colour swatch next to the
+  hex field and a live preview of the block, so the colours can be chosen without saving and
+  opening a ticket to see the result. The hex field stays the field that is submitted, because an
+  empty value has to keep meaning "inherit" and a colour input always holds a colour.
+  Migration 059.
 
 ## [0.13.0] - 2026-09-23
 

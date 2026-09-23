@@ -707,6 +707,8 @@ de:
 
   # --- Kundenblock der Antwort (Farben des Blocks im Bearbeitungsformular) ---
   label_helpdesk_reply_box: 'Antwortblock'
+  label_helpdesk_pick_color: 'Farbe wählen'
+  label_helpdesk_reply_box_preview: 'Vorschau'
   text_helpdesk_reply_box_info: 'Solange eine Antwort aktiviert ist, werden Mailfelder, Notizfeld und Signaturvorschau als ein Block mit Warnrahmen dargestellt – damit sichtbar ist, dass dieser Text an den Kunden geht. Beide Farben sind je Projekt überschreibbar.'
   field_helpdesk_reply_box_color: 'Hintergrundfarbe'
   text_helpdesk_reply_box_color_info: 'Hex-Farbe des Blocks, z. B. #edf2fa. Alles andere fällt auf den Standard zurück.'
