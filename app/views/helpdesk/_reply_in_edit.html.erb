@@ -377,24 +377,27 @@
       var addNotes = document.getElementById('add_notes');
       if (!section || !addNotes) { return; }
 
-      var jstBlock = addNotes.querySelector('.jstBlock');
+      // The editor is the jstBlock when the jstoolbar built one, and the bare
+      // textarea when it did not (text formatting "none", or Redmine changed the
+      // markup). Either way it is what becomes the mail body, so it is what has to
+      // sit inside the marked block - wrapping only the mail fields would leave the
+      // field the customer actually receives outside the warning.
+      var editor = addNotes.querySelector('.jstBlock') || addNotes.querySelector('#issue_notes');
       var box = document.createElement('div');
       box.id = 'hd-outgoing';
 
-      if (jstBlock && jstBlock.parentNode) {
-        jstBlock.parentNode.insertBefore(box, jstBlock);
+      if (editor && editor.parentNode) {
+        editor.parentNode.insertBefore(box, editor);
       } else {
-        // No editor to wrap - jstoolbar disabled, or Redmine changed the markup. The
-        // wrapper is still created, around the mail fields alone: the hazard border is
-        // the point of this block, and dropping it silently because a toolbar is
-        // missing would be the worst of both worlds.
+        // Nothing recognisable to wrap: keep the mail fields in a block of their own
+        // rather than dropping the warning entirely.
         var legend = addNotes.querySelector('legend');
         if (!legend || !legend.nextSibling) { return; }
         addNotes.insertBefore(box, legend.nextSibling);
       }
 
       box.appendChild(section);
-      if (jstBlock) { box.appendChild(jstBlock); }
+      if (editor) { box.appendChild(editor); }
 
       // The preview sits inside #hd-mail-extra today, which is what hides it while the
       // reply is off. Out here it needs that toggle applied to it directly - see
