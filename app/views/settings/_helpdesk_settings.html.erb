@@ -144,6 +144,25 @@
 </fieldset>
 
 <fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_reply_box) %></legend>
+  <p><em class="info"><%= l(:text_helpdesk_reply_box_info) %></em></p>
+  <p>
+    <label for="settings_reply_box_color"><%= l(:field_helpdesk_reply_box_color) %></label>
+    <%= text_field_tag 'settings[reply_box_color]',
+                       RedmineExpertHelpdesk::ReplyBox.box_color(@settings['reply_box_color']),
+                       :id => 'settings_reply_box_color', :size => 10 %>
+    <em class="info"><%= l(:text_helpdesk_reply_box_color_info) %></em>
+  </p>
+  <p>
+    <label for="settings_reply_hazard_color"><%= l(:field_helpdesk_reply_hazard_color) %></label>
+    <%= text_field_tag 'settings[reply_hazard_color]',
+                       RedmineExpertHelpdesk::ReplyBox.hazard_color(@settings['reply_hazard_color']),
+                       :id => 'settings_reply_hazard_color', :size => 10 %>
+    <em class="info"><%= l(:text_helpdesk_reply_hazard_color_info) %></em>
+  </p>
+</fieldset>
+
+<fieldset class="box tabular">
   <legend><%= l(:label_helpdesk_attachment_blacklist) %></legend>
   <p><em class="info"><%= l(:text_helpdesk_blacklist_guard_info) %></em></p>
   <p>

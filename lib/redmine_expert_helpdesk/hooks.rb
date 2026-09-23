@@ -373,7 +373,9 @@ module RedmineExpertHelpdesk
           :reply_status_id        => project_setting.reply_status_id,
           :reply_assign_to_sender => project_setting.reply_assign_to_sender,
           :original_to            => original[:to],
-          :original_cc            => original[:cc]
+          :original_cc            => original[:cc],
+          :box_color              => project_setting.effective_reply_box_color,
+          :hazard_color           => project_setting.effective_reply_hazard_color
         }
       })
     end

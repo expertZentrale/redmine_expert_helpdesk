@@ -6,6 +6,25 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Changed
+
+- **The customer reply is now one clearly marked block in the edit form.** A reply is written in
+  Redmine's ordinary note field, which looks exactly like the field used for an internal note, and
+  the mail-specific part sat above it as a separate panel — with the signature preview *above* the
+  text it is appended to. The recipients, the note editor and the signature preview are now one
+  block: continuous background, signature preview where it belongs (after the body), and while the
+  reply is switched on a diagonal hazard border around the whole thing, so it is not possible to
+  mistake the field for an internal note. The border appears only while the reply is armed; an
+  internal note looks exactly as it always did, because a warning that is always on stops being
+  read.
+  Both colours are configurable under *Administration → Plugins → Redmine expert Helpdesk* and can
+  be overridden per project (leave a project field empty to inherit the central value). They are
+  validated as hex colours and anything else falls back to the default — the values are
+  interpolated into a stylesheet, where an unchecked string would be a style injection rather than
+  a colour. Migration 059.
+
 ## [0.13.0] - 2026-09-23
 
 ### Fixed

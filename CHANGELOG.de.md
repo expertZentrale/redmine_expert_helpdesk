@@ -5,6 +5,25 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Geändert
+
+- **Die Kundenantwort ist im Bearbeitungsformular jetzt ein klar markierter Block.** Eine Antwort
+  wird in Redmines gewöhnlichem Notizfeld geschrieben, das genauso aussieht wie das Feld für eine
+  interne Notiz; der Mailteil saß als eigenes Panel darüber – mit der Signaturvorschau *über* dem
+  Text, an den sie angehängt wird. Empfänger, Notizfeld und Signaturvorschau bilden nun einen
+  Block: durchgehender Hintergrund, Signaturvorschau dort, wo sie hingehört (unter dem Text), und
+  solange die Antwort aktiviert ist ein diagonaler Warnrahmen um das Ganze. Das Feld lässt sich
+  damit nicht mehr mit einer internen Notiz verwechseln. Der Rahmen erscheint nur bei aktivierter
+  Antwort; eine interne Notiz sieht aus wie immer, denn eine Warnung, die immer da ist, wird nicht
+  mehr gelesen.
+  Beide Farben sind unter *Administration → Plugins → Redmine expert Helpdesk* einstellbar und je
+  Projekt überschreibbar (Feld im Projekt leer lassen, um den zentralen Wert zu übernehmen). Sie
+  werden als Hex-Farbe geprüft, alles andere fällt auf den Standard zurück – die Werte landen in
+  einem Stylesheet, wo eine ungeprüfte Zeichenkette keine Farbe wäre, sondern eine
+  Style-Injection. Migration 059.
+
 ## [0.13.0] - 2026-09-23
 
 ### Behoben

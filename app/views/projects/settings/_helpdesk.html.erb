@@ -86,6 +86,33 @@
   <% end %>
 </fieldset>
 
+<%# --- Colours of the customer-facing reply block --- %>
+<fieldset class="tabular" style="margin-bottom: 14px;">
+  <legend><%= l(:label_helpdesk_reply_box) %></legend>
+  <p><em class="info"><%= l(:text_helpdesk_reply_box_info) %></em></p>
+
+  <%= form_tag helpdesk_project_setting_path(:project_id => @project), :method => :put do %>
+    <p>
+      <label for="hd_reply_box_color"><%= l(:field_helpdesk_reply_box_color) %></label>
+      <%= text_field_tag 'helpdesk_project_setting[reply_box_color]',
+                         hd_setting.reply_box_color,
+                         :id => 'hd_reply_box_color', :size => 10 %>
+      <em class="info"><%= l(:text_helpdesk_reply_box_color_project_info,
+                             :value => hd_setting.effective_reply_box_color) %></em>
+    </p>
+    <p>
+      <label for="hd_reply_hazard_color"><%= l(:field_helpdesk_reply_hazard_color) %></label>
+      <%= text_field_tag 'helpdesk_project_setting[reply_hazard_color]',
+                         hd_setting.reply_hazard_color,
+                         :id => 'hd_reply_hazard_color', :size => 10 %>
+      <em class="info"><%= l(:text_helpdesk_reply_hazard_color_project_info,
+                             :value => hd_setting.effective_reply_hazard_color) %></em>
+    </p>
+    <%= hidden_field_tag 'reply_box_form', '1' %>
+    <p><%= submit_tag l(:button_save) %></p>
+  <% end %>
+</fieldset>
+
 <%# --- Blacklisted attachment contents of this project --- %>
 <fieldset class="tabular" style="margin-bottom: 14px;">
   <legend><%= l(:label_helpdesk_attachment_blacklist) %></legend>

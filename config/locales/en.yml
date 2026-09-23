@@ -705,6 +705,18 @@ en:
   label_helpdesk_ticket_stats_no_contact: 'Without contact'
   text_helpdesk_ticket_stats_top_customers: 'The %{n} customers with the most tickets in the period.'
 
+  # --- Customer-facing reply block (colours of the edit-form block) ---
+  label_helpdesk_reply_box: 'Reply block'
+  text_helpdesk_reply_box_info: 'While a reply is switched on, the mail fields, the note editor and the signature preview are shown as one block with a hazard border, so it is obvious that this text goes to the customer. Both colours can be overridden per project.'
+  field_helpdesk_reply_box_color: 'Background colour'
+  text_helpdesk_reply_box_color_info: 'Hex colour of the block, e.g. #edf2fa. Anything else falls back to the default.'
+  text_helpdesk_reply_box_color_project_info: 'Leave empty to use the central setting (%{value}).'
+  field_helpdesk_reply_hazard_color: 'Warning border colour'
+  text_helpdesk_reply_hazard_color_info: 'Hex colour of the diagonal hazard stripes, e.g. #e8a33d. Anything else falls back to the default.'
+  text_helpdesk_reply_hazard_color_project_info: 'Leave empty to use the central setting (%{value}).'
+  # Redmine resolves attribute names in validation messages via field_<attr>.
+  field_reply_box_color: 'Background colour'
+  field_reply_hazard_color: 'Warning border colour'
   # --- Attachment blacklist (signature logos, icons, tracking pixels) ---
   label_helpdesk_attachment_blacklist: 'Blocked attachments'
   text_helpdesk_attachment_blacklist_info: 'Files blocked here are removed from incoming mails of this project. Entries are created with the "Block" button next to an attachment on a ticket. Matching is by file content (SHA-256), not by file name.'

@@ -184,6 +184,12 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     an .eml/.msg/PDF/log never shows it, nor does an image over the limit (where screenshots
     normally sit) — the guards bound reach, they do not classify content. The hook resolves the eligible ids server-side and
     ships them in the config island; the controller rechecks. Migration 058.
+  - `reply_box.rb` — colours of the customer-facing block in the edit form. The partial wraps mail
+    fields + `.jstBlock` + signature preview in a client-side `#hd-outgoing` and adds a hazard
+    border only while the reply is armed (`syncOutgoing()` is the one place that decides). Colours
+    resolve project → central → constant and are **validated as hex, otherwise discarded**: they
+    become CSS custom properties on `:root`, so an unchecked value is a style injection. The
+    `.jstBlock` lookup must stay scoped to `#add_notes`. Migration 059.
   - `init_mailer.rb` — outbound "initial" mail (contact-assign / "New Helpdesk Ticket" flow).
   - `mail_logger.rb` — one log line per outgoing mail incl. the transport used. Every send site
     wraps its send in `MailLogger.track` (replies, init mail, autoresponder, info request, SLA
