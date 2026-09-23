@@ -298,6 +298,22 @@ class InlineImagesTest < ActiveSupport::TestCase
                  'the markers must point at different files, not all at the newest'
   end
 
+  # MailHandler may store fewer images than the mail carries - one excluded by size
+  # or by "Excluded attachment file names". The part left without a file of its own
+  # must keep its marker rather than borrow a picture that belongs to another cid.
+  def test_a_part_without_its_own_attachment_is_left_unresolved
+    issue = issue_with_description('Ticket')
+    # Three parts in the mail, two files stored.
+    attach_sized(issue, 'image.png', SAME_NAME_SIZES[0])
+    attach_sized(issue, 'image.png', SAME_NAME_SIZES[1])
+
+    index = II.cid_index(Mail.read_from_string(same_name_mime), II.attachment_scope(issue))
+
+    resolved = SAME_NAME_CIDS.map { |cid| index[cid] }.compact
+    assert_equal 2, resolved.size, 'only the parts with a stored file may resolve'
+    assert_equal 2, resolved.map(&:id).uniq.size, 'no attachment may be handed out twice'
+  end
+
   private
 
   # Distinct byte counts, as in the reported mail (logo, icons, screenshot).

@@ -210,8 +210,14 @@ module RedmineExpertHelpdesk
       candidates = named_like(attachments, part.filename.to_s)
       return nil if candidates.empty?
 
-      unclaimed = candidates.reject { |a| claimed.include?(a.id) }
-      pool = unclaimed.presence || candidates
+      # No unclaimed candidate means this part has no file of its own: MailHandler
+      # stored fewer images than the mail carries, because one was excluded by size
+      # or by "Excluded attachment file names". Handing back an already claimed
+      # attachment would show one picture twice - the very fault this pairing
+      # exists to prevent - so the marker is left unresolved instead, which is what
+      # the module does with every reference it cannot reach.
+      pool = candidates.reject { |a| claimed.include?(a.id) }
+      return nil if pool.empty?
       return pool.first if pool.one?
 
       bytes = part_bytes(part)
