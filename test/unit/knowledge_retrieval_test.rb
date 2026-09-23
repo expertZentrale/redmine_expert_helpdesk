@@ -285,6 +285,33 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
     end
   end
 
+  # The admin UI is German: "0,2" is what an admin is liable to type, and a
+  # comma must not read as a silent reset to the default.
+  def test_a_german_decimal_comma_is_accepted_in_the_rerank_threshold
+    store = store_stub([hit(3, 0.9)])
+    s = rerank_settings('kb_rerank_min_score' => '0,7')
+    assert_equal [], Retrieval.search(@issue, s, client_stub(:rerank => [row(0, 0.6)]), 'Frage',
+                                      :store => store)
+    hits = Retrieval.search(@issue, s, client_stub(:rerank => [row(0, 0.8)]), 'Frage', :store => store)
+    assert_equal [3], hits.map { |h| h[:payload]['issue_id'] }
+  end
+
+  # Same footgun on the cosine gate: to_f read "0,7" as 0.0 and switched it off.
+  def test_a_german_decimal_comma_is_accepted_in_the_cosine_threshold
+    store = store_stub([hit(3, 0.6), hit(4, 0.8)])
+    s = settings('kb_min_score' => '0,7')
+    hits = Retrieval.search(@issue, s, client_stub, 'Frage', :store => store)
+    assert_equal [4], hits.map { |h| h[:payload]['issue_id'] }
+  end
+
+  def test_a_malformed_cosine_threshold_falls_back_to_the_default
+    store = store_stub([hit(3, 0.9), hit(4, 0.3)])
+    s = settings('kb_min_score' => 'oops')
+    hits = Retrieval.search(@issue, s, client_stub, 'Frage', :store => store)
+    assert_equal [3], hits.map { |h| h[:payload]['issue_id'] },
+                 'a typo must not switch the cosine gate off'
+  end
+
   # 0.0 is a legitimate value - "accept anything the reranker returns" - and must
   # survive, unlike a blank or a malformed one.
   def test_an_explicit_zero_rerank_threshold_is_honoured

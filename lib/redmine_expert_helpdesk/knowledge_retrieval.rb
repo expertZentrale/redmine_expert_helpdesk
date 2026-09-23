@@ -22,6 +22,10 @@ module RedmineExpertHelpdesk
     # kb_rerank_min_score would then be 0.0 and let every hit through.
     DEFAULT_RERANK_CANDIDATES = 20
     DEFAULT_RERANK_MIN_SCORE  = 0.2
+    # The cosine gate had the same footgun one branch away: to_f reads a German
+    # "0,5" as 0.0 and switches the gate off entirely, so it goes through the
+    # same strict parser and needs the same coded default.
+    DEFAULT_MIN_SCORE         = 0.5
     RERANK_DOC_MAX_CHARS      = 2_000
 
     module_function
@@ -89,7 +93,7 @@ module RedmineExpertHelpdesk
       threshold = min_score || if reranked
                                  float_or(settings['kb_rerank_min_score'], DEFAULT_RERANK_MIN_SCORE)
                                else
-                                 settings['kb_min_score'].to_f
+                                 float_or(settings['kb_min_score'], DEFAULT_MIN_SCORE)
                                end
       if diagnostics.is_a?(Hash)
         diagnostics[:candidates]        = hits.size
@@ -170,7 +174,11 @@ module RedmineExpertHelpdesk
     # "oops" as 0.0 and lets every candidate through, and it reads "50%" as 50.0
     # and lets none through. Failing to the default is the only safe direction.
     def float_or(value, fallback)
-      raw = value.to_s.strip
+      # The admin UI is German, so "0,2" is what an admin is liable to type.
+      # HelpdeskProjectSetting.parse_ai_answer_min_score does the same for the
+      # sibling threshold; without it a comma is not a near miss but a silent
+      # reset to the default.
+      raw = value.to_s.strip.tr(',', '.')
       return fallback if raw.blank?
 
       v = Float(raw)
