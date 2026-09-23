@@ -172,6 +172,11 @@ class HelpdeskApiTest < Redmine::IntegrationTest
     setting = HelpdeskProjectSetting.for_project(@project)
     assert_equal 'gif, image/png', setting.effective_blacklist_types
     assert_equal 250, setting.effective_blacklist_max_kb
+    # The response has to echo them too: reading the model alone would pass even if
+    # the serializer never learned about the two fields.
+    updated = ActiveSupport::JSON.decode(@response.body)['helpdesk_project_setting']
+    assert_equal 'gif, image/png', updated['blacklist_types']
+    assert_equal 250, updated['blacklist_max_kb']
 
     # 0 is a meaningful value here - it switches the size guard off.
     put "/projects/#{@project.id}/helpdesk/settings.json",
