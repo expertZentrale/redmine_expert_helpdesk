@@ -187,7 +187,7 @@ module RedmineExpertHelpdesk
       with_request_log(log_context, :provider => embed_provider, :model => embed_model, :default_type => 'kb_embed') do
         body = post_json("#{embed_endpoint}/embeddings",
                          { 'model' => embed_model, 'input' => text.to_s },
-                         'Authorization' => "Bearer #{embed_api_key}")
+                         { 'Authorization' => "Bearer #{embed_api_key}" })
         vec = body.dig('data', 0, 'embedding')
         raise AiError.new('Leere Embedding-Antwort vom Provider', nil, body.to_s) if vec.blank?
 
@@ -198,7 +198,121 @@ module RedmineExpertHelpdesk
       end
     end
 
+    # --- Reranking (Cross-Encoder fuer die Wissensbasis / RAG) -------------
+    # Second retrieval stage: the vector search is a bi-encoder and ranks on
+    # whole-text proximity, so a ticket that merely shares vocabulary with the
+    # query can outrank the one describing the same fault. A cross-encoder
+    # scores query/document *pairs* and is far more precise - too expensive for
+    # a whole collection, which is why it only ever sees a shortlist.
+    #
+    # Same provider as the embeddings (bge-m3 and bge-reranker-v2-m3 sit on one
+    # base URL), so endpoint and key fall back to the kb_embed_* configuration
+    # and a working knowledge base needs nothing but the toggle.
+    DEFAULT_RERANK_MODEL   = 'bge-reranker-v2-m3'.freeze
+    DEFAULT_RERANK_TIMEOUT = 10
+
+    def rerank_enabled?
+      @settings['kb_rerank_enabled'].to_s == '1'
+    end
+
+    # Alle Leser fallen im Code auf einen Default zurueck, nicht nur ueber den
+    # :default-Hash in init.rb: ein dort neu ergaenzter Schluessel liefert auf
+    # einer bestehenden Installation nil, bis das Formular einmal neu
+    # gespeichert wurde.
+    def rerank_model
+      @settings['kb_rerank_model'].to_s.strip.presence || DEFAULT_RERANK_MODEL
+    end
+
+    def rerank_endpoint
+      ep = @settings['kb_rerank_endpoint'].to_s.strip
+      return ep.chomp('/') if ep.present?
+
+      embed_endpoint
+    end
+
+    def rerank_api_key
+      key = @settings['kb_rerank_api_key'].to_s.strip
+      return key if key.present?
+
+      embed_api_key
+    end
+
+    def rerank_timeout
+      v = @settings['kb_rerank_timeout'].to_i
+      v.positive? ? v : DEFAULT_RERANK_TIMEOUT
+    end
+
+    def rerank_configured?
+      rerank_enabled? && rerank_api_key.present? && rerank_model.present? && rerank_endpoint.present?
+    end
+
+    # Bewertet documents (Array<String>) gegen query und liefert
+    #   [{ :index => Integer, :score => Float }, ...]
+    # absteigend sortiert, oder wirft AiError. :index zeigt in das uebergebene
+    # documents-Array zurueck.
+    #   log_context : optional { :project_id, :issue_id, ... } - wie bei embed.
+    def rerank(query, documents, log_context: nil)
+      raise ConfigurationError, 'Reranking ist nicht konfiguriert (Key/Modell/Endpunkt fehlt)' unless rerank_configured?
+
+      docs = Array(documents).map(&:to_s)
+      return [] if docs.empty?
+
+      with_request_log(log_context, :provider => embed_provider, :model => rerank_model, :default_type => 'kb_rerank') do
+        body = post_json("#{rerank_endpoint}/rerank",
+                         { 'model' => rerank_model, 'query' => query.to_s, 'documents' => docs },
+                         { 'Authorization' => "Bearer #{rerank_api_key}" },
+                         :read_timeout => rerank_timeout)
+        rows = parse_rerank_rows(body, docs.size)
+        raise AiError.new('Leere Rerank-Antwort vom Provider', nil, body.to_s) if rows.empty?
+
+        usage = (body.is_a?(Hash) ? body['usage'] : nil) || {}
+        @last_usage = { :input => usage['total_tokens'] || usage['prompt_tokens'], :output => nil }
+        rows.sort_by { |r| -r[:score] }
+      end
+    end
+
     private
+
+    # Die Dokumentation des Providers zeigt nur den Request. Beide verbreiteten
+    # Antwortformen werden gelesen, damit ein Wechsel der Laufzeit hinter
+    # derselben URL nicht still die Bewertung verschiebt:
+    #   Jina/Cohere (vLLM, Infinity):  { "results": [{ "index", "relevance_score" }] }
+    #   TEI nativ:                     [{ "index", "score" }]
+    def parse_rerank_rows(body, doc_count)
+      raw = body.is_a?(Array) ? body : Array(body.is_a?(Hash) ? body['results'] : nil)
+      rows = raw.filter_map do |r|
+        next unless r.is_a?(Hash)
+
+        idx = r['index']
+        next if idx.nil?
+
+        idx = idx.to_i
+        next unless idx >= 0 && idx < doc_count
+
+        score = r.key?('relevance_score') ? r['relevance_score'] : r['score']
+        next if score.nil?
+
+        { :index => idx, :score => score.to_f }
+      end
+      normalize_rerank_scores(rows)
+    end
+
+    # bge-reranker-v2-m3 ist ein Cross-Encoder; seine Rohausgabe ist ein Logit.
+    # Manche Laufzeiten schicken es durch eine Sigmoid, andere nicht - der
+    # gemessene Anbieter (api.ai.net.de) NICHT: dort kamen fuer dieselbe Anfrage
+    # Werte von +5.97 (identischer Text) bis -10.99 (voellig fremd) zurueck.
+    # Ohne die Normalisierung waere kb_rerank_min_score dort still wirkungslos
+    # (jeder Wert < 1 passiert) - und zwar ohne Fehlermeldung, denn der
+    # Schwellwert ist auf 0..1 geeicht.
+    #
+    # Die Sigmoid ist streng monoton, die Reihenfolge aendert sich also nie.
+    # Umgerechnet wird nur, wenn ueberhaupt ein Wert ausserhalb 0..1 liegt, damit
+    # eine bereits normalisierte Antwort unveraendert durchlaeuft.
+    def normalize_rerank_scores(rows)
+      return rows if rows.empty? || rows.all? { |r| r[:score] >= 0.0 && r[:score] <= 1.0 }
+
+      rows.map { |r| r.merge(:score => 1.0 / (1.0 + Math.exp(-r[:score]))) }
+    end
 
     # --- OpenAI / OpenAI-kompatibel (custom) -------------------------------
     def summarize_openai(system_prompt, user_text, image_parts)
@@ -228,7 +342,7 @@ module RedmineExpertHelpdesk
       }
 
       body = post_json("#{endpoint.chomp('/')}/chat/completions", payload,
-                       'Authorization' => "Bearer #{api_key}")
+                       { 'Authorization' => "Bearer #{api_key}" })
       usage = body['usage'] || {}
       @last_usage = { :input => usage['prompt_tokens'], :output => usage['completion_tokens'] }
       @last_finish_reason = body.dig('choices', 0, 'finish_reason').to_s.presence
@@ -259,7 +373,7 @@ module RedmineExpertHelpdesk
       }
 
       body = post_json("#{endpoint.chomp('/')}/v1/messages", payload,
-                       'x-api-key' => api_key, 'anthropic-version' => ANTHROPIC_VERSION)
+                       { 'x-api-key' => api_key, 'anthropic-version' => ANTHROPIC_VERSION })
       usage = body['usage'] || {}
       @last_usage = { :input => usage['input_tokens'], :output => usage['output_tokens'] }
       # Anthropic says 'max_tokens'; normalise to OpenAI's 'length' so callers
@@ -282,12 +396,17 @@ module RedmineExpertHelpdesk
                       OpenSSL::SSL::SSLError].freeze
 
     # POST JSON, parse JSON, raise AiError on non-2xx. Analog zu GraphClient#request.
-    def post_json(url, payload, extra_headers = {})
+    # read_timeout: ueberschreibt das Zeitbudget des Aufrufs (das Reranking hat
+    # ein eigenes, deutlich knapperes als eine Textgenerierung).
+    # extra_headers wird an allen Aufrufstellen als Hash-Literal uebergeben -
+    # ohne Klammern wuerde Ruby 3 den nachgestellten Hash als Schluesselwort-
+    # Argumente lesen, seit diese Methode eines hat.
+    def post_json(url, payload, extra_headers = {}, read_timeout: nil)
       uri = URI(url)
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = (uri.scheme == 'https')
       http.open_timeout = 15
-      http.read_timeout = read_timeout
+      http.read_timeout = read_timeout || self.read_timeout
 
       req = Net::HTTP::Post.new(uri)
       req['Content-Type'] = 'application/json'

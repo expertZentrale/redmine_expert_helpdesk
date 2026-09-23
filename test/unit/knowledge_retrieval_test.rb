@@ -28,18 +28,33 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
   end
 
   # Ein Store, der die uebergebenen Treffer zurueckgibt und Aufrufe mitschreibt.
-  def store_stub(hits, configured: true)
+  # asked faengt das angefragte Limit ein - mit Reranker wird vorgeholt.
+  def store_stub(hits, configured: true, asked: [])
     s = Object.new
     s.define_singleton_method(:configured?) { configured }
-    s.define_singleton_method(:search) { |_pid, _vec, _k| hits }
+    s.define_singleton_method(:search) { |_pid, _vec, k| asked << k; hits }
     s
   end
 
-  def client_stub(configured: true, calls: [])
+  # rerank: nil = kein Reranker (Standard, wie bisher). Sonst entweder ein
+  # Lambda ueber die Dokumente oder eine fertige Zeilenliste; :raise laesst ihn
+  # scheitern.
+  def client_stub(configured: true, calls: [], rerank: nil, reranked_docs: [])
     c = Object.new
     c.define_singleton_method(:embed_configured?) { configured }
     c.define_singleton_method(:embed) { |text, **_kw| calls << text; [0.1, 0.2] }
+    c.define_singleton_method(:rerank_configured?) { !rerank.nil? }
+    c.define_singleton_method(:rerank) do |_query, docs, **_kw|
+      reranked_docs.replace(docs)
+      raise RedmineExpertHelpdesk::AiClient::AiError, 'boom' if rerank == :raise
+
+      rerank.respond_to?(:call) ? rerank.call(docs) : rerank
+    end
     c
+  end
+
+  def row(index, score)
+    { :index => index, :score => score }
   end
 
   def hit(issue_id, score, problem = 'P', solution = 'L')
@@ -162,5 +177,150 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
   def test_diagnostics_are_optional
     assert_equal [], Retrieval.search(@issue, settings, client_stub, 'Frage',
                                       :min_score => 0.9, :store => store_stub([hit(2, 0.1)]))
+  end
+
+  # --- Reranking (zweite Stufe) -----------------------------------------
+
+  def rerank_settings(extra = {})
+    settings({ 'kb_rerank_candidates' => '20', 'kb_rerank_min_score' => '0.5' }.merge(extra))
+  end
+
+  def test_without_a_reranker_the_store_is_asked_for_top_k_only
+    asked = []
+    Retrieval.search(@issue, settings, client_stub, 'Frage',
+                     :store => store_stub([hit(2, 0.9)], :asked => asked))
+    assert_equal [3], asked
+  end
+
+  def test_reranker_over_fetches_candidates_from_the_store
+    asked = []
+    Retrieval.search(@issue, rerank_settings, client_stub(:rerank => [row(0, 0.9)]), 'Frage',
+                     :store => store_stub([hit(2, 0.9)], :asked => asked))
+    assert_equal [20], asked
+  end
+
+  def test_candidates_never_fall_below_top_k
+    asked = []
+    Retrieval.search(@issue, rerank_settings('kb_top_k' => '5', 'kb_rerank_candidates' => '2'),
+                     client_stub(:rerank => [row(0, 0.9)]), 'Frage',
+                     :store => store_stub([hit(2, 0.9)], :asked => asked))
+    assert_equal [5], asked
+  end
+
+  def test_reranker_reorders_and_replaces_the_score
+    # Der Vektorstore haelt 3 fuer den besten Treffer, der Reranker 4.
+    store = store_stub([hit(3, 0.9, 'Drucker'), hit(4, 0.6, 'Scanner')])
+    client = client_stub(:rerank => [row(1, 0.95), row(0, 0.55)])
+    hits = Retrieval.search(@issue, rerank_settings, client, 'Frage', :store => store)
+
+    assert_equal [4, 3], hits.map { |h| h[:payload]['issue_id'] }
+    assert_in_delta 0.95, hits.first[:score], 0.0001
+    # Der Kosinus-Wert bleibt zur Diagnose erhalten.
+    assert_in_delta 0.6, hits.first[:vector_score], 0.0001
+  end
+
+  def test_reranked_hits_are_gated_by_the_rerank_threshold_not_the_cosine_one
+    # Kosinus 0.9/0.9 laege ueber kb_min_score; der Reranker verwirft beide.
+    store = store_stub([hit(3, 0.9), hit(4, 0.9)])
+    client = client_stub(:rerank => [row(0, 0.3), row(1, 0.2)])
+    assert_equal [], Retrieval.search(@issue, rerank_settings, client, 'Frage', :store => store)
+  end
+
+  def test_a_low_cosine_hit_can_be_rescued_by_the_reranker
+    # Umgekehrter Fall: unter kb_min_score, aber der Cross-Encoder ist sicher.
+    store = store_stub([hit(3, 0.2)])
+    client = client_stub(:rerank => [row(0, 0.88)])
+    hits = Retrieval.search(@issue, rerank_settings, client, 'Frage', :store => store)
+    assert_equal [3], hits.map { |h| h[:payload]['issue_id'] }
+  end
+
+  def test_result_is_truncated_to_top_k_after_reranking
+    store = store_stub([hit(3, 0.9), hit(4, 0.9), hit(5, 0.9), hit(6, 0.9)])
+    client = client_stub(:rerank => [row(0, 0.9), row(1, 0.8), row(2, 0.7), row(3, 0.6)])
+    hits = Retrieval.search(@issue, rerank_settings('kb_top_k' => '2'), client, 'Frage', :store => store)
+    assert_equal 2, hits.size
+  end
+
+  # Der Reranker ist eine Verbesserung, keine Bedingung.
+  def test_a_failing_reranker_falls_back_to_vector_order_and_the_cosine_gate
+    store = store_stub([hit(3, 0.9), hit(4, 0.6), hit(5, 0.2)])
+    client = client_stub(:rerank => :raise)
+    hits = Retrieval.search(@issue, rerank_settings, client, 'Frage', :store => store)
+
+    # 0.2 faellt an kb_min_score (0.5) - nicht an kb_rerank_min_score.
+    assert_equal [3, 4], hits.map { |h| h[:payload]['issue_id'] }
+    assert_in_delta 0.9, hits.first[:score], 0.0001
+    assert_nil hits.first[:vector_score]
+  end
+
+  def test_an_empty_rerank_response_falls_back_to_vector_order
+    store = store_stub([hit(3, 0.9)])
+    hits = Retrieval.search(@issue, rerank_settings, client_stub(:rerank => []), 'Frage', :store => store)
+    assert_equal [3], hits.map { |h| h[:payload]['issue_id'] }
+  end
+
+  # Ohne den Default waere der Schwellwert 0.0 und liesse jeden Treffer durch.
+  def test_missing_rerank_min_score_setting_falls_back_to_the_default
+    store = store_stub([hit(3, 0.9)])
+    s = settings('kb_rerank_candidates' => '20') # kb_rerank_min_score absichtlich nicht gesetzt
+    assert_equal [], Retrieval.search(@issue, s, client_stub(:rerank => [row(0, 0.1)]), 'Frage',
+                                      :store => store)
+    hits = Retrieval.search(@issue, s, client_stub(:rerank => [row(0, 0.3)]), 'Frage',
+                            :store => store)
+    assert_equal [3], hits.map { |h| h[:payload]['issue_id'] }
+  end
+
+  def test_caller_min_score_overrides_the_rerank_threshold_too
+    store = store_stub([hit(3, 0.9)])
+    client = client_stub(:rerank => [row(0, 0.6)])
+    assert_equal [], Retrieval.search(@issue, rerank_settings, client, 'Frage',
+                                      :store => store, :min_score => 0.8)
+    hits = Retrieval.search(@issue, rerank_settings, client, 'Frage',
+                            :store => store, :min_score => 0.55)
+    assert_equal [3], hits.map { |h| h[:payload]['issue_id'] }
+  end
+
+  # Wir zahlen nicht dafuer, ein Dokument zu bewerten, das ohnehin faellt.
+  def test_the_self_hit_is_dropped_before_the_reranker_sees_it
+    docs = []
+    store = store_stub([hit(@issue.id, 0.9, 'Eigenes'), hit(4, 0.8, 'Fremdes')])
+    client = client_stub(:rerank => [row(0, 0.9)], :reranked_docs => docs)
+    Retrieval.search(@issue, rerank_settings, client, 'Frage', :store => store)
+    assert_equal ['Fremdes'], docs
+  end
+
+  def test_only_the_problem_text_is_reranked
+    docs = []
+    store = store_stub([hit(4, 0.8, 'Das Problem', 'Die Loesung')])
+    client = client_stub(:rerank => [row(0, 0.9)], :reranked_docs => docs)
+    Retrieval.search(@issue, rerank_settings, client, 'Frage', :store => store)
+    assert_equal ['Das Problem'], docs
+  end
+
+  def test_min_results_still_applies_after_reranking
+    store = store_stub([hit(3, 0.9), hit(4, 0.9)])
+    client = client_stub(:rerank => [row(0, 0.9), row(1, 0.3)])
+    # Nur ein Treffer ueberlebt den Rerank-Schwellwert, verlangt sind zwei.
+    assert_equal [], Retrieval.search(@issue, rerank_settings('kb_min_results' => '2'),
+                                      client, 'Frage', :store => store)
+  end
+
+  def test_diagnostics_report_the_rerank_stage
+    store = store_stub([hit(3, 0.7)])
+    client = client_stub(:rerank => [row(0, 0.35)])
+    diag = {}
+    assert_equal [], Retrieval.search(@issue, rerank_settings, client, 'Frage',
+                                      :store => store, :diagnostics => diag)
+    assert_equal true, diag[:reranked]
+    assert_in_delta 0.35, diag[:best_score], 0.0001
+    assert_in_delta 0.5, diag[:threshold], 0.0001
+    assert_in_delta 0.7, diag[:best_vector_score], 0.0001
+  end
+
+  def test_diagnostics_say_when_reranking_did_not_happen
+    diag = {}
+    Retrieval.search(@issue, settings, client_stub, 'Frage',
+                     :store => store_stub([hit(3, 0.9)]), :diagnostics => diag)
+    assert_equal false, diag[:reranked]
   end
 end

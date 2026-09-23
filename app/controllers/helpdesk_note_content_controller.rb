@@ -134,7 +134,10 @@ class HelpdeskNoteContentController < ApplicationController
     true
   end
 
-  # Whole-operation budget: embedding, then the vector store, then the model.
+  # Whole-operation budget: embedding, the vector store, the reranker, then the
+  # model. The rerank term is counted even when reranking is off, like the other
+  # two are counted regardless of backend: this bounds a lock, and a lock that
+  # expires mid-draft costs more than a few seconds of slack on a ~48 s ceiling.
   def draft_lock_seconds
     settings = Setting.plugin_redmine_expert_helpdesk
     chat     = settings['ai_answer_timeout'].to_i
@@ -142,6 +145,7 @@ class HelpdeskNoteContentController < ApplicationController
     chat.clamp(5, 45) +
       RedmineExpertHelpdesk::AnswerDrafter::EMBED_TIMEOUT +
       RedmineExpertHelpdesk::AnswerDrafter::STORE_READ_TIMEOUT +
+      RedmineExpertHelpdesk::AnswerDrafter::RERANK_TIMEOUT +
       DRAFT_LOCK_MARGIN
   end
 

@@ -14,6 +14,7 @@ class ParameterFilteringTest < ActiveSupport::TestCase
       'ai_api_key'        => 'sk-secret-chat',
       'kb_embed_api_key'  => 'sk-secret-embed',
       'kb_qdrant_api_key' => 'qdrant-secret',
+      'kb_rerank_api_key' => 'sk-secret-rerank',
       'fetch_api_key'     => 'fetch-secret',
       'sla_api_key'       => 'sla-secret',
       'phishtank_app_key' => 'phish-secret'

@@ -262,4 +262,22 @@ class AnswerDrafterTest < ActiveSupport::TestCase
 
     assert_equal [note.id], HelpdeskAiDraftedJournal.where(:journal_id => note.id).pluck(:journal_id)
   end
+
+  # Der Entwurf laeuft synchron in einem Web-Request: die Netzwerk-Budgets
+  # muessen enger sein als die der Hintergrund-Jobs. Gesetzt werden sie ueber
+  # eine Kopie des Einstellungs-Hashes, damit keine andere Aufrufstelle
+  # betroffen ist.
+  def test_embed_client_tightens_the_network_budgets
+    c = drafter('ai_answer_timeout' => '20').send(:embed_client)
+    assert_equal Drafter::EMBED_TIMEOUT, c.read_timeout
+    assert_equal Drafter::RERANK_TIMEOUT, c.rerank_timeout
+  end
+
+  # Ein sehr knappes Gesamtbudget darf von den Teilschritten nicht ueberboten
+  # werden.
+  def test_embed_client_never_exceeds_the_overall_budget
+    c = drafter('ai_answer_timeout' => '5').send(:embed_client)
+    assert_equal 5, c.read_timeout
+    assert_equal 5, c.rerank_timeout
+  end
 end

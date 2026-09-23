@@ -1227,6 +1227,42 @@ adds a **proposed solution** to the summary and/or a sidebar panel. Disabled by 
 - **Embeddings**: provider (OpenAI or a self-hosted OpenAI-compatible endpoint — Anthropic has
   no embeddings API), model, endpoint, key (blank reuses the summary key for the same provider).
 - Extraction prompt and retrieval params (Top-K, min. score, min. results).
+- **Reranker** (`kb_rerank_*`, off by default) — see below.
+
+**Reranking (second stage).** Vector search alone is a bi-encoder: it ranks on whole-text
+proximity, so a ticket that merely shares vocabulary with the query can outrank the one
+describing the same fault. Switching on `kb_rerank_enabled` adds a **cross-encoder** stage that
+scores query/document *pairs* and is markedly more precise. The store is asked for
+`kb_rerank_candidates` (default 20) instead of Top-K, the reranker re-scores that shortlist, and
+the best Top-K above `kb_rerank_min_score` are kept. Endpoint and key default to the embeddings
+ones — with most providers the embedding and reranker models sit on the same base URL (e.g.
+`bge-m3` and `bge-reranker-v2-m3`), so the toggle is usually the only thing to set. Only the
+*problem* text is re-scored, the same text that was embedded.
+
+**Score scale.** Cross-encoder output is a *logit*, not a similarity, and not every runtime
+squashes it. The plugin normalises with a sigmoid whenever a response carries values outside
+`0..1`, so `kb_rerank_min_score` is always a `0..1` bar (the transform is monotonic, so the
+ranking never changes). Measured against `bge-reranker-v2-m3` on a private provider, the
+normalised scale is sharply separated:
+
+| query/document pair | raw logit | normalised |
+| --- | ---: | ---: |
+| identical text | +5.97 | 0.997 |
+| paraphrase of the same fault | +5.31 | 0.995 |
+| same fault, different wording | −0.81 | 0.309 |
+| same topic, different problem | −4.57 | 0.010 |
+| unrelated | −10.99 | 0.000017 |
+
+Hence the default `kb_rerank_min_score` of **0.2**: it keeps genuine partial matches and drops
+everything merely topical by two orders of magnitude. Your corpus will differ — tune it.
+
+> **Thresholds are not interchangeable.** Cosine similarity and cross-encoder relevance are
+> different scales. While reranking is on, `kb_rerank_min_score` replaces `kb_min_score` as the
+> gate, and `ai_answer_min_score` (the stricter, customer-facing bar of the answer drafter) is
+> applied to the rerank score instead of the similarity. Expect to retune both after switching
+> it on. If the reranker fails or times out, retrieval silently falls back to the similarity
+> ranking **and** the similarity thresholds — a dead reranker costs ordering, never the search.
+> Rerank calls are logged as `kb_rerank` in the AI statistics.
 
 **Per-project configuration** (project *Settings → expert Helpdesk*, shown when the KB is enabled):
 - **Contribute** (`kb_ingest_mode`): off / **auto** (ingest on close if a solution was found) /

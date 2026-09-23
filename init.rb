@@ -175,6 +175,16 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'kb_top_k'           => '3',
              'kb_min_score'       => '0.5',
              'kb_min_results'     => '1',
+             # Zweite Stufe: Cross-Encoder ueber die Vorauswahl des Vektorstores.
+             # Endpunkt und Key leer = wie kb_embed_* (bge-m3 und der Reranker
+             # liegen beim selben Anbieter auf derselben Basis-URL).
+             'kb_rerank_enabled'    => '0',
+             'kb_rerank_model'      => RedmineExpertHelpdesk::AiClient::DEFAULT_RERANK_MODEL,
+             'kb_rerank_endpoint'   => '',
+             'kb_rerank_api_key'    => '',
+             'kb_rerank_candidates' => '20',
+             'kb_rerank_min_score'  => '0.2',
+             'kb_rerank_timeout'    => '10',
              # Severity of the "mail sent" log line (failures are always errors).
              'mail_log_level'     => RedmineExpertHelpdesk::MailLogger::DEFAULT_LEVEL
            }
