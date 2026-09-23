@@ -17,6 +17,61 @@ class ReplyImagesTest < ActiveSupport::TestCase
     @issue.attachments.reload
   end
 
+  # Outlook names every embedded image "image.png", so a quote of such a mail holds
+  # several src attributes sharing that name but pointing at different files by id.
+  # Matching on the name alone let the first candidate claim all of them and the
+  # customer received one picture as many times as the mail had images.
+  def test_duplicate_names_are_resolved_per_attachment_for_cid
+    second = Attachment.create!(
+      :container => @issue,
+      :file => mock_file(:filename => 'image001.png', :content_type => 'image/png'),
+      :author => User.find(1)
+    )
+    @issue.attachments.reload
+    html = %(<img src="/attachments/download/#{@png.id}/image001.png">) +
+           %(<img src="/attachments/download/#{second.id}/image001.png">)
+
+    cid_map, processed = RedmineExpertHelpdesk::ReplyImages.to_cid(
+      html, RedmineExpertHelpdesk::ReplyImages.candidates(@issue, [])
+    )
+
+    assert_equal 2, cid_map.size, 'both attachments must be sent as parts'
+    cids = processed.scan(/src="cid:([^"]+)"/).flatten
+    assert_equal 2, cids.size
+    assert_equal 2, cids.uniq.size, 'each image must keep its own cid'
+    assert_equal cid_map[@png], cids[0]
+    assert_equal cid_map[second], cids[1]
+  end
+
+  def test_duplicate_names_are_resolved_per_attachment_for_data_uri
+    second = Attachment.create!(
+      :container => @issue,
+      :file => mock_file(:filename => 'image001.png', :content_type => 'image/png'),
+      :author => User.find(1)
+    )
+    @issue.attachments.reload
+    html = %(<img src="/attachments/download/#{@png.id}/image001.png">) +
+           %(<img src="/attachments/download/#{second.id}/image001.png">)
+
+    processed, embedded = RedmineExpertHelpdesk::ReplyImages.to_data_uri(
+      html, RedmineExpertHelpdesk::ReplyImages.candidates(@issue, [])
+    )
+
+    assert_equal 2, embedded.size
+    assert_equal 2, processed.scan(/src="data:/).size
+    assert_not_includes processed, '/attachments/download/'
+  end
+
+  # A pasted upload has no id yet and is still matched by its file name.
+  def test_a_bare_file_name_is_still_resolved
+    html = %(<img src="image001.png">)
+
+    _cid_map, processed = RedmineExpertHelpdesk::ReplyImages.to_cid(
+      html, RedmineExpertHelpdesk::ReplyImages.candidates(@issue, [])
+    )
+    assert_match(/src="cid:/, processed)
+  end
+
   def mock_file(options)
     Redmine::MimeType # autoload guard
     file = Tempfile.new(['hd', File.extname(options[:filename])])

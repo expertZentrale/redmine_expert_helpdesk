@@ -31,6 +31,11 @@
   vorher geschriebener Text behält, worauf er aufgelöst wurde.
   Auch Sub-URI-Installationen sind berücksichtigt: Der Pfad enthält jetzt `relative_url_root`, das
   der bisherige Download-Pfad-Fallback wegließ.
+  **Die ausgehende Antwort hatte denselben Fehler.** `ReplyImages` traf ein `src` über den
+  Dateinamen; in einem Zitat solcher Mails beanspruchte die erste `image.png` damit alle, und der
+  Kunde bekam ein Bild so oft, wie die Mail Bilder hatte. Ein `src` mit Download-Pfad wird jetzt
+  über die Anhang-ID aufgelöst; der Dateiname trifft weiterhin frisch eingefügte Uploads, die noch
+  keine ID haben.
 
 ### Hinzugefügt
 

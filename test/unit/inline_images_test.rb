@@ -338,7 +338,74 @@ class InlineImagesTest < ActiveSupport::TestCase
     assert index.empty?, 'nothing in this mail has a stored file, so nothing resolves'
   end
 
+  # Two images of the *same* byte count: the size can only narrow the field here, so
+  # this is the case where the digest has to decide. Without it a size-only
+  # implementation would pass every other test in this file while picking the wrong
+  # picture.
+  def test_equal_sized_images_are_told_apart_by_their_digest
+    issue = issue_with_description('Ticket')
+    first  = attach_filled(issue, 'image.png', 2048, 'a')
+    second = attach_filled(issue, 'image.png', 2048, 'b')
+    assert_equal first.filesize, second.filesize, 'the fixtures must tie on size'
+
+    mime = equal_size_mime
+    index = II.cid_index(Mail.read_from_string(mime), II.attachment_scope(issue))
+
+    # attachment_scope is newest first, so an implementation that fell back to
+    # order would give equal-a the *second* attachment. The digest says otherwise.
+    assert_equal first.id, index['equal-a'].id, 'cid equal-a carries the "a" bytes'
+    assert_equal second.id, index['equal-b'].id, 'cid equal-b carries the "b" bytes'
+  end
+
   private
+
+  # Two parts of identical size, different content.
+  def equal_size_mime
+    <<~MIME
+      From: michael@example.de
+      To: helpdesk@example.com
+      Subject: Gleich gross
+      MIME-Version: 1.0
+      Content-Type: multipart/related; boundary="REL"
+
+      --REL
+      Content-Type: text/plain; charset=UTF-8
+
+      [cid:equal-a]
+      [cid:equal-b]
+
+      --REL
+      Content-Type: image/png; name="image.png"
+      Content-Transfer-Encoding: base64
+      Content-ID: <equal-a>
+      Content-Disposition: inline; filename="image.png"
+
+      #{Base64.strict_encode64(filled_png(2048, 'a'))}
+      --REL
+      Content-Type: image/png; name="image.png"
+      Content-Transfer-Encoding: base64
+      Content-ID: <equal-b>
+      Content-Disposition: inline; filename="image.png"
+
+      #{Base64.strict_encode64(filled_png(2048, 'b'))}
+      --REL--
+    MIME
+  end
+
+  def filled_png(bytes, fill)
+    head = Base64.decode64(PNG_BASE64)
+    head + (fill * [bytes - head.bytesize, 0].max)
+  end
+
+  def attach_filled(container, filename, bytes, fill)
+    io = StringIO.new(filled_png(bytes, fill))
+    io.define_singleton_method(:original_filename) { filename }
+    io.define_singleton_method(:content_type)      { 'image/png' }
+
+    attachment = Attachment.create!(:container => container, :file => io, :author => User.find(2))
+    container.reload
+    attachment
+  end
 
   # Distinct byte counts, as in the reported mail (logo, icons, screenshot).
   SAME_NAME_SIZES = [8301, 831, 844, 767, 1297, 77237].freeze

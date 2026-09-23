@@ -31,6 +31,10 @@
   written from now on is immune; text written before this release keeps whatever it resolved to.
   Sub-URI installs are handled too: the path now includes `relative_url_root`, which the previous
   download-path fallback omitted.
+  **The outgoing reply had the same fault.** `ReplyImages` matched a `src` by file name, so a quote
+  of such a mail let the first `image.png` claim every one of them and the customer received one
+  picture as many times as the mail had images. A `src` carrying a download path is now resolved by
+  the attachment id; the file name still matches a freshly pasted upload, which has no id yet.
 
 ### Added
 

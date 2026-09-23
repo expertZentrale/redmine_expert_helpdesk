@@ -65,21 +65,55 @@ module RedmineExpertHelpdesk
 
       private
 
-      # Only touch src attributes containing the filename, and never rewrite an
-      # already resolved reference (cid:, data:, http:) a second time.
-      def replace_src(html, att)
+      # A src that carries a download path names its attachment by id.
+      DOWNLOAD_PATH = %r{/attachments/download/\d+/}i
+
+      # Two passes, precise one first.
+      #
+      # The file name is not an identity: Outlook calls every embedded image
+      # "image.png", so a quote of such a mail holds several src attributes that
+      # all contain that name but point at different files by id. Matching on the
+      # name alone let the first candidate claim all of them - the customer then
+      # received one picture as many times as the mail had images, which is the
+      # incoming bug over again in the outgoing direction.
+      def replace_src(html, att, &block)
+        by_path = replace_by_path(html, att, &block)
+        replace_by_name(by_path, att, &block)
+      end
+
+      # src="/attachments/download/<id>/whatever.png" - only this attachment's id.
+      # The trailing slash keeps id 65 out of 653895.
+      def replace_by_path(html, att)
+        return html if att.id.blank?
+
+        html.gsub(%r{(src=)(["'])([^"']*/attachments/download/#{att.id}/[^"']*)\2}i) do
+          rewrite_match(Regexp.last_match) { yield }
+        end
+      end
+
+      # Anything else naming the file - a freshly pasted upload the agent inserted
+      # as "![](image.png)", which has no id yet. A src that does carry a download
+      # path is deliberately skipped here: it belongs to whichever attachment the
+      # id names, not to the first candidate that shares the file name.
+      def replace_by_name(html, att)
         safe_fn = Regexp.escape(att.filename.to_s)
         return html if safe_fn.empty?
 
         html.gsub(/(src=)(["'])([^"']*#{safe_fn}[^"']*)\2/i) do
-          quote = Regexp.last_match(2)
-          value = Regexp.last_match(3)
-          if value.match?(%r{\A(cid:|data:|https?:)}i)
-            Regexp.last_match(0)
-          else
-            "#{Regexp.last_match(1)}#{quote}#{yield}#{quote}"
-          end
+          match = Regexp.last_match
+          next match[0] if match[3].match?(DOWNLOAD_PATH)
+
+          rewrite_match(match) { yield }
         end
+      end
+
+      # Never rewrite an already resolved reference (cid:, data:, http:) a second
+      # time. The match is passed in rather than read from Regexp.last_match here:
+      # $~ is frame-local, so a method called from the gsub block sees nothing.
+      def rewrite_match(match)
+        return match[0] if match[3].match?(%r{\A(cid:|data:|https?:)}i)
+
+        "#{match[1]}#{match[2]}#{yield}#{match[2]}"
       end
 
       def mime_type(att)
