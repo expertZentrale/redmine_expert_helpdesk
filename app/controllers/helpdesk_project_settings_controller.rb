@@ -17,6 +17,8 @@ class HelpdeskProjectSettingsController < ApplicationController
       update_kb_settings(setting)
     elsif params[:info_request_form].present?
       update_info_request_settings(setting)
+    elsif params[:blacklist_form].present?
+      update_blacklist_settings(setting)
     else
       update_reply_settings(setting)
     end
@@ -160,6 +162,26 @@ class HelpdeskProjectSettingsController < ApplicationController
   end
 
   # Prioritaets-Overrides: leere Zeilen loeschen, gefuellte anlegen/aktualisieren
+  # Guards on the attachment "block" button. Both are stored blank/NULL when the
+  # field is emptied, which is what makes the project fall back to the central
+  # setting again - "" and 0 are meaningful values here, so they must not be it.
+  def update_blacklist_settings(setting)
+    types = params.dig(:helpdesk_project_setting, :blacklist_types).to_s.strip
+    setting.blacklist_types = types.presence
+
+    # Parsed strictly rather than with to_i: "abc" and "1.5" would become 0 and 1,
+    # and 0 is the value that switches the size guard off entirely — a typo would
+    # silently offer the block button on every file in the project.
+    max_kb = params.dig(:helpdesk_project_setting, :blacklist_max_kb).to_s.strip
+    if max_kb.blank?
+      setting.blacklist_max_kb = nil
+    elsif max_kb.match?(/\A\d+\z/)
+      setting.blacklist_max_kb = max_kb.to_i
+    else
+      raise ArgumentError, l(:error_helpdesk_blacklist_max_kb_invalid)
+    end
+  end
+
   def update_sla_priorities
     (params[:sla_priorities] || {}).each do |priority_id, values|
       reaction = values[:reaction_minutes].presence

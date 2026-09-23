@@ -705,6 +705,26 @@ en:
   label_helpdesk_ticket_stats_no_contact: 'Without contact'
   text_helpdesk_ticket_stats_top_customers: 'The %{n} customers with the most tickets in the period.'
 
+  # --- Attachment blacklist (signature logos, icons, tracking pixels) ---
+  label_helpdesk_attachment_blacklist: 'Blocked attachments'
+  text_helpdesk_attachment_blacklist_info: 'Files blocked here are removed from incoming mails of this project. Entries are created with the "Block" button next to an attachment on a ticket. Matching is by file content (SHA-256), not by file name.'
+  label_helpdesk_blacklist_hits: 'Hits'
+  button_helpdesk_blacklist_attachment: 'Block'
+  label_helpdesk_blacklist_attachment_title: 'Block this file in this project (signature logo, icon, tracking pixel) and delete every copy already attached to a ticket.'
+  text_helpdesk_blacklist_confirm_one: "Block \u201c%{file}\u201d in this project?\n\n1 attachment is deleted, and later mails carrying the same file will no longer attach it."
+  text_helpdesk_blacklist_confirm_many: "Block \u201c%{file}\u201d in this project?\n\n%{count} attachments are deleted, and later mails carrying the same file will no longer attach it."
+  notice_helpdesk_attachment_blacklisted: '"%{file}" is blocked in this project, %{count} attachment(s) removed.'
+  field_helpdesk_blacklist_types: 'Blockable file types'
+  text_helpdesk_blacklist_types_info: 'Extensions (gif, png) or MIME types (image/gif, image/*), comma-separated. Only these get the "Block" button on a ticket, so an .eml, a .msg or a PDF cannot be blocked by accident. "*" allows every type.'
+  text_helpdesk_blacklist_types_project_info: 'Leave empty to use the central setting (%{value}).'
+  field_helpdesk_blacklist_max_kb: 'Largest blockable file (KB)'
+  text_helpdesk_blacklist_max_kb_info: 'The button is hidden above this size. Signature logos are the largest thing worth blocking; screenshots start above it. 0 turns the limit off.'
+  text_helpdesk_blacklist_max_kb_project_info: 'Leave empty to use the central setting (%{value} KB).'
+  text_helpdesk_blacklist_guard_info: 'These two limits decide which attachments an agent is offered the "Block" button for. They are a guard on the button, not a filter on incoming mail. Each project can override them.'
+  error_helpdesk_blacklist_max_kb_invalid: 'Largest blockable file must be a whole number of KB (0 disables the limit).'
+  error_helpdesk_attachment_not_blacklistable: '"%{file}" is not one of the blockable file types, or exceeds the size limit.'
+  error_helpdesk_attachment_unreadable: 'The file could not be read and can therefore not be blocked.'
+
   # Nested key, not the flat label_* convention: Redmine's My Page block selector
   # looks the block label up as my.blocks.<partial name>.
   my:

@@ -86,6 +86,38 @@
   <% end %>
 </fieldset>
 
+<%# --- Blacklisted attachment contents of this project --- %>
+<fieldset class="tabular" style="margin-bottom: 14px;">
+  <legend><%= l(:label_helpdesk_attachment_blacklist) %></legend>
+  <p><em class="info"><%= l(:text_helpdesk_attachment_blacklist_info) %></em></p>
+
+  <%= form_tag helpdesk_project_setting_path(:project_id => @project), :method => :put do %>
+    <p>
+      <label for="hd_blacklist_types"><%= l(:field_helpdesk_blacklist_types) %></label>
+      <%= text_field_tag 'helpdesk_project_setting[blacklist_types]',
+                         hd_setting.blacklist_types,
+                         :id => 'hd_blacklist_types', :size => 50 %>
+      <em class="info"><%= l(:text_helpdesk_blacklist_types_project_info,
+                             :value => RedmineExpertHelpdesk::AttachmentBlacklist
+                                           .parse_types(hd_setting.effective_blacklist_types).join(', ')) %></em>
+    </p>
+    <p>
+      <label for="hd_blacklist_max_kb"><%= l(:field_helpdesk_blacklist_max_kb) %></label>
+      <%= text_field_tag 'helpdesk_project_setting[blacklist_max_kb]',
+                         hd_setting.blacklist_max_kb,
+                         :id => 'hd_blacklist_max_kb', :size => 6 %>
+      <em class="info"><%= l(:text_helpdesk_blacklist_max_kb_project_info,
+                             :value => hd_setting.effective_blacklist_max_kb) %></em>
+    </p>
+    <%= hidden_field_tag 'blacklist_form', '1' %>
+    <p><%= submit_tag l(:button_save) %></p>
+  <% end %>
+
+  <%= render :partial => 'helpdesk_attachment_blacklists/list',
+             :locals  => { :entries => HelpdeskAttachmentBlacklist.where(:project_id => @project.id).sorted,
+                           :project => @project } %>
+</fieldset>
+
 <%# --- SLA-Einstellungen --- %>
 <fieldset class="tabular" style="margin-bottom: 14px;">
   <legend><%= l(:label_helpdesk_sla) %></legend>

@@ -164,6 +164,10 @@ module RedmineExpertHelpdesk
         # the ticket shows the pictures instead of the markers.
         InlineImages.rewrite!(object, mime)
 
+        # Signature logos and tracking pixels an agent has blacklisted. After the
+        # rewrite, because the markup this removes is the one the rewrite wrote.
+        AttachmentBlacklist.filter!(object, issue)
+
         apply_new_issue_defaults(issue, subject, sender) if new_issue
         reopened = new_issue ? false : apply_reply_status(issue, (object.is_a?(Journal) ? object : nil))
         contact = HelpdeskContact.find_or_create_for(sender, sender_name, @mailbox.project)

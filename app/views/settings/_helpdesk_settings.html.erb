@@ -144,6 +144,27 @@
 </fieldset>
 
 <fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_attachment_blacklist) %></legend>
+  <p><em class="info"><%= l(:text_helpdesk_blacklist_guard_info) %></em></p>
+  <p>
+    <label for="settings_blacklist_types"><%= l(:field_helpdesk_blacklist_types) %></label>
+    <%= text_field_tag 'settings[blacklist_types]',
+                       @settings['blacklist_types'].presence ||
+                         RedmineExpertHelpdesk::AttachmentBlacklist::DEFAULT_TYPES,
+                       :id => 'settings_blacklist_types', :size => 60 %>
+    <em class="info"><%= l(:text_helpdesk_blacklist_types_info) %></em>
+  </p>
+  <p>
+    <label for="settings_blacklist_max_kb"><%= l(:field_helpdesk_blacklist_max_kb) %></label>
+    <%= text_field_tag 'settings[blacklist_max_kb]',
+                       @settings['blacklist_max_kb'].presence ||
+                         RedmineExpertHelpdesk::AttachmentBlacklist::DEFAULT_MAX_KB,
+                       :id => 'settings_blacklist_max_kb', :size => 6 %>
+    <em class="info"><%= l(:text_helpdesk_blacklist_max_kb_info) %></em>
+  </p>
+</fieldset>
+
+<fieldset class="box tabular">
   <legend><%= l(:label_helpdesk_logging) %></legend>
   <p>
     <label><%= l(:label_helpdesk_mail_log_level) %></label>

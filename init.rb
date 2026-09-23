@@ -55,6 +55,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/knowledge_retrieval', _
 require File.expand_path('../lib/redmine_expert_helpdesk/answer_drafter', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/template_renderer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/inline_images', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/attachment_blacklist', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/reply_images', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/note_quoter', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mail_processor', __FILE__)
@@ -113,6 +114,11 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'default_smtp_security' => 'starttls',
              'awaiting_agent_enabled'   => '1',
              'inline_images_enabled'    => '1',
+             # Guards on the attachment "block" button, overridable per project.
+             # The constants behind them are the real fallback — see
+             # AttachmentBlacklist::DEFAULT_TYPES.
+             'blacklist_types'          => RedmineExpertHelpdesk::AttachmentBlacklist::DEFAULT_TYPES,
+             'blacklist_max_kb'         => RedmineExpertHelpdesk::AttachmentBlacklist::DEFAULT_MAX_KB.to_s,
              'contacts_per_page'        => '25',
              'contact_ticket_limit'     => '10',
              'phishtank_enabled'        => '0',
@@ -174,6 +180,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
                               :folders, :create_folder, :test_connection, :oauth_authorize],
       :helpdesk_oauth => [:authorize, :callback],
       :helpdesk_rules     => [:create, :destroy],
+      :helpdesk_attachment_blacklists => [:preview, :create, :destroy],
       :helpdesk_reply_templates => [:index, :new, :create, :edit, :update, :destroy]
     }, :require => :member
     permission :fetch_helpdesk_mail, {
