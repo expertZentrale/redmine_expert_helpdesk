@@ -175,9 +175,9 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'kb_top_k'           => '3',
              'kb_min_score'       => '0.5',
              'kb_min_results'     => '1',
-             # Zweite Stufe: Cross-Encoder ueber die Vorauswahl des Vektorstores.
-             # Endpunkt und Key leer = wie kb_embed_* (bge-m3 und der Reranker
-             # liegen beim selben Anbieter auf derselben Basis-URL).
+             # Second stage: a cross-encoder over the vector store's shortlist.
+             # Blank endpoint and key = same as kb_embed_* (bge-m3 and the
+             # reranker sit on one base URL at the same provider).
              'kb_rerank_enabled'    => '0',
              'kb_rerank_model'      => RedmineExpertHelpdesk::AiClient::DEFAULT_RERANK_MODEL,
              'kb_rerank_endpoint'   => '',

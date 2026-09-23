@@ -16,11 +16,10 @@ module RedmineExpertHelpdesk
     DEFAULT_MIN_RESULTS = 1
     QUERY_MAX_CHARS     = 8_000
 
-    # Zweite Stufe (Cross-Encoder). Die Defaults stehen hier und nicht nur im
-    # :default-Hash von init.rb: ein dort neu ergaenzter Schluessel liefert auf
-    # einer bestehenden Installation nil, bis das Einstellungsformular einmal
-    # neu gespeichert wurde - kb_rerank_min_score waere dann 0.0 und liesse
-    # jeden Treffer durch.
+    # Second stage (cross-encoder). The defaults live here and not only in
+    # init.rb's :default hash: a key added there reads nil on an existing
+    # installation until the settings form has been saved once more -
+    # kb_rerank_min_score would then be 0.0 and let every hit through.
     DEFAULT_RERANK_CANDIDATES = 20
     DEFAULT_RERANK_MIN_SCORE  = 0.2
     RERANK_DOC_MAX_CHARS      = 2_000
@@ -124,17 +123,17 @@ module RedmineExpertHelpdesk
       end.join("\n")
     end
 
-    # Bewertet die Vorauswahl mit dem Cross-Encoder neu und liefert
-    # [hits, reranked?]. Der Reranker ist eine Verbesserung, keine Bedingung:
-    # faellt er aus, bleiben die Vektortreffer brauchbar, und der Aufrufer
-    # bekommt sie in Vektor-Reihenfolge samt Kosinus-Score zurueck. Deshalb
-    # faengt diese Methode ihre Fehler selbst, statt sie in den Sammel-rescue
-    # von search laufen zu lassen, der die Suche als Ganzes aufgibt.
+    # Re-scores the shortlist with the cross-encoder and returns
+    # [hits, reranked?]. The reranker is an improvement, not a precondition: if
+    # it fails the vector hits are still usable, and the caller gets them in
+    # vector order with their cosine score. That is why this method catches its
+    # own errors instead of letting them reach search's blanket rescue, which
+    # gives up on the search as a whole.
     #
-    # Bewertet wird nur 'problem' - das ist der Text, der auch eingebettet
-    # wurde. Die Loesung mitzugeben brachte Treffer nach vorn, deren *Fix*
-    # zufaellig die Worte der Anfrage teilt, waehrend der Fehler ein anderer
-    # ist; genau den Fehlgriff soll die Stufe verhindern.
+    # Only 'problem' is scored - the text that was embedded. Feeding the
+    # solution in as well pulled up hits whose *fix* happens to share the
+    # query's words while the fault is a different one; that is precisely the
+    # mistake this stage exists to prevent.
     def apply_rerank(hits, client, query_text, issue, user_id)
       docs = hits.map { |h| (h[:payload] || {})['problem'].to_s[0, RERANK_DOC_MAX_CHARS] }
       rows = client.rerank(query_text.to_s[0, QUERY_MAX_CHARS], docs,
@@ -161,9 +160,9 @@ module RedmineExpertHelpdesk
       value.positive? ? value : fallback
     end
 
-    # Wie positive_or, aber fuer Schwellwerte: hier ist 0.0 ein gueltiger Wert,
-    # ein fehlender Schluessel aber nicht. Unterschieden wird daher am leeren
-    # String / nil, nicht am Zahlenwert.
+    # Like positive_or, but for thresholds: here 0.0 is a valid value while a
+    # missing key is not. The two are told apart by the blank string / nil,
+    # not by the number.
     def float_or(value, fallback)
       value.to_s.strip.present? ? value.to_f : fallback
     end

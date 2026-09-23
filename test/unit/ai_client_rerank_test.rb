@@ -1,8 +1,8 @@
 require File.expand_path('../../test_helper', __FILE__)
 
-# Tests fuer die Rerank-Erweiterung des AiClient (Wissensbasis/RAG):
-# Konfigurations-/Fallback-Aufloesung, Request-Form, und das Lesen beider
-# verbreiteten Antwortformen (HTTP gestubbt).
+# Tests for the AiClient rerank extension (knowledge base / RAG): config and
+# fallback resolution, request shape, and reading both common response shapes
+# (HTTP stubbed).
 class AiClientRerankTest < ActiveSupport::TestCase
   def client(overrides = {})
     settings = {
@@ -14,7 +14,7 @@ class AiClientRerankTest < ActiveSupport::TestCase
     RedmineExpertHelpdesk::AiClient.new(settings)
   end
 
-  # Antwort stubben und den abgesetzten Request einsammeln.
+  # Stub the response and capture the request that went out.
   def stub_post(c, response)
     captured = {}
     c.define_singleton_method(:post_json) do |url, payload, headers = {}, read_timeout: nil|
@@ -32,8 +32,8 @@ class AiClientRerankTest < ActiveSupport::TestCase
     assert_equal 'bge-reranker-v2-m3', client('kb_rerank_model' => '').rerank_model
   end
 
-  # Wichtig fuer bestehende Installationen: der Schluessel fehlt im
-  # Einstellungs-Hash komplett, bis das Formular neu gespeichert wurde.
+  # Matters for existing installations: the key is missing from the settings
+  # hash entirely until the form has been saved again.
   def test_defaults_apply_when_the_setting_key_is_absent
     c = client
     assert_equal 'bge-reranker-v2-m3', c.rerank_model
@@ -67,7 +67,7 @@ class AiClientRerankTest < ActiveSupport::TestCase
     assert_equal [{ :index => 1, :score => 0.9 }, { :index => 0, :score => 0.2 }], rows
   end
 
-  # TEI liefert ein nacktes Array statt eines results-Wrappers.
+  # TEI returns a bare array instead of a results wrapper.
   def test_bare_array_response_is_read
     c = client
     stub_post(c, [{ 'index' => 0, 'score' => 0.4 }, { 'index' => 1, 'score' => 0.8 }])
@@ -82,8 +82,8 @@ class AiClientRerankTest < ActiveSupport::TestCase
     assert_equal [2, 1, 0], c.rerank('q', %w[a b c]).map { |r| r[:index] }
   end
 
-  # Eine Roh-Logit-Installation wuerde den auf 0..1 geeichten Schwellwert
-  # sonst still aushebeln.
+  # A raw-logit deployment would otherwise silently defeat the threshold,
+  # which is calibrated on 0..1.
   def test_raw_logits_are_squashed_into_zero_to_one
     c = client
     stub_post(c, 'results' => [{ 'index' => 0, 'relevance_score' => 6.0 },
@@ -100,8 +100,8 @@ class AiClientRerankTest < ActiveSupport::TestCase
     assert_in_delta 0.42, c.rerank('q', %w[a]).first[:score], 0.0001
   end
 
-  # Ein Index ausserhalb des gesendeten Arrays wuerde sonst auf den falschen
-  # Treffer zeigen.
+  # An index outside the array we sent would otherwise point at the wrong
+  # hit.
   def test_out_of_range_indices_are_dropped
     c = client
     stub_post(c, 'results' => [{ 'index' => 5, 'relevance_score' => 0.9 },

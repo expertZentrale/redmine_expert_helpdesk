@@ -595,7 +595,7 @@ en:
   field_helpdesk_kb_rerank_min_score: 'Min. score (rerank)'
   field_helpdesk_kb_rerank_timeout: 'Timeout (s)'
   text_helpdesk_kb_rerank_scoring_info: 'Candidates are fetched from the vector store, re-scored, and the best Top-K above the minimum score are kept. While reranking is on, this minimum replaces the similarity one above - the two are different scales and need separate tuning. If the reranker fails, the search silently falls back to the similarity ranking and its minimum score.'
-  text_helpdesk_kb_privacy_info: 'Data protection: problem/solution text is sent to the embeddings provider and stored in the vector DB. Use a self-hosted embeddings endpoint for a fully on-premise flow. Knowledge is strictly per project.'
+  text_helpdesk_kb_privacy_info: 'Data protection: problem/solution text is sent to the embeddings provider and stored in the vector DB. With the reranker on, every search additionally sends the current ticket text together with the problem texts of the candidate entries - i.e. content from other tickets of the same project - to the reranker provider in one request; nothing is stored there. Use self-hosted embeddings and reranker endpoints for a fully on-premise flow. Knowledge is strictly per project.'
   field_helpdesk_kb_ingest_mode: 'Contribute to knowledge base'
   text_helpdesk_kb_ingest_mode_info: 'Whether resolved tickets of this project become knowledge-base entries.'
   label_helpdesk_kb_ingest_off: 'Off'

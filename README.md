@@ -1279,7 +1279,11 @@ everything merely topical by two orders of magnitude. Your corpus will differ �
 (`http://qdrant:6333`) or a `pgvector/pgvector` Postgres — and point the plugin settings at it.
 
 > **Data protection:** problem/solution text is sent to the embeddings provider and stored in
-> the vector DB. Use a self-hosted embeddings endpoint for a fully on-premise flow.
+> the vector DB. **With the reranker on, every search additionally sends the current ticket text
+> together with the problem texts of the candidate entries — content from other tickets of the
+> same project — to the reranker provider in a single request.** Nothing is stored there, but it
+> is a second recipient, and a separate one if `kb_rerank_endpoint` points elsewhere. Use
+> self-hosted embeddings *and* reranker endpoints for a fully on-premise flow.
 
 ## Tests
 

@@ -28,7 +28,7 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
   end
 
   # Ein Store, der die uebergebenen Treffer zurueckgibt und Aufrufe mitschreibt.
-  # asked faengt das angefragte Limit ein - mit Reranker wird vorgeholt.
+  # asked captures the requested limit - with a reranker we over-fetch.
   def store_stub(hits, configured: true, asked: [])
     s = Object.new
     s.define_singleton_method(:configured?) { configured }
@@ -36,9 +36,8 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
     s
   end
 
-  # rerank: nil = kein Reranker (Standard, wie bisher). Sonst entweder ein
-  # Lambda ueber die Dokumente oder eine fertige Zeilenliste; :raise laesst ihn
-  # scheitern.
+  # rerank: nil = no reranker (the default, as before). Otherwise either a
+  # lambda over the documents or a ready-made row list; :raise makes it fail.
   def client_stub(configured: true, calls: [], rerank: nil, reranked_docs: [])
     c = Object.new
     c.define_singleton_method(:embed_configured?) { configured }
@@ -179,7 +178,7 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
                                       :min_score => 0.9, :store => store_stub([hit(2, 0.1)]))
   end
 
-  # --- Reranking (zweite Stufe) -----------------------------------------
+  # --- Reranking (second stage) -----------------------------------------
 
   def rerank_settings(extra = {})
     settings({ 'kb_rerank_candidates' => '20', 'kb_rerank_min_score' => '0.5' }.merge(extra))
@@ -208,7 +207,7 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
   end
 
   def test_reranker_reorders_and_replaces_the_score
-    # Der Vektorstore haelt 3 fuer den besten Treffer, der Reranker 4.
+    # The vector store thinks 3 is the best hit, the reranker thinks 4.
     store = store_stub([hit(3, 0.9, 'Drucker'), hit(4, 0.6, 'Scanner')])
     client = client_stub(:rerank => [row(1, 0.95), row(0, 0.55)])
     hits = Retrieval.search(@issue, rerank_settings, client, 'Frage', :store => store)
@@ -220,14 +219,14 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
   end
 
   def test_reranked_hits_are_gated_by_the_rerank_threshold_not_the_cosine_one
-    # Kosinus 0.9/0.9 laege ueber kb_min_score; der Reranker verwirft beide.
+    # Cosine 0.9/0.9 would clear kb_min_score; the reranker rejects both.
     store = store_stub([hit(3, 0.9), hit(4, 0.9)])
     client = client_stub(:rerank => [row(0, 0.3), row(1, 0.2)])
     assert_equal [], Retrieval.search(@issue, rerank_settings, client, 'Frage', :store => store)
   end
 
   def test_a_low_cosine_hit_can_be_rescued_by_the_reranker
-    # Umgekehrter Fall: unter kb_min_score, aber der Cross-Encoder ist sicher.
+    # The reverse case: below kb_min_score, but the cross-encoder is certain.
     store = store_stub([hit(3, 0.2)])
     client = client_stub(:rerank => [row(0, 0.88)])
     hits = Retrieval.search(@issue, rerank_settings, client, 'Frage', :store => store)
@@ -241,7 +240,7 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
     assert_equal 2, hits.size
   end
 
-  # Der Reranker ist eine Verbesserung, keine Bedingung.
+  # The reranker is an improvement, not a precondition.
   def test_a_failing_reranker_falls_back_to_vector_order_and_the_cosine_gate
     store = store_stub([hit(3, 0.9), hit(4, 0.6), hit(5, 0.2)])
     client = client_stub(:rerank => :raise)
@@ -259,10 +258,10 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
     assert_equal [3], hits.map { |h| h[:payload]['issue_id'] }
   end
 
-  # Ohne den Default waere der Schwellwert 0.0 und liesse jeden Treffer durch.
+  # Without the default the threshold would be 0.0 and let every hit through.
   def test_missing_rerank_min_score_setting_falls_back_to_the_default
     store = store_stub([hit(3, 0.9)])
-    s = settings('kb_rerank_candidates' => '20') # kb_rerank_min_score absichtlich nicht gesetzt
+    s = settings('kb_rerank_candidates' => '20') # kb_rerank_min_score deliberately unset
     assert_equal [], Retrieval.search(@issue, s, client_stub(:rerank => [row(0, 0.1)]), 'Frage',
                                       :store => store)
     hits = Retrieval.search(@issue, s, client_stub(:rerank => [row(0, 0.3)]), 'Frage',
@@ -280,7 +279,7 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
     assert_equal [3], hits.map { |h| h[:payload]['issue_id'] }
   end
 
-  # Wir zahlen nicht dafuer, ein Dokument zu bewerten, das ohnehin faellt.
+  # We do not pay to score a document that is going to be dropped anyway.
   def test_the_self_hit_is_dropped_before_the_reranker_sees_it
     docs = []
     store = store_stub([hit(@issue.id, 0.9, 'Eigenes'), hit(4, 0.8, 'Fremdes')])
@@ -300,7 +299,7 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
   def test_min_results_still_applies_after_reranking
     store = store_stub([hit(3, 0.9), hit(4, 0.9)])
     client = client_stub(:rerank => [row(0, 0.9), row(1, 0.3)])
-    # Nur ein Treffer ueberlebt den Rerank-Schwellwert, verlangt sind zwei.
+    # Only one hit survives the rerank threshold, but two are required.
     assert_equal [], Retrieval.search(@issue, rerank_settings('kb_min_results' => '2'),
                                       client, 'Frage', :store => store)
   end

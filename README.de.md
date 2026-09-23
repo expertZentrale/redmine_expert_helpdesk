@@ -1342,8 +1342,12 @@ unterscheidet sich — nachjustieren.
 Plugin-Einstellungen darauf zeigen lassen.
 
 > **Datenschutz:** Problem-/Lösungstext wird an den Embeddings-Anbieter übertragen und im
-> Vektor-Store gespeichert. Für einen rein lokalen Betrieb einen self-hosted Embeddings-Endpunkt
-> verwenden.
+> Vektor-Store gespeichert. **Bei aktivem Reranker geht zusätzlich bei jeder Suche der aktuelle
+> Ticket-Text zusammen mit den Problem-Texten der Kandidaten — also Inhalte anderer Tickets
+> desselben Projekts — in einer einzigen Anfrage an den Reranker-Anbieter.** Dort wird nichts
+> gespeichert, es ist aber ein zweiter Empfänger — und ein separater, wenn
+> `kb_rerank_endpoint` woandershin zeigt. Für einen rein lokalen Betrieb self-hosted Endpunkte
+> für Embeddings *und* Reranker verwenden.
 
 ---
 

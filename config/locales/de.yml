@@ -595,7 +595,7 @@ de:
   field_helpdesk_kb_rerank_min_score: 'Min. Score (Rerank)'
   field_helpdesk_kb_rerank_timeout: 'Timeout (s)'
   text_helpdesk_kb_rerank_scoring_info: 'Es werden Kandidaten aus dem Vektorstore geholt, neu bewertet und davon die besten Top-K oberhalb des Mindest-Scores behalten. Solange das Reranking aktiv ist, ersetzt dieser Mindestwert den Aehnlichkeits-Mindestwert oben - beide sind unterschiedliche Skalen und muessen getrennt eingestellt werden. Faellt der Reranker aus, greift still wieder die Aehnlichkeits-Reihenfolge samt ihrem Mindest-Score.'
-  text_helpdesk_kb_privacy_info: 'Datenschutz: Problem-/Lösungstext wird an den Embeddings-Anbieter übertragen und im Vektor-Store gespeichert. Für einen rein lokalen Betrieb einen self-hosted Embeddings-Endpunkt verwenden. Wissen ist strikt projektbezogen.'
+  text_helpdesk_kb_privacy_info: 'Datenschutz: Problem-/Lösungstext wird an den Embeddings-Anbieter übertragen und im Vektor-Store gespeichert. Bei aktivem Reranker geht zusätzlich bei jeder Suche der aktuelle Ticket-Text zusammen mit den Problem-Texten der Kandidaten - also Inhalte anderer Tickets desselben Projekts - in einer Anfrage an den Reranker-Anbieter; dort wird nichts gespeichert. Für einen rein lokalen Betrieb self-hosted Endpunkte für Embeddings und Reranker verwenden. Wissen ist strikt projektbezogen.'
   field_helpdesk_kb_ingest_mode: 'Zur Wissensbasis beitragen'
   text_helpdesk_kb_ingest_mode_info: 'Ob gelöste Tickets dieses Projekts zu Wissensbasis-Einträgen werden.'
   label_helpdesk_kb_ingest_off: 'Aus'

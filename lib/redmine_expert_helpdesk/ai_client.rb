@@ -198,7 +198,7 @@ module RedmineExpertHelpdesk
       end
     end
 
-    # --- Reranking (Cross-Encoder fuer die Wissensbasis / RAG) -------------
+    # --- Reranking (cross-encoder, for the knowledge base / RAG) ----------
     # Second retrieval stage: the vector search is a bi-encoder and ranks on
     # whole-text proximity, so a ticket that merely shares vocabulary with the
     # query can outrank the one describing the same fault. A cross-encoder
@@ -215,10 +215,9 @@ module RedmineExpertHelpdesk
       @settings['kb_rerank_enabled'].to_s == '1'
     end
 
-    # Alle Leser fallen im Code auf einen Default zurueck, nicht nur ueber den
-    # :default-Hash in init.rb: ein dort neu ergaenzter Schluessel liefert auf
-    # einer bestehenden Installation nil, bis das Formular einmal neu
-    # gespeichert wurde.
+    # Every reader falls back to a default in code, not only through init.rb's
+    # :default hash: a key added there reads nil on an existing installation
+    # until the settings form has been saved once more.
     def rerank_model
       @settings['kb_rerank_model'].to_s.strip.presence || DEFAULT_RERANK_MODEL
     end
@@ -246,11 +245,11 @@ module RedmineExpertHelpdesk
       rerank_enabled? && rerank_api_key.present? && rerank_model.present? && rerank_endpoint.present?
     end
 
-    # Bewertet documents (Array<String>) gegen query und liefert
+    # Scores documents (Array<String>) against query and returns
     #   [{ :index => Integer, :score => Float }, ...]
-    # absteigend sortiert, oder wirft AiError. :index zeigt in das uebergebene
-    # documents-Array zurueck.
-    #   log_context : optional { :project_id, :issue_id, ... } - wie bei embed.
+    # sorted descending, or raises AiError. :index points back into the
+    # documents array that was passed in.
+    #   log_context : optional { :project_id, :issue_id, ... } - as for embed.
     def rerank(query, documents, log_context: nil)
       raise ConfigurationError, 'Reranking ist nicht konfiguriert (Key/Modell/Endpunkt fehlt)' unless rerank_configured?
 
@@ -273,11 +272,11 @@ module RedmineExpertHelpdesk
 
     private
 
-    # Die Dokumentation des Providers zeigt nur den Request. Beide verbreiteten
-    # Antwortformen werden gelesen, damit ein Wechsel der Laufzeit hinter
-    # derselben URL nicht still die Bewertung verschiebt:
+    # The provider documents the request only. Both common response shapes are
+    # read, so swapping the runtime behind the same URL cannot silently shift
+    # the scoring:
     #   Jina/Cohere (vLLM, Infinity):  { "results": [{ "index", "relevance_score" }] }
-    #   TEI nativ:                     [{ "index", "score" }]
+    #   TEI native:                    [{ "index", "score" }]
     def parse_rerank_rows(body, doc_count)
       raw = body.is_a?(Array) ? body : Array(body.is_a?(Hash) ? body['results'] : nil)
       rows = raw.filter_map do |r|
@@ -297,17 +296,17 @@ module RedmineExpertHelpdesk
       normalize_rerank_scores(rows)
     end
 
-    # bge-reranker-v2-m3 ist ein Cross-Encoder; seine Rohausgabe ist ein Logit.
-    # Manche Laufzeiten schicken es durch eine Sigmoid, andere nicht - der
-    # gemessene Anbieter (api.ai.net.de) NICHT: dort kamen fuer dieselbe Anfrage
-    # Werte von +5.97 (identischer Text) bis -10.99 (voellig fremd) zurueck.
-    # Ohne die Normalisierung waere kb_rerank_min_score dort still wirkungslos
-    # (jeder Wert < 1 passiert) - und zwar ohne Fehlermeldung, denn der
-    # Schwellwert ist auf 0..1 geeicht.
+    # bge-reranker-v2-m3 is a cross-encoder; its raw output is a logit. Some
+    # runtimes squash it, others do not - the provider we measured
+    # (api.ai.net.de) does NOT: one and the same query returned values from
+    # +5.97 (identical text) down to -10.99 (entirely unrelated). Without the
+    # normalisation kb_rerank_min_score would be silently inert there (every
+    # value below 1 passes), and without any error, because the threshold is
+    # calibrated on 0..1.
     #
-    # Die Sigmoid ist streng monoton, die Reihenfolge aendert sich also nie.
-    # Umgerechnet wird nur, wenn ueberhaupt ein Wert ausserhalb 0..1 liegt, damit
-    # eine bereits normalisierte Antwort unveraendert durchlaeuft.
+    # The sigmoid is strictly monotonic, so the ranking never changes. It is
+    # applied only when some value actually falls outside 0..1, so an already
+    # normalised response passes through untouched.
     def normalize_rerank_scores(rows)
       return rows if rows.empty? || rows.all? { |r| r[:score] >= 0.0 && r[:score] <= 1.0 }
 
@@ -396,11 +395,11 @@ module RedmineExpertHelpdesk
                       OpenSSL::SSL::SSLError].freeze
 
     # POST JSON, parse JSON, raise AiError on non-2xx. Analog zu GraphClient#request.
-    # read_timeout: ueberschreibt das Zeitbudget des Aufrufs (das Reranking hat
-    # ein eigenes, deutlich knapperes als eine Textgenerierung).
-    # extra_headers wird an allen Aufrufstellen als Hash-Literal uebergeben -
-    # ohne Klammern wuerde Ruby 3 den nachgestellten Hash als Schluesselwort-
-    # Argumente lesen, seit diese Methode eines hat.
+    # read_timeout: overrides this call's time budget (reranking has its own,
+    # much tighter than a text generation).
+    # extra_headers is passed as a hash literal at every call site - without the
+    # braces Ruby 3 would read the trailing hash as keyword arguments, now that
+    # this method has one.
     def post_json(url, payload, extra_headers = {}, read_timeout: nil)
       uri = URI(url)
       http = Net::HTTP.new(uri.host, uri.port)

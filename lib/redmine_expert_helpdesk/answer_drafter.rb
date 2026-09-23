@@ -230,9 +230,9 @@ module RedmineExpertHelpdesk
                                    'ai_timeout' => timeout.to_s))
     end
 
-    # Timeouts werden hier - wie ueberall in dieser Klasse - ueber eine Kopie
-    # des Einstellungs-Hashes gesetzt: der Client liest seine Grenzen aus dem
-    # Hash, mit dem er gebaut wurde, also ist keine andere Aufrufstelle betroffen.
+    # Timeouts are set - as everywhere in this class - through a copy of the
+    # settings hash: the client reads its limits from the hash it was built
+    # with, so no other call site is affected.
     def embed_client
       AiClient.new(@settings.merge('ai_timeout'        => [EMBED_TIMEOUT, timeout].min.to_s,
                                    'kb_rerank_timeout' => [RERANK_TIMEOUT, timeout].min.to_s))
