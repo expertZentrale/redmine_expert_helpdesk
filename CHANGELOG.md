@@ -6,7 +6,7 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
-## [Unreleased]
+## [0.13.0] - 2026-09-23
 
 ### Fixed
 
