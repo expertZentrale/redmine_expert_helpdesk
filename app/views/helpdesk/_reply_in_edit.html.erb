@@ -93,19 +93,18 @@
 }
 
 /* The customer-facing block: mail fields, the note editor and the signature preview
-   as one unit, so the field whose text is mailed does not look like an internal note. */
+   as one unit, so the field whose text is mailed does not look like an internal note.
+   Unarmed it paints nothing at all - the wrapper is always in the DOM, but an internal
+   note must look exactly like an internal note, or the marking means nothing. */
 #hd-outgoing {
   margin-top: 10px;
-  padding: 8px 12px;
-  background: var(--hd-reply-bg);
-  border: 1px solid #c8d8ec;
-  border-radius: 3px;
 }
 
-/* Armed = the reply is switched on. Hazard tape only then: a border that is always
-   there stops being read, and an internal note is not going anywhere. The stripes are
-   painted into the border box, so the padding box keeps the plain background. */
+/* Armed = the reply is switched on. Only then the block gets its background and the
+   hazard tape. The stripes are painted into the border box, so the padding box keeps
+   the flat background. */
 #hd-outgoing.hd-armed {
+  padding: 8px 12px;
   border: 6px solid transparent;
   border-radius: 4px;
   background-image:
@@ -146,20 +145,21 @@
   line-height: 1;
   flex-shrink: 0;
 }
-/* Background and border moved to #hd-outgoing; keeping them here as well would draw
-   a box inside a box. Without the wrapper (no jstBlock, see the script below) the
-   section still needs its own, hence the :not(). */
+/* Unarmed, the section is the only thing to see (the recipient fields are hidden), so
+   it keeps the small blue strip it always had. Armed, the wrapper paints the box and
+   the section drops its own - otherwise it is a box inside a box. */
 #hd-reply-section {
   margin-top: 10px;
-}
-#add_notes > #hd-reply-section {
   padding: 8px 12px;
   background: var(--hd-reply-bg);
   border: 1px solid #c8d8ec;
   border-radius: 3px;
 }
-#hd-outgoing > #hd-reply-section {
+#hd-outgoing.hd-armed > #hd-reply-section {
   margin-top: 0;
+  padding: 0;
+  background: none;
+  border: 0;
 }
 .hd-send-label {
   display: flex;
@@ -371,25 +371,27 @@
       if (!section || !addNotes) { return; }
 
       var jstBlock = addNotes.querySelector('.jstBlock');
-      if (!jstBlock || !jstBlock.parentNode) {
-        // No editor to wrap (jstoolbar disabled): leave the section where the hook
-        // put it and let it paint its own box.
-        var legend = addNotes.querySelector('legend');
-        if (legend && legend.nextSibling) {
-          addNotes.insertBefore(section, legend.nextSibling);
-        }
-        return;
-      }
-
       var box = document.createElement('div');
       box.id = 'hd-outgoing';
-      jstBlock.parentNode.insertBefore(box, jstBlock);
+
+      if (jstBlock && jstBlock.parentNode) {
+        jstBlock.parentNode.insertBefore(box, jstBlock);
+      } else {
+        // No editor to wrap - jstoolbar disabled, or Redmine changed the markup. The
+        // wrapper is still created, around the mail fields alone: the hazard border is
+        // the point of this block, and dropping it silently because a toolbar is
+        // missing would be the worst of both worlds.
+        var legend = addNotes.querySelector('legend');
+        if (!legend || !legend.nextSibling) { return; }
+        addNotes.insertBefore(box, legend.nextSibling);
+      }
+
       box.appendChild(section);
-      box.appendChild(jstBlock);
+      if (jstBlock) { box.appendChild(jstBlock); }
 
       // The preview sits inside #hd-mail-extra today, which is what hides it while the
       // reply is off. Out here it needs that toggle applied to it directly - see
-      // syncMailExtra() below. Absent when the mailbox has no footer template.
+      // syncOutgoing() below. Absent when the mailbox has no footer template.
       var footer = section.querySelector('.hd-footer-preview');
       if (footer) { box.appendChild(footer); }
     })();
