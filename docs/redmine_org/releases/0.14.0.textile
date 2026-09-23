@@ -1,0 +1,20 @@
+h3. Changed
+
+* *The customer reply is now one clearly marked block in the ticket form.* A reply is written in Redmine's ordinary note field — the same field, looking exactly the same, whether the text stays internal or is mailed to a customer. The mail-specific part sat above it as a separate panel, and the signature preview sat inside that panel, above the text it is appended to. Recipients, note field and signature preview are now a single block: continuous background, the signature preview after the body it belongs to, and — while the reply is switched on — a diagonal warning border around the whole thing. The border appears *only* while a reply is armed; an internal note looks exactly as it did before, because a warning that is always on stops being read.
+* Both colours are configurable under *Administration → Plugins → Redmine expert Helpdesk* and can be overridden per project; leaving a project field empty inherits the central value. Each field offers a colour picker next to the hex input and a live sample of the block, so the colours can be chosen without saving and opening a ticket to see the result. The hex field is what is submitted, because an empty value has to keep meaning "inherit" and a colour input always holds a colour. Values are validated as hex colours and anything else falls back to the default — they are written into a stylesheet, where an unchecked string would not be a colour but a style injection.
+
+h3. Added
+
+* *The attachment-block guards are now part of the project settings REST API.* @blacklist_types@ and @blacklist_max_kb@ — which file types, and up to what size, the *Block* button is offered for — could be set in the web forms but were missing from the endpoint that carries every other per-project setting, so an instance configured over the API could not reach them. Both are readable and writable now, and an empty value clears the project override and inherits the central setting, exactly as in the form.
+
+h3. Fixed
+
+* @blacklist_max_kb@ is parsed strictly rather than coerced, and is bounded by its column. A typo would otherwise have become @0@ — precisely the value that switches the size guard off and would have offered the *Block* button on every file in the project — and a value beyond the integer column would have failed while saving instead of being reported as a validation error. Both the web form and the REST endpoint are covered by the same rule, because it lives in the model.
+
+h3. Upgrade notes
+
+One migration runs on upgrade (059). It adds the two colour columns to the per-project settings; they are empty, so every project inherits the central colours and nothing changes for an existing installation beyond the new look of the reply block.
+
+No new permission and no new setting is required to keep working as before. The reply block is marked for everyone who already has *Send customer replies*; there is nothing to switch on.
+
+The colours must be hex (@#rgb@ or @#rrggbb@). A value that is not one is rejected in the forms and over the API, and falls back to the default where an older value was already stored.

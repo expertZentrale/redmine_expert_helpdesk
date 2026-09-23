@@ -63,6 +63,7 @@ Under *Administration → Plugins → Redmine expert Helpdesk*, or via the *expe
 | Mark tickets awaiting a response | Flags tickets whose customer replied by mail and clears the flag when an agent answers (on by default) |
 | Answer templates | Global canned responses offered in every helpdesk project, in addition to a project's own ones |
 | Embedded images | Rewrites the @[cid:…]@ markers of incoming mails to the stored image attachment (on by default) |
+| Reply block | The two colours of the customer-facing block in the ticket form: its background and the warning border shown while a reply is armed. Hex colours, each overridable per project; a colour picker and a live sample sit next to the fields |
 | Blocked attachments | The two guards on the *Block* button: the file types it may be offered for (default @png, gif, jpg, jpeg, bmp, webp, tif, tiff, ico@; @*@ allows all) and the largest file it may be offered for (default 100 KB, @0@ disables the limit). Both can be overridden per project; they gate the button only and never drop anything from incoming mail |
 | Custom fields as macros | Issue custom fields that may be used as @{{issue.cf.…}}@ in templates. Nothing is enabled by default; a field's own Redmine visibility still applies on top |
 | Completeness check | Master switch for the automatic follow-up when an incoming mail carries too little information, plus the central texts and check prompt. Off by default, and each project additionally chooses its own mode |
