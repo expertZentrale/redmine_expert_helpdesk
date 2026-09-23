@@ -19,6 +19,8 @@ class HelpdeskProjectSettingsController < ApplicationController
       update_info_request_settings(setting)
     elsif params[:blacklist_form].present?
       update_blacklist_settings(setting)
+    elsif params[:reply_box_form].present?
+      update_reply_box_settings(setting)
     else
       update_reply_settings(setting)
     end
@@ -179,6 +181,16 @@ class HelpdeskProjectSettingsController < ApplicationController
       setting.blacklist_max_kb = max_kb.to_i
     else
       raise ArgumentError, l(:error_helpdesk_blacklist_max_kb_invalid)
+    end
+  end
+
+  # Colours of the customer-facing block. Blank clears the override so the project
+  # falls back to the central value; anything that is not a hex colour is left on the
+  # record for the model validation to reject, because these reach a stylesheet.
+  def update_reply_box_settings(setting)
+    %i[reply_box_color reply_hazard_color].each do |field|
+      value = params.dig(:helpdesk_project_setting, field).to_s.strip
+      setting.public_send("#{field}=", value.presence)
     end
   end
 

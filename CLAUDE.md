@@ -255,6 +255,18 @@ nested registration would never fire in production.
   island rather than handing the script the rules: the row renders its size as "(139 Bytes)" in the
   user's locale, and re-parsing that to enforce a limit would be guesswork. The controller rechecks
   `eligible?` — the page may have been open since the settings changed. Migration 058.
+- **`reply_box.rb`** — the two colours of the customer-facing block in the edit form.
+  `_reply_in_edit.html.erb` wraps the mail fields, Redmine's note editor (`.jstBlock`) and the
+  signature preview in one client-side `#hd-outgoing`, and marks it with a hazard border **only
+  while the reply is armed** — the note field is identical whether its text stays internal or is
+  mailed, and a border that is always on stops being read. The wrapper is built in JS because the
+  hook renders after the note field; the `.jstBlock` lookup stays scoped to `#add_notes`, since the
+  hidden description editor in `#all_attributes` has one too. `syncOutgoing()` is the single place
+  that decides armed state, because the preview left `#hd-mail-extra` and no longer hides for free.
+  Colours resolve project → central → `DEFAULT_BOX_COLOR`/`DEFAULT_HAZARD_COLOR` and are
+  **validated as hex and otherwise discarded** — they are interpolated into a stylesheet as CSS
+  custom properties on `:root`, where an unchecked string is a style injection, not a colour.
+  Migration 059.
 - **`init_mailer.rb`** — outbound "initial" mail when an agent assigns a contact to a ticket
   and opts to email them (also used by the "New Helpdesk Ticket" flow).
 - **`mail_logger.rb`** — one log line per outgoing mail, naming the transport it took.

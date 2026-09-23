@@ -219,6 +219,10 @@ module RedmineExpertHelpdesk
         api.reply_status_id         s.reply_status_id
         api.reply_assign_to_sender  s.reply_assign_to_sender
         api.default_assigned_to_id  s.default_assigned_to_id
+        # Colours of the customer-facing reply block; blank means the project
+        # inherits the central value.
+        api.reply_box_color         s.reply_box_color
+        api.reply_hazard_color      s.reply_hazard_color
         api.phishing_check_enabled  s.phishing_check_enabled
         api.phishing_action         s.phishing_action
         api.sla_enabled             s.sla_enabled

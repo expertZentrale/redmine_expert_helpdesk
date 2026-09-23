@@ -46,6 +46,11 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
             :inclusion => { :in => INFO_REQUEST_NOTE_VISIBILITIES }, :allow_nil => true
   validates :info_request_ai_prompt_mode,
             :inclusion => { :in => AI_PROMPT_MODES }, :allow_nil => true
+  # Rejected rather than sanitised: these reach a stylesheet, and there is no second
+  # legitimate spelling of a colour worth preserving.
+  validates :reply_box_color, :reply_hazard_color,
+            :format => { :with => RedmineExpertHelpdesk::ReplyBox::HEX_COLOR },
+            :allow_blank => true
   validates :blacklist_max_kb,
             :numericality => { :only_integer => true, :greater_than_or_equal_to => 0 },
             :allow_nil => true
@@ -202,6 +207,31 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
 
   def has_own_ai_answer_min_score?
     self.class.column_names.include?('ai_answer_min_score') && !ai_answer_min_score.nil?
+  end
+
+  # Colours of the customer-facing block in the ticket edit form. Project value, else
+  # the central one, else the constant; ReplyBox.color discards anything that is not a
+  # hex colour, because both end up in a stylesheet.
+  def effective_reply_box_color
+    own = has_own_reply_box_color? ? reply_box_color : nil
+    RedmineExpertHelpdesk::ReplyBox.box_color(
+      own.presence || Setting.plugin_redmine_expert_helpdesk['reply_box_color']
+    )
+  end
+
+  def effective_reply_hazard_color
+    own = has_own_reply_hazard_color? ? reply_hazard_color : nil
+    RedmineExpertHelpdesk::ReplyBox.hazard_color(
+      own.presence || Setting.plugin_redmine_expert_helpdesk['reply_hazard_color']
+    )
+  end
+
+  def has_own_reply_box_color?
+    self.class.column_names.include?('reply_box_color') && reply_box_color.present?
+  end
+
+  def has_own_reply_hazard_color?
+    self.class.column_names.include?('reply_hazard_color') && reply_hazard_color.present?
   end
 
   # Which attachments the "block" button may be offered for. Blank here inherits the

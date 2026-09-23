@@ -640,6 +640,18 @@ werden kann.
 
 ### Kundenantworten aus Redmine heraus
 
+Eine Antwort wird in Redmines gewöhnlichem Notizfeld geschrieben. Mailfelder, dieses Feld und die
+Signaturvorschau erscheinen deshalb als **ein Block**: durchgehender Hintergrund, die
+Signaturvorschau unter dem Text, an den sie angehängt wird, und – solange die Antwort aktiviert ist
+– ein diagonaler Warnrahmen um das Ganze. Genau darum geht es: Das Notizfeld sieht gleich aus, ob
+sein Text intern bleibt oder an einen Kunden geht. Der Rahmen erscheint nur bei aktivierter
+Antwort, eine interne Notiz bleibt unmarkiert und die Warnung behält ihre Bedeutung.
+
+Beide Farben werden unter *Administration → Plugins → Redmine expert Helpdesk* (*Antwortblock*)
+gesetzt und sind je Projekt unter *Projekt-Einstellungen → expert Helpdesk* überschreibbar; ein
+leeres Projektfeld übernimmt den zentralen Wert. Erlaubt sind Hex-Farben (`#edf2fa`, `#e8a33d`) –
+alles andere fällt auf den Standard zurück, da die Werte in einem Stylesheet landen.
+
 Antwortet ein Bearbeiter über das Ticket-Formular („Als E-Mail an Kunden
 senden"), wird die Antwort als vollständige MIME-Nachricht über den
 Graph-API-Endpunkt `/users/{mailbox}/sendMail` (mit `Content-Type: text/plain`

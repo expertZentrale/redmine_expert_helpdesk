@@ -611,6 +611,18 @@ history.
 
 ### Customer replies from Redmine
 
+A reply is written in Redmine's ordinary note field, so the mail fields, that field and the
+signature preview are shown as **one block**: continuous background, the signature preview after
+the body it is appended to, and — while the reply is switched on — a diagonal hazard border around
+the whole thing. The border is the point: the note field looks identical whether its text stays
+internal or is mailed to a customer. It appears only while the reply is armed, so an internal note
+is unmarked and the warning keeps its meaning.
+
+Both colours are set under *Administration → Plugins → Redmine expert Helpdesk* (*Reply block*) and
+can be overridden per project under *Project settings → expert Helpdesk*; an empty project field
+inherits the central value. Values must be hex colours (`#edf2fa`, `#e8a33d`) — anything else falls
+back to the default, because they are interpolated into a stylesheet.
+
 When an agent replies via the ticket form ("Send as e-mail to customer"), the
 reply is sent as a complete MIME message — through the mailbox's own backend.
 For a Microsoft 365 mailbox that is the Graph API endpoint

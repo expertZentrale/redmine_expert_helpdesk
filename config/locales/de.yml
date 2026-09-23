@@ -705,6 +705,20 @@ de:
   label_helpdesk_ticket_stats_no_contact: 'Ohne Kontakt'
   text_helpdesk_ticket_stats_top_customers: 'Die %{n} Kunden mit den meisten Tickets im Zeitraum.'
 
+  # --- Kundenblock der Antwort (Farben des Blocks im Bearbeitungsformular) ---
+  label_helpdesk_reply_box: 'Antwortblock'
+  label_helpdesk_pick_color: 'Farbe wählen'
+  label_helpdesk_reply_box_preview: 'Vorschau'
+  text_helpdesk_reply_box_info: 'Solange eine Antwort aktiviert ist, werden Mailfelder, Notizfeld und Signaturvorschau als ein Block mit Warnrahmen dargestellt – damit sichtbar ist, dass dieser Text an den Kunden geht. Beide Farben sind je Projekt überschreibbar.'
+  field_helpdesk_reply_box_color: 'Hintergrundfarbe'
+  text_helpdesk_reply_box_color_info: 'Hex-Farbe des Blocks, z. B. #edf2fa. Alles andere fällt auf den Standard zurück.'
+  text_helpdesk_reply_box_color_project_info: 'Leer lassen, um die zentrale Einstellung zu verwenden (%{value}).'
+  field_helpdesk_reply_hazard_color: 'Farbe des Warnrahmens'
+  text_helpdesk_reply_hazard_color_info: 'Hex-Farbe der diagonalen Warnstreifen, z. B. #e8a33d. Alles andere fällt auf den Standard zurück.'
+  text_helpdesk_reply_hazard_color_project_info: 'Leer lassen, um die zentrale Einstellung zu verwenden (%{value}).'
+  # Redmine loest Attributnamen in Validierungsmeldungen ueber field_<attr> auf.
+  field_reply_box_color: 'Hintergrundfarbe'
+  field_reply_hazard_color: 'Farbe des Warnrahmens'
   # --- Anhang-Sperrliste (Signaturlogos, Icons, Zaehlpixel) ---
   label_helpdesk_attachment_blacklist: 'Gesperrte Anhänge'
   text_helpdesk_attachment_blacklist_info: 'Hier gesperrte Dateien werden aus eingehenden Mails dieses Projekts entfernt. Einträge entstehen über den Button „Sperren“ neben einem Anhang im Ticket. Verglichen wird der Dateiinhalt (SHA-256), nicht der Dateiname.'

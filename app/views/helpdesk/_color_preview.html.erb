@@ -1,0 +1,14 @@
+<%# Live sample of the armed reply block. Needs a colour field on the same page:
+    the shared style and script live in _color_field.
+    Locals: box_id, hazard_id (ids of the two text fields to follow).
+
+    These settings are purely visual, so without a sample the only way to see the
+    result is to save and open a ticket. The markup mirrors the real block: the
+    stripes are painted into the border box, the background into the padding box. %>
+<div class="hd-color-preview" data-hd-box="<%= box_id %>" data-hd-hazard="<%= hazard_id %>">
+  <span class="hd-color-preview-label"><%= l(:label_helpdesk_reply_box_preview) %></span>
+  <div class="hd-color-preview-box">
+    <div class="hd-color-preview-row"><%= l(:label_helpdesk_reply_to) %> kunde@example.de</div>
+    <div class="hd-color-preview-note"></div>
+  </div>
+</div>

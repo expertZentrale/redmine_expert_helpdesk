@@ -57,6 +57,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/template_renderer', __F
 require File.expand_path('../lib/redmine_expert_helpdesk/inline_images', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/attachment_blacklist', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/reply_images', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/reply_box', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/note_quoter', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mail_processor', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/init_mailer', __FILE__)
@@ -114,6 +115,10 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'default_smtp_security' => 'starttls',
              'awaiting_agent_enabled'   => '1',
              'inline_images_enabled'    => '1',
+             # Colours of the customer-facing block in the edit form. The constants
+             # behind them are the real fallback — see ReplyBox::DEFAULT_BOX_COLOR.
+             'reply_box_color'          => RedmineExpertHelpdesk::ReplyBox::DEFAULT_BOX_COLOR,
+             'reply_hazard_color'       => RedmineExpertHelpdesk::ReplyBox::DEFAULT_HAZARD_COLOR,
              # Guards on the attachment "block" button, overridable per project.
              # The constants behind them are the real fallback — see
              # AttachmentBlacklist::DEFAULT_TYPES.

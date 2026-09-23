@@ -1,0 +1,109 @@
+<%# A colour swatch that opens the browser's picker, next to the hex field.
+    Locals: name (form field name), value (may be blank), id, fallback (the colour
+    that applies when the field is left blank).
+
+    The text field stays the source of truth and keeps its id, because blank has to
+    remain expressible: an empty value means "inherit", and a native colour input
+    always holds a colour and could never say that. The swatch is a convenience on
+    top - it writes into the text field, and shows the inherited colour while the
+    field is empty. %>
+<span class="hd-color-field">
+  <input type="color" class="hd-color-swatch"
+         data-hd-for="<%= id %>"
+         value="<%= RedmineExpertHelpdesk::ReplyBox.color(value.presence || fallback, fallback) %>"
+         aria-label="<%= h(l(:label_helpdesk_pick_color)) %>" />
+  <%= text_field_tag name, value, :id => id, :size => 9,
+                     :class => 'hd-color-text', :placeholder => fallback,
+                     :data => { :hd_fallback => fallback } %>
+</span>
+
+<%# Emitted once per page, by the first colour field on it. They live here rather
+    than with the preview because a colour field must work on its own: a form that
+    renders a field without a preview would otherwise get a swatch that does nothing. %>
+<% unless @hd_color_field_assets_loaded %>
+  <% @hd_color_field_assets_loaded = true %>
+  <style>
+    .hd-color-field { display: inline-flex; align-items: center; gap: 6px; }
+    .hd-color-swatch {
+      width: 28px; height: 24px; padding: 0; border: 1px solid #999;
+      border-radius: 3px; background: none; cursor: pointer; vertical-align: middle;
+    }
+    .hd-color-preview { margin: 8px 0 4px; max-width: 420px; }
+    .hd-color-preview-label {
+      display: block; margin-bottom: 4px; font-size: 0.85em; color: #7a8ea8;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    /* Same construction as #hd-outgoing.hd-armed, so the sample cannot drift from
+       the real thing: stripes in the border box, flat colour in the padding box. */
+    .hd-color-preview-box {
+      padding: 8px 10px; border: 6px solid transparent; border-radius: 4px;
+      background-origin: padding-box, border-box;
+      background-clip: padding-box, border-box;
+    }
+    .hd-color-preview-row { font-size: 0.85em; color: #555; }
+    .hd-color-preview-note {
+      margin-top: 6px; height: 34px; background: #fff;
+      border: 1px solid #ccc; border-radius: 2px;
+    }
+  </style>
+  <script>
+    (function() {
+      // #abc is valid in CSS and in our validation, but <input type="color"> only
+      // accepts #rrggbb - so the swatch gets the expanded form.
+      function expand(hex) {
+        var m = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(hex || '');
+        return m ? '#' + m[1] + m[1] + m[2] + m[2] + m[3] + m[3] : hex;
+      }
+      function isHex(v) { return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v || ''); }
+
+      // What the block will actually look like: the typed value if it is a colour,
+      // otherwise the inherited one - which is exactly how the server resolves it.
+      function effective(input) {
+        var v = (input.value || '').trim();
+        return isHex(v) ? v : (input.dataset.hdFallback || '');
+      }
+
+      function paint(preview) {
+        var box = document.getElementById(preview.dataset.hdBox);
+        var hz  = document.getElementById(preview.dataset.hdHazard);
+        if (!box || !hz) { return; }
+        var bg = effective(box), hazard = effective(hz);
+        var el = preview.querySelector('.hd-color-preview-box');
+        el.style.backgroundImage =
+          'linear-gradient(' + bg + ',' + bg + '),' +
+          'repeating-linear-gradient(45deg,' + hazard + ' 0 10px,#fff 10px 20px)';
+      }
+
+      function wire() {
+        document.querySelectorAll('.hd-color-swatch').forEach(function(swatch) {
+          var text = document.getElementById(swatch.dataset.hdFor);
+          if (!text) { return; }
+          // Picking a colour fills the text field: the swatch never becomes a second
+          // source of truth, it only writes into the one that is submitted.
+          swatch.addEventListener('input', function() {
+            text.value = swatch.value;
+            text.dispatchEvent(new Event('input', { bubbles: true }));
+          });
+          text.addEventListener('input', function() {
+            var v = (text.value || '').trim();
+            swatch.value = expand(isHex(v) ? v : (text.dataset.hdFallback || '#ffffff'));
+          });
+        });
+
+        document.querySelectorAll('.hd-color-preview').forEach(function(preview) {
+          [preview.dataset.hdBox, preview.dataset.hdHazard].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) { el.addEventListener('input', function() { paint(preview); }); }
+          });
+          paint(preview);
+        });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', wire);
+      } else {
+        wire();
+      }
+    })();
+  </script>
+<% end %>

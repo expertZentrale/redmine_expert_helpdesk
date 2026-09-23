@@ -83,6 +83,38 @@
 </div>
 
 <style>
+<%# The two configurable colours reach CSS as custom properties. :root, not the
+    wrapper: the wrapper is built client-side, and a property set on a child does not
+    cascade to its parent. One issue page is one project, so page-global is correct.
+    Both values passed the hex check in ReplyBox.color - nothing else reaches here. %>
+:root {
+  --hd-reply-bg: <%= box_color %>;
+  --hd-reply-hazard: <%= hazard_color %>;
+}
+
+/* The customer-facing block: mail fields, the note editor and the signature preview
+   as one unit, so the field whose text is mailed does not look like an internal note.
+   Unarmed it paints nothing at all - the wrapper is always in the DOM, but an internal
+   note must look exactly like an internal note, or the marking means nothing. */
+#hd-outgoing {
+  margin-top: 10px;
+}
+
+/* Armed = the reply is switched on. Only then the block gets its background and the
+   hazard tape. The stripes are painted into the border box, so the padding box keeps
+   the flat background. */
+#hd-outgoing.hd-armed {
+  padding: 8px 12px;
+  border: 6px solid transparent;
+  border-radius: 4px;
+  background-image:
+    linear-gradient(var(--hd-reply-bg), var(--hd-reply-bg)),
+    repeating-linear-gradient(45deg,
+      var(--hd-reply-hazard) 0 10px, #fff 10px 20px);
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+}
+
 #hd-send-error {
   display: flex;
   align-items: flex-start;
@@ -113,12 +145,21 @@
   line-height: 1;
   flex-shrink: 0;
 }
+/* Unarmed, the section is the only thing to see (the recipient fields are hidden), so
+   it keeps the small blue strip it always had. Armed, the wrapper paints the box and
+   the section drops its own - otherwise it is a box inside a box. */
 #hd-reply-section {
   margin-top: 10px;
   padding: 8px 12px;
-  background: #edf2fa;
+  background: var(--hd-reply-bg);
   border: 1px solid #c8d8ec;
   border-radius: 3px;
+}
+#hd-outgoing.hd-armed > #hd-reply-section {
+  margin-top: 0;
+  padding: 0;
+  background: none;
+  border: 0;
 }
 .hd-send-label {
   display: flex;
@@ -156,6 +197,13 @@
   border-left: 3px solid #c8d8ec;
   font-size: 0.85em;
   color: #555;
+}
+/* Inside the armed block the two hard-coded blues would ignore a configured colour
+   and sit on it as a foreign patch. Translucent white lightens whatever the block
+   colour is, and the accent picks up the hazard colour. */
+#hd-outgoing.hd-armed > .hd-footer-preview {
+  background: rgba(255, 255, 255, 0.55);
+  border-left-color: var(--hd-reply-hazard);
 }
 .hd-footer-label {
   font-weight: bold;
@@ -308,33 +356,60 @@
         e.preventDefault();
         if (typeof showAndScrollTo === 'function') { showAndScrollTo('update', 'hd-send-mail-cb'); }
         if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change')); }
-        if (extra) { extra.style.display = ''; }
+        syncOutgoing(true);
         var section = document.getElementById('hd-reply-section');
         if (section) section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });
       contextual.insertBefore(link, contextual.firstChild);
     })();
 
-    // Panel vor den Notes-Editor verschieben
+    // Mail fields, note editor and signature preview into one block.
+    //
+    // The hook renders this partial after the note field, so everything starts below
+    // the editor. Wrapping all three makes the block that actually goes to the
+    // customer one visual unit, and puts the signature preview where it belongs -
+    // after the text it is appended to, not above it.
+    //
+    // The jstBlock lookup stays scoped to #add_notes: the hidden description editor
+    // inside #all_attributes has one too, and the bare selector used to match that one.
     (function() {
       var section  = document.getElementById('hd-reply-section');
       var addNotes = document.getElementById('add_notes');
-      var jstBlock = addNotes && addNotes.querySelector('.jstBlock');
-      if (section && jstBlock && jstBlock.parentNode) {
-        jstBlock.parentNode.insertBefore(section, jstBlock);
-      } else if (section && addNotes) {
-        // Fallback: ans Anfang des Fieldsets
+      if (!section || !addNotes) { return; }
+
+      // The editor is the jstBlock when the jstoolbar built one, and the bare
+      // textarea when it did not (text formatting "none", or Redmine changed the
+      // markup). Either way it is what becomes the mail body, so it is what has to
+      // sit inside the marked block - wrapping only the mail fields would leave the
+      // field the customer actually receives outside the warning.
+      var editor = addNotes.querySelector('.jstBlock') || addNotes.querySelector('#issue_notes');
+      var box = document.createElement('div');
+      box.id = 'hd-outgoing';
+
+      if (editor && editor.parentNode) {
+        editor.parentNode.insertBefore(box, editor);
+      } else {
+        // Nothing recognisable to wrap: keep the mail fields in a block of their own
+        // rather than dropping the warning entirely.
         var legend = addNotes.querySelector('legend');
-        if (legend && legend.nextSibling) {
-          addNotes.insertBefore(section, legend.nextSibling);
-        }
+        if (!legend || !legend.nextSibling) { return; }
+        addNotes.insertBefore(box, legend.nextSibling);
       }
+
+      box.appendChild(section);
+      if (editor) { box.appendChild(editor); }
+
+      // The preview sits inside #hd-mail-extra today, which is what hides it while the
+      // reply is off. Out here it needs that toggle applied to it directly - see
+      // syncOutgoing() below. Absent when the mailbox has no footer template.
+      var footer = section.querySelector('.hd-footer-preview');
+      if (footer) { box.appendChild(footer); }
     })();
 
     // Auto-Aktivierung wenn per Reply-Button navigiert wurde
     if (new URLSearchParams(window.location.search).get('hd_reply') === '1') {
       if (!cb.checked) { cb.checked = true; }
-      extra.style.display = ''; // direkt setzen, nicht via Event (Listener noch nicht registriert)
+      syncOutgoing(true); // direkt, nicht via Event (Listener noch nicht registriert)
       var section = document.getElementById('hd-reply-section');
       if (section) setTimeout(function() { section.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 150);
     }
@@ -416,9 +491,23 @@
       }
     }
 
+    // One place decides what "the reply is armed" looks like: the recipient fields,
+    // the signature preview (which no longer sits inside #hd-mail-extra, so it is no
+    // longer hidden for free) and the hazard border on the wrapper. Every caller below
+    // goes through this rather than setting display itself, so the three cannot drift
+    // apart - the border in particular must never claim a mail is going out when it is
+    // not.
+    function syncOutgoing(on) {
+      extra.style.display = on ? '' : 'none';
+      var box = document.getElementById('hd-outgoing');
+      if (box) { box.classList.toggle('hd-armed', !!on); }
+      var footer = document.querySelector('.hd-footer-preview');
+      if (footer) { footer.style.display = on ? '' : 'none'; }
+    }
+
     // Sichtbarkeit der Empfaengerfelder umschalten; Fehler-Banner zuruecksetzen
     cb.addEventListener('change', function() {
-      extra.style.display = this.checked ? '' : 'none';
+      syncOutgoing(this.checked);
       var errBox = document.getElementById('hd-send-error');
       if (errBox) errBox.style.display = 'none';
       applyReplyDefaults(this.checked);
@@ -427,6 +516,7 @@
     // The starting state: covers "send replies as email by default" and the
     // ?hd_reply=1 entry point above, which sets cb.checked directly.
     function applyInitialReplyDefaults() { applyReplyDefaults(cb.checked); }
+    syncOutgoing(cb.checked);
     applyInitialReplyDefaults();
 
     // ... and again, last. Redmine's own inline script on the issue page undoes
