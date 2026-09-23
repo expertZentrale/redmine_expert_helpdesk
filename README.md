@@ -597,6 +597,9 @@ Worth knowing:
   has dropped a copy since. Removing an entry there stops the filter; it does not restore files.
 - Only ticket attachments can be blocked — wiki and document attachments have no helpdesk project
   to scope the entry to.
+- Both guards are also readable and writable through the project settings REST endpoint
+  (`blacklist_types`, `blacklist_max_kb`) — see `API.md`. An empty value there clears the project
+  override and inherits the central setting, exactly as in the form.
 
 ### EML attachment and journal link
 

@@ -196,6 +196,21 @@ class HelpdeskApiTest < Redmine::IntegrationTest
         :params => { :helpdesk_project_setting => { :blacklist_max_kb => 'abc' } }, :headers => auth
     assert_response :unprocessable_entity
     assert_nil HelpdeskProjectSetting.for_project(@project).blacklist_max_kb
+
+    # Beyond the 4-byte column: without the bound this raises while saving and the
+    # documented 422 becomes a 500.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :blacklist_max_kb => 2_147_483_648 } },
+        :headers => auth
+    assert_response :unprocessable_entity
+    assert_nil HelpdeskProjectSetting.for_project(@project).blacklist_max_kb
+
+    # Same for the string column.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :blacklist_types => 'gif,' * 200 } },
+        :headers => auth
+    assert_response :unprocessable_entity
+    assert_nil HelpdeskProjectSetting.for_project(@project).blacklist_types
   end
 
   # Colours of the customer-facing reply block: read, write, inherit, and refuse.
