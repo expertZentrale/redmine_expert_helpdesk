@@ -282,18 +282,44 @@ module RedmineExpertHelpdesk
       rows = raw.filter_map do |r|
         next unless r.is_a?(Hash)
 
-        idx = r['index']
-        next if idx.nil?
+        idx = strict_int(r['index'])
+        next if idx.nil? || idx.negative? || idx >= doc_count
 
-        idx = idx.to_i
-        next unless idx >= 0 && idx < doc_count
-
-        score = r.key?('relevance_score') ? r['relevance_score'] : r['score']
+        score = strict_float(r.key?('relevance_score') ? r['relevance_score'] : r['score'])
         next if score.nil?
 
-        { :index => idx, :score => score.to_f }
+        { :index => idx, :score => score }
       end
       normalize_rerank_scores(rows)
+    end
+
+    # The provider's numbers are not ours to trust. to_f reads "oops" as 0.0 and
+    # "0.9garbage" as 0.9 - and kb_rerank_min_score = 0 is explicitly supported,
+    # so an unscored document would be accepted as grounding. to_i is worse: it
+    # reads "abc" as 0, which is not a rejected row but a confident pointer at
+    # the first hit.
+    #
+    # A row that cannot be read is dropped rather than guessed at. If that leaves
+    # nothing, rerank raises and retrieval keeps the vector order - the same
+    # fallback as an unreachable reranker.
+    def strict_float(value)
+      v = case value
+          when Numeric then value.to_f
+          when String  then Float(value.strip)
+          end
+      v if v&.finite?
+    rescue ArgumentError, TypeError
+      nil
+    end
+
+    def strict_int(value)
+      case value
+      when Integer then value
+      when Float   then value.finite? && value == value.truncate ? value.to_i : nil
+      when String  then Integer(value.strip, 10)
+      end
+    rescue ArgumentError, TypeError
+      nil
     end
 
     # bge-reranker-v2-m3 is a cross-encoder; its raw output is a logit. Some

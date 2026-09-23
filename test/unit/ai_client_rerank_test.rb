@@ -109,6 +109,47 @@ class AiClientRerankTest < ActiveSupport::TestCase
     assert_equal [{ :index => 0, :score => 0.3 }], c.rerank('q', %w[a])
   end
 
+  # kb_rerank_min_score = 0 is explicitly supported, so a score of 0.0 is
+  # "accept", not "reject" - a garbage score must therefore drop the row, never
+  # coerce to 0.0 and pass an unscored document off as grounding.
+  def test_unparseable_scores_are_dropped_not_coerced
+    c = client
+    stub_post(c, 'results' => [{ 'index' => 0, 'relevance_score' => 'oops' },
+                               { 'index' => 1, 'relevance_score' => '0.9garbage' },
+                               { 'index' => 2, 'relevance_score' => 0.4 }])
+    assert_equal [{ :index => 2, :score => 0.4 }], c.rerank('q', %w[a b c])
+  end
+
+  def test_numeric_scores_as_strings_are_still_read
+    c = client
+    stub_post(c, 'results' => [{ 'index' => 0, 'relevance_score' => '0.75' }])
+    assert_in_delta 0.75, c.rerank('q', %w[a]).first[:score], 0.0001
+  end
+
+  def test_non_finite_scores_are_dropped
+    c = client
+    stub_post(c, 'results' => [{ 'index' => 0, 'relevance_score' => 'NaN' },
+                               { 'index' => 1, 'relevance_score' => 0.3 }])
+    assert_equal [{ :index => 1, :score => 0.3 }], c.rerank('q', %w[a b])
+  end
+
+  # to_i would read "abc" as 0 - not a rejected row but a confident pointer at
+  # the first hit, which is how a reranker mislabels grounding.
+  def test_unparseable_indices_are_dropped_not_coerced
+    c = client
+    stub_post(c, 'results' => [{ 'index' => 'abc', 'relevance_score' => 0.9 },
+                               { 'index' => 1, 'relevance_score' => 0.3 }])
+    assert_equal [{ :index => 1, :score => 0.3 }], c.rerank('q', %w[a b])
+  end
+
+  # Every row unreadable is indistinguishable from no answer: raise, so
+  # retrieval falls back to the vector order rather than to an empty result.
+  def test_an_entirely_unreadable_response_raises
+    c = client
+    stub_post(c, 'results' => [{ 'index' => 'abc', 'relevance_score' => 'oops' }])
+    assert_raises(RedmineExpertHelpdesk::AiClient::AiError) { c.rerank('q', %w[a]) }
+  end
+
   def test_carries_its_own_read_timeout
     c = client('kb_rerank_timeout' => '4')
     captured = stub_post(c, 'results' => [{ 'index' => 0, 'relevance_score' => 0.5 }])
