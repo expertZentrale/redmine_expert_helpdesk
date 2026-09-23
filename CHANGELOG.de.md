@@ -22,7 +22,8 @@
   Projekt überschreibbar (Feld im Projekt leer lassen, um den zentralen Wert zu übernehmen). Sie
   werden als Hex-Farbe geprüft, alles andere fällt auf den Standard zurück – die Werte landen in
   einem Stylesheet, wo eine ungeprüfte Zeichenkette keine Farbe wäre, sondern eine
-  Style-Injection. Migration 059.
+  Style-Injection. Beide sind auch über den REST-Endpunkt der Projekteinstellungen les- und
+  schreibbar (`reply_box_color`, `reply_hazard_color`). Migration 059.
 
 ## [0.13.0] - 2026-09-23
 

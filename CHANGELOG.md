@@ -23,7 +23,8 @@
   be overridden per project (leave a project field empty to inherit the central value). They are
   validated as hex colours and anything else falls back to the default — the values are
   interpolated into a stylesheet, where an unchecked string would be a style injection rather than
-  a colour. Migration 059.
+  a colour. Both are also readable and writable through the project settings REST endpoint
+  (`reply_box_color`, `reply_hazard_color`). Migration 059.
 
 ## [0.13.0] - 2026-09-23
 

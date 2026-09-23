@@ -156,6 +156,39 @@ class HelpdeskApiTest < Redmine::IntegrationTest
     assert_response :forbidden
   end
 
+  # Colours of the customer-facing reply block: read, write, inherit, and refuse.
+  def test_project_settings_reply_box_colors_round_trip
+    get "/projects/#{@project.id}/helpdesk/settings.json", :headers => auth
+    assert_response :success
+    body = ActiveSupport::JSON.decode(@response.body)['helpdesk_project_setting']
+    assert body.key?('reply_box_color'), 'the colour must be part of the payload'
+    assert body.key?('reply_hazard_color')
+
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => {
+          :reply_box_color => '#e6f7ec', :reply_hazard_color => '#2f9e5f'
+        } }, :headers => auth
+    assert_response :success
+
+    setting = HelpdeskProjectSetting.for_project(@project)
+    assert_equal '#e6f7ec', setting.effective_reply_box_color
+    assert_equal '#2f9e5f', setting.effective_reply_hazard_color
+
+    # Empty clears the override and the project inherits centrally again.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :reply_box_color => '' } }, :headers => auth
+    assert_response :success
+    assert_nil HelpdeskProjectSetting.for_project(@project).reply_box_color
+
+    # These land in a stylesheet, so a non-colour has to be refused, not stored.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => {
+          :reply_box_color => 'red; } body { display:none }'
+        } }, :headers => auth
+    assert_response :unprocessable_entity
+    assert_nil HelpdeskProjectSetting.for_project(@project).reply_box_color
+  end
+
   # KI-/Wissensbasis-Felder sind erst mit dem Mailbox-API nachgezogen worden.
   def test_project_settings_ai_and_kb_round_trip
     put "/projects/#{@project.id}/helpdesk/settings.json",

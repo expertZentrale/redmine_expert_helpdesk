@@ -198,6 +198,13 @@
   font-size: 0.85em;
   color: #555;
 }
+/* Inside the armed block the two hard-coded blues would ignore a configured colour
+   and sit on it as a foreign patch. Translucent white lightens whatever the block
+   colour is, and the accent picks up the hazard colour. */
+#hd-outgoing.hd-armed > .hd-footer-preview {
+  background: rgba(255, 255, 255, 0.55);
+  border-left-color: var(--hd-reply-hazard);
+}
 .hd-footer-label {
   font-weight: bold;
   display: block;
