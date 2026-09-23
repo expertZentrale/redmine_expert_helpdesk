@@ -200,12 +200,12 @@ module RedmineExpertHelpdesk
 
     # The attachment Redmine stored for this MIME part.
     #
-    # The name narrows the field, the bytes decide it. MailHandler hands the part's
-    # file name to Attachment, which sanitizes it (path prefixes, characters such as
-    # ":" or "?"), so the stored name is not always the one the part carries -
-    # compare against both. Where several attachments answer to the name, the part's
-    # own size and, if that still ties, its digest pick the right one; +claimed+
-    # keeps two parts from taking the same file.
+    # The name narrows the field, the bytes decide it - and only the bytes. MailHandler
+    # hands the part's file name to Attachment, which sanitizes it (path prefixes,
+    # characters such as ":" or "?"), so the stored name is not always the one the
+    # part carries - compare against both. +claimed+ keeps two parts from taking the
+    # same file. Returns nil whenever nothing matches the part's content, so a marker
+    # is left unresolved rather than pointed at somebody else's picture.
     def find_attachment(attachments, part, claimed = [])
       candidates = named_like(attachments, part.filename.to_s)
       return nil if candidates.empty?
@@ -218,17 +218,21 @@ module RedmineExpertHelpdesk
       # the module does with every reference it cannot reach.
       pool = candidates.reject { |a| claimed.include?(a.id) }
       return nil if pool.empty?
-      return pool.first if pool.one?
 
       bytes = part_bytes(part)
-      return pool.first if bytes.nil?
+      return nil if bytes.nil?
 
-      by_size = pool.select { |a| a.filesize.to_i == bytes.bytesize }
-      return by_size.first if by_size.one?
+      # Size first, but only to avoid hashing files that cannot match - identity is
+      # the digest. A name is no evidence at all here: attachment_scope reaches the
+      # whole issue, so a part MailHandler excluded (too large, or on the excluded
+      # names list) would otherwise borrow the "image.png" an *earlier* mail left
+      # there and show that mail's picture. Where the bytes do match, pointing at
+      # the older row is right anyway - it is the same image.
+      sized = pool.select { |a| a.filesize.to_i == bytes.bytesize }
+      return nil if sized.empty?
 
-      narrowed = by_size.presence || pool
       digest = Digest::SHA256.hexdigest(bytes)
-      narrowed.find { |a| stored_digest(a) == digest } || narrowed.first
+      sized.find { |a| stored_digest(a) == digest }
     end
 
     def named_like(attachments, name)

@@ -130,12 +130,23 @@ class InlineImagesTest < ActiveSupport::TestCase
   # CID map
   # -----------------------------------------------------------------------
 
+  # A real attachment, not the Att stub: pairing is decided on the stored bytes now,
+  # so the index cannot be built from an id and a file name alone.
   def test_cid_index_maps_content_id_and_filename
-    attachment = Att.new(7, 'image001.png')
+    issue = issue_with_description('Ticket')
+    attachment = attach_png(issue)
     index = II.cid_index(Mail.read_from_string(TEXT_MIME), [attachment])
 
     assert_equal attachment, index[CID.downcase]
     assert_equal attachment, index['image001.png']
+  end
+
+  # Same name, different bytes: the part has no file here and must not take this one.
+  def test_cid_index_ignores_an_attachment_whose_content_differs
+    issue = issue_with_description('Ticket')
+    attach_sized(issue, 'image001.png', 4321)
+
+    assert_empty II.cid_index(Mail.read_from_string(TEXT_MIME), II.attachment_scope(issue))
   end
 
   def test_cid_index_skips_parts_without_a_stored_attachment
@@ -312,6 +323,19 @@ class InlineImagesTest < ActiveSupport::TestCase
     resolved = SAME_NAME_CIDS.map { |cid| index[cid] }.compact
     assert_equal 2, resolved.size, 'only the parts with a stored file may resolve'
     assert_equal 2, resolved.map(&:id).uniq.size, 'no attachment may be handed out twice'
+  end
+
+  # attachment_scope reaches the whole issue, so an earlier mail's "image.png" is a
+  # candidate for this mail's parts. A part MailHandler excluded must not borrow it.
+  def test_a_stale_same_named_attachment_is_not_borrowed
+    issue = issue_with_description('Ticket')
+    # Different bytes, same name: the leftover of an earlier mail.
+    stale = attach_sized(issue, 'image.png', 4321)
+
+    index = II.cid_index(Mail.read_from_string(same_name_mime), II.attachment_scope(issue))
+
+    assert index.values.exclude?(stale), 'a foreign picture must never be linked'
+    assert index.empty?, 'nothing in this mail has a stored file, so nothing resolves'
   end
 
   private
