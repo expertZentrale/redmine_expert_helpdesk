@@ -179,6 +179,30 @@ class AttachmentBlacklistTest < ActiveSupport::TestCase
     end
   end
 
+  # InlineImages writes the download path with the application's URL root, so on a
+  # sub-URI install the cleanup has to strip that spelling too - otherwise the file
+  # goes and the broken image stays.
+  def test_stripping_removes_a_download_path_carrying_the_url_root
+    Redmine::Utils.stubs(:relative_url_root).returns('/redmine')
+    attachment = attach_png(@issue)
+    set_description("Gruss\n\n![](/redmine/attachments/download/#{attachment.id}/image001.png)")
+    entry = blacklist(attachment)
+
+    AB.purge!(@project, entry)
+    assert_equal 'Gruss', @issue.reload.description
+  end
+
+  # Text written before the root was included still uses the rootless form.
+  def test_stripping_still_removes_the_rootless_download_path
+    Redmine::Utils.stubs(:relative_url_root).returns('/redmine')
+    attachment = attach_png(@issue)
+    set_description("Gruss\n\n![](/attachments/download/#{attachment.id}/image001.png)")
+    entry = blacklist(attachment)
+
+    AB.purge!(@project, entry)
+    assert_equal 'Gruss', @issue.reload.description
+  end
+
   # -----------------------------------------------------------------------
   # Retroactive purge
   # -----------------------------------------------------------------------

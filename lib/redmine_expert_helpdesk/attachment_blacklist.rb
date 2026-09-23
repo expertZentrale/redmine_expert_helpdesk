@@ -269,7 +269,14 @@ module RedmineExpertHelpdesk
       return [] if name.blank?
 
       spellings = [name, InlineImages.escape_target(name)].uniq
-      targets = spellings.map { |s| "/attachments/download/#{attachment.id}/#{s}" }
+      # Both spellings of the download path: with the application's URL root, which
+      # InlineImages writes, and without it, which text written before it did still
+      # carries. Longest prefix first so that on a sub-URI install the rootless
+      # pattern cannot bite a piece out of a path it does not own.
+      roots = [Redmine::Utils.relative_url_root.to_s, ''].uniq.sort_by { |r| -r.length }
+      targets = roots.flat_map do |root|
+        spellings.map { |s| "#{root}/attachments/download/#{attachment.id}/#{s}" }
+      end
       targets += spellings unless name_shared?(attachment, container)
       targets
     end
@@ -277,7 +284,7 @@ module RedmineExpertHelpdesk
     # Does another attachment Redmine would resolve this text against carry the same
     # file name? Compared case-insensitively, the way Redmine's own lookup does.
     def name_shared?(attachment, container)
-      siblings, = InlineImages.attachment_scope(container)
+      siblings = InlineImages.attachment_scope(container)
       name = attachment.filename.to_s
       siblings.any? { |a| a.id != attachment.id && a.filename.to_s.casecmp(name).zero? }
     rescue StandardError

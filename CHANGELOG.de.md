@@ -7,6 +7,36 @@
 
 ## [Unreleased]
 
+### Behoben
+
+- **Eingebettete Bilder einer Mail zeigen nicht mehr alle dasselbe Bild.** Outlook nennt jedes
+  eingebettete Bild `image.png`; eine Mail, deren Signatur ein Logo, ein Telefon-Icon, ein
+  Mail-Icon und vier Social-Icons führt, kommt also als sieben Teile mit sieben Content-IDs und
+  einem einzigen Dateinamen an. Dabei ging zweierlei gleichzeitig schief. Die Teile wurden den
+  gespeicherten Anhängen **über den Dateinamen** zugeordnet, sodass alle sieben Content-IDs
+  dieselbe Datei bekamen; und in das Ticket wurde der bloße Name geschrieben (`!image.png!`), den
+  Redmine nicht als Referenz behandelt, sondern als Suche — `Attachment.latest_attach` löst ihn
+  gegen alle Anhänge des gerenderten Objekts auf und liefert den *neuesten* Treffer. Ein Ticket,
+  das in der Mail neun verschiedene Bilder zeigte, zeigte neunmal denselben Screenshot.
+  Die Teile werden jetzt über ihren **Inhalt** zugeordnet: Der Dateiname engt ein, dann
+  entscheiden die Byte-Größe des Teils und, falls die noch gleich ist, sein SHA-256; jeder Teil
+  beansprucht seinen Anhang, sodass zwei Teile nie denselben nehmen können. Die Auszeichnung
+  benennt den **Download-Pfad** (`!/attachments/download/653892/image.png!`), der die ID trägt
+  und damit genau eine Datei meint.
+  Die zweite Hälfte behebt zugleich einen langsameren Fehler, der mit doppelten Namen innerhalb
+  einer Mail nichts zu tun hat: `MailHandler` hängt die Anhänge einer Antwort an das *Ticket*,
+  und die Beschreibung wird gegen diese gerendert — die nächste Mail mit einer `image.png` übernahm
+  also stillschweigend die Marken der ersten, und die Beschreibung eines Tickets konnte plötzlich
+  Bilder einer späteren Antwort zeigen. Alles ab dieser Version Geschriebene ist dagegen immun;
+  vorher geschriebener Text behält, worauf er aufgelöst wurde.
+  Auch Sub-URI-Installationen sind berücksichtigt: Der Pfad enthält jetzt `relative_url_root`, das
+  der bisherige Download-Pfad-Fallback wegließ.
+  **Die ausgehende Antwort hatte denselben Fehler.** `ReplyImages` traf ein `src` über den
+  Dateinamen; in einem Zitat solcher Mails beanspruchte die erste `image.png` damit alle, und der
+  Kunde bekam ein Bild so oft, wie die Mail Bilder hatte. Ein `src` mit Download-Pfad wird jetzt
+  über die Anhang-ID aufgelöst; der Dateiname trifft weiterhin frisch eingefügte Uploads, die noch
+  keine ID haben.
+
 ### Hinzugefügt
 
 - **Signaturlogos und Icons lassen sich jetzt einmal sperren, statt sie ewig zu löschen.**

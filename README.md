@@ -526,9 +526,16 @@ src="cid:…">` in HTML. Redmine's `MailHandler` stores the image as a ticket at
 the text as it is, so a mail signature used to arrive as a row of `[cid:…]` markers.
 
 The plugin points those markers at the attachment that was just stored, using the image syntax of
-the configured text formatting (`!image001.png!` for textile, `![](image001.png)` for
-markdown/CommonMark) — the ticket then reads like the original mail. This covers the description of
-a new ticket as well as the note of a reply.
+the configured text formatting (`!/attachments/download/653892/image001.png!` for textile,
+`![](/attachments/download/653892/image001.png)` for markdown/CommonMark) — the ticket then reads
+like the original mail. This covers the description of a new ticket as well as the note of a reply.
+
+The markup names the **download path**, not the bare file name, because a bare name is not a
+reference but a lookup: Redmine resolves it against every attachment of the rendered object and
+takes the newest match. Outlook calls every embedded image `image.png`, so a single signature can
+bring seven of them, and a reply's attachments are appended to the issue the description is
+rendered against — under a bare name the pictures of one mail would end up showing another's. The
+id names exactly one file and keeps doing so.
 
 Worth knowing:
 

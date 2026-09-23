@@ -214,8 +214,15 @@ nested registration would never fire in production.
   attachments but keeps the client's reference in the text (`[cid:…]` from Outlook,
   `[image: …]` from Gmail, `<img src="cid:…">`), so the ticket showed markers instead of
   pictures. `rewrite!` points those markers at the attachment that was just stored, in the
-  image syntax of `Setting.text_formatting` (`!name.png!` vs `![](name.png)`), for the issue
-  description and for journal notes alike. `prepare_mime` runs **before** `MailHandler` and only
+  image syntax of `Setting.text_formatting`, for the issue description and for journal notes
+  alike. **Parts are paired to attachments by content, and the markup always names the download
+  path** — never the bare file name. Outlook calls every embedded image `image.png`, so one
+  signature arrives as seven Content-IDs sharing one name: name-based pairing gave them all the
+  same file, and a bare name in the markup is not a reference but a lookup
+  (`Attachment.latest_attach` returns the *newest* match), which also rots over time because
+  `MailHandler` appends a reply's attachments to the issue the description renders against.
+  `find_attachment` narrows by name, then decides on the part's byte count and its SHA-256, and
+  each part claims its attachment so two can never take the same one. `prepare_mime` runs **before** `MailHandler` and only
   when Redmine builds the body from the HTML part (its HTML-to-text parser has no `img` rule, so
   the reference would vanish) — it rewrites `<img>` to the same `[cid:…]` marker and touches only
   the copy handed to `MailHandler`, never the `.eml` archived on the ticket. Unknown references

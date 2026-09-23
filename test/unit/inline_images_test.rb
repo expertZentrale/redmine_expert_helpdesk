@@ -70,27 +70,29 @@ class InlineImagesTest < ActiveSupport::TestCase
 
   def test_outlook_marker_becomes_image
     with_settings :text_formatting => 'markdown' do
-      assert_equal "Gruss\n![](image001.png)\n",
+      assert_equal "Gruss\n![](/attachments/download/7/image001.png)\n",
                    II.replace_markers("Gruss\n[cid:#{CID}]\n", @index)
     end
   end
 
   def test_gmail_marker_becomes_image
     with_settings :text_formatting => 'markdown' do
-      assert_equal '![](image001.png)', II.replace_markers('[image: image001.png]', @index)
+      assert_equal '![](/attachments/download/7/image001.png)',
+                   II.replace_markers('[image: image001.png]', @index)
     end
   end
 
   def test_textile_formatting_uses_textile_syntax
     with_settings :text_formatting => 'textile' do
-      assert_equal '!image001.png!', II.replace_markers("[cid:#{CID}]", @index)
+      assert_equal '!/attachments/download/7/image001.png!',
+                   II.replace_markers("[cid:#{CID}]", @index)
     end
   end
 
   # Raw HTML that survived into the body keeps its tag - only the reference is
   # exchanged, so size and alt stay intact.
   def test_img_tag_keeps_attributes
-    assert_equal %(<img src="image001.png" width="10">),
+    assert_equal %(<img src="/attachments/download/7/image001.png" width="10">),
                  II.replace_markers(%(<img src="cid:#{CID}" width="10">), @index)
   end
 
@@ -99,18 +101,22 @@ class InlineImagesTest < ActiveSupport::TestCase
     assert_equal text, II.replace_markers(text, @index)
   end
 
-  # Without a resolvable attachment list the markup has to name the download path.
-  def test_fallback_uses_download_path
+  # A bare file name is a lookup, not a reference: Redmine resolves it against every
+  # attachment of the rendered object and takes the newest match. The markup names
+  # the download path in every case so that it cannot be taken over by a later file
+  # of the same name.
+  def test_markup_always_names_the_download_path
     with_settings :text_formatting => 'markdown' do
       assert_equal '![](/attachments/download/7/image001.png)',
-                   II.replace_markers("[cid:#{CID}]", @index, false)
+                   II.replace_markers("[cid:#{CID}]", @index)
     end
   end
 
   def test_special_characters_in_filename_are_encoded
     index = { 'bild 1.png' => Att.new(8, 'Bild (1).png') }
     with_settings :text_formatting => 'markdown' do
-      assert_equal '![](Bild%20%281%29.png)', II.replace_markers('[image: bild 1.png]', index)
+      assert_equal '![](/attachments/download/8/Bild%20%281%29.png)',
+                   II.replace_markers('[image: bild 1.png]', index)
     end
   end
 
@@ -124,12 +130,23 @@ class InlineImagesTest < ActiveSupport::TestCase
   # CID map
   # -----------------------------------------------------------------------
 
+  # A real attachment, not the Att stub: pairing is decided on the stored bytes now,
+  # so the index cannot be built from an id and a file name alone.
   def test_cid_index_maps_content_id_and_filename
-    attachment = Att.new(7, 'image001.png')
+    issue = issue_with_description('Ticket')
+    attachment = attach_png(issue)
     index = II.cid_index(Mail.read_from_string(TEXT_MIME), [attachment])
 
     assert_equal attachment, index[CID.downcase]
     assert_equal attachment, index['image001.png']
+  end
+
+  # Same name, different bytes: the part has no file here and must not take this one.
+  def test_cid_index_ignores_an_attachment_whose_content_differs
+    issue = issue_with_description('Ticket')
+    attach_sized(issue, 'image001.png', 4321)
+
+    assert_empty II.cid_index(Mail.read_from_string(TEXT_MIME), II.attachment_scope(issue))
   end
 
   def test_cid_index_skips_parts_without_a_stored_attachment
@@ -185,7 +202,8 @@ class InlineImagesTest < ActiveSupport::TestCase
     with_settings :text_formatting => 'markdown' do
       assert II.rewrite!(issue, TEXT_MIME)
     end
-    assert_equal "Hallo\n![](image001.png)", issue.reload.description
+    assert_equal "Hallo\n![](/attachments/download/#{issue.attachments.first.id}/image001.png)",
+                 issue.reload.description
   end
 
   def test_rewrite_replaces_marker_in_journal_note
@@ -199,12 +217,13 @@ class InlineImagesTest < ActiveSupport::TestCase
     with_settings :text_formatting => 'markdown' do
       assert II.rewrite!(journal, TEXT_MIME)
     end
-    assert_equal "Antwort\n![](image001.png)", journal.reload.notes
+    assert_equal "Antwort\n![](/attachments/download/#{attachment.id}/image001.png)",
+                 journal.reload.notes
   end
 
-  # No attachment detail on the journal means Redmine cannot resolve a bare file
-  # name in that note, so the markup names the download path instead.
-  def test_rewrite_falls_back_to_download_path_without_journal_attachments
+  # A journal without attachment details of its own falls back to the issue's
+  # attachments to find the file; the markup is the download path either way.
+  def test_rewrite_resolves_through_the_issue_without_journal_attachments
     issue = issue_with_description('Ticket')
     journal = Journal.create!(:journalized => issue, :user => User.find(2),
                               :notes => "[cid:#{CID}]")
@@ -227,7 +246,8 @@ class InlineImagesTest < ActiveSupport::TestCase
     with_settings :text_formatting => 'markdown' do
       assert II.rewrite!(issue, TEXT_MIME)
     end
-    assert_equal '![](image001.png)', issue.reload.description
+    assert_equal "![](/attachments/download/#{issue.attachments.first.id}/image001.png)",
+                 issue.reload.description
   end
 
   def test_rewrite_is_a_noop_without_markers
@@ -248,7 +268,202 @@ class InlineImagesTest < ActiveSupport::TestCase
     assert_equal "[cid:#{CID}]", issue.reload.description
   end
 
+  # -----------------------------------------------------------------------
+  # Several embedded images under one file name (Outlook)
+  # -----------------------------------------------------------------------
+  #
+  # Reproduces the shape of a real mail (ticket #927242): Outlook names every
+  # embedded image "image.png", so a signature with a logo, a phone icon, a mail
+  # icon and four social icons arrives as distinct Content-IDs sharing one name.
+  # Matching parts to attachments by name alone gave every marker the same file and
+  # the ticket showed one picture nine times over.
+
+  def test_each_content_id_maps_to_its_own_attachment
+    issue = issue_with_description('Ticket')
+    attachments = SAME_NAME_SIZES.map { |bytes| attach_sized(issue, 'image.png', bytes) }
+
+    index = II.cid_index(Mail.read_from_string(same_name_mime), II.attachment_scope(issue))
+
+    mapped = SAME_NAME_CIDS.map { |cid| index[cid] }
+    assert_equal SAME_NAME_CIDS.size, mapped.compact.map(&:id).uniq.size,
+                 'every Content-ID must resolve to a different attachment'
+    # The part's byte count decides, so each cid lands on the file of its own size.
+    SAME_NAME_CIDS.each_with_index do |cid, i|
+      assert_equal SAME_NAME_SIZES[i], index[cid].filesize,
+                   "cid #{cid} resolved to the wrong file"
+    end
+    assert_equal attachments.map(&:id).sort, mapped.map(&:id).sort
+  end
+
+  def test_same_named_images_render_as_different_pictures
+    issue = issue_with_description(SAME_NAME_CIDS.map { |c| "[cid:#{c}]" }.join("\n"))
+    SAME_NAME_SIZES.each { |bytes| attach_sized(issue, 'image.png', bytes) }
+
+    with_settings :text_formatting => 'markdown' do
+      assert II.rewrite!(issue, same_name_mime)
+    end
+
+    links = issue.reload.description.scan(%r{!\[\]\((/attachments/download/\d+/image\.png)\)})
+    assert_equal SAME_NAME_CIDS.size, links.size
+    assert_equal SAME_NAME_CIDS.size, links.uniq.size,
+                 'the markers must point at different files, not all at the newest'
+  end
+
+  # MailHandler may store fewer images than the mail carries - one excluded by size
+  # or by "Excluded attachment file names". The part left without a file of its own
+  # must keep its marker rather than borrow a picture that belongs to another cid.
+  def test_a_part_without_its_own_attachment_is_left_unresolved
+    issue = issue_with_description('Ticket')
+    # Three parts in the mail, two files stored.
+    attach_sized(issue, 'image.png', SAME_NAME_SIZES[0])
+    attach_sized(issue, 'image.png', SAME_NAME_SIZES[1])
+
+    index = II.cid_index(Mail.read_from_string(same_name_mime), II.attachment_scope(issue))
+
+    resolved = SAME_NAME_CIDS.map { |cid| index[cid] }.compact
+    assert_equal 2, resolved.size, 'only the parts with a stored file may resolve'
+    assert_equal 2, resolved.map(&:id).uniq.size, 'no attachment may be handed out twice'
+  end
+
+  # attachment_scope reaches the whole issue, so an earlier mail's "image.png" is a
+  # candidate for this mail's parts. A part MailHandler excluded must not borrow it.
+  def test_a_stale_same_named_attachment_is_not_borrowed
+    issue = issue_with_description('Ticket')
+    # Different bytes, same name: the leftover of an earlier mail.
+    stale = attach_sized(issue, 'image.png', 4321)
+
+    index = II.cid_index(Mail.read_from_string(same_name_mime), II.attachment_scope(issue))
+
+    assert index.values.exclude?(stale), 'a foreign picture must never be linked'
+    assert index.empty?, 'nothing in this mail has a stored file, so nothing resolves'
+  end
+
+  # Two images of the *same* byte count: the size can only narrow the field here, so
+  # this is the case where the digest has to decide. Without it a size-only
+  # implementation would pass every other test in this file while picking the wrong
+  # picture.
+  def test_equal_sized_images_are_told_apart_by_their_digest
+    issue = issue_with_description('Ticket')
+    first  = attach_filled(issue, 'image.png', 2048, 'a')
+    second = attach_filled(issue, 'image.png', 2048, 'b')
+    assert_equal first.filesize, second.filesize, 'the fixtures must tie on size'
+
+    mime = equal_size_mime
+    index = II.cid_index(Mail.read_from_string(mime), II.attachment_scope(issue))
+
+    # attachment_scope is newest first, so an implementation that fell back to
+    # order would give equal-a the *second* attachment. The digest says otherwise.
+    assert_equal first.id, index['equal-a'].id, 'cid equal-a carries the "a" bytes'
+    assert_equal second.id, index['equal-b'].id, 'cid equal-b carries the "b" bytes'
+  end
+
   private
+
+  # Two parts of identical size, different content.
+  def equal_size_mime
+    <<~MIME
+      From: michael@example.de
+      To: helpdesk@example.com
+      Subject: Gleich gross
+      MIME-Version: 1.0
+      Content-Type: multipart/related; boundary="REL"
+
+      --REL
+      Content-Type: text/plain; charset=UTF-8
+
+      [cid:equal-a]
+      [cid:equal-b]
+
+      --REL
+      Content-Type: image/png; name="image.png"
+      Content-Transfer-Encoding: base64
+      Content-ID: <equal-a>
+      Content-Disposition: inline; filename="image.png"
+
+      #{Base64.strict_encode64(filled_png(2048, 'a'))}
+      --REL
+      Content-Type: image/png; name="image.png"
+      Content-Transfer-Encoding: base64
+      Content-ID: <equal-b>
+      Content-Disposition: inline; filename="image.png"
+
+      #{Base64.strict_encode64(filled_png(2048, 'b'))}
+      --REL--
+    MIME
+  end
+
+  def filled_png(bytes, fill)
+    head = Base64.decode64(PNG_BASE64)
+    head + (fill * [bytes - head.bytesize, 0].max)
+  end
+
+  def attach_filled(container, filename, bytes, fill)
+    io = StringIO.new(filled_png(bytes, fill))
+    io.define_singleton_method(:original_filename) { filename }
+    io.define_singleton_method(:content_type)      { 'image/png' }
+
+    attachment = Attachment.create!(:container => container, :file => io, :author => User.find(2))
+    container.reload
+    attachment
+  end
+
+  # Distinct byte counts, as in the reported mail (logo, icons, screenshot).
+  SAME_NAME_SIZES = [8301, 831, 844, 767, 1297, 77237].freeze
+  SAME_NAME_CIDS  = %w[
+    f4730a4f-c265-4d57-a1a6-77187e709eb6
+    275db269-5de0-412f-a18f-72afce1d679f
+    047334f5-150e-4920-95c5-8ca727629df6
+    2899d7f4-0b4f-4e50-b1e0-c2ffe1a8433d
+    2aaa8da9-fa6d-48ba-ba61-29fabf18ecae
+    06bbae6e-06b1-4c79-90c2-02c00d9f63ea
+  ].freeze
+
+  # One multipart/related mail, every part called image.png, each a different size.
+  def same_name_mime
+    parts = SAME_NAME_CIDS.each_with_index.map do |cid, i|
+      <<~PART
+        --REL
+        Content-Type: image/png; name="image.png"
+        Content-Transfer-Encoding: base64
+        Content-ID: <#{cid}>
+        Content-Disposition: inline; filename="image.png"
+
+        #{Base64.strict_encode64(png_of(SAME_NAME_SIZES[i]))}
+      PART
+    end
+
+    <<~MIME
+      From: michael@example.de
+      To: helpdesk@example.com
+      Subject: Programme auf Interimsrechner
+      MIME-Version: 1.0
+      Content-Type: multipart/related; boundary="REL"
+
+      --REL
+      Content-Type: text/plain; charset=UTF-8
+
+      #{SAME_NAME_CIDS.map { |c| "[cid:#{c}]" }.join("\n")}
+
+      #{parts.join}--REL--
+    MIME
+  end
+
+  # A PNG header followed by filler, so the bytes are a valid image of a given size
+  # and every size is a different file.
+  def png_of(bytes)
+    head = Base64.decode64(PNG_BASE64)
+    head + ('x' * [bytes - head.bytesize, 0].max)
+  end
+
+  def attach_sized(container, filename, bytes)
+    io = StringIO.new(png_of(bytes))
+    io.define_singleton_method(:original_filename) { filename }
+    io.define_singleton_method(:content_type)      { 'image/png' }
+
+    attachment = Attachment.create!(:container => container, :file => io, :author => User.find(2))
+    container.reload
+    attachment
+  end
 
   # update_columns: the description is the mail body here, no journal wanted.
   def issue_with_description(text)
