@@ -33,8 +33,15 @@ class HelpdeskProjectSettingsApiController < ApplicationController
     @setting.reply_subject_template = hp[:reply_subject_template].to_s if hp.key?(:reply_subject_template)
     @setting.reply_status_id        = hp[:reply_status_id].presence   if hp.key?(:reply_status_id)
     @setting.default_assigned_to_id = hp[:default_assigned_to_id].presence if hp.key?(:default_assigned_to_id)
-    # Blank clears the override so the project inherits the central colour again;
-    # anything that is not a hex colour is refused by the model validation.
+    # Blank clears the override so the project inherits the central value again.
+    # blacklist_max_kb is parsed strictly rather than with to_i: "abc".to_i is 0,
+    # and 0 is the value that switches the size guard off, so a typo would widen
+    # the block button to every file instead of being rejected.
+    @setting.blacklist_types        = hp[:blacklist_types].presence     if hp.key?(:blacklist_types)
+    if hp.key?(:blacklist_max_kb) && !assign_blacklist_max_kb(hp[:blacklist_max_kb])
+      return render_validation_errors(@setting)
+    end
+    # A colour that is not a hex colour is refused by the model validation.
     @setting.reply_box_color        = hp[:reply_box_color].presence    if hp.key?(:reply_box_color)
     @setting.reply_hazard_color     = hp[:reply_hazard_color].presence if hp.key?(:reply_hazard_color)
     @setting.phishing_action        = hp[:phishing_action]            if hp.key?(:phishing_action)
@@ -146,6 +153,24 @@ class HelpdeskProjectSettingsApiController < ApplicationController
     return unless hp.key?(field)
 
     @setting.public_send("#{field}=", ActiveModel::Type::Boolean.new.cast(hp[field]))
+  end
+
+  # Blank clears the override; anything that is not a whole number is refused rather
+  # than coerced, because to_i would turn a typo into 0 - the value that disables the
+  # size guard entirely.
+  def assign_blacklist_max_kb(raw)
+    value = raw.to_s.strip
+    if value.blank?
+      @setting.blacklist_max_kb = nil
+      return true
+    end
+    unless value.match?(/\A\d+\z/)
+      @setting.errors.add(:blacklist_max_kb, :not_a_number)
+      return false
+    end
+
+    @setting.blacklist_max_kb = value.to_i
+    true
   end
 
   def assign_ai_answer_min_score(raw)

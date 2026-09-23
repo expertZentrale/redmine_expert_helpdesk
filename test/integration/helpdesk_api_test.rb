@@ -156,6 +156,68 @@ class HelpdeskApiTest < Redmine::IntegrationTest
     assert_response :forbidden
   end
 
+  # Guards on the attachment "block" button: read, write, inherit, and refuse.
+  def test_project_settings_blacklist_guards_round_trip
+    get "/projects/#{@project.id}/helpdesk/settings.json", :headers => auth
+    assert_response :success
+    body = ActiveSupport::JSON.decode(@response.body)['helpdesk_project_setting']
+    assert body.key?('blacklist_types')
+    assert body.key?('blacklist_max_kb')
+
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => {
+          :blacklist_types => 'gif, image/png', :blacklist_max_kb => 250
+        } }, :headers => auth
+    assert_response :success
+    setting = HelpdeskProjectSetting.for_project(@project)
+    assert_equal 'gif, image/png', setting.effective_blacklist_types
+    assert_equal 250, setting.effective_blacklist_max_kb
+    # The response has to echo them too: reading the model alone would pass even if
+    # the serializer never learned about the two fields.
+    updated = ActiveSupport::JSON.decode(@response.body)['helpdesk_project_setting']
+    assert_equal 'gif, image/png', updated['blacklist_types']
+    assert_equal 250, updated['blacklist_max_kb']
+
+    # 0 is a meaningful value here - it switches the size guard off.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :blacklist_max_kb => 0 } }, :headers => auth
+    assert_response :success
+    assert_equal 0, HelpdeskProjectSetting.for_project(@project).effective_blacklist_max_kb
+
+    # Empty clears the override and the project inherits centrally again.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => {
+          :blacklist_types => '', :blacklist_max_kb => ''
+        } }, :headers => auth
+    assert_response :success
+    setting = HelpdeskProjectSetting.for_project(@project)
+    assert_nil setting.blacklist_types
+    assert_nil setting.blacklist_max_kb
+    assert_equal RedmineExpertHelpdesk::AttachmentBlacklist::DEFAULT_MAX_KB,
+                 setting.effective_blacklist_max_kb
+
+    # A typo must not become 0 and quietly disable the guard.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :blacklist_max_kb => 'abc' } }, :headers => auth
+    assert_response :unprocessable_entity
+    assert_nil HelpdeskProjectSetting.for_project(@project).blacklist_max_kb
+
+    # Beyond the 4-byte column: without the bound this raises while saving and the
+    # documented 422 becomes a 500.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :blacklist_max_kb => 2_147_483_648 } },
+        :headers => auth
+    assert_response :unprocessable_entity
+    assert_nil HelpdeskProjectSetting.for_project(@project).blacklist_max_kb
+
+    # Same for the string column.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :blacklist_types => 'gif,' * 200 } },
+        :headers => auth
+    assert_response :unprocessable_entity
+    assert_nil HelpdeskProjectSetting.for_project(@project).blacklist_types
+  end
+
   # Colours of the customer-facing reply block: read, write, inherit, and refuse.
   def test_project_settings_reply_box_colors_round_trip
     get "/projects/#{@project.id}/helpdesk/settings.json", :headers => auth

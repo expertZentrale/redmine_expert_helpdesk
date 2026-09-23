@@ -7,6 +7,17 @@
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Die Grenzen des Sperren-Buttons sind jetzt Teil der REST-API der Projekteinstellungen.**
+  `blacklist_types` und `blacklist_max_kb` – für welche Dateitypen und bis zu welcher Größe der
+  Button „Sperren“ angeboten wird – ließen sich nur in den Formularen setzen und fehlten in dem
+  Endpunkt, der jede andere Projekteinstellung führt; eine über die API konfigurierte Instanz kam
+  also nicht an sie heran. Beide sind nun les- und schreibbar, leer löscht die Überschreibung wie im
+  Formular, und `blacklist_max_kb` wird streng geparst statt mit `to_i`: Ein Tippfehler würde sonst
+  zu `0` – genau dem Wert, der die Größengrenze abschaltet und den Button auf jede Datei im Projekt
+  ausweiten würde.
+
 ### Geändert
 
 - **Die Kundenantwort ist im Bearbeitungsformular jetzt ein klar markierter Block.** Eine Antwort

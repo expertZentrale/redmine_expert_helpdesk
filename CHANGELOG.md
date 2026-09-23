@@ -8,6 +8,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- **The attachment-block guards are now part of the project settings REST API.** `blacklist_types`
+  and `blacklist_max_kb` — which file types and up to what size the *Block* button is offered for —
+  could be set in the web forms but were missing from the endpoint that carries every other
+  per-project setting, so an instance configured over the API could not configure them. Both are
+  readable and writable now, blank clears the override the way the form does, and
+  `blacklist_max_kb` is parsed strictly rather than with `to_i`: a typo would otherwise become `0`,
+  which is precisely the value that switches the size guard off and would widen the button to every
+  file in the project.
+
 ### Changed
 
 - **The customer reply is now one clearly marked block in the edit form.** A reply is written in

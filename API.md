@@ -521,6 +521,8 @@ Response `200`:
     "reply_status_id": 2,
     "reply_assign_to_sender": false,
     "default_assigned_to_id": 7,
+    "blacklist_types": null,
+    "blacklist_max_kb": 200,
     "reply_box_color": null,
     "reply_hazard_color": "#2f9e5f",
     "phishing_check_enabled": true,
@@ -580,6 +582,8 @@ A **partial** update — only the keys you send are changed. Body key
 | `reply_status_id` | integer \| null | Status **preselected** in the ticket form once the agent ticks *send as email* — a suggestion they can override before saving, not a value this API or the reply endpoint applies. `null` = no preselection. |
 | `reply_assign_to_sender` | boolean | Assigns the replying agent, but only while the ticket is still unassigned. |
 | `default_assigned_to_id` | integer \| null | Principal (user **or** group) that new tickets from incoming mail are assigned to. `null` = do not assign. Not validated on write; a principal that is not assignable in the project is skipped when the ticket is created. |
+| `blacklist_types` | string \| null | Which attachments get the *Block* button: extensions (`gif, png`) or MIME types (`image/gif`, `image/*`), comma-separated; `*` allows every type. `null`/empty inherits the central setting. A guard on the button only — nothing is dropped from incoming mail because of it. |
+| `blacklist_max_kb` | integer \| null | Largest file the *Block* button is offered for, in KB. `0` disables the size guard. `null`/empty inherits the central setting. A non-integer is rejected rather than coerced, because `0` is meaningful here. |
 | `reply_box_color` | string \| null | Background of the customer-facing reply block in the ticket form, `#rgb` or `#rrggbb`. `null`/empty inherits the central setting. A value that is not a hex colour is rejected — it is interpolated into a stylesheet. |
 | `reply_hazard_color` | string \| null | Colour of the hazard border shown while a reply is armed. Same format and inheritance as `reply_box_color`. |
 | `phishing_check_enabled` | boolean | |

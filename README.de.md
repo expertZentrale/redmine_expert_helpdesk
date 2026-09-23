@@ -626,6 +626,9 @@ Wissenswertes:
   gelöschten Dateien kommen dadurch nicht zurück.
 - Sperren lassen sich nur Ticket-Anhänge — Wiki- und Dokument-Anhänge haben kein Helpdesk-Projekt,
   auf das der Eintrag begrenzt werden könnte.
+- Beide Grenzen sind auch über den REST-Endpunkt der Projekteinstellungen les- und schreibbar
+  (`blacklist_types`, `blacklist_max_kb`) — siehe `API.md`. Ein leerer Wert löscht dort die
+  Projekt-Überschreibung und übernimmt die zentrale Einstellung, genau wie im Formular.
 
 ### EML-Anhang und Journalverlinkung
 

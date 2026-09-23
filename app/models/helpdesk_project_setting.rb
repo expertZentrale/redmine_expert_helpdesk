@@ -51,9 +51,16 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
   validates :reply_box_color, :reply_hazard_color,
             :format => { :with => RedmineExpertHelpdesk::ReplyBox::HEX_COLOR },
             :allow_blank => true
+  # The upper bound is the 4-byte integer column, not a business rule: without it an
+  # out-of-range value passes validation and raises ActiveModel::RangeError while
+  # saving, which the API controller turns into a 500 instead of the documented 422.
+  # Bounded in the model rather than in either controller, so the web form and the
+  # REST endpoint are covered by the same rule.
   validates :blacklist_max_kb,
-            :numericality => { :only_integer => true, :greater_than_or_equal_to => 0 },
+            :numericality => { :only_integer => true, :greater_than_or_equal_to => 0,
+                               :less_than_or_equal_to => 2_147_483_647 },
             :allow_nil => true
+  validates :blacklist_types, :length => { :maximum => 255 }, :allow_blank => true
   validates :ai_min_image_kb,
             :numericality => { :only_integer => true, :greater_than_or_equal_to => 0 },
             :allow_nil => true
