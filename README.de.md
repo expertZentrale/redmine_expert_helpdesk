@@ -551,9 +551,17 @@ zwar als Ticket-Anhang, lässt den Text aber unverändert – eine Mailsignatur 
 Reihe von `[cid:…]`-Markierungen an.
 
 Das Plugin lässt diese Markierungen auf den soeben gespeicherten Anhang zeigen, in der Bildsyntax
-der eingestellten Textformatierung (`!image001.png!` bei Textile, `![](image001.png)` bei
-Markdown/CommonMark) – das Ticket liest sich damit wie die Originalmail. Das gilt für die
-Beschreibung eines neuen Tickets ebenso wie für die Notiz einer Antwort.
+der eingestellten Textformatierung (`!/attachments/download/653892/image001.png!` bei Textile,
+`![](/attachments/download/653892/image001.png)` bei Markdown/CommonMark) – das Ticket liest sich
+damit wie die Originalmail. Das gilt für die Beschreibung eines neuen Tickets ebenso wie für die
+Notiz einer Antwort.
+
+Die Auszeichnung benennt den **Download-Pfad** und nicht den bloßen Dateinamen, denn ein bloßer
+Name ist keine Referenz, sondern eine Suche: Redmine löst ihn gegen alle Anhänge des gerenderten
+Objekts auf und nimmt den neuesten Treffer. Outlook nennt jedes eingebettete Bild `image.png`, eine
+einzige Signatur kann also sieben davon mitbringen – und die Anhänge einer Antwort hängen an dem
+Ticket, gegen das die Beschreibung gerendert wird. Mit bloßen Namen zeigten die Bilder der einen
+Mail irgendwann die der anderen. Die ID meint genau eine Datei, dauerhaft.
 
 Wissenswert:
 

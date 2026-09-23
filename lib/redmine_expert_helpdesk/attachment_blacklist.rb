@@ -277,7 +277,7 @@ module RedmineExpertHelpdesk
     # Does another attachment Redmine would resolve this text against carry the same
     # file name? Compared case-insensitively, the way Redmine's own lookup does.
     def name_shared?(attachment, container)
-      siblings, = InlineImages.attachment_scope(container)
+      siblings = InlineImages.attachment_scope(container)
       name = attachment.filename.to_s
       siblings.any? { |a| a.id != attachment.id && a.filename.to_s.casecmp(name).zero? }
     rescue StandardError

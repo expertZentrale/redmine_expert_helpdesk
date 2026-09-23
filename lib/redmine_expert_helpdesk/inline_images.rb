@@ -19,6 +19,8 @@
 #   rewrite!(object, mime) - after: replaces the markers in the issue description
 #                            (new ticket) resp. the journal note (reply).
 
+require 'digest'
+
 module RedmineExpertHelpdesk
   module InlineImages
     # File extensions Redmine resolves against the attachments of the object it
@@ -63,13 +65,13 @@ module RedmineExpertHelpdesk
       text = stored_text(object)
       return false if text.blank? || text !~ ANY_MARKER
 
-      attachments, by_filename = attachment_scope(object)
+      attachments = attachment_scope(object)
       return false if attachments.empty?
 
       index = cid_index(Mail.read_from_string(mime), attachments)
       return false if index.empty?
 
-      rewritten = replace_markers(text, index, by_filename)
+      rewritten = replace_markers(text, index)
       return false if rewritten == text
 
       unless store_text(object, rewritten)
@@ -134,23 +136,23 @@ module RedmineExpertHelpdesk
       updated
     end
 
-    # The attachments Redmine considers when it renders the text, newest first so a
-    # file name that repeats across mails (image001.png in a signature) resolves to
-    # this mail's copy.
+    # The attachments this mail's parts are matched against, newest first so that a
+    # file name repeated across mails (image001.png in a signature) prefers this
+    # mail's copy when nothing else tells them apart.
     #
     # MailHandler appends mail attachments to the issue, whose after_add hook
     # journalizes them onto the journal it has just created - so a reply's images
-    # are reachable from both. Returns [attachments, resolvable_by_filename]: when
-    # a journal has no attachment details of its own, Redmine cannot resolve a bare
-    # file name in that note and the markup has to name the download path instead.
+    # are reachable from both. Returns the attachments alone: the markup names the
+    # download path in every case now, so whether a bare file name would resolve
+    # here no longer makes a difference.
     def attachment_scope(object)
       if object.is_a?(Journal)
         own = object.respond_to?(:attachments) ? object.attachments.to_a : []
-        return [newest_first(own), true] if own.any?
+        return newest_first(own) if own.any?
 
-        [newest_first(Array(object.journalized.try(:attachments))), false]
+        newest_first(Array(object.journalized.try(:attachments)))
       else
-        [newest_first(Array(object.try(:attachments))), true]
+        newest_first(Array(object.try(:attachments)))
       end
     end
 
@@ -162,17 +164,30 @@ module RedmineExpertHelpdesk
 
     # Maps everything a marker may name - the Content-ID and the file name of an
     # embedded image - onto the attachment Redmine stored for it.
+    #
+    # Each part claims its attachment, so a mail whose images all carry the same file
+    # name still maps every Content-ID to a different file. Outlook names every
+    # embedded image "image.png": a signature with a logo, a phone icon, a mail icon
+    # and four social icons arrives as seven parts with seven Content-IDs and one
+    # name between them, and matching on the name alone handed all seven the same
+    # attachment - the ticket then showed the same picture seven times.
     def cid_index(mail, attachments)
       index = {}
+      claimed = []
+
       mail.attachments.each do |part|
         name = part.filename.to_s
         next unless inline_image?(name)
 
-        attachment = find_attachment(attachments, name)
+        attachment = find_attachment(attachments, part, claimed)
         next unless attachment
 
+        claimed << attachment.id
         cid = part.content_id.to_s.gsub(/\A<|>\z/, '').strip
         index[index_key(cid)] = attachment if cid.present?
+        # The bare name is kept only as a last resort for markers that carry no
+        # Content-ID (Gmail's "[image: logo.png]"); with repeated names it can only
+        # ever mean the first part that used it.
         index[index_key(name)] ||= attachment
         index[index_key(attachment.filename)] ||= attachment
       end
@@ -183,14 +198,56 @@ module RedmineExpertHelpdesk
       INLINE_EXTENSIONS.include?(filename.to_s.split('.').last.to_s.downcase)
     end
 
-    # MailHandler hands the file name of the MIME part to Attachment, which
-    # sanitizes it (path prefixes, characters such as ":" or "?"), so the stored
-    # name is not always the one the part carries - compare against both.
-    def find_attachment(attachments, name)
+    # The attachment Redmine stored for this MIME part.
+    #
+    # The name narrows the field, the bytes decide it. MailHandler hands the part's
+    # file name to Attachment, which sanitizes it (path prefixes, characters such as
+    # ":" or "?"), so the stored name is not always the one the part carries -
+    # compare against both. Where several attachments answer to the name, the part's
+    # own size and, if that still ties, its digest pick the right one; +claimed+
+    # keeps two parts from taking the same file.
+    def find_attachment(attachments, part, claimed = [])
+      candidates = named_like(attachments, part.filename.to_s)
+      return nil if candidates.empty?
+
+      unclaimed = candidates.reject { |a| claimed.include?(a.id) }
+      pool = unclaimed.presence || candidates
+      return pool.first if pool.one?
+
+      bytes = part_bytes(part)
+      return pool.first if bytes.nil?
+
+      by_size = pool.select { |a| a.filesize.to_i == bytes.bytesize }
+      return by_size.first if by_size.one?
+
+      narrowed = by_size.presence || pool
+      digest = Digest::SHA256.hexdigest(bytes)
+      narrowed.find { |a| stored_digest(a) == digest } || narrowed.first
+    end
+
+    def named_like(attachments, name)
       stored = sanitized_filename(name)
-      attachments.find { |a| a.filename == name } ||
-        attachments.find { |a| a.filename == stored } ||
-        attachments.find { |a| a.filename.to_s.casecmp(stored.to_s).zero? }
+      attachments.select do |a|
+        a.filename == name || a.filename == stored ||
+          a.filename.to_s.casecmp(stored.to_s).zero?
+      end
+    end
+
+    def part_bytes(part)
+      part.body.decoded
+    rescue StandardError
+      nil
+    end
+
+    # Computed rather than read from Attachment#digest: that column held MD5 before
+    # Redmine 3.4, so it cannot be compared against a SHA-256 of the part.
+    def stored_digest(attachment)
+      path = attachment.diskfile
+      return nil if path.blank? || !File.exist?(path)
+
+      Digest::SHA256.file(path).hexdigest
+    rescue StandardError
+      nil
     end
 
     def sanitized_filename(name)
@@ -205,35 +262,45 @@ module RedmineExpertHelpdesk
 
     # --- markup ---------------------------------------------------------------
 
-    def replace_markers(text, index, by_filename = true)
+    def replace_markers(text, index)
       # A cid: inside a src attribute belongs to raw HTML that survived into the
       # body: only the value is exchanged, so the tag keeps its size and alt
       # attributes and Redmine resolves the file name while it renders the HTML.
       result = text.gsub(SRC_CID) do |marker|
         attachment = index[index_key(Regexp.last_match(1))]
-        attachment ? %(src="#{target(attachment, by_filename)}") : marker
+        attachment ? %(src="#{target(attachment)}") : marker
       end
 
       TEXT_PATTERNS.inject(result) do |current, pattern|
         current.gsub(pattern) do |marker|
           attachment = index[index_key(Regexp.last_match(1))]
-          attachment ? markup(attachment, by_filename) : marker
+          attachment ? markup(attachment) : marker
         end
       end
     end
 
-    # "!name.png!" resp. "![](name.png)" is the syntax Redmine resolves against the
-    # attachments of the rendered object.
-    def markup(attachment, by_filename = true)
-      link = target(attachment, by_filename)
+    # "!path!" resp. "![](path)" is the image syntax of the configured formatter.
+    def markup(attachment)
+      link = target(attachment)
       textile? ? "!#{link}!" : "![](#{link})"
     end
 
-    # The file name, or - where Redmine's lookup cannot reach the attachment - the
-    # download path, which renders without any lookup.
-    def target(attachment, by_filename)
-      name = escape_target(attachment.filename)
-      by_filename ? name : "/attachments/download/#{attachment.id}/#{name}"
+    # Always the download path, never the bare file name.
+    #
+    # A bare name is not a reference to a file, it is a lookup: Redmine resolves it
+    # with Attachment.latest_attach against every attachment of the rendered object
+    # and takes the newest match. That breaks twice over. Within one mail, Outlook
+    # names every embedded image "image.png", so all of them would resolve to
+    # whichever was stored last. Across mails it rots - MailHandler appends a reply's
+    # attachments to the *issue*, so the description is rendered against them too,
+    # and the next mail carrying an "image.png" quietly takes over the markers of the
+    # first. The id names exactly one file and keeps doing so.
+    #
+    # relative_url_root is included because a sub-URI install serves attachments
+    # below it; without it the src would point outside the application.
+    def target(attachment)
+      "#{Redmine::Utils.relative_url_root}" \
+        "/attachments/download/#{attachment.id}/#{escape_target(attachment.filename)}"
     end
 
     def textile?

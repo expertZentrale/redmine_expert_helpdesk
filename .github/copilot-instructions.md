@@ -161,6 +161,12 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     `Setting.text_formatting`. `prepare_mime` runs *before* `MailHandler` and only for bodies
     Redmine builds from the HTML part (its HTML-to-text parser has no `img` rule and would drop
     the reference); it edits only the copy handed to `MailHandler`, never the archived `.eml`.
+    **Parts are paired to attachments by content and the markup always names the download path**,
+    never the bare file name: Outlook calls every embedded image `image.png`, so name-based pairing
+    gave one signature's seven Content-IDs the same file, and a bare name is a lookup
+    (`Attachment.latest_attach` takes the newest match) that also rots as replies add attachments
+    to the issue the description renders against. `find_attachment` narrows by name then decides on
+    byte count and SHA-256; each part claims its attachment.
     Off switch: plugin setting `inline_images_enabled`.
   - `attachment_blacklist.rb` — per-project blacklist of attachment *contents* (signature logos,
     icons, tracking pixels), keyed by the SHA-256 of the bytes in `HelpdeskAttachmentBlacklist`.

@@ -8,6 +8,30 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Embedded images of a mail no longer all show the same picture.** Outlook names every
+  embedded image `image.png`, so a mail whose signature carries a logo, a phone icon, a mail
+  icon and four social icons arrives as seven parts with seven Content-IDs and a single file
+  name between them. Two things then went wrong at once. Parts were matched to the stored
+  attachments **by file name**, so all seven Content-IDs were handed the same file; and the
+  markup written into the ticket was the bare name (`!image.png!`), which Redmine does not treat
+  as a reference but as a lookup — `Attachment.latest_attach` resolves it against every
+  attachment of the rendered object and returns the *newest* match. A ticket that showed nine
+  different pictures in the mail showed the same screenshot nine times over.
+  Parts are now matched by their **content**: the file name narrows the field, then the part's
+  byte count and, if that still ties, its SHA-256 pick the right file, and each part claims its
+  attachment so two parts can never take the same one. The markup names the **download path**
+  (`!/attachments/download/653892/image.png!`), which carries the id and therefore means exactly
+  one file.
+  The second half also fixes a slower failure that had nothing to do with duplicate names within
+  one mail: `MailHandler` appends a reply's attachments to the *issue*, and the description is
+  rendered against those, so the next mail carrying an `image.png` quietly took over the markers
+  of the first — a ticket's description could start showing a later reply's pictures. Anything
+  written from now on is immune; text written before this release keeps whatever it resolved to.
+  Sub-URI installs are handled too: the path now includes `relative_url_root`, which the previous
+  download-path fallback omitted.
+
 ### Added
 
 - **Signature logos and icons can now be blocked once instead of deleted forever.**
