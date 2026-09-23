@@ -116,6 +116,55 @@ class AiClientRerankTest < ActiveSupport::TestCase
     assert_equal 4, captured[:read_timeout]
   end
 
+  # Drives the real post_json with Net::HTTP swapped out, so the timeouts asserted
+  # here are the ones production sets.
+  class FakeHttp
+    attr_accessor :use_ssl, :open_timeout, :read_timeout
+
+    BODY = { 'results' => [{ 'index' => 0, 'relevance_score' => 0.5 }],
+             'data' => [{ 'embedding' => [0.1, 0.2] }] }.to_json.freeze
+
+    def request(_req)
+      res = Net::HTTPOK.new('1.1', '200', 'OK')
+      res.instance_variable_set(:@body, BODY)
+      res.instance_variable_set(:@read, true)
+      res
+    end
+  end
+
+  # Swaps Net::HTTP.new for the duration so the real post_json runs and the
+  # timeouts asserted are the ones production sets. define_singleton_method
+  # rather than minitest/mock - the house idiom in these tests.
+  def capture_timeouts(_client)
+    fake = FakeHttp.new
+    original = Net::HTTP.method(:new)
+    Net::HTTP.define_singleton_method(:new) { |*_args| fake }
+    begin
+      yield
+    ensure
+      Net::HTTP.define_singleton_method(:new, original)
+    end
+    { :open => fake.open_timeout, :read => fake.read_timeout }
+  end
+
+  # A blackholed host spends its budget connecting, not reading, so leaving the
+  # fixed 15 s connect timeout in place would let a 5 s call block for 20 - and
+  # the answer draft sizes its lock on these numbers.
+  def test_rerank_budget_caps_the_connect_timeout_too
+    c = client('kb_rerank_timeout' => '5')
+    t = capture_timeouts(c) { c.rerank('q', %w[a]) }
+    assert_equal 5, t[:open]
+    assert_equal 5, t[:read]
+  end
+
+  # The chat/embedding calls keep the original connect timeout: only a caller
+  # that states its own budget tightens it.
+  def test_calls_without_an_explicit_budget_keep_the_default_connect_timeout
+    c = client('kb_embed_api_key' => 'sk-embed')
+    t = capture_timeouts(c) { c.embed('hallo') rescue nil }
+    assert_equal RedmineExpertHelpdesk::AiClient::DEFAULT_OPEN_TIMEOUT, t[:open]
+  end
+
   def test_empty_document_list_short_circuits
     c = client
     c.define_singleton_method(:post_json) { |*| raise 'must not be called' }

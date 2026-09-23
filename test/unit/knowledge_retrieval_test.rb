@@ -269,6 +269,31 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
     assert_equal [3], hits.map { |h| h[:payload]['issue_id'] }
   end
 
+  # A typo in this free-form central setting must not silently remove the only
+  # gate on the proposals. to_f would read "oops" as 0.0 and pass everything.
+  def test_a_malformed_rerank_threshold_falls_back_to_the_default
+    store = store_stub([hit(3, 0.9)])
+    ['oops', '50%', 'NaN', '-0.5', '1.5', 'Infinity'].each do |bad|
+      s = rerank_settings('kb_rerank_min_score' => bad)
+      assert_equal [], Retrieval.search(@issue, s, client_stub(:rerank => [row(0, 0.1)]), 'Frage',
+                                        :store => store),
+                   "#{bad.inspect} should fall back to the 0.2 default, not disable the gate"
+      hits = Retrieval.search(@issue, s, client_stub(:rerank => [row(0, 0.9)]), 'Frage',
+                              :store => store)
+      assert_equal [3], hits.map { |h| h[:payload]['issue_id'] },
+                   "#{bad.inspect} should still admit a strong hit"
+    end
+  end
+
+  # 0.0 is a legitimate value - "accept anything the reranker returns" - and must
+  # survive, unlike a blank or a malformed one.
+  def test_an_explicit_zero_rerank_threshold_is_honoured
+    store = store_stub([hit(3, 0.9)])
+    s = rerank_settings('kb_rerank_min_score' => '0.0')
+    hits = Retrieval.search(@issue, s, client_stub(:rerank => [row(0, 0.05)]), 'Frage', :store => store)
+    assert_equal [3], hits.map { |h| h[:payload]['issue_id'] }
+  end
+
   def test_caller_min_score_overrides_the_rerank_threshold_too
     store = store_stub([hit(3, 0.9)])
     client = client_stub(:rerank => [row(0, 0.6)])

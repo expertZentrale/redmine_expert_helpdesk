@@ -138,6 +138,8 @@ class HelpdeskNoteContentController < ApplicationController
   # model. The rerank term is counted even when reranking is off, like the other
   # two are counted regardless of backend: this bounds a lock, and a lock that
   # expires mid-draft costs more than a few seconds of slack on a ~48 s ceiling.
+  # It is counted twice because RERANK_TIMEOUT caps the connect *and* the read
+  # phase, and a blackholed host spends a full budget in each.
   def draft_lock_seconds
     settings = Setting.plugin_redmine_expert_helpdesk
     chat     = settings['ai_answer_timeout'].to_i
@@ -145,7 +147,7 @@ class HelpdeskNoteContentController < ApplicationController
     chat.clamp(5, 45) +
       RedmineExpertHelpdesk::AnswerDrafter::EMBED_TIMEOUT +
       RedmineExpertHelpdesk::AnswerDrafter::STORE_READ_TIMEOUT +
-      RedmineExpertHelpdesk::AnswerDrafter::RERANK_TIMEOUT +
+      (2 * RedmineExpertHelpdesk::AnswerDrafter::RERANK_TIMEOUT) +
       DRAFT_LOCK_MARGIN
   end
 

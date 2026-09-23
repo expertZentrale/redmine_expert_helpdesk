@@ -396,15 +396,21 @@ module RedmineExpertHelpdesk
 
     # POST JSON, parse JSON, raise AiError on non-2xx. Analog zu GraphClient#request.
     # read_timeout: overrides this call's time budget (reranking has its own,
-    # much tighter than a text generation).
+    # much tighter than a text generation). It caps the *connect* timeout too -
+    # a blackholed host spends its time there, not reading, so leaving the fixed
+    # 15 s in place would let a 5 s call block for 20. The answer draft sizes its
+    # lock on these numbers, and a lock that expires mid-request lets a second
+    # paid draft through.
     # extra_headers is passed as a hash literal at every call site - without the
     # braces Ruby 3 would read the trailing hash as keyword arguments, now that
     # this method has one.
+    DEFAULT_OPEN_TIMEOUT = 15
+
     def post_json(url, payload, extra_headers = {}, read_timeout: nil)
       uri = URI(url)
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = (uri.scheme == 'https')
-      http.open_timeout = 15
+      http.open_timeout = read_timeout ? [DEFAULT_OPEN_TIMEOUT, read_timeout].min : DEFAULT_OPEN_TIMEOUT
       http.read_timeout = read_timeout || self.read_timeout
 
       req = Net::HTTP::Post.new(uri)

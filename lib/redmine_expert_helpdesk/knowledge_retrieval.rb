@@ -163,8 +163,22 @@ module RedmineExpertHelpdesk
     # Like positive_or, but for thresholds: here 0.0 is a valid value while a
     # missing key is not. The two are told apart by the blank string / nil,
     # not by the number.
+    #
+    # Parsed strictly, and anything that is not a plain 0..1 number falls back to
+    # the shipped default. This is a free-form central setting and the only gate
+    # on the proposals, so to_f would be the wrong tool twice over: it reads
+    # "oops" as 0.0 and lets every candidate through, and it reads "50%" as 50.0
+    # and lets none through. Failing to the default is the only safe direction.
     def float_or(value, fallback)
-      value.to_s.strip.present? ? value.to_f : fallback
+      raw = value.to_s.strip
+      return fallback if raw.blank?
+
+      v = Float(raw)
+      return fallback unless v.finite? && v >= 0.0 && v <= 1.0
+
+      v
+    rescue ArgumentError, TypeError
+      fallback
     end
   end
 end
