@@ -1,0 +1,27 @@
+h3. Added
+
+* *The knowledge base can rerank its hits with a cross-encoder.* Vector search alone is a bi-encoder: it ranks on whole-text proximity, so a ticket that merely shares vocabulary with the query could outrank the one describing the same fault. That cost in both directions — the answer draft refuses without a hit above its threshold, so weak ranking became "no matching knowledge-base entry" for tickets that did have an answer, while a hit clearing the bar for the wrong reason became a customer-facing draft grounded in an unrelated ticket. With a reranker configured, the vector store is asked for a shortlist of @kb_rerank_candidates@ entries (default 20) instead of Top-K, a cross-encoder re-scores that shortlist, and the best Top-K above @kb_rerank_min_score@ are kept. It applies to both places the knowledge base is used: the proposals shown to agents and the customer-facing answer draft. Switched off by default.
+* Only the *problem* text of an entry is re-scored — the same text that was embedded. Passing the solution as well pulled up entries whose fix happened to share the words of the query while the fault was a different one, which is precisely the mistake the stage exists to prevent.
+* Endpoint and API key fall back to the embeddings configuration when left empty. With most providers the embedding and the reranker model sit on the same base URL, so switching the feature on is usually the only thing to set. Reranker calls appear in the AI statistics as @kb_rerank@.
+* Rerank scores are normalised to @0..1@. The raw output of a cross-encoder is a logit and not every runtime squashes it — one measured provider returns values from @+5.97@ (identical text) down to @-10.99@ (unrelated). A response carrying anything outside @0..1@ is put through a sigmoid, so the minimum score is always a @0..1@ value; the transform is monotonic, so the ranking is untouched.
+
+h3. Changed
+
+* *While reranking is on, the relevance thresholds are read against the rerank score.* Cosine similarity and cross-encoder relevance are different scales. @kb_rerank_min_score@ replaces @kb_min_score@ as the gate, and @ai_answer_min_score@ — the stricter, customer-facing bar of the answer draft — is applied to the rerank score instead of the similarity. Scores stored on knowledge-base proposals and shown in the ticket sidebar follow the same change.
+* The connect phase of every AI provider call is now bounded by that call's own time budget rather than by a fixed 15 seconds. A host that accepts no connection spends its time connecting, not reading, so a call given five seconds could previously block for twenty — long enough to outlive the lease that stops a second answer draft starting for the same ticket while the first is still running.
+
+h3. Fixed
+
+* The minimum score for reranking is parsed strictly. A typo in the field would otherwise have been read as @0@ — the value that removes the only threshold on the proposals and lets every candidate through — and a value such as @50%@ as @50@, which rejects everything. Anything that is not a plain @0..1@ number now falls back to the shipped default.
+
+h3. Upgrade notes
+
+No migration runs for this release.
+
+Nothing changes for an existing installation until the reranker is switched on: it is off by default, and with it off retrieval behaves exactly as in 0.14.0.
+
+*After switching it on, expect to retune two thresholds.* @kb_rerank_min_score@ (default @0.2@) replaces @kb_min_score@ for the agent-facing proposals, and @ai_answer_min_score@ (default @0.65@) is applied to the rerank score rather than to the similarity — under a cross-encoder that value admits only a near-exact match, so the answer draft will refuse more often than before, and will be better grounded when it does produce one. Both scales are documented in the README.
+
+*Data protection:* with the reranker on, every search additionally sends the current ticket text together with the problem texts of the candidate entries — content from other tickets of the same project — to the reranker provider in a single request. Nothing is stored there, but it is a second recipient, and a separate one when the reranker endpoint is set to something other than the embeddings endpoint. For a fully on-premise flow, use self-hosted endpoints for embeddings *and* reranking.
+
+If the reranker fails or times out, the search falls back to the similarity ranking *and* the similarity thresholds, so a broken or unreachable reranker costs the ordering, never the search itself.

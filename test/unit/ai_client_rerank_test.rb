@@ -157,12 +157,24 @@ class AiClientRerankTest < ActiveSupport::TestCase
     assert_equal 5, t[:read]
   end
 
-  # The chat/embedding calls keep the original connect timeout: only a caller
-  # that states its own budget tightens it.
-  def test_calls_without_an_explicit_budget_keep_the_default_connect_timeout
-    c = client('kb_embed_api_key' => 'sk-embed')
-    t = capture_timeouts(c) { c.embed('hallo') rescue nil }
+  # The embedding call states no budget of its own, so it inherits ai_timeout -
+  # and the connect phase must be bounded by that too, not by the fixed 15 s.
+  # The answer draft tightens ai_timeout to EMBED_TIMEOUT and sizes its lock on
+  # the result, so an unbounded connect there outlives the lock.
+  def test_connect_is_bounded_by_the_inherited_budget_too
+    c = client('kb_embed_api_key' => 'sk-embed', 'ai_timeout' => '10')
+    t = capture_timeouts(c) { c.embed('hallo') }
+    assert_equal 10, t[:open]
+    assert_equal 10, t[:read]
+  end
+
+  # A generous budget leaves the original connect timeout in force - the cap is
+  # a ceiling, not a replacement.
+  def test_a_large_budget_keeps_the_default_connect_timeout
+    c = client('kb_embed_api_key' => 'sk-embed', 'ai_timeout' => '60')
+    t = capture_timeouts(c) { c.embed('hallo') }
     assert_equal RedmineExpertHelpdesk::AiClient::DEFAULT_OPEN_TIMEOUT, t[:open]
+    assert_equal 60, t[:read]
   end
 
   def test_empty_document_list_short_circuits

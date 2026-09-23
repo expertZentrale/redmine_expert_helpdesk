@@ -68,6 +68,7 @@ Under *Administration → Plugins → Redmine expert Helpdesk*, or via the *expe
 | Custom fields as macros | Issue custom fields that may be used as @{{issue.cf.…}}@ in templates. Nothing is enabled by default; a field's own Redmine visibility still applies on top |
 | Completeness check | Master switch for the automatic follow-up when an incoming mail carries too little information, plus the central texts and check prompt. Off by default, and each project additionally chooses its own mode |
 | AI answer drafts | Master switch for the customer-facing draft button, plus its prompt, minimum match, output budget and timeout. Off by default, and each project opts in separately. Requires the AI settings, and the knowledge base for every variant except "ask for missing details" |
+| Knowledge base reranker | Optional second retrieval stage: a cross-encoder re-scores the shortlist the vector store returns, which is markedly more precise than similarity alone. Off by default; endpoint and key fall back to the embeddings ones, since both models usually share a base URL. Its own minimum score replaces the similarity one while it is on, and both want retuning — the two are different scales |
 
 Nothing here is required for a mailbox that carries its own credentials — see the next step.
 
