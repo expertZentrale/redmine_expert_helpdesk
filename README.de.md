@@ -158,8 +158,10 @@ Tickets](docs/screenshots/de/03-contacts.png)
 Die Ticketseite zeigt, wer geschrieben hat, aus welchem Postfach und wie beide SLA-Uhren
 stehen.
 
-![Ticketseite mit Helpdesk-Infozeile: Absendername und -adresse, Ursprungspostfach sowie
-zwei grüne SLA-Chips für Reaktions- und Lösungszeit](docs/screenshots/de/04-issue-detail.png)
+![Ticketseite mit Helpdesk-Infozeile: ein SLA-Chip für die Reaktionszeit (erfüllt) und
+einer für die Lösungszeit (fällig), Name und Adresse des Absenders und die Dateien der
+Mail — ein Signaturlogo, zwei Icons und der Screenshot des Kunden, jede mit einer
+Schaltfläche „Sperren“](docs/screenshots/de/04-issue-detail.png)
 
 Die Seitenleiste ergänzt die Kundenkarte, frühere Tickets des Kunden und – bei aktiver
 Wissensbasis – Lösungsvorschläge aus ähnlichen gelösten Tickets.
@@ -171,12 +173,34 @@ Trefferquote](docs/screenshots/de/05-issue-sidebar.png)
 
 ### Antwort an den Kunden
 
-Antworten werden im gewohnten Redmine-Notizfeld geschrieben; das Helpdesk-Panel ergänzt
-Empfänger und eine Vorschau der angehängten Signatur.
+Antworten werden im gewohnten Redmine-Notizfeld geschrieben. Solange die Antwort
+eingeschaltet ist, bilden Empfänger, Notiz und die Vorschau der angehängten Signatur einen
+Block mit Warnrahmen – er ist nicht mit einer internen Notiz zu verwechseln. Wen der
+Kunde in An oder Cc hatte, wird neben den Feldern angeboten.
 
-![Antwort-Panel im Bearbeiten-Formular eines Tickets: Auswahlfeld „Als E-Mail an Kunden
-senden“ mit Empfänger, An/CC/BCC-Feldern und einer Vorschau der
-Signatur](docs/screenshots/de/06-reply.png)
+![Die scharf geschaltete Kundenantwort im Bearbeiten-Formular: ein Block mit diagonalem
+Warnrahmen, darin Empfänger, An/CC/BCC-Felder mit dem Angebot „Originalempfänger“, die
+Dateien des Tickets zum Anhängen, die Notiz und danach die
+Signaturvorschau](docs/screenshots/de/06-reply.png)
+
+### KI-Antwortentwurf
+
+Bei aktiver Wissensbasis entwirft die Notiz-Werkzeugleiste die Antwort aus ähnlichen
+gelösten Tickets und nennt die Tickets, auf denen sie beruht.
+
+![Ein KI-Antwortentwurf in der scharf geschalteten Kundenantwort: nummerierte Schritte für
+einen Scanner, der nicht mehr erkannt wird, eine Zeile „Grundlage“ mit zwei gelösten
+Tickets und ihrer Relevanz, und der Hinweis, dass der Text von einer KI stammt und vor dem
+Senden zu prüfen ist](docs/screenshots/de/12-ai-answer-draft.png)
+
+### Signaturlogos sperren
+
+Signaturlogos und Icons lassen sich einmal je Projekt sperren, statt sie auf jedem Ticket
+zu löschen; verglichen wird der Dateiinhalt, nicht der Name.
+
+![Die Dateien eines Tickets: ein Signaturlogo, zwei Social-Media-Icons und der
+eigentliche Screenshot des Kunden, jede Zeile mit einer Schaltfläche
+„Sperren“](docs/screenshots/de/13-attachment-block.png)
 
 ### SLA-Statistik
 
