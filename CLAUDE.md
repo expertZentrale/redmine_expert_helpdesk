@@ -403,7 +403,8 @@ nested registration would never fire in production.
   (file store is per pod). One live run at a time via a unique `active_lock` index (`claim!`),
   not check-then-insert; no heartbeat for `STALE_AFTER` (1 h) = retired as `stale` by the next
   claim, since the `:async` adapter loses queued jobs on restart. Every job write is fenced on
-  still holding the lock (`Superseded`) — so `link_issues` keeps `report` outside its per-row rescue.
+  still holding the lock (`Superseded`), re-checked every 100 rows **or** 30 s (`HEARTBEAT_EVERY`) —
+  the time bound is what catches a stalled worker before its next row — so `link_issues` keeps `report` outside its per-row rescue.
 - **`hooks.rb`** — `ViewListener` view hooks (customer sidebar card, ticket-header info bar,
   reply form, activity-feed CSS) and `controller_issues_*_after_save` hooks. Injected via
   Redmine view hooks, so no Deface.

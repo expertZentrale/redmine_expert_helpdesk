@@ -66,6 +66,20 @@ class HelpdeskLegacyImportRunTest < ActiveSupport::TestCase
     assert_equal 'stale', run.reload.status, 'a superseded worker must not overwrite the row'
   end
 
+  def test_a_stalled_worker_is_fenced_on_its_next_row
+    run = run!(:status => 'queued')
+    assert run.start!
+    run.progress!('issues', 1, 1000)
+    HelpdeskLegacyImportRun.where(:id => run.id).update_all(:status => 'stale', :active_lock => nil)
+
+    # Within the throttle window the lease is not re-read ...
+    assert_nothing_raised { run.progress!('issues', 2, 1000) }
+    # ... but a worker resuming after a pause sees the gap before its next row
+    travel HelpdeskLegacyImportRun::HEARTBEAT_EVERY + 1.second do
+      assert_raises(HelpdeskLegacyImportRun::Superseded) { run.progress!('issues', 3, 1000) }
+    end
+  end
+
   def test_job_stops_quietly_when_superseded
     run = run!
     RedmineExpertHelpdesk::LegacyContactsImport.any_instance.stubs(:fix_attachments)

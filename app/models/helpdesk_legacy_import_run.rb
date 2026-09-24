@@ -24,6 +24,11 @@ class HelpdeskLegacyImportRun < ActiveRecord::Base
   # double the cost of the import it reports on.
   PROGRESS_EVERY = 100
 
+  # ...but never less often than this. The time bound is what fences a retired
+  # worker: one that stalled past STALE_AFTER sees the gap on its very next row
+  # and hits Superseded before writing it, instead of up to PROGRESS_EVERY rows later.
+  HEARTBEAT_EVERY = 30.seconds
+
   # Raised from a checkpoint when this run no longer holds the lock.
   class Superseded < StandardError; end
 
@@ -87,11 +92,12 @@ class HelpdeskLegacyImportRun < ActiveRecord::Base
     fenced_update(%w[queued], :status => 'running', :started_at => Time.current)
   end
 
-  # Called from inside the import loop; throttled so only every
-  # PROGRESS_EVERY-th row (plus phase changes and the last row) hits the DB.
-  # Raises Superseded once the run lost its lock.
+  # Called from inside the import loop before each row; throttled so only every
+  # PROGRESS_EVERY-th row (plus phase changes, the last row and anything after a
+  # HEARTBEAT_EVERY gap) hits the DB. Raises Superseded once the run lost its lock.
   def progress!(phase, done, total)
-    return if phase == self.phase && done < total && (done % PROGRESS_EVERY).nonzero?
+    return if phase == self.phase && done < total && (done % PROGRESS_EVERY).nonzero? &&
+              @heartbeat_at && @heartbeat_at > HEARTBEAT_EVERY.ago
 
     self.phase = phase
     return if fenced_update(%w[running], :phase => phase, :progress_done => done, :progress_total => total)
@@ -119,6 +125,7 @@ class HelpdeskLegacyImportRun < ActiveRecord::Base
 
     attrs.each { |k, v| self[k] = v }
     clear_changes_information
+    @heartbeat_at = Time.current
     true
   end
 end
