@@ -1286,6 +1286,45 @@ ein Seitenleisten-Panel. Standardmäßig deaktiviert.
   hat keine Embeddings-API), Modell, Endpunkt, Key (leer nutzt den Key der Zusammenfassung beim
   gleichen Anbieter).
 - Extraktions-Prompt und Retrieval-Parameter (Top-K, Min. Score, Min. Treffer).
+- **Reranker** (`kb_rerank_*`, standardmäßig aus) — siehe unten.
+
+**Reranking (zweite Stufe).** Die Vektorsuche allein ist ein Bi-Encoder: Sie bewertet die Nähe
+ganzer Texte, weshalb ein Ticket, das nur Vokabular mit der Anfrage teilt, dasjenige verdrängen
+kann, das denselben Fehler beschreibt. `kb_rerank_enabled` ergänzt eine **Cross-Encoder**-Stufe,
+die Anfrage/Dokument-*Paare* bewertet und deutlich treffsicherer ist. Aus dem Store werden
+`kb_rerank_candidates` (Standard 20) statt Top-K geholt, der Reranker bewertet diese Vorauswahl
+neu, und davon bleiben die besten Top-K oberhalb von `kb_rerank_min_score`. Endpunkt und Key
+fallen auf die Embeddings-Konfiguration zurück — bei den meisten Anbietern liegen Embedding- und
+Reranker-Modell auf derselben Basis-URL (z. B. `bge-m3` und `bge-reranker-v2-m3`), sodass in der
+Regel nur der Schalter zu setzen ist. Neu bewertet wird ausschließlich der *Problem*-Text, also
+derselbe Text, der auch eingebettet wurde.
+
+**Skala der Scores.** Die Ausgabe eines Cross-Encoders ist ein *Logit*, keine Ähnlichkeit, und
+nicht jede Laufzeit rechnet sie um. Das Plugin normalisiert per Sigmoid, sobald eine Antwort
+Werte außerhalb von `0..1` enthält — `kb_rerank_min_score` ist damit immer ein `0..1`-Wert (die
+Umrechnung ist streng monoton, die Reihenfolge ändert sich also nie). Gemessen an
+`bge-reranker-v2-m3` bei einem privaten Anbieter ist die normalisierte Skala deutlich getrennt:
+
+| Anfrage/Dokument-Paar | Roh-Logit | normalisiert |
+| --- | ---: | ---: |
+| identischer Text | +5,97 | 0,997 |
+| Paraphrase desselben Fehlers | +5,31 | 0,995 |
+| gleicher Fehler, andere Formulierung | −0,81 | 0,309 |
+| gleiches Thema, anderes Problem | −4,57 | 0,010 |
+| ohne Zusammenhang | −10,99 | 0,000017 |
+
+Daher der Standardwert **0,2** für `kb_rerank_min_score`: Er behält echte Teiltreffer und wirft
+alles nur thematisch Verwandte um zwei Größenordnungen darunter weg. Der eigene Bestand
+unterscheidet sich — nachjustieren.
+
+> **Die Schwellwerte sind nicht austauschbar.** Kosinus-Ähnlichkeit und Cross-Encoder-Relevanz
+> sind unterschiedliche Skalen. Solange das Reranking aktiv ist, ersetzt `kb_rerank_min_score`
+> den Schwellwert `kb_min_score`, und `ai_answer_min_score` (die strengere, kundengerichtete
+> Grenze des Antwortvorschlags) wird auf den Rerank-Score statt auf die Ähnlichkeit angewandt.
+> Beide sind nach dem Einschalten neu einzustellen. Fällt der Reranker aus oder läuft er in
+> einen Timeout, greift still wieder die Ähnlichkeits-Reihenfolge **samt** ihrer Schwellwerte —
+> ein toter Reranker kostet die Sortierung, nie die Suche. Rerank-Aufrufe erscheinen in der
+> KI-Statistik als `kb_rerank`.
 
 **Projekt-Konfiguration** (Projekt-*Einstellungen → expert Helpdesk*, sichtbar wenn die KB aktiv ist):
 - **Beitrag** (`kb_ingest_mode`): aus / **auto** (beim Schließen, wenn eine Lösung erkannt wurde) /
@@ -1303,8 +1342,12 @@ ein Seitenleisten-Panel. Standardmäßig deaktiviert.
 Plugin-Einstellungen darauf zeigen lassen.
 
 > **Datenschutz:** Problem-/Lösungstext wird an den Embeddings-Anbieter übertragen und im
-> Vektor-Store gespeichert. Für einen rein lokalen Betrieb einen self-hosted Embeddings-Endpunkt
-> verwenden.
+> Vektor-Store gespeichert. **Bei aktivem Reranker geht zusätzlich bei jeder Suche der aktuelle
+> Ticket-Text zusammen mit den Problem-Texten der Kandidaten — also Inhalte anderer Tickets
+> desselben Projekts — in einer einzigen Anfrage an den Reranker-Anbieter.** Dort wird nichts
+> gespeichert, es ist aber ein zweiter Empfänger — und ein separater, wenn
+> `kb_rerank_endpoint` woandershin zeigt. Für einen rein lokalen Betrieb self-hosted Endpunkte
+> für Embeddings *und* Reranker verwenden.
 
 ---
 

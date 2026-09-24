@@ -134,14 +134,29 @@ class HelpdeskNoteContentController < ApplicationController
     true
   end
 
-  # Whole-operation budget: embedding, then the vector store, then the model.
+  # Worst case for one HTTP call, not its read budget: a blackholed host burns a
+  # full connect phase before the read phase even starts, and AiClient bounds
+  # connect at the smaller of DEFAULT_OPEN_TIMEOUT and the call's own budget.
+  # Counting only the read half is what let this lease be outlived.
+  def call_budget(seconds)
+    [RedmineExpertHelpdesk::AiClient::DEFAULT_OPEN_TIMEOUT, seconds].min + seconds
+  end
+
+  # Whole-operation budget: embedding, the vector store, the reranker, then the
+  # model - each at its own worst case. The rerank term is counted even when
+  # reranking is off, like the other two are counted regardless of backend: this
+  # bounds a lock, and a lock that expires mid-draft lets a second paid draft
+  # through for the same ticket, which is the thing it exists to prevent.
   def draft_lock_seconds
     settings = Setting.plugin_redmine_expert_helpdesk
     chat     = settings['ai_answer_timeout'].to_i
     chat     = 20 unless chat.positive?
-    chat.clamp(5, 45) +
-      RedmineExpertHelpdesk::AnswerDrafter::EMBED_TIMEOUT +
-      RedmineExpertHelpdesk::AnswerDrafter::STORE_READ_TIMEOUT +
+    drafter  = RedmineExpertHelpdesk::AnswerDrafter
+    call_budget(chat.clamp(5, 45)) +
+      call_budget(drafter::EMBED_TIMEOUT) +
+      call_budget(drafter::RERANK_TIMEOUT) +
+      # The store sets its own connect and read timeouts, so both are known.
+      drafter::STORE_OPEN_TIMEOUT + drafter::STORE_READ_TIMEOUT +
       DRAFT_LOCK_MARGIN
   end
 

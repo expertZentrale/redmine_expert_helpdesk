@@ -351,6 +351,16 @@ nested registration would never fire in production.
   the source ticket, a customer-facing draft must never, because a foreign ticket number
   discloses another customer's ticket. Optional `diagnostics:` hash reports the best *rejected*
   score so a refusal can say "near miss" rather than "nothing found".
+  **Two-stage when a reranker is configured** (`kb_rerank_*`, off by default): the store is asked
+  for `kb_rerank_candidates` instead of Top-K and its score is *not* judged, `AiClient#rerank`
+  re-scores the shortlist, and `first(top_k)` truncates — that truncation is load-bearing the
+  moment we over-fetch. Only `payload['problem']` is re-scored, the text that was embedded;
+  including the solution pulled up entries whose fix shared the query's words while the fault
+  differed. Two rules keep this honest: the self-hit is dropped *before* the reranker sees it,
+  and **the threshold follows the score, not the setting** — `apply_rerank` rescues its own
+  errors and returns a `reranked` flag, so a dead reranker leaves cosine scores that are then
+  gated by the cosine bar. Deciding the threshold from `kb_rerank_enabled` instead would judge
+  similarities with a cross-encoder bar on every outage.
 - **`answer_drafter.rb`** — customer-facing answer drafts ("KI-Antwortvorschlag"), the only AI
   feature whose output is addressed to the customer rather than the agent. Reached synchronously
   through `HelpdeskNoteContentController`'s `answer_draft` source (not a job — an agent is

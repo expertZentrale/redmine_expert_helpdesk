@@ -6,7 +6,7 @@ class HelpdeskAiRequest < HelpdeskApplicationRecord
   # Nur created_at (kein updated_at) – Protokolleintrag ist unveraenderlich.
   self.record_timestamps = false
 
-  REQUEST_TYPES = %w[summary completeness kb_extract kb_embed kb_retrieve answer_draft].freeze
+  REQUEST_TYPES = %w[summary completeness kb_extract kb_embed kb_retrieve kb_rerank answer_draft].freeze
 
   belongs_to :project, :optional => true
   belongs_to :issue,   :optional => true

@@ -48,6 +48,11 @@ module RedmineExpertHelpdesk
     EMBED_TIMEOUT      = 10
     STORE_OPEN_TIMEOUT = 5
     STORE_READ_TIMEOUT = 8
+    # The reranker is the same shape of call, and the same argument applies: an
+    # agent is waiting, so it gets a tighter budget here than the jobs give it.
+    # A reranker that times out costs ordering, not the draft - retrieval falls
+    # back to the vector hits.
+    RERANK_TIMEOUT     = 5
 
     DEFAULT_PROMPT = <<~PROMPT.freeze
       Du bist ein erfahrener Mitarbeiter im technischen Kundensupport und
@@ -225,8 +230,12 @@ module RedmineExpertHelpdesk
                                    'ai_timeout' => timeout.to_s))
     end
 
+    # Timeouts are set - as everywhere in this class - through a copy of the
+    # settings hash: the client reads its limits from the hash it was built
+    # with, so no other call site is affected.
     def embed_client
-      AiClient.new(@settings.merge('ai_timeout' => [EMBED_TIMEOUT, timeout].min.to_s))
+      AiClient.new(@settings.merge('ai_timeout'        => [EMBED_TIMEOUT, timeout].min.to_s,
+                                   'kb_rerank_timeout' => [RERANK_TIMEOUT, timeout].min.to_s))
     end
 
     def store_for_draft

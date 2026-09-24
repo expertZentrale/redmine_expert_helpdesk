@@ -5,6 +5,47 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [0.15.0] - 2026-09-23
+
+### Hinzugefügt
+
+- **Die Wissensbasis kann ihre Treffer jetzt mit einem Cross-Encoder neu bewerten.** Die
+  Vektorsuche allein ist ein Bi-Encoder: Sie bewertet die Nähe ganzer Texte, weshalb ein Ticket,
+  das nur Vokabular mit der Anfrage teilt, dasjenige verdrängen konnte, das denselben Fehler
+  beschreibt. Das kostete in beide Richtungen — der Antwortvorschlag verweigert ohne Treffer
+  oberhalb seines Schwellwerts den Entwurf, sodass eine schwache Sortierung zu „kein passender
+  Eintrag in der Wissensbasis“ wurde, obwohl es eine Antwort gab; und ein Treffer, der den
+  Schwellwert aus dem falschen Grund überschritt, wurde zu einem kundengerichteten Entwurf auf
+  Basis eines fremden Tickets. Die neue Stufe holt `kb_rerank_candidates` (Standard 20) statt
+  Top-K aus dem Store, lässt einen Cross-Encoder diese Vorauswahl neu bewerten und behält davon
+  die besten Top-K oberhalb von `kb_rerank_min_score`. Sie wirkt auf beide Nutzer des einen
+  RAG-Suchpfads — die bearbeitergerichteten Vorschläge der Zusammenfassung und den
+  kundengerichteten Antwortentwurf. Standardmäßig aus (`kb_rerank_enabled`); Endpunkt und Key
+  fallen auf die Embeddings-Konfiguration zurück, weil bei den meisten Anbietern Embedding- und
+  Reranker-Modell auf derselben Basis-URL liegen (z. B. `bge-m3` und `bge-reranker-v2-m3`) — in
+  der Regel ist also nur der Schalter zu setzen. Neu bewertet wird ausschließlich der
+  *Problem*-Text, derselbe, der auch eingebettet wurde; die Lösung mitzugeben zog Einträge nach
+  vorn, deren *Fix* zufällig die Worte der Anfrage teilte, während der Fehler ein anderer war.
+  Rerank-Aufrufe erscheinen in der KI-Statistik als `kb_rerank`.
+- **Rerank-Scores werden auf `0..1` normalisiert.** Die Ausgabe eines Cross-Encoders ist ein
+  Logit, und nicht jede Laufzeit rechnet sie um — der gemessene Anbieter liefert Rohwerte von
+  `+5,97` (identischer Text) bis `-10,99` (ohne Zusammenhang). Eine Antwort mit Werten außerhalb
+  von `0..1` wird durch eine Sigmoid geschickt, damit `kb_rerank_min_score` immer ein
+  `0..1`-Wert ist; die Umrechnung ist streng monoton, die Reihenfolge bleibt also unberührt. Ohne
+  sie wäre der Schwellwert bei einem solchen Anbieter still wirkungslos.
+
+### Geändert
+
+- **Solange das Reranking aktiv ist, werden die Schwellwerte gegen den Rerank-Score gelesen.**
+  Kosinus-Ähnlichkeit und Cross-Encoder-Relevanz sind unterschiedliche Skalen, daher ersetzt
+  `kb_rerank_min_score` den Schwellwert `kb_min_score`, und `ai_answer_min_score` — die
+  strengere, kundengerichtete Grenze des Antwortvorschlags — wird auf den Rerank-Score statt auf
+  die Ähnlichkeit angewandt. **Beide sind nach dem Einschalten neu einzustellen.** Die an
+  Wissensbasis-Vorschlägen gespeicherten und in der Ticket-Seitenleiste angezeigten Scores folgen
+  derselben Änderung. Fällt der Reranker aus oder läuft er in einen Timeout, greift wieder die
+  Ähnlichkeits-Reihenfolge *samt* ihrer Schwellwerte — der Schwellwert folgt dem Score, ein
+  Ausfall kostet also die Sortierung, nie die Suche selbst.
+
 ## [0.14.0] - 2026-09-23
 
 ### Hinzugefügt

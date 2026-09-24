@@ -555,6 +555,43 @@
   <%= text_field_tag 'settings[kb_min_results]', @settings['kb_min_results'].presence || '1', :size => 4 %>
   <em class="info"><%= l(:text_helpdesk_kb_retrieval_info) %></em>
 </p>
+
+<p>
+  <%= hidden_field_tag 'settings[kb_rerank_enabled]', '0', :id => nil %>
+  <%= check_box_tag 'settings[kb_rerank_enabled]', '1', @settings['kb_rerank_enabled'] == '1', :id => 'settings_kb_rerank_enabled' %>
+  <%= label_tag 'settings_kb_rerank_enabled', l(:field_helpdesk_kb_rerank_enabled) %>
+  <em class="info"><%= l(:text_helpdesk_kb_rerank_enabled_info) %></em>
+</p>
+
+<p>
+  <label><%= l(:field_helpdesk_kb_rerank_model) %></label>
+  <%= text_field_tag 'settings[kb_rerank_model]',
+                     @settings['kb_rerank_model'].presence || RedmineExpertHelpdesk::AiClient::DEFAULT_RERANK_MODEL,
+                     :size => 30 %>
+</p>
+
+<p>
+  <label><%= l(:field_helpdesk_kb_rerank_endpoint) %></label>
+  <%= text_field_tag 'settings[kb_rerank_endpoint]', @settings['kb_rerank_endpoint'], :size => 50 %>
+  <em class="info"><%= l(:text_helpdesk_kb_rerank_endpoint_info) %></em>
+</p>
+
+<p>
+  <label><%= l(:field_helpdesk_kb_rerank_api_key) %></label>
+  <%= password_field_tag 'settings[kb_rerank_api_key]', @settings['kb_rerank_api_key'], :size => 40, :autocomplete => 'new-password' %>
+  <em class="info"><%= l(:text_helpdesk_kb_rerank_api_key_info) %></em>
+</p>
+
+<p>
+  <label><%= l(:field_helpdesk_kb_rerank_candidates) %></label>
+  <%= text_field_tag 'settings[kb_rerank_candidates]', @settings['kb_rerank_candidates'].presence || '20', :size => 4 %>
+  <label style="margin-left:12px; width:auto;"><%= l(:field_helpdesk_kb_rerank_min_score) %></label>
+  <%= text_field_tag 'settings[kb_rerank_min_score]', @settings['kb_rerank_min_score'].presence || '0.2', :size => 4 %>
+  <label style="margin-left:12px; width:auto;"><%= l(:field_helpdesk_kb_rerank_timeout) %></label>
+  <%= text_field_tag 'settings[kb_rerank_timeout]', @settings['kb_rerank_timeout'].presence || '10', :size => 4 %>
+  <em class="info"><%= l(:text_helpdesk_kb_rerank_scoring_info) %></em>
+</p>
+
 <p><em class="info"><%= l(:text_helpdesk_kb_privacy_info) %></em></p>
 
 <hr />

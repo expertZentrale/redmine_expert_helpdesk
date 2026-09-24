@@ -250,6 +250,13 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     matters: the summary names the source ticket, a customer-facing draft must never, because a
     foreign ticket number discloses another customer's ticket. Optional `diagnostics:` reports the
     best *rejected* score so a refusal can say "near miss" instead of "nothing found".
+    **Two-stage when a reranker is configured** (`kb_rerank_*`, off by default): over-fetch
+    `kb_rerank_candidates` without judging the cosine score, re-score via `AiClient#rerank`, then
+    `first(top_k)` — that truncation is load-bearing once we over-fetch. Only `payload['problem']`
+    is re-scored (the text that was embedded). The self-hit is dropped before the reranker sees
+    it, and **the threshold follows the score, not the setting**: `apply_rerank` rescues its own
+    errors and returns a `reranked` flag, so a failed rerank leaves cosine scores gated by the
+    cosine bar rather than by a cross-encoder one.
   - `answer_drafter.rb` — customer-facing answer drafts ("KI-Antwortvorschlag"), the only AI feature
     writing to the customer rather than the agent. Synchronous via `HelpdeskNoteContentController`'s
     `answer_draft` source (an agent is waiting), so it carries its own timeout (`ai_answer_timeout`,

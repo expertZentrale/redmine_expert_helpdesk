@@ -16,6 +16,18 @@ module RedmineExpertHelpdesk
     DEFAULT_MIN_RESULTS = 1
     QUERY_MAX_CHARS     = 8_000
 
+    # Second stage (cross-encoder). The defaults live here and not only in
+    # init.rb's :default hash: a key added there reads nil on an existing
+    # installation until the settings form has been saved once more -
+    # kb_rerank_min_score would then be 0.0 and let every hit through.
+    DEFAULT_RERANK_CANDIDATES = 20
+    DEFAULT_RERANK_MIN_SCORE  = 0.2
+    # The cosine gate had the same footgun one branch away: to_f reads a German
+    # "0,5" as 0.0 and switches the gate off entirely, so it goes through the
+    # same strict parser and needs the same coded default.
+    DEFAULT_MIN_SCORE         = 0.5
+    RERANK_DOC_MAX_CHARS      = 2_000
+
     module_function
 
     # Similar solved tickets from THE PROJECT'S OWN knowledge base (isolation is
@@ -49,22 +61,50 @@ module RedmineExpertHelpdesk
 
       top_k       = positive_or(settings['kb_top_k'].to_i, DEFAULT_TOP_K)
       min_results = positive_or(settings['kb_min_results'].to_i, DEFAULT_MIN_RESULTS)
-      threshold   = min_score || settings['kb_min_score'].to_f
+
+      # With a reranker the vector search is only the cheap first stage: it
+      # over-fetches a shortlist and does not judge it, because its score is
+      # about to be replaced. Without one it stays the single stage and fetches
+      # exactly what the caller gets.
+      reranking  = client.respond_to?(:rerank_configured?) && client.rerank_configured?
+      candidates = if reranking
+                     [positive_or(settings['kb_rerank_candidates'].to_i, DEFAULT_RERANK_CANDIDATES), top_k].max
+                   else
+                     top_k
+                   end
 
       vec = client.embed(query_text.to_s[0, QUERY_MAX_CHARS],
                          :log_context => { :request_type => request_type, :user_id => user_id,
                                            :project_id => issue.project_id, :issue_id => issue.id })
-      hits = store.search(issue.project_id, vec, top_k)
+      hits = store.search(issue.project_id, vec, candidates)
       # The ticket must not retrieve itself: it is in the store once closed, and
       # its own solution is not evidence for its own answer. Rejected before the
-      # score filter so a self-hit never poses as the "best match" either.
+      # score filter so a self-hit never poses as the "best match" either - and
+      # before the reranker, so we never pay to score a document we then drop.
       hits = hits.reject { |h| (h[:payload] || {})['issue_id'].to_i == issue.id }
+
+      reranked = false
+      hits, reranked = apply_rerank(hits, client, query_text, issue, user_id) if reranking && hits.any?
+
+      # The threshold follows the score, not the setting: when the reranker
+      # failed, hits still carry their cosine score and must be judged by the
+      # cosine bar. Deciding this from kb_rerank_enabled instead would gate
+      # similarities with a cross-encoder threshold on every outage.
+      threshold = min_score || if reranked
+                                 float_or(settings['kb_rerank_min_score'], DEFAULT_RERANK_MIN_SCORE)
+                               else
+                                 float_or(settings['kb_min_score'], DEFAULT_MIN_SCORE)
+                               end
       if diagnostics.is_a?(Hash)
-        diagnostics[:candidates] = hits.size
-        diagnostics[:best_score] = hits.map { |h| h[:score].to_f }.max
-        diagnostics[:threshold]  = threshold
+        diagnostics[:candidates]        = hits.size
+        diagnostics[:best_score]        = hits.map { |h| h[:score].to_f }.max
+        diagnostics[:threshold]         = threshold
+        diagnostics[:reranked]          = reranked
+        diagnostics[:best_vector_score] = hits.map { |h| (h[:vector_score] || h[:score]).to_f }.max
       end
-      hits = hits.select { |h| h[:score].to_f >= threshold }
+      # first(top_k) is load-bearing once we over-fetch: the store was asked for
+      # a shortlist, the caller wants top_k. It is a no-op without a reranker.
+      hits = hits.select { |h| h[:score].to_f >= threshold }.first(top_k)
       hits.size >= min_results ? hits : []
     rescue => e
       Rails.logger.warn("[helpdesk][kb] Retrieval fehlgeschlagen (Issue ##{issue.id}): #{e.message}")
@@ -87,8 +127,66 @@ module RedmineExpertHelpdesk
       end.join("\n")
     end
 
+    # Re-scores the shortlist with the cross-encoder and returns
+    # [hits, reranked?]. The reranker is an improvement, not a precondition: if
+    # it fails the vector hits are still usable, and the caller gets them in
+    # vector order with their cosine score. That is why this method catches its
+    # own errors instead of letting them reach search's blanket rescue, which
+    # gives up on the search as a whole.
+    #
+    # Only 'problem' is scored - the text that was embedded. Feeding the
+    # solution in as well pulled up hits whose *fix* happens to share the
+    # query's words while the fault is a different one; that is precisely the
+    # mistake this stage exists to prevent.
+    def apply_rerank(hits, client, query_text, issue, user_id)
+      docs = hits.map { |h| (h[:payload] || {})['problem'].to_s[0, RERANK_DOC_MAX_CHARS] }
+      rows = client.rerank(query_text.to_s[0, QUERY_MAX_CHARS], docs,
+                           :log_context => { :user_id => user_id, :project_id => issue.project_id,
+                                             :issue_id => issue.id })
+      return [hits, false] if rows.blank?
+
+      reordered = rows.filter_map do |row|
+        hit = hits[row[:index].to_i]
+        next unless hit
+
+        hit.merge(:vector_score => hit[:score], :score => row[:score].to_f)
+      end
+      return [hits, false] if reordered.empty?
+
+      [reordered, true]
+    rescue => e
+      Rails.logger.warn("[helpdesk][kb] Reranking fehlgeschlagen (Issue ##{issue.id}), " \
+                        "Vektor-Reihenfolge bleibt: #{e.message}")
+      [hits, false]
+    end
+
     def positive_or(value, fallback)
       value.positive? ? value : fallback
+    end
+
+    # Like positive_or, but for thresholds: here 0.0 is a valid value while a
+    # missing key is not. The two are told apart by the blank string / nil,
+    # not by the number.
+    #
+    # Parsed strictly, and anything that is not a plain 0..1 number falls back to
+    # the shipped default. This is a free-form central setting and the only gate
+    # on the proposals, so to_f would be the wrong tool twice over: it reads
+    # "oops" as 0.0 and lets every candidate through, and it reads "50%" as 50.0
+    # and lets none through. Failing to the default is the only safe direction.
+    def float_or(value, fallback)
+      # The admin UI is German, so "0,2" is what an admin is liable to type.
+      # HelpdeskProjectSetting.parse_ai_answer_min_score does the same for the
+      # sibling threshold; without it a comma is not a near miss but a silent
+      # reset to the default.
+      raw = value.to_s.strip.tr(',', '.')
+      return fallback if raw.blank?
+
+      v = Float(raw)
+      return fallback unless v.finite? && v >= 0.0 && v <= 1.0
+
+      v
+    rescue ArgumentError, TypeError
+      fallback
     end
   end
 end

@@ -6,6 +6,43 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [0.15.0] - 2026-09-23
+
+### Added
+
+- **The knowledge base can now rerank its hits with a cross-encoder.** Vector search alone is a
+  bi-encoder: it ranks on whole-text proximity, so a ticket that merely shares vocabulary with
+  the query could outrank the one describing the same fault. That cost us in both directions —
+  the answer drafter refuses to draft without a hit above its threshold, so weak ranking became
+  "no matching knowledge-base entry" for tickets we did have an answer for, while a hit that
+  cleared the bar for the wrong reason became a customer-facing draft grounded in an unrelated
+  ticket. The new stage asks the store for `kb_rerank_candidates` (default 20) instead of Top-K,
+  has a cross-encoder re-score that shortlist, and keeps the best Top-K above
+  `kb_rerank_min_score`. It applies to both consumers of the one RAG search path — the agent-facing
+  proposals of the summary job and the customer-facing answer draft. Off by default
+  (`kb_rerank_enabled`); endpoint and key fall back to the embeddings configuration, because with
+  most providers the embedding and reranker models sit on the same base URL (e.g. `bge-m3` and
+  `bge-reranker-v2-m3`), so the toggle is usually the only thing to set. Only the *problem* text
+  is re-scored — the same text that was embedded; feeding the solution in as well pulled up
+  entries whose *fix* happened to share the query's words while the fault was a different one.
+  Rerank calls are logged as `kb_rerank` in the AI statistics.
+- **Rerank scores are normalised to `0..1`.** Cross-encoder output is a logit and not every
+  runtime squashes it — the provider we measured returns raw values from `+5.97` (identical text)
+  down to `-10.99` (unrelated). A response carrying anything outside `0..1` is put through a
+  sigmoid, so `kb_rerank_min_score` is always a `0..1` bar; the transform is monotonic, so the
+  ranking is untouched. Without it the threshold would be silently inert on such a provider.
+
+### Changed
+
+- **While reranking is on, the relevance thresholds are read against the rerank score.** Cosine
+  similarity and cross-encoder relevance are different scales, so `kb_rerank_min_score` replaces
+  `kb_min_score` as the gate, and `ai_answer_min_score` — the stricter, customer-facing bar of
+  the answer drafter — is applied to the rerank score instead of the similarity. **Both want
+  retuning after switching the reranker on.** Scores stored on knowledge-base proposals and shown
+  in the ticket sidebar follow the same change. If the reranker fails or times out, retrieval
+  falls back to the similarity ranking *and* the similarity thresholds — the gate follows the
+  score, so an outage costs ordering, never the search itself.
+
 ## [0.14.0] - 2026-09-23
 
 ### Added
