@@ -1,0 +1,75 @@
+<%# Status page of a background legacy import / attachment repair run (admins only).
+    Rendered once server-side, then refreshed by polling the status endpoint. %>
+<% title = @run.kind == 'fix_attachments' ? l(:button_helpdesk_legacy_fix) : l(:label_helpdesk_legacy_import) %>
+<% status = run_status(@run) %>
+<% html_title title %>
+<h2><%= title %></h2>
+
+<div class="box" id="hd-legacy-run"
+     data-url="<%= helpdesk_legacy_import_run_status_path(@run) %>">
+  <p>
+    <strong id="hd-legacy-run-message"
+            class="<%= { 'done' => 'hd-legacy-ok', 'failed' => 'hd-legacy-err', 'stale' => 'hd-legacy-err' }[status[:status]] %>">
+      <%= status[:message] %>
+    </strong>
+  </p>
+  <p id="hd-legacy-run-progress" style="<%= 'display:none;' if status[:finished] %>">
+    <progress id="hd-legacy-run-bar" style="width:100%;"
+              <% if status[:progress_total] > 0 %>max="<%= status[:progress_total] %>" value="<%= status[:progress_done] %>"<% end %>></progress><br />
+    <span id="hd-legacy-run-phase" class="hd-stats-muted">
+      <% if status[:phase_label] %><%= status[:phase_label] %>: <%= status[:progress_done] %> / <%= status[:progress_total] %><% end %>
+    </span>
+  </p>
+  <p class="hd-stats-muted">
+    <%= l(:label_helpdesk_legacy_run_started, :time => format_time(@run.created_at),
+          :user => (@run.user ? @run.user.name : '–')) %>
+  </p>
+</div>
+
+<p>
+  <%= link_to l(:label_helpdesk_legacy_back_to_settings), plugin_settings_path('redmine_expert_helpdesk') %>
+</p>
+
+<%= javascript_tag do %>
+  (function () {
+    var box = document.getElementById('hd-legacy-run');
+    if (!box) { return; }
+    var msg = document.getElementById('hd-legacy-run-message');
+    var progress = document.getElementById('hd-legacy-run-progress');
+    var bar = document.getElementById('hd-legacy-run-bar');
+    var phase = document.getElementById('hd-legacy-run-phase');
+
+    function render(s) {
+      msg.textContent = s.message;
+      msg.className = s.status === 'done' ? 'hd-legacy-ok'
+                    : (s.status === 'failed' || s.status === 'stale') ? 'hd-legacy-err' : '';
+      if (s.finished) { progress.style.display = 'none'; return; }
+      if (s.progress_total > 0) {
+        bar.max = s.progress_total;
+        bar.value = s.progress_done;
+      } else {
+        bar.removeAttribute('value');
+      }
+      phase.textContent = s.phase_label ? s.phase_label + ': ' + s.progress_done + ' / ' + s.progress_total : '';
+    }
+
+    // Poll until the run finishes; a failed request just retries on the next tick.
+    function poll() {
+      fetch(box.getAttribute('data-url'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (s) {
+          if (s) { render(s); }
+          if (!s || !s.finished) { setTimeout(poll, 2000); }
+        })
+        .catch(function () { setTimeout(poll, 5000); });
+    }
+    <% unless status[:finished] %>setTimeout(poll, 1000);<% end %>
+  })();
+<% end %>
+
+<% content_for :header_tags do %>
+  <style>
+    .hd-legacy-ok  { color: #2e7d32; }
+    .hd-legacy-err { color: #c62828; }
+  </style>
+<% end %>

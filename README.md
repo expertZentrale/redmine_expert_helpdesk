@@ -923,6 +923,18 @@ Under *Administration → Plugins → Redmine expert Helpdesk* — or, as a shor
 | Entries per page | Default page size of the customer list (default: 25) |
 | Max. tickets in customer profile | Tickets shown in the customer detail view (default: 10) |
 
+### Import from redmine_contacts
+
+If the database still holds the tables of the RedmineUP plugins `redmine_contacts` /
+`redmine_contacts_helpdesk`, the settings page offers two admin-only actions:
+**Import contacts now** (contacts per project plus the customer link of old tickets) and
+**Fix EML attachments now** (re-attaches original mails still hanging off the old
+`HelpdeskTicket` container). Both run as a **background job**: the button opens a status page
+that shows the current phase and progress and, once finished, the result. You can leave the
+page — the run continues, and the settings page links to the live or most recent run. Only one
+run at a time; a run with no progress for an hour counts as interrupted and can simply be
+started again (the import is idempotent). The job uses Redmine's ActiveJob queue adapter.
+
 ## REST API
 
 A REST API (JSON and XML) for automations, following Redmine's conventions —

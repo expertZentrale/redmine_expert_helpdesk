@@ -395,7 +395,13 @@ nested registration would never fire in production.
 - **`phish*.rb` / `phishing_scanner.rb`** — download PhishTank + Phishing.Database feeds into
   a local `HelpdeskPhishingUrl` mirror; scan incoming links (decoding Microsoft SafeLinks
   locally). On hit: neutralize (warn banner + journal note) or quarantine, per project.
-- **`legacy_contacts_import.rb`** — one-off import from the `redmine_contacts` plugin.
+- **`legacy_contacts_import.rb`** — one-off import from the `redmine_contacts` plugin, plus
+  the EML attachment repair. **Never run inline from a request** — on real datasets both outlast
+  the browser/proxy timeout. `HelpdeskLegacyImportController` records a
+  `HelpdeskLegacyImportRun` (migration 060) and enqueues `HelpdeskLegacyImportJob`; the status
+  page polls `helpdesk/legacy_import/runs/:id/status` (not `.json`: Redmine drops the session on json requests). Status lives in the DB, not `Rails.cache`
+  (file store is per pod). One live run at a time; no heartbeat for `STALE_AFTER` (1 h) = dead,
+  since the `:async` adapter loses queued jobs on restart.
 - **`hooks.rb`** — `ViewListener` view hooks (customer sidebar card, ticket-header info bar,
   reply form, activity-feed CSS) and `controller_issues_*_after_save` hooks. Injected via
   Redmine view hooks, so no Deface.

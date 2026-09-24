@@ -6,6 +6,23 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Changed
+
+- **The legacy contact import and the EML attachment repair now run in the background.**
+  Both used to do all their work inside the admin's request, and on a real
+  redmine_contacts dataset that took longer than the browser or reverse proxy would wait -
+  the page timed out while the run carried on (or was cut off) unseen. The buttons in the
+  plugin settings now queue a `HelpdeskLegacyImportJob` and open a status page that polls
+  the run and shows its phase, a progress bar and, at the end, the same result summary as
+  before. The run is recorded in the database (`helpdesk_legacy_import_runs`, migration 060)
+  rather than the cache, so the status is correct on multi-replica deployments too. Only one
+  run at a time: a second click - or a second admin - lands on the live run's status page
+  instead of starting a competing one. A run with no progress for an hour (worker restarted)
+  is reported as interrupted and no longer blocks a new start; the import is idempotent, so
+  starting it again is safe. The settings page links to the live or most recent run.
+
 ## [0.15.0] - 2026-09-23
 
 ### Added

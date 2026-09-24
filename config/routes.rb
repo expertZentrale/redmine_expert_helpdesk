@@ -16,6 +16,13 @@ RedmineApp::Application.routes.draw do
   get  'helpdesk/legacy_import/select', :to => 'helpdesk_legacy_import#new', :as => 'helpdesk_legacy_import_select'
   post 'helpdesk/legacy_import', :to => 'helpdesk_legacy_import#import', :as => 'helpdesk_legacy_import'
   post 'helpdesk/legacy_fix_attachments', :to => 'helpdesk_legacy_import#fix_attachments', :as => 'helpdesk_legacy_fix_attachments'
+  # Status page of a background import or repair run, and its polling endpoint.
+  # The poll is JSON without a .json format: Redmine ignores the session on
+  # json/xml requests (it treats them as REST API calls), so the browser would get 403.
+  get  'helpdesk/legacy_import/runs/:id', :to => 'helpdesk_legacy_import#show', :as => 'helpdesk_legacy_import_run',
+       :constraints => { :id => /\d+/ }
+  get  'helpdesk/legacy_import/runs/:id/status', :to => 'helpdesk_legacy_import#poll',
+       :as => 'helpdesk_legacy_import_run_status', :constraints => { :id => /\d+/ }
 
   # OAuth2-Consent (authorization_code) fuer IMAP/SMTP-Postfaecher.
   # Die Callback-URL ist fest, weil Identity Provider nur exakt registrierte
