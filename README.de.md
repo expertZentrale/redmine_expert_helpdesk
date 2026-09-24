@@ -962,6 +962,19 @@ Eintrag **expert Helpdesk** im Administrationsmenü, der direkt hierher verlinkt
 | Einträge pro Seite | Standard-Seitengröße der Kundenliste (Standard: 25) |
 | Max. Tickets im Kundenprofil | Angezeigte Tickets in der Kundendetailansicht (Standard: 10) |
 
+### Import aus redmine_contacts
+
+Enthält die Datenbank noch die Tabellen der RedmineUP-Plugins `redmine_contacts` /
+`redmine_contacts_helpdesk`, bietet die Einstellungsseite zwei Aktionen (nur Admins):
+**Kontakte jetzt importieren** (Kontakte je Projekt plus Kundenzuordnung alter Tickets) und
+**EML-Anhänge jetzt reparieren** (hängt Original-Mails um, die noch am alten
+`HelpdeskTicket`-Container hängen). Beide laufen als **Hintergrund-Job**: Der Button öffnet eine
+Statusseite mit aktueller Phase und Fortschritt und nach Abschluss dem Ergebnis. Die Seite darf
+verlassen werden – der Lauf geht weiter, und die Einstellungsseite verlinkt den aktiven bzw.
+letzten Lauf. Immer nur ein Lauf; ein Lauf ohne Fortschritt seit einer Stunde gilt als
+unterbrochen und kann einfach neu gestartet werden (der Import ist idempotent). Der Job nutzt
+den ActiveJob-Queue-Adapter von Redmine.
+
 ## REST-API
 
 Eine REST-API (JSON und XML) für Automatisierungen, analog zur Redmine-Kern-API —

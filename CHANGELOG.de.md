@@ -5,6 +5,25 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Geändert
+
+- **Der Alt-Kontaktimport und die EML-Anhang-Reparatur laufen jetzt im Hintergrund.**
+  Beide erledigten ihre gesamte Arbeit innerhalb des Admin-Requests; bei einem echten
+  redmine_contacts-Bestand dauerte das länger, als Browser oder Reverse-Proxy warten – die
+  Seite lief in einen Timeout, während der Lauf unbemerkt weiterlief (oder abgebrochen wurde).
+  Die Buttons in den Plugin-Einstellungen stellen jetzt einen `HelpdeskLegacyImportJob` ein und
+  öffnen eine Statusseite, die den Lauf abfragt und Phase, Fortschrittsbalken und am Ende
+  dieselbe Ergebniszusammenfassung wie bisher anzeigt. Der Lauf wird in der Datenbank
+  (`helpdesk_legacy_import_runs`, Migration 060) statt im Cache festgehalten, damit der Status
+  auch bei mehreren Replikaten stimmt. Immer nur ein Lauf, abgesichert durch eine eindeutige Sperre in der
+  Datenbank: Ein zweiter Klick – oder ein zweiter Admin, auch im selben Moment – landet auf der Statusseite des aktiven Laufs, statt einen konkurrierenden zu starten.
+  Ein Lauf ohne Fortschritt seit einer Stunde (Worker neu gestartet) wird als unterbrochen
+  gemeldet und beim nächsten Start abgelöst; lebt sein Worker doch noch, bricht er am nächsten
+  Fortschritts-Checkpoint ab, statt parallel zum Nachfolger zu schreiben; der Import ist idempotent, ein erneuter Start
+  ist also gefahrlos. Die Einstellungsseite verlinkt den aktiven bzw. letzten Lauf.
+
 ## [0.15.0] - 2026-09-23
 
 ### Hinzugefügt

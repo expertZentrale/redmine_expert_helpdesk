@@ -653,9 +653,19 @@
 
 <% legacy_available = RedmineExpertHelpdesk::LegacyContactsImport.available? %>
 <% misplaced_count  = RedmineExpertHelpdesk::LegacyContactsImport.misplaced_attachment_count %>
-<% if legacy_available || misplaced_count > 0 %>
+<% legacy_run       = HelpdeskLegacyImportRun.current || HelpdeskLegacyImportRun.order(:id => :desc).first %>
+<% if legacy_available || misplaced_count > 0 || legacy_run %>
   <hr />
   <h3 style="margin-top:1em;"><%= l(:label_helpdesk_legacy_import) %></h3>
+  <% if legacy_run %>
+    <p>
+      <em class="info">
+        <%= link_to (legacy_run.active? ? l(:label_helpdesk_legacy_run_active_link) : l(:label_helpdesk_legacy_run_last_link)),
+                    helpdesk_legacy_import_run_path(legacy_run) %>
+        (<%= format_time(legacy_run.created_at) %>)
+      </em>
+    </p>
+  <% end %>
   <% if legacy_available %>
     <p>
       <em class="info">
