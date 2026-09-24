@@ -1,0 +1,11 @@
+h3. Changed
+
+* *The legacy contact import and the EML attachment repair now run in the background.* Both buttons in the plugin settings (shown when the database still holds the tables of the RedmineUP plugins @redmine_contacts@ / @redmine_contacts_helpdesk@) used to do all their work inside the admin's request. On a real dataset that takes far longer than a browser or reverse proxy waits — about 17 minutes for 26,000 contacts and 186,000 tickets — so the page timed out while the run carried on, or was cut off, unseen. The buttons now queue a background job and open a status page that shows the current phase, a progress bar and, once finished, the same result summary as before. The page can be left; the settings page links back to the live or most recent run.
+* Only one run at a time, enforced by the database: a second click, or a second admin, lands on the live run's status page instead of starting a competing one.
+* A run that reports no progress for an hour — its worker was restarted, for example — is shown as interrupted and simply started again; the import is idempotent. Should the old worker still be alive, it stops before its next row instead of writing alongside the new run.
+
+h3. Upgrade notes
+
+Migration 060 creates the table @helpdesk_legacy_import_runs@; run the migration command as usual. Nothing else changes for installations without legacy data — the section only appears when those tables exist.
+
+The job runs through Redmine's ActiveJob queue. With the default in-process adapter a run lives in the Redmine process that received the click, so restarting Redmine during a run interrupts it; the status page then reports it as interrupted after an hour, and starting it again is safe.
