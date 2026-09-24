@@ -12,7 +12,9 @@ class HelpdeskLegacyImportRunTest < ActiveSupport::TestCase
   end
 
   def run!(attrs = {})
-    HelpdeskLegacyImportRun.create!({ :kind => 'fix_attachments', :status => 'queued' }.merge(attrs))
+    attrs = { :kind => 'fix_attachments', :status => 'queued' }.merge(attrs)
+    attrs[:active_lock] = HelpdeskLegacyImportRun::LOCK if HelpdeskLegacyImportRun::ACTIVE.include?(attrs[:status])
+    HelpdeskLegacyImportRun.create!(attrs)
   end
 
   def test_current_returns_a_live_run_only
@@ -31,6 +33,45 @@ class HelpdeskLegacyImportRunTest < ActiveSupport::TestCase
     assert run.stale?
     assert_not run.active?
     assert_nil HelpdeskLegacyImportRun.current
+  end
+
+  def test_claim_is_exclusive
+    first = HelpdeskLegacyImportRun.claim!('import', User.find(1), ['5'])
+    assert first
+    assert_equal %w[5], first.project_id_list
+    assert_nil HelpdeskLegacyImportRun.claim!('fix_attachments', User.find(1)),
+               'the unique lock must refuse a second live run of either kind'
+  end
+
+  def test_claim_retires_a_stale_run
+    dead = run!(:status => 'running')
+    dead.update_columns(:updated_at => 2.hours.ago)
+
+    fresh = HelpdeskLegacyImportRun.claim!('import', User.find(1))
+    assert fresh
+    dead.reload
+    assert_equal 'stale', dead.status
+    assert_nil dead.active_lock
+    assert dead.finished?
+  end
+
+  def test_a_retired_worker_is_fenced_out
+    run = run!(:status => 'queued')
+    assert run.start!
+    assert_not HelpdeskLegacyImportRun.find(run.id).start!, 'a duplicate job must not start the run twice'
+
+    HelpdeskLegacyImportRun.where(:id => run.id).update_all(:status => 'stale', :active_lock => nil)
+    assert_raises(HelpdeskLegacyImportRun::Superseded) { run.progress!('issues', 1, 10) }
+    assert_not run.finish!({})
+    assert_equal 'stale', run.reload.status, 'a superseded worker must not overwrite the row'
+  end
+
+  def test_job_stops_quietly_when_superseded
+    run = run!
+    RedmineExpertHelpdesk::LegacyContactsImport.any_instance.stubs(:fix_attachments)
+      .raises(HelpdeskLegacyImportRun::Superseded, 'gone')
+    HelpdeskLegacyImportJob.perform_now(run.id)
+    assert_equal 'running', run.reload.status
   end
 
   def test_progress_is_throttled_within_a_phase
@@ -63,6 +104,7 @@ class HelpdeskLegacyImportRunTest < ActiveSupport::TestCase
     run.reload
 
     assert_equal 'done', run.status
+    assert_nil run.active_lock, 'a finished run releases the lock'
     assert run.started_at
     assert run.finished_at
     assert_equal 0, run.result_hash[:attachments_fixed]

@@ -57,7 +57,7 @@ class HelpdeskLegacyImportTest < Redmine::IntegrationTest
   end
 
   def test_a_live_run_blocks_a_second_one
-    live = HelpdeskLegacyImportRun.create!(:kind => 'import', :status => 'running')
+    live = HelpdeskLegacyImportRun.claim!('import', nil)
     log_user('admin', 'admin')
 
     assert_no_difference 'HelpdeskLegacyImportRun.count' do

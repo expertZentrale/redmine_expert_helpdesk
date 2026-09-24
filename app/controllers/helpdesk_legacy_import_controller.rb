@@ -72,12 +72,14 @@ class HelpdeskLegacyImportController < ApplicationController
 
     flash[:warning] = l(:notice_helpdesk_legacy_run_already_active)
     redirect_to helpdesk_legacy_import_run_path(run)
+    true
   end
 
   def start_run(kind, project_ids = nil)
-    run = HelpdeskLegacyImportRun.new(:kind => kind, :status => 'queued', :user => User.current)
-    run.project_id_list = project_ids
-    run.save!
+    run = HelpdeskLegacyImportRun.claim!(kind, User.current, project_ids)
+    # Lost the race against a concurrent start - join that run instead
+    return redirect_to_current_run || redirect_to(plugin_settings_path('redmine_expert_helpdesk')) unless run
+
     HelpdeskLegacyImportJob.perform_later(run.id)
     redirect_to helpdesk_legacy_import_run_path(run)
   rescue StandardError => e

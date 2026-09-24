@@ -7,9 +7,9 @@ class HelpdeskLegacyImportJob < ActiveJob::Base
 
   def perform(run_id)
     run = HelpdeskLegacyImportRun.find_by(:id => run_id)
-    return unless run && run.status == 'queued'
+    # start! only succeeds for a queued run that still holds the lock
+    return unless run&.start!
 
-    run.start!
     progress = ->(phase, done, total) { run.progress!(phase, done, total) }
 
     result =
@@ -19,6 +19,9 @@ class HelpdeskLegacyImportJob < ActiveJob::Base
         RedmineExpertHelpdesk::LegacyContactsImport.new(run.project_id_list, :progress => progress).run
       end
     run.finish!(result)
+  rescue HelpdeskLegacyImportRun::Superseded => e
+    # Retired as stale while still alive; the replacement owns the data now.
+    Rails.logger.warn "Helpdesk: #{e.message}, stopping"
   rescue StandardError => e
     Rails.logger.error "Helpdesk: legacy #{run&.kind} run ##{run_id} failed: #{e.class}: #{e.message}"
     run&.fail!(e.message)

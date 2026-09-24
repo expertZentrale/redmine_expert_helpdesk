@@ -18,9 +18,11 @@
   the run and shows its phase, a progress bar and, at the end, the same result summary as
   before. The run is recorded in the database (`helpdesk_legacy_import_runs`, migration 060)
   rather than the cache, so the status is correct on multi-replica deployments too. Only one
-  run at a time: a second click - or a second admin - lands on the live run's status page
-  instead of starting a competing one. A run with no progress for an hour (worker restarted)
-  is reported as interrupted and no longer blocks a new start; the import is idempotent, so
+  run at a time, enforced by a unique lock in the database: a second click - or a second admin,
+  even at the same instant - lands on the live run's status page instead of starting a competing
+  one. A run with no progress for an hour (worker restarted)
+  is reported as interrupted and retired by the next start; should its worker still be alive, it
+  stops at its next progress checkpoint instead of writing alongside the replacement; the import is idempotent, so
   starting it again is safe. The settings page links to the live or most recent run.
 
 ## [0.15.0] - 2026-09-23

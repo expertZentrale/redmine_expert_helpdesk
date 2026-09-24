@@ -12,7 +12,11 @@ class CreateHelpdeskLegacyImportRuns < ActiveRecord::Migration[6.1]
 
     create_table :helpdesk_legacy_import_runs do |t|
       t.string :kind, :null => false, :limit => 30        # import | fix_attachments
-      t.string :status, :null => false, :limit => 20      # queued | running | done | failed
+      t.string :status, :null => false, :limit => 20      # queued | running | done | failed | stale
+      # 'active' while queued/running, NULL otherwise. The unique index makes
+      # "one live run at a time" a database guarantee rather than a
+      # check-then-insert race between two admins clicking at once.
+      t.string :active_lock, :limit => 10
       t.text :project_ids                                 # JSON; nil = all projects
       t.string :phase, :limit => 30
       t.integer :progress_done, :null => false, :default => 0
@@ -25,7 +29,7 @@ class CreateHelpdeskLegacyImportRuns < ActiveRecord::Migration[6.1]
       t.timestamps :null => false
     end
 
-    add_index :helpdesk_legacy_import_runs, [:kind, :status],
-              :name => 'index_hd_legacy_import_runs_on_kind_and_status'
+    add_index :helpdesk_legacy_import_runs, :active_lock, :unique => true,
+              :name => 'index_hd_legacy_import_runs_on_active_lock'
   end
 end

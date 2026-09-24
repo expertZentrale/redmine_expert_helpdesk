@@ -17,10 +17,11 @@
   öffnen eine Statusseite, die den Lauf abfragt und Phase, Fortschrittsbalken und am Ende
   dieselbe Ergebniszusammenfassung wie bisher anzeigt. Der Lauf wird in der Datenbank
   (`helpdesk_legacy_import_runs`, Migration 060) statt im Cache festgehalten, damit der Status
-  auch bei mehreren Replikaten stimmt. Immer nur ein Lauf: Ein zweiter Klick – oder ein zweiter
-  Admin – landet auf der Statusseite des aktiven Laufs, statt einen konkurrierenden zu starten.
+  auch bei mehreren Replikaten stimmt. Immer nur ein Lauf, abgesichert durch eine eindeutige Sperre in der
+  Datenbank: Ein zweiter Klick – oder ein zweiter Admin, auch im selben Moment – landet auf der Statusseite des aktiven Laufs, statt einen konkurrierenden zu starten.
   Ein Lauf ohne Fortschritt seit einer Stunde (Worker neu gestartet) wird als unterbrochen
-  gemeldet und blockiert keinen Neustart mehr; der Import ist idempotent, ein erneuter Start
+  gemeldet und beim nächsten Start abgelöst; lebt sein Worker doch noch, bricht er am nächsten
+  Fortschritts-Checkpoint ab, statt parallel zum Nachfolger zu schreiben; der Import ist idempotent, ein erneuter Start
   ist also gefahrlos. Die Einstellungsseite verlinkt den aktiven bzw. letzten Lauf.
 
 ## [0.15.0] - 2026-09-23

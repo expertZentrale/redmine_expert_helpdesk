@@ -285,8 +285,9 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
   - `legacy_contacts_import.rb` — one-off `redmine_contacts` import + EML attachment repair.
     Never inline from a request: the controller records a `HelpdeskLegacyImportRun` (migration
     060, status in the DB, not `Rails.cache`), enqueues `HelpdeskLegacyImportJob`, and the status
-    page polls `helpdesk/legacy_import/runs/:id/status` (not `.json`: Redmine drops the session on json requests). One live run at a time; 1 h without
-    heartbeat = dead (the `:async` adapter loses jobs on restart).
+    page polls `helpdesk/legacy_import/runs/:id/status` (not `.json`: Redmine drops the session on json requests). One live run at a time via a unique
+    `active_lock` index (`claim!`); 1 h without heartbeat = retired as `stale` (the `:async` adapter
+    loses jobs on restart); job writes are fenced on the lock (`Superseded`).
   - `hooks.rb` — `ViewListener` view hooks (customer sidebar card, ticket-header info bar, reply
     form, activity-feed CSS) + `controller_issues_*_after_save` hooks. No Deface.
 - **`lib/redmine_expert_helpdesk/patches/`** — `Issue`, `IssueQuery`, `Project`, `ProjectsHelper`

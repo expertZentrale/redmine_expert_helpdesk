@@ -272,49 +272,55 @@ module RedmineExpertHelpdesk
         ).to_a
       end
 
+      # Progress is reported outside link_issue's per-row rescue: the job aborts a
+      # superseded run by raising from the callback, which must not be swallowed.
       rows.each_with_index do |row, index|
         report('issues', index + 1, rows.size)
-        email = primary_email(row['email'])
-        next if email.blank?
-
-        issue = Issue.find_by(:id => row['issue_id'])
-        next unless issue&.project
-        next unless selected?(issue.project_id)
-
-        contact  = HelpdeskContact.find_or_create_for(email, build_name(row), issue.project)
-        existing = HelpdeskMessage.where(:issue_id => issue.id).order(:id => :asc).first
-
-        if existing
-          # Echte Mail-Verlaeufe (mit Mailbox) nie anfassen; nur synthetische
-          # Import-Messages mit abweichendem Kontakt reparieren.
-          if existing.helpdesk_mailbox_id.nil? && existing.helpdesk_contact_id != contact.id
-            existing.update_columns(
-              :helpdesk_contact_id => contact.id,
-              :message_id          => normalized_message_id(row['message_id']) || existing.message_id
-            )
-            HelpdeskTicketInfo.for_issue(issue)&.update_columns(:helpdesk_contact_id => contact.id) ||
-              HelpdeskTicketInfo.link!(issue, contact)
-            result.issue_links_repaired += 1
-          else
-            HelpdeskTicketInfo.link!(issue, existing.helpdesk_contact, existing.helpdesk_mailbox)
-            result.issues_skipped += 1
-          end
-          next
-        end
-
-        HelpdeskMessage.create!(
-          :issue            => issue,
-          :helpdesk_contact => contact,
-          :direction        => 'in',
-          :message_id       => normalized_message_id(row['message_id']),
-          :subject          => issue.subject,
-          :sent_at          => row['ticket_date'].presence || issue.created_on
-        )
-        HelpdeskTicketInfo.link!(issue, contact)
-        result.issue_links_created += 1
-      rescue StandardError => e
-        Rails.logger.warn "Helpdesk: Legacy-Import fuer Ticket ##{row['issue_id']} fehlgeschlagen: #{e.message}"
+        link_issue(row, result)
       end
+    end
+
+    def link_issue(row, result)
+      email = primary_email(row['email'])
+      return if email.blank?
+
+      issue = Issue.find_by(:id => row['issue_id'])
+      return unless issue&.project
+      return unless selected?(issue.project_id)
+
+      contact  = HelpdeskContact.find_or_create_for(email, build_name(row), issue.project)
+      existing = HelpdeskMessage.where(:issue_id => issue.id).order(:id => :asc).first
+
+      if existing
+        # Echte Mail-Verlaeufe (mit Mailbox) nie anfassen; nur synthetische
+        # Import-Messages mit abweichendem Kontakt reparieren.
+        if existing.helpdesk_mailbox_id.nil? && existing.helpdesk_contact_id != contact.id
+          existing.update_columns(
+            :helpdesk_contact_id => contact.id,
+            :message_id          => normalized_message_id(row['message_id']) || existing.message_id
+          )
+          HelpdeskTicketInfo.for_issue(issue)&.update_columns(:helpdesk_contact_id => contact.id) ||
+            HelpdeskTicketInfo.link!(issue, contact)
+          result.issue_links_repaired += 1
+        else
+          HelpdeskTicketInfo.link!(issue, existing.helpdesk_contact, existing.helpdesk_mailbox)
+          result.issues_skipped += 1
+        end
+        return
+      end
+
+      HelpdeskMessage.create!(
+        :issue            => issue,
+        :helpdesk_contact => contact,
+        :direction        => 'in',
+        :message_id       => normalized_message_id(row['message_id']),
+        :subject          => issue.subject,
+        :sent_at          => row['ticket_date'].presence || issue.created_on
+      )
+      HelpdeskTicketInfo.link!(issue, contact)
+      result.issue_links_created += 1
+    rescue StandardError => e
+      Rails.logger.warn "Helpdesk: Legacy-Import fuer Ticket ##{row['issue_id']} fehlgeschlagen: #{e.message}"
     end
 
     def normalized_message_id(value)
