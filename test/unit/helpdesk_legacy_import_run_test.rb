@@ -124,6 +124,23 @@ class HelpdeskLegacyImportRunTest < ActiveSupport::TestCase
     assert_equal 0, run.result_hash[:attachments_fixed]
   end
 
+  def test_job_dispatches_the_contact_import_with_the_selected_projects
+    run = run!(:kind => 'import')
+    run.project_id_list = ['5', 'none']
+    run.save!
+    counters = RedmineExpertHelpdesk::LegacyContactsImport::Result.new(2, 1, 0, 3, 0, 4)
+    RedmineExpertHelpdesk::LegacyContactsImport.expects(:new)
+      .with { |ids, opts = {}| ids == %w[5 none] && opts[:progress].respond_to?(:call) }
+      .returns(stub(:run => counters))
+
+    HelpdeskLegacyImportJob.perform_now(run.id)
+    run.reload
+
+    assert_equal 'done', run.status
+    assert_equal 2, run.result_hash[:contacts_created]
+    assert_equal 4, run.result_hash[:issues_skipped]
+  end
+
   def test_job_records_failure
     run = run!
     RedmineExpertHelpdesk::LegacyContactsImport.any_instance.stubs(:fix_attachments).raises(StandardError, 'boom')

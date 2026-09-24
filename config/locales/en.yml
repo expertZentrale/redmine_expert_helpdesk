@@ -227,6 +227,7 @@ en:
   label_helpdesk_legacy_run_queued: 'Queued – the run starts in a moment …'
   label_helpdesk_legacy_run_running: 'Running in the background. You can leave this page; the run continues.'
   label_helpdesk_legacy_run_started: 'Started %{time} by %{user}'
+  label_helpdesk_legacy_run_requested: 'Requested %{time} by %{user}'
   label_helpdesk_legacy_run_active_link: 'A run is in progress – show status'
   label_helpdesk_legacy_run_last_link: 'Result of the last run'
   label_helpdesk_legacy_back_to_settings: 'Back to plugin settings'

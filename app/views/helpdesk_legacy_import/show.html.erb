@@ -8,7 +8,8 @@
 <div class="box" id="hd-legacy-run"
      data-url="<%= helpdesk_legacy_import_run_status_path(@run) %>">
   <p>
-    <strong id="hd-legacy-run-message"
+    <%# Live region: the polling script replaces this text, screen readers announce it %>
+    <strong id="hd-legacy-run-message" role="status" aria-live="polite"
             class="<%= { 'done' => 'hd-legacy-ok', 'failed' => 'hd-legacy-err', 'stale' => 'hd-legacy-err' }[status[:status]] %>">
       <%= status[:message] %>
     </strong>
@@ -21,7 +22,9 @@
     </span>
   </p>
   <p class="hd-stats-muted">
-    <%= l(:label_helpdesk_legacy_run_started, :time => format_time(@run.created_at),
+    <%# A queued run has not started yet - say when it was requested instead %>
+    <%= l(@run.started_at ? :label_helpdesk_legacy_run_started : :label_helpdesk_legacy_run_requested,
+          :time => format_time(@run.started_at || @run.created_at),
           :user => (@run.user ? @run.user.name : '–')) %>
   </p>
 </div>
