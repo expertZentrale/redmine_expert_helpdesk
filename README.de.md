@@ -1376,11 +1376,42 @@ unterscheidet sich — nachjustieren.
   **manuell** (beim Schließen entsteht ein *pending*-Eintrag; Freigabe über die Ticket-Seitenleiste).
 - **Lösungsvorschläge anzeigen** (`kb_proposal_display`): aus / Zusammenfassung / Seitenleiste / beides.
 
+**Reiter „Wissensbasis" (Kuratierung).** Extrahierte Einträge sind nicht immer richtig, und den
+Payload direkt in Qdrant (oder einem anderen Vektor-Store) zu korrigieren hilft **nicht**: der Vektor
+wurde aus dem alten Text berechnet und bleibt, wie er ist. Die SQL-Tabelle `helpdesk_knowledge_entries`
+ist deshalb das führende System, und der Projekt-Reiter **Wissensbasis** (sichtbar mit aktivem
+Helpdesk-Modul und zentral eingeschalteter KB) ist der Ort, an dem Einträge geprüft und korrigiert werden:
+
+- Liste aller Einträge mit Statusfilter (*Ausstehend / Freigegeben / Keine Lösung / Abgelehnt*; die
+  Vorgabe blendet *Keine Lösung* aus), Freitextsuche über Problem und Lösung, Detailseite je Eintrag.
+- **Bearbeiten** von Problem und Lösung. Speichern eines *freigegebenen* Eintrags bettet ihn **sofort**
+  neu ein (kein KI-Extraktionsaufruf, nur eine Embeddings-Anfrage) und überschreibt den Punkt; die Seite
+  warnt, wenn Store oder Embeddings-Endpunkt nicht erreichbar waren. Eingebettet wird nur das
+  *Problem* — so formulieren, wie ein Kunde den Fehler beschreiben würde.
+- **Freigeben / Ablehnen.** Ablehnen entfernt den Punkt aus dem Store. Ein abgelehnter Eintrag, und
+  einer, den eine Person bearbeitet oder freigegeben hat, wird beim erneuten Schließen des Tickets
+  **nicht** überschrieben; nur der ausdrückliche Button *Zur Wissensbasis hinzufügen* in der
+  Ticket-Seitenleiste extrahiert neu.
+- **Neuer Eintrag** zu einem Ticket des Projekts (ein Eintrag je Ticket), **Löschen** und **Index neu
+  aufbauen** (leert den Namensraum des Projekts und bettet alle freigegebenen Einträge im Hintergrund
+  neu ein — räumt auch verwaiste Punkte ab und folgt einem Wechsel des Embeddings-Modells).
+
+Drei Berechtigungen im Modul *Helpdesk*, passend zu vorgeschlagenen Rollen:
+
+| Berechtigung | Erlaubt | Vorgeschlagene Rolle |
+| --- | --- | --- |
+| `view_helpdesk_kb` | Reiter, Liste, Detailseite | KB-Leser |
+| `edit_helpdesk_kb` | Bearbeiten, neuer Eintrag, Freigeben, Ablehnen (auch die KB-Buttons der Ticket-Seitenleiste) | KB-Redakteur |
+| `manage_helpdesk_kb` | Einträge löschen, Projekt-Index neu aufbauen | KB-Admin |
+
+Die Buttons der Ticket-Seitenleiste funktionieren wie bisher auch mit `send_helpdesk_reply`.
+
 **Isolation:** jedes Projekt hat einen eigenen Vektor-Namensraum (Qdrant-Collection / erzwungener
 `project_id`-Filter) – ein Projekt ruft nie das Wissen eines anderen ab.
 
 **Batch:** `rake redmine_expert_helpdesk:kb_backfill` nimmt bestehende geschlossene Tickets auf;
-`kb_reembed` baut die Vektoren nach einem Modellwechsel neu.
+`kb_reembed` baut die Vektoren aller Projekte nach einem Modellwechsel neu (derselbe Neuaufbau
+wie *Index neu aufbauen* im Reiter, für jedes Projekt).
 
 **Einrichtung:** einen von Redmine erreichbaren Vektor-Dienst betreiben – z. B. einen
 `qdrant/qdrant`-Container (`http://qdrant:6333`) oder eine `pgvector/pgvector`-Postgres – und die

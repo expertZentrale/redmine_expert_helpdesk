@@ -5,6 +5,37 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [0.18.0] - 2026-09-25
+
+### Hinzugefügt
+
+- **Reiter „Wissensbasis": RAG-Einträge je Projekt ansehen, korrigieren und kuratieren.**
+  Extrahierte Problem/Lösung-Paare waren nur in der Vektor-Datenbank sichtbar, und dort den Payload
+  zu ändern hilft nicht — der Vektor bleibt der aus dem alten Text berechnete. Der neue Projekt-Reiter
+  *Wissensbasis* listet die Einträge (Statusfilter, Freitextsuche, Detailseite), und das Bearbeiten
+  eines freigegebenen Eintrags **bettet ihn sofort neu ein** (ein Embeddings-Aufruf, keine
+  KI-Extraktion). Einträge lassen sich freigeben, ablehnen (entfernt den Punkt), für ein Ticket des
+  Projekts von Hand anlegen und löschen; der Projekt-Index kann im Hintergrund neu aufgebaut werden.
+  Funktioniert für Qdrant und pgvector gleichermaßen. Drei neue Berechtigungen im Helpdesk-Modul:
+  `view_helpdesk_kb`, `edit_helpdesk_kb`, `manage_helpdesk_kb` (vorgeschlagene Rollen KB-Leser /
+  -Redakteur / -Admin). Die KB-Buttons der Ticket-Seitenleiste akzeptieren jetzt auch
+  `edit_helpdesk_kb` und verlinken auf den Eintrag.
+- **Neuer Status *Abgelehnt*** für Wissensbasis-Einträge sowie eine Prüfspur (wer einen Eintrag
+  wann geprüft hat; Migration 061).
+
+### Geändert
+
+- **Das Urteil einer Person übersteht erneutes Schließen.** Der Aufnahme-Job überschreibt keinen
+  Eintrag mehr, der im Reiter bearbeitet, freigegeben oder abgelehnt wurde, wenn das Ticket wieder
+  geöffnet und geschlossen wird; nur der ausdrückliche Button *Zur Wissensbasis hinzufügen* extrahiert neu.
+- **`kb_reembed` baut je Projekt neu auf** — über denselben Job wie *Index neu aufbauen* im Reiter —
+  und löscht jetzt auch die Punkt-Referenz nicht freigegebener Einträge.
+
+### Behoben
+
+- **Veraltete Vektoren nach erneuter Aufnahme.** Ein Eintrag, der von freigegeben zu *Keine Lösung*
+  oder *Ausstehend* wechselte, behielt seinen Punkt im Store und blieb suchbar; der Punkt wird jetzt entfernt.
+
 ## [0.17.0] - 2026-09-25
 
 ### Hinzugefügt

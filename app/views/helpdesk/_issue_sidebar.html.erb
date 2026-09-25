@@ -20,8 +20,10 @@
   show_regen   = ai_on && hd_ps&.ai_summary_enabled? && can_rep
   kb_props     = (kb_on && hd_ps&.kb_show_in_sidebar?) ?
                    HelpdeskKbProposal.where(:issue_id => issue.id).order('score DESC') : []
-  show_kb_acts = kb_on && hd_ps && hd_ps.kb_ingest_mode.to_s != 'off' && issue.closed? && can_rep
+  can_kb_edit  = kb_on && (can_rep || User.current.allowed_to?(:edit_helpdesk_kb, project))
+  show_kb_acts = kb_on && hd_ps && hd_ps.kb_ingest_mode.to_s != 'off' && issue.closed? && can_kb_edit
   kb_entry     = show_kb_acts ? HelpdeskKnowledgeEntry.find_by(:issue_id => issue.id) : nil
+  kb_link      = kb_entry && User.current.allowed_to?(:view_helpdesk_kb, project)
   show_ai_area = show_regen || kb_props.any? || show_kb_acts
 %>
 
@@ -107,6 +109,8 @@
         <% elsif kb_entry&.pending? %>
           <%= button_to l(:button_helpdesk_kb_approve),
                 issue_helpdesk_kb_approve_path(:issue_id => issue), :method => :post, :class => 'hd-ai-regen-btn' %>
+        <% elsif kb_entry&.rejected? %>
+          <div class="hd-kb-status hd-kb-skip"><%= l(:label_helpdesk_kb_status_rejected) %></div>
         <% elsif kb_entry&.skipped? %>
           <div class="hd-kb-status hd-kb-skip"><%= l(:text_helpdesk_kb_skipped) %></div>
           <%= button_to l(:button_helpdesk_kb_retry),
@@ -114,6 +118,10 @@
         <% else %>
           <%= button_to l(:button_helpdesk_kb_ingest),
                 issue_helpdesk_kb_ingest_path(:issue_id => issue), :method => :post, :class => 'hd-ai-regen-btn' %>
+        <% end %>
+        <% if kb_link %>
+          <div><%= link_to l(:label_helpdesk_kb_open_entry),
+                           helpdesk_kb_entry_path(kb_entry, :project_id => project) %></div>
         <% end %>
       </div>
     <% end %>

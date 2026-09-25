@@ -6,6 +6,36 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [0.18.0] - 2026-09-25
+
+### Added
+
+- **Knowledge base tab: view, correct and curate RAG entries per project.** Extracted
+  problem/solution pairs were only visible in the vector database, and editing a payload there
+  does not help — the vector stays the one computed from the old text. The new project tab
+  *Knowledge base* lists the entries (status filter, free-text search, detail page), and editing
+  an approved entry **re-embeds it immediately** (one embeddings call, no AI extraction). Entries
+  can be approved, rejected (removes the point), created by hand for a ticket of the project,
+  deleted, and the project index can be rebuilt in the background. Works for Qdrant and pgvector
+  alike. Three new permissions in the helpdesk module: `view_helpdesk_kb`, `edit_helpdesk_kb`,
+  `manage_helpdesk_kb` (suggested roles KB viewer / editor / admin). The ticket-sidebar KB
+  buttons now also accept `edit_helpdesk_kb` and link to the entry.
+- **New status *rejected*** for knowledge-base entries, and a curation trail (who checked an entry
+  and when; migration 061).
+
+### Changed
+
+- **A person's verdict survives a re-close.** The ingest job no longer overwrites an entry that
+  was edited, approved in the tab or rejected when its ticket is reopened and closed again; only
+  the explicit *Add to knowledge base* button re-extracts it.
+- **`kb_reembed` rebuilds per project** through the same job as the tab's *Rebuild index*, and
+  now also clears the point reference of non-approved entries.
+
+### Fixed
+
+- **Stale vectors after a re-ingest.** An entry that went from approved to *no solution* or
+  *pending* kept its point in the store and stayed searchable; the point is now removed.
+
 ## [0.17.0] - 2026-09-25
 
 ### Added

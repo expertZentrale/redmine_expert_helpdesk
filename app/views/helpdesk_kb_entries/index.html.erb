@@ -1,0 +1,111 @@
+<%# Knowledge base tab: RAG entries of the project, filterable by status and text %>
+<% can_edit   = User.current.allowed_to?(:edit_helpdesk_kb, @project) %>
+<% can_manage = User.current.allowed_to?(:manage_helpdesk_kb, @project) %>
+
+<div class="contextual">
+  <% if can_edit %>
+    <%= link_to hd_icon_label('add', l(:button_helpdesk_kb_new_entry)),
+                new_helpdesk_kb_entry_path(:project_id => @project), :class => 'icon icon-add' %>
+  <% end %>
+  <% if can_manage %>
+    <%= link_to hd_icon_label('reload', l(:button_helpdesk_kb_reindex)),
+                reindex_helpdesk_kb_entries_path(:project_id => @project),
+                :method => :post, :class => 'icon icon-reload',
+                :title => l(:text_helpdesk_kb_reindex_info),
+                :data => { :confirm => l(:text_helpdesk_kb_reindex_confirm) } %>
+  <% end %>
+</div>
+
+<h2><%= l(:label_helpdesk_kb) %></h2>
+
+<p class="hd-kb-intro"><%= l(:text_helpdesk_kb_tab_info) %></p>
+
+<% unless @kb_ready %>
+  <p class="warning"><%= l(:text_helpdesk_kb_not_configured) %></p>
+<% end %>
+
+<%= form_tag helpdesk_kb_entries_path(:project_id => @project), :method => :get, :class => 'hd-kb-filter' do %>
+  <%= hidden_field_tag :sort, params[:sort] if params[:sort].present? %>
+  <%= select_tag :status,
+                 options_for_select(
+                   [[l(:label_helpdesk_kb_filter_default), '']] +
+                   HelpdeskKnowledgeEntry::STATUSES.map { |s|
+                     ["#{l("label_helpdesk_kb_status_#{s}")} (#{@counts[s].to_i})", s]
+                   } +
+                   [[l(:label_all), 'all']],
+                   @status) %>
+  <%= text_field_tag :q, @q, :size => 30, :placeholder => l(:label_helpdesk_kb_search) %>
+  <%= submit_tag l(:button_apply), :name => nil %>
+  <% if @q.present? || @status.present? %>
+    <%= link_to l(:button_clear), helpdesk_kb_entries_path(:project_id => @project) %>
+  <% end %>
+<% end %>
+
+<% if @entry_count > 0 %>
+  <table class="list hd-kb-list">
+    <thead>
+      <tr>
+        <%= sort_header_tag('issue', :caption => l(:label_issue)) %>
+        <th><%= l(:field_helpdesk_kb_problem) %></th>
+        <th><%= l(:field_helpdesk_kb_solution) %></th>
+        <%= sort_header_tag('status', :caption => l(:field_status)) %>
+        <%= sort_header_tag('updated', :caption => l(:field_updated_on), :default_order => 'desc') %>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @entries.each do |entry| %>
+        <tr class="hd-kb-row hd-kb-<%= entry.status %>">
+          <td class="id">
+            <% if entry.issue %>
+              <%= link_to "##{entry.issue_id}", issue_path(entry.issue_id), :title => entry.issue.subject %>
+            <% else %>
+              <%= "##{entry.issue_id}" %>
+            <% end %>
+          </td>
+          <td class="hd-kb-text">
+            <%= link_to truncate(entry.problem.to_s, :length => 160),
+                        helpdesk_kb_entry_path(entry, :project_id => @project) %>
+          </td>
+          <td class="hd-kb-text"><%= truncate(entry.solution.to_s, :length => 160) %></td>
+          <td><%= render :partial => 'status', :locals => { :entry => entry } %></td>
+          <td>
+            <%= format_time(entry.updated_at) %>
+            <% if entry.curated? %>
+              <br><em class="info"><%= l(:label_helpdesk_kb_curated_by, :user => entry.updated_by&.name || '?') %></em>
+            <% end %>
+          </td>
+          <td class="buttons">
+            <% if can_edit %>
+              <%= link_to hd_icon_label('edit', l(:button_edit)),
+                          edit_helpdesk_kb_entry_path(entry, :project_id => @project), :class => 'icon icon-edit' %>
+              <% unless entry.approved? || entry.skipped? %>
+                <%= link_to hd_icon_label('checked', l(:button_helpdesk_kb_approve_short)),
+                            approve_helpdesk_kb_entry_path(entry, :project_id => @project),
+                            :method => :post, :class => 'icon icon-checked' %>
+              <% end %>
+              <% unless entry.rejected? %>
+                <%= link_to hd_icon_label('close', l(:button_helpdesk_kb_reject)),
+                            reject_helpdesk_kb_entry_path(entry, :project_id => @project),
+                            :method => :post, :class => 'icon icon-close',
+                            :data => { :confirm => l(:text_helpdesk_kb_reject_confirm) } %>
+              <% end %>
+            <% end %>
+            <% if can_manage %>
+              <%= link_to hd_icon_label('del', l(:button_delete)),
+                          helpdesk_kb_entry_path(entry, :project_id => @project),
+                          :method => :delete, :class => 'icon icon-del',
+                          :data => { :confirm => l(:text_helpdesk_kb_delete_confirm) } %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <span class="pagination"><%= pagination_links_full @entry_pages, @entry_count %></span>
+<% else %>
+  <p class="nodata"><%= l(:label_no_data) %></p>
+<% end %>
+
+<%= render :partial => 'styles' %>

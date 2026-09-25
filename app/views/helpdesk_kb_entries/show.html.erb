@@ -1,0 +1,82 @@
+<%# Knowledge base entry: full text, source ticket and index state %>
+<% can_edit   = User.current.allowed_to?(:edit_helpdesk_kb, @project) %>
+<% can_manage = User.current.allowed_to?(:manage_helpdesk_kb, @project) %>
+
+<div class="contextual">
+  <% if can_edit %>
+    <%= link_to hd_icon_label('edit', l(:button_edit)),
+                edit_helpdesk_kb_entry_path(@entry, :project_id => @project), :class => 'icon icon-edit' %>
+    <% unless @entry.approved? || @entry.skipped? %>
+      <%= link_to hd_icon_label('checked', l(:button_helpdesk_kb_approve_short)),
+                  approve_helpdesk_kb_entry_path(@entry, :project_id => @project),
+                  :method => :post, :class => 'icon icon-checked' %>
+    <% end %>
+    <% unless @entry.rejected? %>
+      <%= link_to hd_icon_label('close', l(:button_helpdesk_kb_reject)),
+                  reject_helpdesk_kb_entry_path(@entry, :project_id => @project),
+                  :method => :post, :class => 'icon icon-close',
+                  :data => { :confirm => l(:text_helpdesk_kb_reject_confirm) } %>
+    <% end %>
+  <% end %>
+  <% if can_manage %>
+    <%= link_to hd_icon_label('del', l(:button_delete)),
+                helpdesk_kb_entry_path(@entry, :project_id => @project),
+                :method => :delete, :class => 'icon icon-del',
+                :data => { :confirm => l(:text_helpdesk_kb_delete_confirm) } %>
+  <% end %>
+</div>
+
+<h2>
+  <%= link_to l(:label_helpdesk_kb), helpdesk_kb_entries_path(:project_id => @project) %>
+  &raquo; <%= l(:label_helpdesk_kb_entry) %> #<%= @entry.id %>
+</h2>
+
+<div class="box">
+  <table class="hd-kb-meta">
+    <tr>
+      <td><strong><%= l(:label_issue) %></strong></td>
+      <td>
+        <% if @entry.issue %>
+          <%= link_to "##{@entry.issue_id} #{@entry.issue.subject}", issue_path(@entry.issue_id) %>
+        <% else %>
+          #<%= @entry.issue_id %>
+        <% end %>
+      </td>
+    </tr>
+    <tr>
+      <td><strong><%= l(:field_status) %></strong></td>
+      <td><%= render :partial => 'status', :locals => { :entry => @entry } %></td>
+    </tr>
+    <tr>
+      <td><strong><%= l(:label_helpdesk_kb_indexed) %></strong></td>
+      <td>
+        <%= @entry.point_id.present? ? l(:general_text_Yes) : l(:general_text_No) %>
+        <% if @entry.embed_model.present? %>
+          <em class="info">(<%= @entry.embed_model %>)</em>
+        <% end %>
+      </td>
+    </tr>
+    <tr>
+      <td><strong><%= l(:field_updated_on) %></strong></td>
+      <td>
+        <%= format_time(@entry.updated_at) %>
+        <% if @entry.curated? %>
+          – <%= l(:label_helpdesk_kb_curated_by, :user => @entry.updated_by&.name || '?') %>
+          (<%= format_time(@entry.curated_at) %>)
+        <% end %>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h3><%= l(:field_helpdesk_kb_problem) %></h3>
+<div class="hd-kb-fulltext"><%= @entry.problem %></div>
+
+<h3><%= l(:field_helpdesk_kb_solution) %></h3>
+<div class="hd-kb-fulltext"><%= @entry.solution %></div>
+
+<% unless @kb_ready %>
+  <p class="warning"><%= l(:text_helpdesk_kb_not_configured) %></p>
+<% end %>
+
+<%= render :partial => 'styles' %>

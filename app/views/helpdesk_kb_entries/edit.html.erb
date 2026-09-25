@@ -1,0 +1,13 @@
+<h2>
+  <%= link_to l(:label_helpdesk_kb), helpdesk_kb_entries_path(:project_id => @project) %>
+  &raquo; <%= l(:label_helpdesk_kb_entry) %> #<%= @entry.id %>
+</h2>
+
+<%= form_for @entry, :as => :helpdesk_knowledge_entry,
+    :url => helpdesk_kb_entry_path(@entry, :project_id => @project), :method => :put do |f| %>
+  <%= render :partial => 'form', :locals => { :f => f } %>
+  <p>
+    <%= f.submit l(:button_save) %>
+    <%= link_to l(:button_cancel), helpdesk_kb_entry_path(@entry, :project_id => @project) %>
+  </p>
+<% end %>
