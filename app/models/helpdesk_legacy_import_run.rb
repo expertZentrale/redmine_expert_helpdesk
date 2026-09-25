@@ -1,5 +1,6 @@
-# A background run of the legacy contact import (kind 'import') or the EML
-# attachment repair (kind 'fix_attachments'). The controller claims a row and
+# A background run of the legacy contact import (kind 'import'), the EML
+# attachment repair (kind 'fix_attachments') or its reverse for projects still on
+# RedmineUP's helpdesk (kind 'restore_attachments'). The controller claims a row and
 # enqueues HelpdeskLegacyImportJob; the status page polls it until it finishes.
 #
 # Import and repair both rewrite helpdesk_messages, so only one run may be live.
@@ -9,7 +10,7 @@
 # that lock - a worker whose run was retired as stale stops at its next
 # checkpoint instead of rewriting data alongside its replacement.
 class HelpdeskLegacyImportRun < ActiveRecord::Base
-  KINDS    = %w[import fix_attachments].freeze
+  KINDS    = %w[import fix_attachments restore_attachments].freeze
   ACTIVE   = %w[queued running].freeze
   FINISHED = %w[done failed stale].freeze
   LOCK     = 'active'.freeze

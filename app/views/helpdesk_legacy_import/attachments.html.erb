@@ -1,0 +1,56 @@
+<%# EML attachments of redmine_contacts_helpdesk (admins only): pick projects, then
+    repair (move the mail onto the issue) or restore (hand it back to RedmineUP).
+    Nothing is preselected - restore in particular is meant for the few projects
+    that still work with RedmineUP's helpdesk. %>
+<% html_title l(:label_helpdesk_legacy_attachments_select) %>
+<h2><%= l(:label_helpdesk_legacy_attachments_select) %></h2>
+
+<p><em class="info"><%= l(:text_helpdesk_legacy_attachments_select_info) %></em></p>
+<% if @redmineup_installed %>
+  <p><em class="info"><%= l(:text_helpdesk_legacy_restore_info) %></em></p>
+<% end %>
+
+<%= form_tag helpdesk_legacy_fix_attachments_path, :method => :post do %>
+  <fieldset class="box">
+    <legend>
+      <label>
+        <%= check_box_tag 'toggle_all', '1', false, :id => 'hd-legacy-toggle-all' %>
+        <%= l(:label_helpdesk_legacy_select_all) %>
+      </label>
+    </legend>
+
+    <% @project_options.each do |opt| %>
+      <p>
+        <label>
+          <%= check_box_tag 'project_ids[]', opt[:project_id], false, :class => 'hd-legacy-project' %>
+          <%= opt[:name].presence || l(:label_helpdesk_legacy_deleted_project, :id => opt[:project_id]) %>
+          <span class="hd-stats-muted">
+            (<%= l(:label_helpdesk_legacy_fixable_count, :count => opt[:fixable]) %><% if @redmineup_installed %>,
+             <%= l(:label_helpdesk_legacy_restorable_count, :count => opt[:restorable]) %><% end %>)
+          </span>
+        </label>
+      </p>
+    <% end %>
+  </fieldset>
+
+  <p>
+    <%= button_tag l(:button_helpdesk_legacy_fix), :name => 'operation', :value => 'fix',
+                   :data => { :confirm => l(:text_helpdesk_legacy_fix_confirm) } %>
+    <% if @redmineup_installed %>
+      <%= button_tag l(:button_helpdesk_legacy_restore), :name => 'operation', :value => 'restore',
+                     :data => { :confirm => l(:text_helpdesk_legacy_restore_confirm) } %>
+    <% end %>
+    <%= link_to l(:button_cancel), plugin_settings_path('redmine_expert_helpdesk') %>
+  </p>
+<% end %>
+
+<%= javascript_tag do %>
+  (function () {
+    var all = document.getElementById('hd-legacy-toggle-all');
+    if (!all) { return; }
+    all.addEventListener('change', function () {
+      var boxes = document.querySelectorAll('.hd-legacy-project');
+      for (var i = 0; i < boxes.length; i++) { boxes[i].checked = all.checked; }
+    });
+  })();
+<% end %>

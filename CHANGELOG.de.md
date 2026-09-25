@@ -5,6 +5,39 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **Original-Mails können an den RedmineUP-Helpdesk zurückgegeben werden.** Die EML-Reparatur
+  hängt jede `message.eml` vom redmine_contacts_helpdesk-Ticket an das Redmine-Ticket um – richtig
+  für Projekte, die RedmineUP verlassen haben, aber ein Projekt, das noch mit dem RedmineUP-Helpdesk
+  arbeitet, findet seine Original-Mails danach nicht mehr, weil RedmineUP nur an seinem eigenen
+  Ticket sucht. Die neue Aktion *An RedmineUP zurückgeben* macht die Reparatur für die gewählten
+  Projekte rückgängig. Verschoben werden nur eindeutige Fälle: Das Ticket hat genau ein
+  RedmineUP-Ticket und genau eine `message.eml`, und daran hängt noch keine Mail; die eigenen
+  archivierten Mails dieses Plugins (`original_mail_*.eml`) passen nie. Der „Original-Mail“-Link
+  dieses Plugins adressiert die Datei per ID und funktioniert weiter. Nur angeboten, solange
+  `redmine_contacts_helpdesk` installiert ist.
+
+### Geändert
+
+- **Die EML-Reparatur arbeitet projektbezogen, wie der Kontaktimport.** Der Button in den
+  Einstellungen öffnet jetzt eine Projektliste, die je Projekt zeigt, wie viele Mails an das
+  Ticket gehängt und – bei installiertem RedmineUP – wie viele an RedmineUP zurückgegeben werden
+  können; vorausgewählt ist nichts. Bisher lief die Reparatur immer über alle Projekte. Beide
+  Richtungen laufen als Hintergrund-Job mit Fortschritt und verschieben Anhänge in Blöcken zu 500
+  (portables SQL statt eines MySQL-spezifischen `UPDATE … JOIN`); auch das Verknüpfen der
+  synthetischen Messages beschränkt sich auf die gewählten Projekte.
+
+### Behoben
+
+- **Nicht reparierbare Alt-Anhänge halten den Reparatur-Button nicht mehr sichtbar.** Mails, deren
+  redmine_contacts_helpdesk-Ticket nicht mehr existiert (keine oder unbekannte `container_id`),
+  zählten als „falsch zugeordnet“; der Button blieb deshalb nach jeder Reparatur in den
+  Einstellungen stehen, ohne für sie etwas zu tun. Gezählt werden jetzt nur Mails, die sich
+  tatsächlich verschieben lassen.
+
 ## [0.16.0] - 2026-09-24
 
 ### Geändert

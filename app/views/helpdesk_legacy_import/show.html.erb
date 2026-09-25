@@ -1,6 +1,7 @@
 <%# Status page of a background legacy import / attachment repair run (admins only).
     Rendered once server-side, then refreshed by polling the status endpoint. %>
-<% title = @run.kind == 'fix_attachments' ? l(:button_helpdesk_legacy_fix) : l(:label_helpdesk_legacy_import) %>
+<% title = { 'fix_attachments' => l(:button_helpdesk_legacy_fix),
+             'restore_attachments' => l(:button_helpdesk_legacy_restore) }[@run.kind] || l(:label_helpdesk_legacy_import) %>
 <% status = run_status(@run) %>
 <% html_title title %>
 <h2><%= title %></h2>

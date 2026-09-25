@@ -952,8 +952,15 @@ Under *Administration → Plugins → Redmine expert Helpdesk* — or, as a shor
 If the database still holds the tables of the RedmineUP plugins `redmine_contacts` /
 `redmine_contacts_helpdesk`, the settings page offers two admin-only actions:
 **Import contacts now** (contacts per project plus the customer link of old tickets) and
-**Fix EML attachments now** (re-attaches original mails still hanging off the old
-`HelpdeskTicket` container). Both run as a **background job**: the button opens a status page
+**Manage EML attachments** (re-attaches original mails still hanging off the old
+`HelpdeskTicket` container). Both work **per project**: pick the projects on the selection
+page, which shows per project how many contacts respectively mails are affected. Leave out
+projects that still work with the RedmineUP helpdesk when repairing mails — RedmineUP only finds
+a mail on its own ticket. If that already happened, **Give back to RedmineUP** (offered while
+`redmine_contacts_helpdesk` is installed) reverses the repair for the selected projects; it moves
+only unambiguous cases (one RedmineUP ticket and one `message.eml` on the issue, no mail on the
+ticket yet), and this plugin's "Original-Mail" link keeps working either way. All of these run
+as a **background job**: the button opens a status page
 that shows the current phase and progress and, once finished, the result. You can leave the
 page — the run continues, and the settings page links to the live or most recent run. Only one
 run at a time; a run with no progress for an hour counts as interrupted and can simply be

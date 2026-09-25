@@ -396,7 +396,14 @@ nested registration would never fire in production.
   a local `HelpdeskPhishingUrl` mirror; scan incoming links (decoding Microsoft SafeLinks
   locally). On hit: neutralize (warn banner + journal note) or quarantine, per project.
 - **`legacy_contacts_import.rb`** — one-off import from the `redmine_contacts` plugin, plus
-  the EML attachment repair. **Never run inline from a request** — on real datasets both outlast
+  the EML attachment repair (`fix_attachments`: legacy `HelpdeskTicket` → issue) and its reverse
+  (`restore_attachments`: `message.eml` → back to the RedmineUP ticket, for projects still on
+  RedmineUP; only offered while `redmine_contacts_helpdesk` is installed). All three are
+  **per project** (`project_condition`); restore moves only unambiguous cases (one ticket, one
+  `message.eml`, no mail on the ticket yet — checked in `HAVING` across all of the issue's
+  tickets). Selections are driven from `helpdesk_tickets` so the attachments index is used; the
+  restore count is a grouped scan (seconds), so it lives on the selection page, not the settings
+  page. Moves go in batches of 500 by id (`move_attachments`), which is where progress is fenced. **Never run inline from a request** — on real datasets both outlast
   the browser/proxy timeout. `HelpdeskLegacyImportController` records a
   `HelpdeskLegacyImportRun` (migration 060) and enqueues `HelpdeskLegacyImportJob`; the status
   page polls `helpdesk/legacy_import/runs/:id/status` (not `.json`: Redmine drops the session on json requests). Status lives in the DB, not `Rails.cache`

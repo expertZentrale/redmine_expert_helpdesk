@@ -6,6 +6,36 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Added
+
+- **Original mails can be given back to the RedmineUP helpdesk.** The EML repair moves each
+  `message.eml` from its redmine_contacts_helpdesk ticket onto the Redmine issue - right for
+  projects that left RedmineUP, but a project that still works with the RedmineUP helpdesk then
+  no longer finds its original mails, because RedmineUP only looks on its own ticket. The new
+  action *Give back to RedmineUP* reverses the repair for the selected projects. It moves only
+  unambiguous cases: the issue has exactly one RedmineUP ticket and exactly one `message.eml`,
+  and that ticket holds no mail yet; this plugin's own archived mails (`original_mail_*.eml`)
+  never match. The "Original-Mail" link of this plugin addresses the file by id and keeps
+  working. Offered only while `redmine_contacts_helpdesk` is installed.
+
+### Changed
+
+- **The EML repair works per project, like the contact import.** The settings button now opens
+  a project list showing, per project, how many mails can be attached to the issue and - with
+  RedmineUP installed - how many can be given back to it; nothing is preselected. Previously
+  the repair always ran over every project. Both directions run as background jobs with
+  progress, moving attachments in batches of 500 (portable SQL instead of a MySQL-only
+  `UPDATE ... JOIN`), and the synthetic-message link step is limited to the selected projects too.
+
+### Fixed
+
+- **Unrepairable legacy attachments no longer keep the repair button visible.** Mails whose
+  redmine_contacts_helpdesk ticket no longer exists (no or an unknown `container_id`) were
+  counted as "misplaced", so the button stayed on the settings page after every repair while
+  doing nothing for them. The count now includes only mails that can actually be moved.
+
 ## [0.16.0] - 2026-09-24
 
 ### Changed
