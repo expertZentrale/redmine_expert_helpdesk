@@ -165,6 +165,16 @@ class HelpdeskKbEntriesTest < Redmine::IntegrationTest
     assert_response :not_found
   end
 
+  def test_destroy_keeps_row_when_point_cannot_be_removed
+    @entry.update_columns(:point_id => @entry.id.to_s)
+    grant!(:view_helpdesk_kb, :manage_helpdesk_kb)
+    HelpdeskKnowledgeEntry.stubs(:unindex).returns(false)
+    assert_no_difference 'HelpdeskKnowledgeEntry.count' do
+      delete "#{base}/#{@entry.id}"
+    end
+    assert_redirected_to "#{base}/#{@entry.id}"
+  end
+
   def test_destroy_and_reindex_need_manage_permission
     grant!(:view_helpdesk_kb, :edit_helpdesk_kb)
     delete "#{base}/#{@entry.id}"

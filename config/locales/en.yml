@@ -669,6 +669,7 @@ en:
   text_helpdesk_kb_delete_confirm: 'Delete this entry permanently? The ticket may be picked up again the next time it is closed.'
   text_helpdesk_kb_saved_not_indexed: 'Saved, but the vector could not be updated (store or embeddings not reachable/configured). Use "Rebuild index" once it is available.'
   text_helpdesk_kb_problem_blank: 'Saved, but not searchable: the problem text is empty.'
+  text_helpdesk_kb_unindex_failed: 'The vector could not be removed from the store (not reachable). The entry was kept; try again, or use "Rebuild index" once the store is available.'
   notice_helpdesk_kb_saved_indexed: 'Saved and re-embedded.'
   notice_helpdesk_kb_reindex_queued: 'Index rebuild started. It runs in the background.'
 

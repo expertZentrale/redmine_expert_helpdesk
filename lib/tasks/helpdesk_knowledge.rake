@@ -47,8 +47,12 @@ namespace :redmine_expert_helpdesk do
     # Same per-project rebuild as the "Knowledge base" tab (reset + re-embed). With
     # Qdrant the collection is recreated with the current dimension; with pgvector a
     # changed dimension needs the helpdesk_kb_vectors table dropped by hand.
+    # Projects with entries plus every helpdesk project: a project whose last entry
+    # was deleted may still hold orphan points, and only a reset clears them.
+    pids = HelpdeskKnowledgeEntry.distinct.pluck(:project_id) |
+           EnabledModule.where(:name => 'helpdesk').pluck(:project_id)
     ok = 0
-    HelpdeskKnowledgeEntry.distinct.pluck(:project_id).each do |pid|
+    pids.sort.each do |pid|
       count = HelpdeskKnowledgeReindexJob.rebuild(pid)
       if count.nil?
         puts "Projekt #{pid}: Neuaufbau fehlgeschlagen (siehe Log)."

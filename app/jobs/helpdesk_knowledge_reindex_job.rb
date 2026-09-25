@@ -11,17 +11,22 @@ class HelpdeskKnowledgeReindexJob < ActiveJob::Base
 
   # Returns the number of re-indexed entries, or nil when the store is not usable.
   def self.rebuild(project_id)
-    settings = Setting.plugin_redmine_expert_helpdesk
-    return nil unless RedmineExpertHelpdesk::AiFeatures.kb_enabled?
+    # Checked before the reset: without a working embeddings endpoint the reset
+    # would empty the namespace and nothing could refill it.
+    return nil unless RedmineExpertHelpdesk::AiFeatures.kb_ready?
 
-    store = RedmineExpertHelpdesk::KnowledgeStore.for(settings)
-    return nil unless store.configured?
-
+    store = RedmineExpertHelpdesk::KnowledgeStore.for(Setting.plugin_redmine_expert_helpdesk)
     store.reset!(project_id)
-    HelpdeskKnowledgeEntry.where(:project_id => project_id).where.not(:status => 'approved')
-                          .update_all(:point_id => nil)
+    # After the reset nothing is indexed; point_id is set again only by a successful
+    # index_entry, so a failed row shows up as "not in vector store".
+    HelpdeskKnowledgeEntry.where(:project_id => project_id).update_all(:point_id => nil)
+
     ok = 0
     HelpdeskKnowledgeEntry.approved.where(:project_id => project_id).find_each do |entry|
+      # Batches are loaded ahead; an edit or ingest may have changed the row since.
+      entry.reload
+      next unless entry.approved?
+
       ok += 1 if HelpdeskKnowledgeIngestJob.index_entry(entry)
     end
     Rails.logger.info("[helpdesk][kb] Project ##{project_id} re-indexed: #{ok} entries")

@@ -30,23 +30,34 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
     result = RedmineExpertHelpdesk::KnowledgeExtractor.new(settings).extract(issue)
     return unless result
 
-    was_indexed = entry.point_id.present?
+    saved = false
+    was_indexed = false
+    HelpdeskKnowledgeEntry.transaction do
+      # The extraction takes seconds; a person may have curated the row meanwhile.
+      # Re-check under a row lock so the verdict cannot be overwritten.
+      entry.lock! if entry.persisted?
+      unless !force && entry.persisted? && (entry.curated? || entry.rejected?)
+        was_indexed = entry.point_id.present?
 
-    entry.project_id    = issue.project_id
-    entry.problem       = result.problem
-    entry.solution      = result.solution
-    entry.input_tokens  = result.usage && result.usage[:input]
-    entry.output_tokens = result.usage && result.usage[:output]
-    # Fresh machine text: the previous person's verdict no longer applies to it.
-    entry.updated_by_id = nil
-    entry.curated_at    = nil
+        entry.project_id    = issue.project_id
+        entry.problem       = result.problem
+        entry.solution      = result.solution
+        entry.input_tokens  = result.usage && result.usage[:input]
+        entry.output_tokens = result.usage && result.usage[:output]
+        # Fresh machine text: the previous person's verdict no longer applies to it.
+        entry.updated_by_id = nil
+        entry.curated_at    = nil
 
-    entry.status =
-      if !result.has_solution then 'skipped'
-      elsif force || ps.kb_ingest_auto? then 'approved'
-      else 'pending'
+        entry.status =
+          if !result.has_solution then 'skipped'
+          elsif force || ps.kb_ingest_auto? then 'approved'
+          else 'pending'
+          end
+        entry.save!
+        saved = true
       end
-    entry.save!
+    end
+    return unless saved
 
     if entry.approved?
       index!(store, client, entry)

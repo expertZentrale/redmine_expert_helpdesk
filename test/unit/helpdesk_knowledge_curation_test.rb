@@ -88,6 +88,23 @@ class HelpdeskKnowledgeCurationTest < ActiveSupport::TestCase
     assert_nil pending.reload.point_id
   end
 
+  def test_reindex_does_not_reset_without_embeddings
+    RedmineExpertHelpdesk::AiClient.any_instance.stubs(:embed_configured?).returns(false)
+    entry = HelpdeskKnowledgeEntry.create!(:project_id => 1, :issue_id => 1, :problem => 'a',
+                                           :status => 'approved', :point_id => '1')
+    @store.expects(:reset!).never
+    assert_nil HelpdeskKnowledgeReindexJob.rebuild(1)
+    assert_equal '1', entry.reload.point_id
+  end
+
+  def test_reindex_leaves_failed_rows_unindexed
+    entry = HelpdeskKnowledgeEntry.create!(:project_id => 1, :issue_id => 1, :problem => 'a',
+                                           :status => 'approved', :point_id => '1')
+    @store.stubs(:upsert).raises(RedmineExpertHelpdesk::KnowledgeStore::StoreError, 'dim')
+    assert_equal 0, HelpdeskKnowledgeReindexJob.rebuild(1)
+    assert_nil entry.reload.point_id
+  end
+
   def test_unindex_swallows_store_errors
     entry = HelpdeskKnowledgeEntry.create!(:project_id => 1, :issue_id => 1, :problem => 'a',
                                            :status => 'approved', :point_id => '1')

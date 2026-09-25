@@ -669,6 +669,7 @@ de:
   text_helpdesk_kb_delete_confirm: 'Eintrag endgültig löschen? Das Ticket kann beim nächsten Schließen erneut aufgenommen werden.'
   text_helpdesk_kb_saved_not_indexed: 'Gespeichert, aber der Vektor konnte nicht aktualisiert werden (Store oder Embeddings nicht erreichbar/konfiguriert). Danach „Index neu aufbauen“ ausführen.'
   text_helpdesk_kb_problem_blank: 'Gespeichert, aber nicht suchbar: der Problemtext ist leer.'
+  text_helpdesk_kb_unindex_failed: 'Der Vektor konnte nicht aus dem Store entfernt werden (nicht erreichbar). Der Eintrag bleibt erhalten; erneut versuchen oder „Index neu aufbauen“ ausführen, sobald der Store verfügbar ist.'
   notice_helpdesk_kb_saved_indexed: 'Gespeichert und neu eingebettet.'
   notice_helpdesk_kb_reindex_queued: 'Neuaufbau des Index gestartet. Er läuft im Hintergrund.'
 

@@ -101,8 +101,12 @@ class HelpdeskKbEntriesController < ApplicationController
   end
 
   def destroy
-    # Point first: once the row is gone, nothing records which point to remove.
-    HelpdeskKnowledgeEntry.unindex(@entry) if @entry.point_id.present?
+    # Point first: once the row is gone, nothing records which point to remove, and a
+    # point without a row would stay searchable. So a failed removal keeps the row.
+    if @entry.point_id.present? && !HelpdeskKnowledgeEntry.unindex(@entry)
+      flash[:error] = l(:text_helpdesk_kb_unindex_failed)
+      return redirect_to helpdesk_kb_entry_path(@entry, :project_id => @project)
+    end
     @entry.destroy
     flash[:notice] = l(:notice_successful_delete)
     redirect_to helpdesk_kb_entries_path(:project_id => @project)
@@ -151,8 +155,11 @@ class HelpdeskKbEntriesController < ApplicationController
       else
         flash[:warning] = l(:text_helpdesk_kb_saved_not_indexed)
       end
+    elsif entry.point_id.present? && !HelpdeskKnowledgeEntry.unindex(entry)
+      # point_id stays set, so the entry still shows as indexed and the next
+      # "Rebuild index" removes the point.
+      flash[:warning] = l(:text_helpdesk_kb_unindex_failed)
     else
-      HelpdeskKnowledgeEntry.unindex(entry) if entry.point_id.present?
       flash[:notice] = l(:notice_successful_update)
     end
   end
