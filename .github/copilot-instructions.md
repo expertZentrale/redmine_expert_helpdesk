@@ -282,7 +282,9 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     from `journal_details`; every fold is a DB-free class method.
   - `phish*.rb` / `phishing_scanner.rb` — PhishTank + Phishing.Database mirror, link scanning
     (decodes Microsoft SafeLinks locally), neutralize/quarantine.
-  - `legacy_contacts_import.rb` — one-off `redmine_contacts` import + EML attachment repair.
+  - `legacy_contacts_import.rb` — one-off `redmine_contacts` import + EML attachment repair and its
+    reverse (`restore_attachments`, back to RedmineUP's ticket), all per project; restore moves only
+    unambiguous cases, attachments move in batches of 500 by id.
     Never inline from a request: the controller records a `HelpdeskLegacyImportRun` (migration
     060, status in the DB, not `Rails.cache`), enqueues `HelpdeskLegacyImportJob`, and the status
     page polls `helpdesk/legacy_import/runs/:id/status` (not `.json`: Redmine drops the session on json requests). One live run at a time via a unique

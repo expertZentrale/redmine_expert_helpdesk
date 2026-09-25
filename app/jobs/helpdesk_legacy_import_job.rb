@@ -12,11 +12,12 @@ class HelpdeskLegacyImportJob < ActiveJob::Base
 
     progress = ->(phase, done, total) { run.progress!(phase, done, total) }
 
+    import = RedmineExpertHelpdesk::LegacyContactsImport.new(run.project_id_list, :progress => progress)
     result =
-      if run.kind == 'fix_attachments'
-        RedmineExpertHelpdesk::LegacyContactsImport.new(nil, :progress => progress).fix_attachments
-      else
-        RedmineExpertHelpdesk::LegacyContactsImport.new(run.project_id_list, :progress => progress).run
+      case run.kind
+      when 'fix_attachments'     then import.fix_attachments
+      when 'restore_attachments' then import.restore_attachments
+      else import.run
       end
     run.finish!(result)
   rescue HelpdeskLegacyImportRun::Superseded => e

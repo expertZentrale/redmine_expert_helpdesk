@@ -967,8 +967,16 @@ Eintrag **expert Helpdesk** im Administrationsmenü, der direkt hierher verlinkt
 Enthält die Datenbank noch die Tabellen der RedmineUP-Plugins `redmine_contacts` /
 `redmine_contacts_helpdesk`, bietet die Einstellungsseite zwei Aktionen (nur Admins):
 **Kontakte jetzt importieren** (Kontakte je Projekt plus Kundenzuordnung alter Tickets) und
-**EML-Anhänge jetzt reparieren** (hängt Original-Mails um, die noch am alten
-`HelpdeskTicket`-Container hängen). Beide laufen als **Hintergrund-Job**: Der Button öffnet eine
+**EML-Anhänge verwalten** (hängt Original-Mails um, die noch am alten
+`HelpdeskTicket`-Container hängen). Beide arbeiten **projektbezogen**: Auf der Auswahlseite
+werden die Projekte gewählt, je Projekt mit der Zahl der betroffenen Kontakte bzw. Mails.
+Projekte, die noch mit dem RedmineUP-Helpdesk arbeiten, beim Reparieren der Mails auslassen –
+RedmineUP findet eine Mail nur an seinem eigenen Ticket. Ist es schon passiert, macht
+**An RedmineUP zurückgeben** (angeboten, solange `redmine_contacts_helpdesk` installiert ist) die
+Reparatur für die gewählten Projekte rückgängig; verschoben werden nur eindeutige Fälle (ein
+RedmineUP-Ticket und eine `message.eml` am Ticket, noch keine Mail am RedmineUP-Ticket), und der
+„Original-Mail“-Link dieses Plugins funktioniert in beiden Fällen weiter. Alle Aktionen laufen als
+**Hintergrund-Job**: Der Button öffnet eine
 Statusseite mit aktueller Phase und Fortschritt und nach Abschluss dem Ergebnis. Die Seite darf
 verlassen werden – der Lauf geht weiter, und die Einstellungsseite verlinkt den aktiven bzw.
 letzten Lauf. Immer nur ein Lauf; ein Lauf ohne Fortschritt seit einer Stunde gilt als

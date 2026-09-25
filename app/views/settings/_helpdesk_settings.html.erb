@@ -653,8 +653,9 @@
 
 <% legacy_available = RedmineExpertHelpdesk::LegacyContactsImport.available? %>
 <% misplaced_count  = RedmineExpertHelpdesk::LegacyContactsImport.misplaced_attachment_count %>
+<% redmineup_installed = RedmineExpertHelpdesk::LegacyContactsImport.redmineup_helpdesk_installed? %>
 <% legacy_run       = HelpdeskLegacyImportRun.current || HelpdeskLegacyImportRun.order(:id => :desc).first %>
-<% if legacy_available || misplaced_count > 0 || legacy_run %>
+<% if legacy_available || misplaced_count > 0 || redmineup_installed || legacy_run %>
   <hr />
   <h3 style="margin-top:1em;"><%= l(:label_helpdesk_legacy_import) %></h3>
   <% if legacy_run %>
@@ -678,14 +679,16 @@
                   :class => 'icon icon-reload' %>
     </p>
   <% end %>
-  <% if misplaced_count > 0 %>
+  <% if misplaced_count > 0 || redmineup_installed %>
     <p>
-      <em class="info"><%= l(:text_helpdesk_legacy_fix_info, :count => misplaced_count) %></em>
+      <em class="info">
+        <%= l(:text_helpdesk_legacy_fix_info, :count => misplaced_count) if misplaced_count > 0 %>
+        <%= l(:text_helpdesk_legacy_restore_hint) if redmineup_installed %>
+      </em>
     </p>
     <p>
-      <%= link_to hd_icon_label('attachment', l(:button_helpdesk_legacy_fix)), helpdesk_legacy_fix_attachments_path,
-                  :method => :post, :class => 'icon icon-attachment',
-                  :data => { :confirm => l(:text_helpdesk_legacy_fix_confirm) } %>
+      <%= link_to hd_icon_label('attachment', l(:button_helpdesk_legacy_attachments)),
+                  helpdesk_legacy_attachments_select_path, :class => 'icon icon-attachment' %>
     </p>
   <% end %>
 <% end %>

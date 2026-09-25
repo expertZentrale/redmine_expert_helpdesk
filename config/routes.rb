@@ -15,6 +15,9 @@ RedmineApp::Application.routes.draw do
   # Import der Altdaten aus redmine_contacts (Button in den Plugin-Einstellungen, nur Admins)
   get  'helpdesk/legacy_import/select', :to => 'helpdesk_legacy_import#new', :as => 'helpdesk_legacy_import_select'
   post 'helpdesk/legacy_import', :to => 'helpdesk_legacy_import#import', :as => 'helpdesk_legacy_import'
+  # EML attachments: project selection, then repair (onto the issue) or restore (back to RedmineUP)
+  get  'helpdesk/legacy_attachments/select', :to => 'helpdesk_legacy_import#attachments',
+       :as => 'helpdesk_legacy_attachments_select'
   post 'helpdesk/legacy_fix_attachments', :to => 'helpdesk_legacy_import#fix_attachments', :as => 'helpdesk_legacy_fix_attachments'
   # Status page of a background import or repair run, and its polling endpoint.
   # The poll is JSON without a .json format: Redmine ignores the session on

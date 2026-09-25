@@ -9,6 +9,7 @@ class HelpdeskLegacyImportTest < Redmine::IntegrationTest
     HelpdeskLegacyImportRun.delete_all
     # One attachment still hanging off a redmine_contacts_helpdesk ticket
     Attachment.find(1).update_columns(:container_type => 'HelpdeskTicket')
+    RedmineExpertHelpdesk::LegacyContactsImport.stubs(:redmineup_helpdesk_installed?).returns(true)
     # Redmine's test env runs jobs :inline, which would finish the run inside
     # the POST and hide exactly what is under test here.
     @adapter = ActiveJob::Base.queue_adapter
@@ -32,9 +33,11 @@ class HelpdeskLegacyImportTest < Redmine::IntegrationTest
   def test_fix_attachments_queues_a_run_and_redirects_to_its_status
     log_user('admin', 'admin')
     assert_difference 'HelpdeskLegacyImportRun.count', 1 do
-      post '/helpdesk/legacy_fix_attachments'
+      post '/helpdesk/legacy_fix_attachments', :params => { :project_ids => ['1'], :operation => 'fix' }
     end
     run = HelpdeskLegacyImportRun.order(:id).last
+    assert_equal 'fix_attachments', run.kind
+    assert_equal %w[1], run.project_id_list
     assert_equal [run.id], enqueued.map { |j| j[:args].first }
     assert_redirected_to "/helpdesk/legacy_import/runs/#{run.id}"
     assert_equal 'queued', run.status
@@ -61,10 +64,48 @@ class HelpdeskLegacyImportTest < Redmine::IntegrationTest
     log_user('admin', 'admin')
 
     assert_no_difference 'HelpdeskLegacyImportRun.count' do
-      post '/helpdesk/legacy_fix_attachments'
+      post '/helpdesk/legacy_fix_attachments', :params => { :project_ids => ['1'] }
     end
     assert_empty enqueued
     assert_redirected_to "/helpdesk/legacy_import/runs/#{live.id}"
+  end
+
+  def test_restore_queues_a_restore_run_for_the_selected_projects
+    log_user('admin', 'admin')
+    post '/helpdesk/legacy_fix_attachments', :params => { :project_ids => ['1', '2'], :operation => 'restore' }
+
+    run = HelpdeskLegacyImportRun.order(:id).last
+    assert_redirected_to "/helpdesk/legacy_import/runs/#{run.id}"
+    assert_equal 'restore_attachments', run.kind
+    assert_equal %w[1 2], run.project_id_list
+  end
+
+  def test_restore_is_refused_without_redmineup
+    RedmineExpertHelpdesk::LegacyContactsImport.stubs(:redmineup_helpdesk_installed?).returns(false)
+    log_user('admin', 'admin')
+    assert_no_difference 'HelpdeskLegacyImportRun.count' do
+      post '/helpdesk/legacy_fix_attachments', :params => { :project_ids => ['1'], :operation => 'restore' }
+    end
+    assert_redirected_to '/helpdesk/legacy_attachments/select'
+  end
+
+  def test_repair_needs_a_project_selection
+    log_user('admin', 'admin')
+    assert_no_difference 'HelpdeskLegacyImportRun.count' do
+      post '/helpdesk/legacy_fix_attachments', :params => { :operation => 'fix' }
+    end
+    assert_redirected_to '/helpdesk/legacy_attachments/select'
+  end
+
+  def test_selection_page_lists_projects_with_both_counts
+    RedmineExpertHelpdesk::LegacyContactsImport.stubs(:attachment_project_options)
+      .returns([{ :project_id => 1, :name => 'eCookbook', :fixable => 3, :restorable => 7 }])
+    log_user('admin', 'admin')
+    get '/helpdesk/legacy_attachments/select'
+    assert_response :success
+    assert_select 'input.hd-legacy-project[value="1"]:not([checked])'
+    assert_select 'button[name=operation][value=fix]'
+    assert_select 'button[name=operation][value=restore]'
   end
 
   def test_status_is_admin_only

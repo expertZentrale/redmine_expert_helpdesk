@@ -87,14 +87,37 @@ module RedmineExpertHelpdesk
       end.sort_by { |o| [o[:project_id].nil? ? 1 : 0, o[:name].to_s.downcase] }
     end
 
-    # Anhaenge (Original-Mails als EML), die noch am alten HelpdeskTicket-Container
-    # haengen und daher in Redmine nicht sichtbar sind.
+    # Legacy original mails (message.eml) that still hang off a redmine_contacts_helpdesk
+    # HelpdeskTicket and can be moved onto that ticket's issue. Rows whose HelpdeskTicket
+    # is gone (container_id NULL or unknown) are not counted: nothing can repair them,
+    # and counting them kept the repair button on screen forever.
     def self.misplaced_attachment_count
-      ActiveRecord::Base.connection.select_value(
-        "SELECT COUNT(*) FROM attachments WHERE container_type = 'HelpdeskTicket'"
-      ).to_i
+      inst = new
+      inst.send(:conn).select_value("SELECT COUNT(*) FROM (#{inst.send(:fixable_sql)}) x").to_i
     rescue StandardError
       0
+    end
+
+    # Is RedmineUP's helpdesk still installed? Only then does handing mails back to its
+    # HelpdeskTicket make sense - without it that container is unreadable.
+    def self.redmineup_helpdesk_installed?
+      Redmine::Plugin.installed?(:redmine_contacts_helpdesk)
+    end
+
+    # Per-project counts for the EML selection page:
+    # [{ :project_id, :name, :fixable, :restorable }, ...] sorted by name. The restore
+    # count needs a grouped scan over every legacy ticket (seconds on a large dataset),
+    # which is why it lives on the selection page and not on the settings page.
+    def self.attachment_project_options
+      inst       = new
+      fixable    = inst.send(:count_by_project, inst.send(:fixable_sql))
+      restorable = redmineup_helpdesk_installed? ? inst.send(:count_by_project, inst.send(:restorable_sql)) : {}
+      ids   = (fixable.keys + restorable.keys).uniq
+      names = Project.where(:id => ids).pluck(:id, :name).to_h
+      ids.map do |pid|
+        { :project_id => pid, :name => names[pid],
+          :fixable => fixable[pid].to_i, :restorable => restorable[pid].to_i }
+      end.sort_by { |o| o[:name].to_s.strip.downcase } # names may carry a leading blank
     end
 
     # project_ids: nil = alle Projekte importieren (Standard/rueckwaertskompatibel).
@@ -129,32 +152,38 @@ module RedmineExpertHelpdesk
       result
     end
 
-    FixResult = Struct.new(:attachments_fixed, :attachments_orphaned, :messages_linked)
+    FixResult     = Struct.new(:attachments_fixed, :attachments_orphaned, :messages_linked)
+    RestoreResult = Struct.new(:attachments_restored)
+
+    # Moves are done in batches by id: portable SQL, and the progress callback - which
+    # also fences a superseded run - gets a say between batches.
+    MOVE_BATCH = 500
 
     # Haengt Alt-Anhaenge (container_type 'HelpdeskTicket', meist message.eml)
     # an das zugehoerige Ticket um, damit sie in Redmine wieder sichtbar sind.
     # Die Zuordnung HelpdeskTicket-ID -> Issue-ID kommt aus helpdesk_tickets.
     # Zusaetzlich werden synthetische Import-Messages ohne EML-Verweis mit der
     # Original-Mail verknuepft ("Original-Mail"-Link auf der Ticketseite).
+    # Only the selected projects (see #initialize) are touched.
     def fix_attachments
       result = FixResult.new(0, 0, 0)
       return result unless conn.table_exists?('helpdesk_tickets')
 
-      total = self.class.misplaced_attachment_count
-      report('attachments', 0, total)
-      result.attachments_fixed = conn.update(<<~SQL)
-        UPDATE attachments a
-        INNER JOIN helpdesk_tickets ht ON ht.id = a.container_id
-        SET a.container_type = 'Issue', a.container_id = ht.issue_id
-        WHERE a.container_type = 'HelpdeskTicket'
+      pairs = fixable_attachments.map { |id, issue_id, _| [id, issue_id] }
+      result.attachments_fixed = move_attachments(pairs, 'HelpdeskTicket', 'Issue', 'attachments')
+      # Unrepairable leftovers (their HelpdeskTicket is gone) - reported, not touched
+      result.attachments_orphaned = conn.select_value(<<~SQL).to_i
+        SELECT COUNT(*) FROM attachments a
+        LEFT JOIN helpdesk_tickets ht ON ht.id = a.container_id
+        WHERE a.container_type = 'HelpdeskTicket' AND ht.id IS NULL
       SQL
-      result.attachments_orphaned = total - result.attachments_fixed
-      report('messages', 0, 1)
 
+      report('messages', 0, 1)
       # EML mit synthetischen Import-Messages verknuepfen (nur ohne Mailbox,
       # echte Mail-Verlaeufe haben ihren EML-Verweis bereits)
       result.messages_linked = conn.update(<<~SQL)
         UPDATE helpdesk_messages hm
+        INNER JOIN issues i ON i.id = hm.issue_id
         INNER JOIN attachments a
           ON a.container_type = 'Issue'
          AND a.container_id   = hm.issue_id
@@ -162,6 +191,7 @@ module RedmineExpertHelpdesk
         SET hm.eml_attachment_id = a.id
         WHERE hm.eml_attachment_id IS NULL
           AND hm.helpdesk_mailbox_id IS NULL
+          #{project_condition('i.project_id')}
       SQL
 
       Rails.logger.info "Helpdesk: EML-Anhang-Reparatur abgeschlossen – " \
@@ -170,7 +200,106 @@ module RedmineExpertHelpdesk
       result
     end
 
+    # The reverse of #fix_attachments, for projects that still run RedmineUP's helpdesk:
+    # hands message.eml back to its HelpdeskTicket so RedmineUP finds its original mail
+    # again. Our own "Original-Mail" link addresses the file by attachment id and keeps
+    # working. Only unambiguous cases (see #restorable_attachments) are moved.
+    def restore_attachments
+      result = RestoreResult.new(0)
+      return result unless conn.table_exists?('helpdesk_tickets')
+
+      pairs = restorable_attachments.map { |id, ticket_id, _| [id, ticket_id] }
+      result.attachments_restored = move_attachments(pairs, 'Issue', 'HelpdeskTicket', 'restore')
+      Rails.logger.info "Helpdesk: EML-Anhaenge an RedmineUP zurueckgegeben – #{result.attachments_restored}"
+      result
+    end
+
     private
+
+    # [[attachment_id, issue_id, project_id], ...] - legacy mails whose HelpdeskTicket
+    # still exists, in the selected projects.
+    def fixable_attachments
+      return [] unless conn.table_exists?('helpdesk_tickets')
+
+      conn.select_rows(fixable_sql).map { |r| r.map(&:to_i) }
+    end
+
+    # Driven from helpdesk_tickets so the attachments index on
+    # (container_id, container_type) is used instead of scanning every attachment.
+    def fixable_sql
+      <<~SQL
+        SELECT a.id AS attachment_id, ht.issue_id AS target_id, i.project_id AS project_id
+        FROM helpdesk_tickets ht
+        INNER JOIN issues i ON i.id = ht.issue_id
+        INNER JOIN attachments a ON a.container_id = ht.id AND a.container_type = 'HelpdeskTicket'
+        WHERE 1 = 1 #{project_condition('i.project_id')}
+      SQL
+    end
+
+    # [[attachment_id, helpdesk_ticket_id, project_id], ...] - message.eml on an issue
+    # that can go back to its HelpdeskTicket without guessing.
+    def restorable_attachments
+      return [] unless conn.table_exists?('helpdesk_tickets')
+
+      conn.select_rows(restorable_sql).map { |r| r.map(&:to_i) }
+    end
+
+    # One row per issue that has exactly one HelpdeskTicket and exactly one message.eml
+    # (any content type counts towards "exactly one"; the survivor must be RFC 822),
+    # and none of whose tickets holds a mail yet - checked in HAVING, across all of the
+    # issue's tickets, so an issue with two tickets is never half-matched. Issues that
+    # were deleted drop out via the issues join. Our own archived mails are named
+    # original_mail_*.eml and never match.
+    def restorable_sql
+      <<~SQL
+        SELECT MIN(a.id) AS attachment_id, MIN(ht.id) AS target_id, MIN(i.project_id) AS project_id
+        FROM helpdesk_tickets ht
+        INNER JOIN issues i ON i.id = ht.issue_id
+        INNER JOIN attachments a
+          ON a.container_id = ht.issue_id AND a.container_type = 'Issue' AND a.filename = 'message.eml'
+        LEFT JOIN attachments cur ON cur.container_id = ht.id AND cur.container_type = 'HelpdeskTicket'
+        WHERE 1 = 1 #{project_condition('i.project_id')}
+        GROUP BY ht.issue_id
+        HAVING COUNT(DISTINCT ht.id) = 1 AND COUNT(DISTINCT a.id) = 1 AND COUNT(cur.id) = 0
+           AND MIN(a.content_type) LIKE 'message/rfc822%'
+      SQL
+    end
+
+    # { project_id => count } over one of the *_sql selections
+    def count_by_project(sql)
+      return {} unless conn.table_exists?('helpdesk_tickets')
+
+      conn.select_rows("SELECT x.project_id, COUNT(*) FROM (#{sql}) x GROUP BY x.project_id")
+          .to_h { |pid, n| [pid.to_i, n.to_i] }
+    end
+
+    # AND-clause restricting to the selected projects; empty when all are selected.
+    # Attachments always belong to a project, so the "no project" bucket selects nothing.
+    def project_condition(column)
+      return '' if @filter.nil?
+      return 'AND 1 = 0' if @filter.empty?
+
+      "AND #{column} IN (#{@filter.map(&:to_i).join(',')})"
+    end
+
+    # Re-points [[attachment_id, new_container_id], ...] from one container type to
+    # another. The WHERE on the old type makes a batch a no-op for rows someone else
+    # moved in the meantime. Returns the number of rows moved.
+    def move_attachments(pairs, from_type, to_type, phase)
+      moved = 0
+      pairs.each_slice(MOVE_BATCH).with_index do |slice, index|
+        report(phase, index * MOVE_BATCH, pairs.size)
+        cases = slice.map { |id, container_id| "WHEN #{id.to_i} THEN #{container_id.to_i}" }.join(' ')
+        moved += conn.update(<<~SQL)
+          UPDATE attachments
+          SET container_type = #{conn.quote(to_type)}, container_id = CASE id #{cases} END
+          WHERE id IN (#{slice.map { |id, _| id.to_i }.join(',')})
+            AND container_type = #{conn.quote(from_type)}
+        SQL
+      end
+      report(phase, pairs.size, pairs.size)
+      moved
+    end
 
     def report(phase, done, total)
       @progress&.call(phase, done, total)

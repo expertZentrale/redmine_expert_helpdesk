@@ -7,7 +7,7 @@
 # reverse-proxy timeout on large legacy datasets.
 class HelpdeskLegacyImportController < ApplicationController
   before_action :require_admin
-  before_action :redirect_to_current_run, :only => [:new, :import, :fix_attachments]
+  before_action :redirect_to_current_run, :only => [:new, :import, :attachments, :fix_attachments]
   before_action :find_run, :only => [:show, :poll]
 
   # Auswahlseite: welche Projekte (Alt-Kontakte) sollen importiert werden?
@@ -38,15 +38,37 @@ class HelpdeskLegacyImportController < ApplicationController
     start_run('import', project_ids)
   end
 
-  # Haengt Alt-Anhaenge (container_type 'HelpdeskTicket') an die Tickets um
+  # EML selection page: per project, how many legacy mails can be moved onto the
+  # issue (repair) or handed back to RedmineUP's HelpdeskTicket (restore).
+  def attachments
+    @redmineup_installed = RedmineExpertHelpdesk::LegacyContactsImport.redmineup_helpdesk_installed?
+    @project_options = RedmineExpertHelpdesk::LegacyContactsImport.attachment_project_options
+    return unless @project_options.empty?
+
+    flash[:error] = l(:error_helpdesk_legacy_fix_no_data)
+    redirect_to plugin_settings_path('redmine_expert_helpdesk')
+  end
+
+  # Repair (operation 'fix', default) or restore (operation 'restore') for the
+  # selected projects
   def fix_attachments
-    if RedmineExpertHelpdesk::LegacyContactsImport.misplaced_attachment_count.zero?
-      flash[:error] = l(:error_helpdesk_legacy_fix_no_data)
-      redirect_to plugin_settings_path('redmine_expert_helpdesk')
+    project_ids = Array(params[:project_ids]).reject(&:blank?)
+    if project_ids.empty?
+      flash[:error] = l(:error_helpdesk_legacy_import_no_selection)
+      redirect_to helpdesk_legacy_attachments_select_path
       return
     end
 
-    start_run('fix_attachments')
+    if params[:operation] == 'restore'
+      unless RedmineExpertHelpdesk::LegacyContactsImport.redmineup_helpdesk_installed?
+        flash[:error] = l(:error_helpdesk_legacy_restore_unavailable)
+        redirect_to helpdesk_legacy_attachments_select_path
+        return
+      end
+      start_run('restore_attachments', project_ids)
+    else
+      start_run('fix_attachments', project_ids)
+    end
   end
 
   def show
@@ -102,9 +124,12 @@ class HelpdeskLegacyImportController < ApplicationController
     case status
     when 'done'
       r = run.result_hash
-      if run.kind == 'fix_attachments'
+      case run.kind
+      when 'fix_attachments'
         l(:notice_helpdesk_legacy_fix_done, :fixed => r[:attachments_fixed].to_i,
           :orphaned => r[:attachments_orphaned].to_i, :linked => r[:messages_linked].to_i)
+      when 'restore_attachments'
+        l(:notice_helpdesk_legacy_restore_done, :restored => r[:attachments_restored].to_i)
       else
         l(:notice_helpdesk_legacy_import_done, :created => r[:contacts_created].to_i,
           :existing => r[:contacts_existing].to_i, :links => r[:issue_links_created].to_i,
