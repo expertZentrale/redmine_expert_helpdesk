@@ -44,18 +44,17 @@ namespace :redmine_expert_helpdesk do
       next
     end
 
-    # Collections/Zeilen je Projekt leeren (bei Qdrant wird die Collection mit der
-    # aktuellen Dimension neu erzeugt; bei pgvector mit geaenderter Dimension muss
-    # die Tabelle helpdesk_kb_vectors manuell verworfen werden).
-    HelpdeskKnowledgeEntry.approved.distinct.pluck(:project_id).each do |pid|
-      store.reset!(pid)
-    rescue StandardError => e
-      puts "Reset Projekt #{pid} fehlgeschlagen: #{e.message}"
-    end
-
+    # Same per-project rebuild as the "Knowledge base" tab (reset + re-embed). With
+    # Qdrant the collection is recreated with the current dimension; with pgvector a
+    # changed dimension needs the helpdesk_kb_vectors table dropped by hand.
     ok = 0
-    HelpdeskKnowledgeEntry.approved.find_each do |entry|
-      ok += 1 if HelpdeskKnowledgeIngestJob.index_entry(entry)
+    HelpdeskKnowledgeEntry.distinct.pluck(:project_id).each do |pid|
+      count = HelpdeskKnowledgeReindexJob.rebuild(pid)
+      if count.nil?
+        puts "Projekt #{pid}: Neuaufbau fehlgeschlagen (siehe Log)."
+      else
+        ok += count
+      end
     end
     puts "Neu indexiert: #{ok} Eintraege."
   end

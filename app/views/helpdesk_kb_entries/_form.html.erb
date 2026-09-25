@@ -1,0 +1,31 @@
+<%= render :partial => 'shared/error_messages', :locals => { :objects => [@entry] } rescue nil %>
+
+<div class="box tabular">
+  <p>
+    <%= f.label :issue_id, l(:label_issue), :required => @entry.new_record? %>
+    <% if @entry.new_record? %>
+      <%= f.text_field :issue_id, :size => 8 %>
+      <em class="info"><%= l(:text_helpdesk_kb_issue_id_info) %></em>
+    <% elsif @entry.issue %>
+      <%= link_to "##{@entry.issue_id} #{@entry.issue.subject}", issue_path(@entry.issue_id) %>
+    <% else %>
+      #<%= @entry.issue_id %>
+    <% end %>
+  </p>
+  <p>
+    <%= f.label :problem, l(:field_helpdesk_kb_problem), :required => true %>
+    <%= f.text_area :problem, :rows => 6, :cols => 80 %>
+    <em class="info"><%= l(:text_helpdesk_kb_problem_info) %></em>
+  </p>
+  <p>
+    <%= f.label :solution, l(:field_helpdesk_kb_solution) %>
+    <%= f.text_area :solution, :rows => 10, :cols => 80 %>
+  </p>
+  <p>
+    <%= f.label :status, l(:field_status) %>
+    <%= f.select :status,
+                 HelpdeskKbEntriesController::FORM_STATUSES.map { |s| [l("label_helpdesk_kb_status_#{s}"), s] },
+                 { :include_blank => !HelpdeskKbEntriesController::FORM_STATUSES.include?(@entry.status) } %>
+    <em class="info"><%= l(:text_helpdesk_kb_status_info) %></em>
+  </p>
+</div>

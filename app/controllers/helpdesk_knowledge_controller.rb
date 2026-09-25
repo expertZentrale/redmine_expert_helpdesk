@@ -1,13 +1,14 @@
 # Manuelle Kuratierung der Wissensbasis aus der Ticket-Seitenleiste:
 #  - ingest:  geschlossenes Ticket manuell aufnehmen (force -> sofort approved)
 #  - approve: einen im manual-Modus erzeugten pending-Eintrag freigeben
-# Berechtigung wie beim Antworten: send_helpdesk_reply.
+# Permission: send_helpdesk_reply (as before) or edit_helpdesk_kb (KB editor role).
+# The full list/edit UI lives in HelpdeskKbEntriesController ("Knowledge base" tab).
 class HelpdeskKnowledgeController < ApplicationController
   before_action :find_issue_and_project
   before_action :authorize_manage
 
   def ingest
-    unless kb_ready?
+    unless RedmineExpertHelpdesk::AiFeatures.kb_ready?
       flash[:warning] = l(:text_helpdesk_kb_not_configured)
       return redirect_to issue_path(@issue)
     end
@@ -20,7 +21,7 @@ class HelpdeskKnowledgeController < ApplicationController
   def approve
     entry = HelpdeskKnowledgeEntry.find_by(:issue_id => @issue.id)
     if entry&.pending?
-      entry.update(:status => 'approved')
+      entry.curate!(User.current, :status => 'approved')
       HelpdeskKnowledgeIngestJob.index_entry(entry)
       flash[:notice] = l(:notice_helpdesk_kb_approved)
     else
@@ -39,13 +40,8 @@ class HelpdeskKnowledgeController < ApplicationController
   end
 
   def authorize_manage
-    deny_access unless User.current.allowed_to?(:send_helpdesk_reply, @project)
-  end
-
-  def kb_ready?
-    settings = Setting.plugin_redmine_expert_helpdesk
-    RedmineExpertHelpdesk::AiFeatures.kb_enabled? &&
-      RedmineExpertHelpdesk::KnowledgeStore.for(settings).configured? &&
-      RedmineExpertHelpdesk::AiClient.new(settings).embed_configured?
+    allowed = User.current.allowed_to?(:send_helpdesk_reply, @project) ||
+              User.current.allowed_to?(:edit_helpdesk_kb, @project)
+    deny_access unless allowed
   end
 end

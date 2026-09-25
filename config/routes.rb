@@ -63,6 +63,17 @@ RedmineApp::Application.routes.draw do
     # Projekt-spezifische Helpdesk-Einstellungen (Antwort-Standardwerte)
     resource :helpdesk_project_setting, :only => [:update]
 
+    # Knowledge base tab: list, verify and correct RAG entries (view/edit/manage_helpdesk_kb)
+    resources :helpdesk_kb_entries do
+      member do
+        post :approve
+        post :reject
+      end
+      collection do
+        post :reindex
+      end
+    end
+
     # Answer templates of this project (tab "expert Helpdesk")
     resources :helpdesk_reply_templates, :except => [:show]
 

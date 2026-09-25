@@ -243,6 +243,14 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     per-project isolation** (collection / enforced `project_id`). `HelpdeskAiSummaryJob` injects a
     "Lösungsvorschlag" and/or writes `HelpdeskKbProposal` rows (per-project `kb_ingest_mode` /
     `kb_proposal_display`; `HelpdeskKnowledgeController` for manual approve/ingest). Migrations 030–032.
+    **Curation (`HelpdeskKbEntriesController`, project tab "Wissensbasis", migration 061):** the
+    vector store holds a *copy* — editing a payload in Qdrant leaves the vector computed from the
+    old text, so every change goes through the SQL row and then `index_entry` (approved) or
+    `HelpdeskKnowledgeEntry.unindex` (anything else). Permissions `view/edit/manage_helpdesk_kb`.
+    Status `rejected` plus `curated_at`/`updated_by_id`: the ingest job **skips a curated or rejected
+    entry unless `force`**, otherwise a re-close would replace a correction with the model's original
+    mistake. `HelpdeskKnowledgeReindexJob.rebuild(pid)` is the one per-project rebuild (tab and
+    `kb_reembed`). `AiFeatures.kb_ready?` gates every write to the store.
     pgvector needs `gem 'pg'` in the deployment (kept out of `PluginGemfile`).
   - `knowledge_retrieval.rb` — the one RAG search path, shared by the summary job and the answer
     drafter. `KnowledgeRetrieval.search` holds the settings defaults, the self-hit rejection and the

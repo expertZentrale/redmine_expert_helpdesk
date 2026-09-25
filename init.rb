@@ -87,7 +87,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
   name 'Redmine expert Helpdesk'
   author 'Dennis Buehring'
   description 'Helpdesk plugin: email-to-ticket via Microsoft Graph or IMAP/SMTP, autoresponder, customer replies, SLA, and rules engine'
-  version '0.17.0'
+  version '0.18.0'
   requires_redmine :version_or_higher => '5.0'
   url 'https://github.com/expertZentrale/redmine_expert_helpdesk'
 
@@ -220,6 +220,17 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
     permission :view_helpdesk_ticket_statistics, {
       :helpdesk_ticket_statistics => [:index]
     }, :require => :member
+    # Knowledge base tab, three tiers (roles "KB viewer" / "KB editor" / "KB admin"):
+    # read entries, correct/approve/reject them (re-embeds), delete + rebuild the index.
+    permission :view_helpdesk_kb, {
+      :helpdesk_kb_entries => [:index, :show]
+    }, :read => true
+    permission :edit_helpdesk_kb, {
+      :helpdesk_kb_entries => [:new, :create, :edit, :update, :approve, :reject]
+    }, :require => :member
+    permission :manage_helpdesk_kb, {
+      :helpdesk_kb_entries => [:destroy, :reindex]
+    }, :require => :member
   end
 
   # Globale Berechtigung fuer die KI-Statistik (Kostenrisiko der KI-Funktionen).
@@ -256,6 +267,17 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
        :after    => :helpdesk_sla_statistics,
        :param    => :project_id,
        :if       => Proc.new { |p| p.module_enabled?(:helpdesk) }
+
+  # Knowledge base tab: helpdesk module on and the KB switched on globally; the menu
+  # manager hides it for users without view_helpdesk_kb (controller/action mapping).
+  menu :project_menu, :helpdesk_kb_entries,
+       { :controller => 'helpdesk_kb_entries', :action => 'index' },
+       :caption  => :label_helpdesk_kb,
+       :after    => :helpdesk_ticket_statistics,
+       :param    => :project_id,
+       :if       => Proc.new { |p|
+         p.module_enabled?(:helpdesk) && RedmineExpertHelpdesk::AiFeatures.kb_enabled?
+       }
 
   # AI statistics tab: visible with the helpdesk module enabled, at least one of the AI/KB
   # features switched on globally (the page reports both kinds of request, so either one alone

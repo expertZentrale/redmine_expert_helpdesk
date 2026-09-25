@@ -1,0 +1,18 @@
+h3. Added
+
+* *Knowledge base tab.* The problem/solution pairs the knowledge base extracts from resolved tickets can now be checked and corrected in Redmine, per project. Editing a payload in the vector database never helped — the vector stays the one computed from the old text — so the tab edits the entry and re-embeds it on save. Entries can be approved, rejected, created by hand for a ticket of the project and deleted, and the project's vector index can be rebuilt in the background. Works with Qdrant and pgvector.
+* *Three new permissions* in the helpdesk module: *View knowledge base*, *Edit knowledge base entries* and *Manage knowledge base*, meant for roles such as KB viewer, KB editor and KB admin.
+
+h3. Changed
+
+* *Corrections are kept.* An entry that a person edited, approved or rejected is no longer overwritten when its ticket is reopened and closed again. The *Add to knowledge base* button in the ticket sidebar still re-extracts it on request.
+
+h3. Fixed
+
+* An entry that lost its approval on re-ingest (no solution found, or pending in manual mode) stayed searchable. Its vector is now removed.
+
+h3. Upgrade notes
+
+Migration 061 adds two columns to @helpdesk_knowledge_entries@ (who checked an entry and when). Run the plugin migrations.
+
+The new tab is hidden until a role has *View knowledge base*; grant the three permissions under *Administration → Roles and permissions*. The ticket-sidebar buttons keep working for roles with *Send customer replies*.

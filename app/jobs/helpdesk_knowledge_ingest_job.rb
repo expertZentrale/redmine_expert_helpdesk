@@ -21,26 +21,39 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
     client = RedmineExpertHelpdesk::AiClient.new(settings)
     return unless client.configured? && client.embed_configured? && store.configured?
 
+    entry = HelpdeskKnowledgeEntry.find_or_initialize_by(:issue_id => issue.id)
+    # A person's verdict (edited/approved/rejected in the KB tab) outranks a fresh
+    # extraction: a reopened-and-closed ticket must not overwrite it. Only an explicit
+    # manual ingest (force) replaces it.
+    return if !force && entry.persisted? && (entry.curated? || entry.rejected?)
+
     result = RedmineExpertHelpdesk::KnowledgeExtractor.new(settings).extract(issue)
     return unless result
 
-    entry = HelpdeskKnowledgeEntry.find_or_initialize_by(:issue_id => issue.id)
+    was_indexed = entry.point_id.present?
+
     entry.project_id    = issue.project_id
     entry.problem       = result.problem
     entry.solution      = result.solution
     entry.input_tokens  = result.usage && result.usage[:input]
     entry.output_tokens = result.usage && result.usage[:output]
+    # Fresh machine text: the previous person's verdict no longer applies to it.
+    entry.updated_by_id = nil
+    entry.curated_at    = nil
 
-    unless result.has_solution
-      entry.status = 'skipped'
-      entry.save!
-      return
-    end
-
-    entry.status = (force || ps.kb_ingest_auto?) ? 'approved' : 'pending'
+    entry.status =
+      if !result.has_solution then 'skipped'
+      elsif force || ps.kb_ingest_auto? then 'approved'
+      else 'pending'
+      end
     entry.save!
 
-    index!(store, client, entry) if entry.approved?
+    if entry.approved?
+      index!(store, client, entry)
+    elsif was_indexed
+      # Previously searchable, now not: drop the stale point.
+      HelpdeskKnowledgeEntry.unindex(entry)
+    end
   rescue => e
     Rails.logger.warn("[helpdesk][kb] Ingest fehlgeschlagen (Issue ##{issue_id}): #{e.class}: #{e.message}")
   end

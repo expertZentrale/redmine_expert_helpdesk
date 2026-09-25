@@ -20,6 +20,15 @@ module RedmineExpertHelpdesk
       settings['kb_enabled'].to_s == '1'
     end
 
+    # Switched on *and* able to embed: vector store and embeddings endpoint configured.
+    # Gates every action that writes to the vector store.
+    def kb_ready?
+      s = settings
+      kb_enabled? &&
+        RedmineExpertHelpdesk::KnowledgeStore.for(s).configured? &&
+        RedmineExpertHelpdesk::AiClient.new(s).embed_configured?
+    end
+
     # Customer-facing answer drafts. Deliberately requires the AI master switch
     # too: without a configured client there is nothing to draft with, and an
     # admin who switched AI off does not expect one feature to keep calling out.

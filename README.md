@@ -1312,11 +1312,41 @@ everything merely topical by two orders of magnitude. Your corpus will differ �
   **manual** (close creates a *pending* entry; approve it from the ticket sidebar).
 - **Show proposed solutions** (`kb_proposal_display`): off / summary note / sidebar panel / both.
 
+**Knowledge base tab (curation).** Extracted entries are not always right, and correcting the
+payload directly in Qdrant (or any other vector store) does **not** help: the vector was computed
+from the old text and stays as it was. The SQL table `helpdesk_knowledge_entries` is therefore the
+system of record, and the project tab **Knowledge base** (shown with the helpdesk module on and the
+KB enabled centrally) is where entries are checked and fixed:
+
+- List of all entries with status filter (*pending / approved / no solution / rejected*; the default
+  hides *no solution*), free-text search over problem and solution, and a detail page per entry.
+- **Edit** problem and solution. Saving an *approved* entry re-embeds it **immediately** (no AI
+  extraction call, just one embeddings request) and overwrites the point; the page warns if the
+  store or the embeddings endpoint was unreachable. Only the *problem* is embedded — write it the
+  way a customer would describe the fault.
+- **Approve / reject.** Rejecting removes the point from the store. A rejected entry, and one a
+  person has edited or approved, is **not** overwritten when the ticket is reopened and closed
+  again; only the explicit *Add to knowledge base* button in the ticket sidebar re-extracts it.
+- **New entry** for a ticket of the project (one entry per ticket), **delete**, and **Rebuild
+  index** (clears the project's namespace and re-embeds every approved entry in the background —
+  also clears orphan points and follows an embeddings-model change).
+
+Three permissions in the *Helpdesk* module map to suggested roles:
+
+| Permission | Allows | Suggested role |
+| --- | --- | --- |
+| `view_helpdesk_kb` | tab, list, detail page | KB viewer |
+| `edit_helpdesk_kb` | edit, new entry, approve, reject (also the ticket-sidebar KB buttons) | KB editor |
+| `manage_helpdesk_kb` | delete entries, rebuild the project index | KB admin |
+
+The ticket-sidebar buttons keep working with `send_helpdesk_reply` as before.
+
 **Isolation:** each project has its own vector namespace (Qdrant collection / enforced
 `project_id` filter), so a project never retrieves another project's knowledge.
 
 **Batch:** `rake redmine_expert_helpdesk:kb_backfill` ingests existing closed tickets;
-`kb_reembed` rebuilds the vectors after an embedding-model change.
+`kb_reembed` rebuilds the vectors of all projects after an embedding-model change (the same
+rebuild as the tab's *Rebuild index*, for every project).
 
 **Setup:** run a vector service reachable from Redmine — e.g. a `qdrant/qdrant` container
 (`http://qdrant:6333`) or a `pgvector/pgvector` Postgres — and point the plugin settings at it.

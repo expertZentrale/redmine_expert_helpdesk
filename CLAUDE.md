@@ -341,6 +341,14 @@ nested registration would never fire in production.
   similar entries and injects a "Lösungsvorschlag" into the summary and/or writes `HelpdeskKbProposal`
   rows for the sidebar (per-project `kb_ingest_mode` / `kb_proposal_display`; `HelpdeskKnowledgeController`
   for manual approve/ingest). Off by default; failures logged, never break ingestion. Migrations 030–032.
+  **Curation (`HelpdeskKbEntriesController`, project tab "Wissensbasis", migration 061):** the
+  vector store holds a *copy* — editing a payload in Qdrant leaves the vector computed from the
+  old text, so every change goes through the SQL row and then `index_entry` (approved) or
+  `HelpdeskKnowledgeEntry.unindex` (anything else). Permissions `view/edit/manage_helpdesk_kb`.
+  Status `rejected` plus `curated_at`/`updated_by_id`: the ingest job **skips a curated or rejected
+  entry unless `force`**, otherwise a re-close would replace a correction with the model's original
+  mistake. `HelpdeskKnowledgeReindexJob.rebuild(pid)` is the one per-project rebuild (tab and
+  `kb_reembed`). `AiFeatures.kb_ready?` gates every write to the store.
   The **pgvector backend needs `gem 'pg'`** added in the deployment (not in `PluginGemfile`, to keep
   the default Qdrant build free of libpq).
 - **`knowledge_retrieval.rb`** — the one RAG search path, shared by the summary job and the
@@ -444,6 +452,7 @@ Standard Rails MVC under the plugin. Controllers map to permissions declared in 
 `project_module :helpdesk` block (`manage_helpdesk`, `fetch_helpdesk_mail`,
 `send_helpdesk_reply`, `view_helpdesk_info`, `manage_helpdesk_contacts`,
 `view_helpdesk_sla_statistics`, `view_helpdesk_ticket_statistics` — the latter `:require => :member`,
+like `edit_helpdesk_kb`/`manage_helpdesk_kb` (`view_helpdesk_kb` is `:read`),
 meant for a "helpdesk manager" role; `view_helpdesk_ai_statistics` is global). Key ones:
 `helpdesk_fetch` (fetch button + `fetch_all` endpoint), `helpdesk_replies` (agent→customer
 replies, largest controller — handles MIME/CID inline images/transport choice),
