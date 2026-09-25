@@ -1,0 +1,19 @@
+h3. Added
+
+* *Original mails can be given back to the RedmineUP helpdesk.* The EML repair moves each @message.eml@ from its redmine_contacts_helpdesk ticket onto the Redmine issue. That is right for projects that left RedmineUP, but a project that still works with the RedmineUP helpdesk then no longer finds its original mails, because RedmineUP only looks on its own ticket. The new action *Give back to RedmineUP* reverses the repair for the selected projects. It moves only unambiguous cases: the issue has exactly one RedmineUP ticket and exactly one @message.eml@, and that ticket holds no file yet. Mails archived by this plugin (@original_mail_*.eml@) never match, and its "Original-Mail" link keeps working either way. Offered only while @redmine_contacts_helpdesk@ is installed.
+
+h3. Changed
+
+* *The EML repair works per project, like the contact import.* The settings button now opens a project list showing, per project, how many mails can be attached to the issue and — with RedmineUP installed — how many can be given back to it. Nothing is preselected; previously the repair always ran over every project. Both directions run as background jobs with progress.
+
+h3. Fixed
+
+* *Unrepairable legacy attachments no longer keep the repair button visible.* Mails whose redmine_contacts_helpdesk ticket no longer exists were counted as misplaced, so the button stayed on the settings page after every repair while doing nothing for them.
+
+h3. Upgrade notes
+
+No migration runs in this release.
+
+If you already ran the EML repair and a project still works with the RedmineUP helpdesk: open *Manage EML attachments* in the plugin settings, tick only that project and choose *Give back to RedmineUP*. In later repairs, leave such projects out.
+
+The selection page counts restorable mails with one grouped scan over all legacy tickets; on a large dataset it takes several seconds to load.
