@@ -31,6 +31,7 @@ siehe [Tests](#tests).
 - [Antwortvorlagen](#antwortvorlagen)
 - [Kontakte / Kundenliste](#kontakte--kundenliste)
 - [Mailabruf auslösen](#mailabruf-auslösen)
+  - [Wartungsmodus (Upgrades, Herunterskalieren)](#wartungsmodus-upgrades-herunterskalieren)
 - [SLA-Prüfung auslösen](#sla-prüfung-auslösen)
 - [Plugin-Einstellungen](#plugin-einstellungen)
 - [REST-API](#rest-api)
@@ -954,6 +955,37 @@ Es gibt bewusst keinen eingebauten Scheduler. Zwei Wege:
    Der API-Key wird in den Plugin-Einstellungen gepflegt. Ohne konfigurierten
    Key ist der Endpunkt deaktiviert. Antwort ist eine JSON-Zusammenfassung.
 
+### Wartungsmodus (Upgrades, Herunterskalieren)
+
+Vor einem Upgrade oder dem Herunterskalieren der Pods den **Wartungsmodus**
+einschalten, damit kein Pod beim Stoppen mitten in einem Mailabruf steckt.
+Solange er aktiv ist, liefert `fetch_all` `{"maintenance": true}`, ohne ein
+Postfach anzufassen, der Button *Mails jetzt abrufen* zeigt nur einen Hinweis,
+und ein bereits laufender Abruf erledigt die aktuelle Nachricht und hört dann
+auf. Nicht verarbeitete Mails bleiben im Postfach und werden beim ersten Abruf
+nach dem Ausschalten abgeholt.
+
+Umschalten unter *Administration → Plugins → expert Helpdesk → Wartungsmodus*
+(dort stehen auch die laufenden Abrufe) oder per Skript mit dem
+Mailabruf-API-Key:
+
+```bash
+# ein
+curl -X POST "https://redmine.example.de/helpdesk/maintenance?key=API-KEY&enabled=1"
+# Status – wiederholen, bis "safe_to_stop": true
+curl "https://redmine.example.de/helpdesk/maintenance?key=API-KEY"
+# aus, nach dem Upgrade
+curl -X POST "https://redmine.example.de/helpdesk/maintenance?key=API-KEY&enabled=0"
+```
+
+Die Statusantwort gilt für alle Replikas: Jeder Abruf trägt sich mit
+Hostnamen (in Kubernetes der Pod-Name) und Heartbeat in der Datenbank ein,
+`running` listet also die laufenden Abrufe aller Pods, und `safe_to_stop` ist
+`true`, sobald der Modus aktiv und keiner mehr übrig ist. Ein mitten im Abruf
+beendeter Pod fällt nach 10 Minuten ohne Heartbeat aus der Liste.
+Hintergrundjobs, die ein Abruf bereits eingereiht hat (KI-Zusammenfassung,
+Vollständigkeitsprüfung), sind nicht Teil dieses Status.
+
 ## SLA-Prüfung auslösen
 
 Die SLA-Überschreitungsprüfung läuft über einen eigenen Endpunkt (unabhängig
@@ -982,6 +1014,7 @@ Eintrag **expert Helpdesk** im Administrationsmenü, der direkt hierher verlinkt
 | Standard-Zugangsdaten für IMAP/SMTP-Postfächer | Vorlage, Verfahren, Tenant/Client/Secret, Autorisierungs- und Token-URL, Scope sowie IMAP-/SMTP-Standardhosts, -ports und -verschlüsselung. Gilt für jedes Postfach, dessen *Zugangsdaten* auf *Aus den Plugin-Einstellungen* stehen — siehe [Mail-Anbieter](#mail-anbieter). |
 | API-Key (Mailabruf) | Sichert den globalen Abruf-Endpunkt ab |
 | API-Key (SLA-Prüfung) | Sichert den `helpdesk/sla_check`-Endpunkt ab |
+| Wartungsmodus | Pausiert jeden Mailabruf, z. B. für Upgrades – siehe [Wartungsmodus](#wartungsmodus-upgrades-herunterskalieren) |
 | Eingebettete Bilder im Ticket anzeigen | Ersetzt die `[cid:…]`-Markierungen einer eingehenden Mail durch das Bild selbst (Standard: an) – siehe [Eingebettete Bilder](#eingebettete-bilder) |
 | Einträge pro Seite | Standard-Seitengröße der Kundenliste (Standard: 25) |
 | Max. Tickets im Kundenprofil | Angezeigte Tickets in der Kundendetailansicht (Standard: 10) |
