@@ -1,0 +1,11 @@
+h3. Fixed
+
+* *Ticket statistics listed agents who do not work in the project.* The per-agent table added a row for everyone who had been assigned an in-scope ticket, wrote a public note on one or closed one — including users who are not members of the project at all, such as an administrator who once commented, former members or deleted users. The table now shows current project members only; users who belong to the project through a group still count, and member groups keep their row. The tickets of the hidden users stay in every other figure on the page, and the "unassigned" row is unchanged.
+
+h3. Documentation
+
+* *Reranker tuning, with measured numbers.* The knowledge-base section of the README now has a worked example that measures the reranker threshold on synthetic data, with seed data and the measuring script shipped in @docs/kb_reranker_demo/@ so installations can repeat the measurement with their own models.
+
+h3. Upgrade notes
+
+No migrations, no configuration changes and no new settings. Replace the plugin directory and restart. The *Assigned* column of the per-agent table may no longer add up to the ticket total when tickets are assigned to someone who has left the project.
