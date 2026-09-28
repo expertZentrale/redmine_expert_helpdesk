@@ -7,6 +7,14 @@
 
 ## [Unreleased]
 
+### Behoben
+
+- **Ticket-Statistik: Agenten-Tabelle zeigt nur Projektmitglieder.** Benutzer, die nicht Mitglied
+  des Projekts sind (z. B. ein Administrator, der einmal eine Notiz geschrieben hat, ehemalige
+  Mitglieder, gelöschte Benutzer), erhalten keine Zeile mehr in der Agenten-Tabelle. Benutzer, die
+  über eine Gruppe zum Projekt gehören, zählen weiterhin. Ihre Tickets bleiben in allen übrigen
+  Kennzahlen enthalten; die Zeile „nicht zugewiesen" bleibt unverändert.
+
 ### Dokumentation
 
 - **Reranker einstellen, mit gemessenen Zahlen.** Der Wissensbasis-Abschnitt der README enthält jetzt

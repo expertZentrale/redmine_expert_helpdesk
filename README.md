@@ -123,7 +123,7 @@ see [Tests](#tests).
   for a "helpdesk manager" role): ticket volume, first response and resolution
   times, time spent in each status, reopens, tickets awaiting a response,
   conversation length (mails per ticket, agent replies, one-reply resolutions),
-  per-agent and per-customer tables, busiest hours/weekdays. Calendar time, or
+  per-agent (current project members only) and per-customer tables, busiest hours/weekdays. Calendar time, or
   the project's business hours when SLA is enabled.
 - **Phishing detection (PhishTank + Phishing.Database)**: Optional per-project check of incoming
   mail links against a local mirror of the PhishTank database and optionally
