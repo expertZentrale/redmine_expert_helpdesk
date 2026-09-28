@@ -125,7 +125,7 @@ siehe [Tests](#tests).
   (*Ticket-Statistik ansehen*, für eine Rolle „Helpdesk-Manager“): Ticketvolumen,
   Erstreaktions- und Lösungszeiten, Verweildauer je Status, Wiedereröffnungen,
   Tickets mit ausstehender Antwort, Gesprächslänge (Mails je Ticket, Antworten
-  der Mitarbeiter, mit einer Antwort gelöste Tickets), Tabellen je Mitarbeiter und
+  der Mitarbeiter, mit einer Antwort gelöste Tickets), Tabellen je Mitarbeiter (nur aktuelle Projektmitglieder) und
   je Kunde, Stoßzeiten nach Stunde/Wochentag. In Kalenderzeit oder – bei aktivem
   SLA – in den Geschäftszeiten des Projekts.
 - **Phishing-Erkennung (PhishTank + Phishing.Database)**: Optionale, pro Projekt aktivierbare

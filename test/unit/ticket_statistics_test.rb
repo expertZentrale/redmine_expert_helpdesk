@@ -227,6 +227,11 @@ class TicketStatisticsTest < ActiveSupport::TestCase
     assert_equal 1, agent2[:replies]
   end
 
+  def test_member_rows_drops_non_members_but_keeps_unassigned
+    rows = TS.member_rows(TS.agent_table(metrics_fixture), Set[AGENT])
+    assert_equal [AGENT, nil], rows.map { |r| r[:principal_id] }
+  end
+
   def test_customer_table_limits_and_appends_no_contact
     rows = TS.customer_table(metrics_fixture, :limit => 1)
     assert_equal [101, nil], rows.map { |r| r[:contact_id] }

@@ -246,6 +246,11 @@ module RedmineExpertHelpdesk
       end
     end
 
+    # Keeps the unassigned row and the rows of the given member principal ids.
+    def self.member_rows(rows, member_ids)
+      rows.select { |r| r[:principal_id].nil? || member_ids.include?(r[:principal_id]) }
+    end
+
     # Rows keyed by principal id (nil = unassigned, always last). Assigned/open/
     # closed/resolution follow the current assignee, replies and closed_by the
     # journal user (closed_by only when a status journal names one), first
@@ -467,7 +472,12 @@ module RedmineExpertHelpdesk
 
     # --- Name resolution -----------------------------------------------------
 
+    # Only principals that are members of the project right now (users directly
+    # or via a group, and member groups) get a row. Former members, users who
+    # merely wrote a note (e.g. an admin) and deleted users are left out; the
+    # unassigned row always stays.
     def resolve_principals(rows)
+      rows = self.class.member_rows(rows, project_member_ids)
       ids = rows.filter_map { |r| r[:principal_id] }
       principals = ids.empty? ? {} : Principal.where(:id => ids).index_by(&:id)
       rows.map do |r|
@@ -475,6 +485,12 @@ module RedmineExpertHelpdesk
         r.merge(:name => p&.name, :type => p && (p.is_a?(Group) ? 'Group' : 'User'),
                 :deleted => !r[:principal_id].nil? && p.nil?)
       end
+    end
+
+    # Redmine writes a Member row per user for group memberships too, so this
+    # covers users that belong to the project only through a group.
+    def project_member_ids
+      Member.where(:project_id => @project.id).distinct.pluck(:user_id).to_set
     end
 
     def resolve_contacts(rows)

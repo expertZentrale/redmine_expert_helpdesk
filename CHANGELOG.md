@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Ticket statistics: agent table lists project members only.** Users who are not members of
+  the project (e.g. an administrator who once wrote a note, former members, deleted users) no longer
+  get a row in the per-agent table. Users who belong to the project through a group still count. Their
+  tickets remain in all other figures; the unassigned row is unchanged.
+
 ### Documentation
 
 - **Reranker tuning, with measured numbers.** The knowledge-base section of the README now has a
