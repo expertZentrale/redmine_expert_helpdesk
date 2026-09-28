@@ -44,10 +44,23 @@ data['entries'].each do |e|
   indexed += 1 if HelpdeskKnowledgeIngestJob.index_entry(entry)
 end
 
+# Entries removed from or renamed in dataset.json: drop their knowledge row, vector point
+# and ticket, so a re-seed searches exactly the current dataset.
+subjects = data['entries'].map { |e| e['subject'] } + ['Demo query ticket']
+removed = 0
+Issue.where(:project_id => project.id).where.not(:subject => subjects).find_each do |stale|
+  if (entry = HelpdeskKnowledgeEntry.find_by(:issue_id => stale.id))
+    HelpdeskKnowledgeEntry.unindex(entry) if entry.point_id.present?
+    entry.destroy
+  end
+  stale.destroy
+  removed += 1
+end
+
 # The ticket every demo query is searched "from" (it is not in the knowledge base).
 unless Issue.where(:project_id => project.id, :subject => 'Demo query ticket').exists?
   Issue.create!(:project => project, :tracker => tracker, :author => admin, :priority => priority,
                 :status => open_st, :subject => 'Demo query ticket', :description => 'placeholder')
 end
 
-puts "Project #{project.identifier} (##{project.id}): #{indexed}/#{data['entries'].size} entries indexed."
+puts "Project #{project.identifier} (##{project.id}): #{indexed}/#{data['entries'].size} entries indexed, #{removed} stale removed."

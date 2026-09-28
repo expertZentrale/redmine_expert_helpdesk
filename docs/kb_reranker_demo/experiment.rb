@@ -14,14 +14,17 @@ qissue  = Issue.find_by!(:project_id => project.id, :subject => 'Demo query tick
 subject_key  = data['entries'].to_h { |e| [e['subject'], e['key']] }
 key_by_issue = Issue.where(:project_id => project.id).pluck(:id, :subject)
                     .to_h { |id, subj| [id, subject_key[subj]] }
-base = Setting.plugin_redmine_expert_helpdesk.merge('kb_top_k' => '3', 'kb_min_results' => '1')
+# Pinned: the candidate count shifts rerank scores slightly (see README), so the scorecard
+# must not depend on the central kb_rerank_candidates.
+base = Setting.plugin_redmine_expert_helpdesk.merge('kb_top_k' => '3', 'kb_min_results' => '1',
+                                                   'kb_rerank_candidates' => '20')
 KR   = RedmineExpertHelpdesk::KnowledgeRetrieval
 
 rclient = RedmineExpertHelpdesk::AiClient.new(base.merge('kb_rerank_enabled' => '1'))
 abort 'Reranker is not configured (kb_rerank_model / endpoint / key).' unless rclient.rerank_configured?
 store = RedmineExpertHelpdesk::KnowledgeStore.for(base)
 
-puts "Embeddings: #{rclient.embed_model} / reranker: #{rclient.rerank_model}"
+puts "Embeddings: #{rclient.embed_model} / reranker: #{rclient.rerank_model} / 20 candidates"
 puts
 puts '== First stage per query (top 5 by cosine; * = correct entry) =='
 data['queries'].each do |q|
