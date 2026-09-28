@@ -6,6 +6,19 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Added
+
+- **Maintenance mode for upgrades and scaling down.** A switch under *Administration → Plugins →
+  expert Helpdesk* (or `POST /helpdesk/maintenance?key=…&enabled=1|0` with the mail-fetch API key)
+  pauses every mail fetch: `fetch_all` returns `{"maintenance": true}` without touching a mailbox,
+  the project's *Fetch mails now* button only shows a notice, and a fetch already running stops
+  before its next message. `GET /helpdesk/maintenance` lists the fetches still in progress on any
+  pod (host name, mailbox, messages done, heartbeat) and reports `"safe_to_stop": true` once none is
+  left, so an upgrade script can wait for it instead of someone reading logs. Migration 062 adds the
+  `helpdesk_fetch_runs` table that makes running fetches visible across replicas.
+
 ## [0.18.1] - 2026-09-28
 
 ### Fixed

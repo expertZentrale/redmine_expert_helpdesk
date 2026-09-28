@@ -1,14 +1,26 @@
 # Ausloesen des Mailabrufs:
 #   - fetch:     Button in den Projekteinstellungen (Berechtigung :fetch_helpdesk_mail)
 #   - fetch_all: Globaler Endpunkt fuer curl/CronJob, gesichert per statischem API-Key
+#   - maintenance: status (GET) and switch (POST) of maintenance mode, same key as fetch_all
 class HelpdeskFetchController < ApplicationController
   before_action :find_project_by_project_id, :only => [:fetch]
   before_action :authorize, :only => [:fetch]
 
-  skip_before_action :check_if_login_required, :only => [:fetch_all, :sla_check]
-  skip_before_action :verify_authenticity_token, :only => [:fetch_all, :sla_check]
+  skip_before_action :check_if_login_required, :only => [:fetch_all, :sla_check, :maintenance]
+  skip_before_action :verify_authenticity_token, :only => [:fetch_all, :sla_check, :maintenance]
 
   def fetch
+    if RedmineExpertHelpdesk::Maintenance.active?
+      respond_to do |format|
+        format.html do
+          flash[:warning] = l(:notice_helpdesk_maintenance_fetch_blocked)
+          redirect_to settings_project_path(@project, :tab => 'expert_helpdesk')
+        end
+        format.json { render :json => { :maintenance => true }, :status => 503 }
+      end
+      return
+    end
+
     results = @project.helpdesk_mailboxes.enabled.map do |mailbox|
       result = RedmineExpertHelpdesk::MailProcessor.new(mailbox).process_all
       [mailbox.mailbox_address, result.to_h]
@@ -37,6 +49,13 @@ class HelpdeskFetchController < ApplicationController
       return
     end
 
+    # 200, not 503: the cron job did nothing wrong, and a failing curl -f
+    # would page someone for a pause that was switched on deliberately.
+    if RedmineExpertHelpdesk::Maintenance.active?
+      render :json => { :fetched_at => Time.current.iso8601, :maintenance => true, :mailboxes => {} }
+      return
+    end
+
     summary = {}
     HelpdeskMailbox.enabled.includes(:project).each do |mailbox|
       next unless mailbox.project&.active? && mailbox.project.module_enabled?(:helpdesk)
@@ -58,6 +77,26 @@ class HelpdeskFetchController < ApplicationController
     end
 
     render :json => { :fetched_at => Time.current.iso8601, :mailboxes => summary }
+  end
+
+  # GET: maintenance flag plus the fetches still in progress on any pod.
+  # POST enabled=1|0: switches the flag, then answers with the same status.
+  # Poll GET until safe_to_stop is true before scaling the pods down.
+  def maintenance
+    unless valid_api_key?('fetch_api_key')
+      render :json => { :error => 'Ungueltiger API-Key' }, :status => 401
+      return
+    end
+
+    if request.post?
+      unless %w[0 1].include?(params[:enabled].to_s)
+        render :json => { :error => 'enabled must be 1 or 0' }, :status => 422
+        return
+      end
+      RedmineExpertHelpdesk::Maintenance.set!(params[:enabled].to_s == '1')
+    end
+
+    render :json => RedmineExpertHelpdesk::Maintenance.status
   end
 
   # Globale SLA-Pruefung fuer einen externen CronJob (z. B. via curl), gesichert

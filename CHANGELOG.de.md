@@ -5,6 +5,20 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **Wartungsmodus für Upgrades und Herunterskalieren.** Ein Schalter unter *Administration →
+  Plugins → expert Helpdesk* (oder `POST /helpdesk/maintenance?key=…&enabled=1|0` mit dem
+  Mailabruf-API-Key) pausiert jeden Mailabruf: `fetch_all` liefert `{"maintenance": true}`, ohne
+  ein Postfach anzufassen, der Button *Mails jetzt abrufen* im Projekt zeigt nur einen Hinweis, und
+  ein bereits laufender Abruf hört vor der nächsten Nachricht auf. `GET /helpdesk/maintenance`
+  listet die noch laufenden Abrufe aller Pods (Hostname, Postfach, erledigte Nachrichten, Heartbeat)
+  und meldet `"safe_to_stop": true`, sobald keiner mehr übrig ist – ein Upgrade-Skript kann darauf
+  warten, statt dass jemand Logs liest. Migration 062 legt die Tabelle `helpdesk_fetch_runs` an, die
+  laufende Abrufe über alle Replikas sichtbar macht.
+
 ## [0.18.1] - 2026-09-28
 
 ### Behoben

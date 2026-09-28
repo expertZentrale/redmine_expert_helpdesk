@@ -457,6 +457,14 @@ de:
   label_helpdesk_action_ignore: Mail ignorieren
 
   button_helpdesk_fetch: Mails jetzt abrufen
+  label_helpdesk_maintenance: "Wartungsmodus"
+  field_helpdesk_maintenance_mode: "Mailabruf pausieren"
+  text_helpdesk_maintenance_mode_info: "Solange aktiv, wird kein Postfach abgerufen: Der Cron-Endpunkt /helpdesk/fetch_all und der Button „Mails jetzt abrufen“ im Projekt tun nichts, und ein bereits laufender Abruf hört vor der nächsten Nachricht auf. Nicht verarbeitete Mails bleiben im Postfach und werden nach dem Ausschalten abgeholt. Vor Upgrades oder dem Herunterskalieren der Pods einschalten."
+  label_helpdesk_maintenance_running: "Laufende Abrufe"
+  text_helpdesk_maintenance_idle: "Keine – gerade wird keine Mail verarbeitet."
+  text_helpdesk_maintenance_run_detail: "%{processed} Nachricht(en) erledigt, läuft seit %{since}"
+  text_helpdesk_maintenance_api_info: "Per Skript mit dem Fetch-API-Key umschalten (enabled=1 oder 0). Die GET-Antwort listet die noch laufenden Abrufe aller Pods; vor dem Herunterskalieren auf \"safe_to_stop\": true warten."
+  notice_helpdesk_maintenance_fetch_blocked: "Wartungsmodus ist aktiv – Mails werden nicht abgerufen. Ausschalten unter Administration → Plugins → expert Helpdesk."
   notice_helpdesk_fetch_done: "Mailabruf abgeschlossen: %{count} Nachricht(en) verarbeitet."
   error_helpdesk_fetch_failed: "Mailabruf fehlgeschlagen: %{message}"
 

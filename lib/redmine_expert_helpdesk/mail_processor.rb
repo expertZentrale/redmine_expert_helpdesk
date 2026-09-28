@@ -32,10 +32,19 @@ module RedmineExpertHelpdesk
     end
 
     # Verarbeitet alle Nachrichten des Postfachs. Liefert ein Result-Objekt.
+    # In maintenance mode nothing is fetched; the run is registered first so a
+    # status read never misses a fetch that got past the check (see Maintenance).
     def process_all(limit = 25)
-      # One session for the whole cycle: IMAP opens a single connection here
-      # instead of one per message. Graph ignores it.
-      @provider.with_session { run_cycle(limit) }
+      HelpdeskFetchRun.track(@mailbox) do |run|
+        @run = run
+        next Result.new(0, [], [], 0, []) if Maintenance.active?(:fresh => true)
+
+        # One session for the whole cycle: IMAP opens a single connection here
+        # instead of one per message. Graph ignores it.
+        @provider.with_session { run_cycle(limit) }
+      end
+    ensure
+      @run = nil
     end
 
     private
@@ -53,7 +62,18 @@ module RedmineExpertHelpdesk
         return result
       end
 
-      messages.each do |meta|
+      messages.each_with_index do |meta, i|
+        # Maintenance switched on mid-cycle: finish the message at hand, leave
+        # the rest in the source folder for the next fetch.
+        if i.positive?
+          @run&.heartbeat!(i)
+          if Maintenance.active?(:fresh => true)
+            Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): maintenance mode - " \
+                              "stopped after #{i} of #{messages.size} message(s)"
+            break
+          end
+        end
+
         begin
           process_message(meta, result)
         rescue StandardError => e

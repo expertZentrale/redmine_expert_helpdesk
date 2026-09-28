@@ -30,6 +30,7 @@ see [Tests](#tests).
 - [Quoting prior content](#quoting-prior-content)
 - [Answer templates](#answer-templates)
 - [Triggering a Mail Fetch](#triggering-a-mail-fetch)
+  - [Maintenance mode (upgrades, scaling down)](#maintenance-mode-upgrades-scaling-down)
 - [Triggering the SLA Check](#triggering-the-sla-check)
 - [Plugin Settings](#plugin-settings)
 - [REST API](#rest-api)
@@ -915,6 +916,35 @@ There is intentionally no built-in scheduler. Two options:
    The API key is configured in the plugin settings. Without a configured key
    the endpoint is disabled. The response is a JSON summary.
 
+### Maintenance mode (upgrades, scaling down)
+
+Before an upgrade or before scaling the pods down, switch on **maintenance
+mode** so no pod is inside a mail fetch when it is stopped. While it is on,
+`fetch_all` returns `{"maintenance": true}` without touching any mailbox, the
+*Fetch mails now* button only shows a notice, and a fetch that is already
+running finishes the message at hand and stops. Unprocessed mails stay in the
+mailbox and are picked up on the first fetch after the mode is switched off.
+
+Switch it in *Administration → Plugins → expert Helpdesk → Maintenance mode*
+(the fieldset also lists the fetches in progress), or from a script with the
+mail-fetch API key:
+
+```bash
+# on
+curl -X POST "https://redmine.example.com/helpdesk/maintenance?key=API-KEY&enabled=1"
+# status - repeat until "safe_to_stop": true
+curl "https://redmine.example.com/helpdesk/maintenance?key=API-KEY"
+# off, after the upgrade
+curl -X POST "https://redmine.example.com/helpdesk/maintenance?key=API-KEY&enabled=0"
+```
+
+The status answer is shared by all replicas: every fetch registers itself in
+the database with its host name (the pod name in Kubernetes) and a heartbeat,
+so `running` lists the fetches in progress on any pod, and `safe_to_stop` is
+`true` once the mode is on and none is left. A pod killed mid-fetch drops out
+of the list after 10 minutes without a heartbeat. Background jobs a fetch has
+already queued (AI summary, completeness check) are not part of this status.
+
 ## Triggering the SLA Check
 
 The SLA breach check runs on its own dedicated endpoint (independent of the
@@ -943,6 +973,7 @@ Under *Administration → Plugins → Redmine expert Helpdesk* — or, as a shor
 | Default credentials for IMAP/SMTP mailboxes | Preset, flow, tenant/client/secret, authorization and token URL, scope, and default IMAP/SMTP hosts, ports and encryption. Used by every mailbox whose *Credentials* is set to *From plugin settings* — see [Mail providers](#mail-providers). |
 | API Key (mail fetch) | Secures the global fetch endpoint |
 | API Key (SLA check) | Secures the `helpdesk/sla_check` endpoint |
+| Maintenance mode | Pauses every mail fetch, e.g. for upgrades — see [Maintenance mode](#maintenance-mode-upgrades-scaling-down) |
 | Show embedded images in the ticket | Replaces the `[cid:…]` markers of an incoming mail with the image itself (default: on) — see [Embedded images](#embedded-images) |
 | Entries per page | Default page size of the customer list (default: 25) |
 | Max. tickets in customer profile | Tickets shown in the customer detail view (default: 10) |

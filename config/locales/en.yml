@@ -457,6 +457,14 @@ en:
   label_helpdesk_action_ignore: Ignore mail
 
   button_helpdesk_fetch: Fetch mails now
+  label_helpdesk_maintenance: "Maintenance mode"
+  field_helpdesk_maintenance_mode: "Pause mail fetching"
+  text_helpdesk_maintenance_mode_info: "While enabled, no mailbox is fetched: the cron endpoint /helpdesk/fetch_all and the project's \"Fetch mails now\" button do nothing, and a fetch already running stops before its next message. Unprocessed mails stay in the mailbox and are picked up once the mode is switched off. Use it before upgrades or scaling pods down."
+  label_helpdesk_maintenance_running: "Fetches in progress"
+  text_helpdesk_maintenance_idle: "None - no mail is being processed right now."
+  text_helpdesk_maintenance_run_detail: "%{processed} message(s) done, running since %{since}"
+  text_helpdesk_maintenance_api_info: "Switch it from a script with the fetch API key (enabled=1 or 0). The GET answer lists the fetches still running on any pod; wait for \"safe_to_stop\": true before scaling down."
+  notice_helpdesk_maintenance_fetch_blocked: "Maintenance mode is active - mails are not fetched. Switch it off under Administration → Plugins → expert Helpdesk."
   notice_helpdesk_fetch_done: "Mail fetch finished: %{count} message(s) processed."
   error_helpdesk_fetch_failed: "Mail fetch failed: %{message}"
 

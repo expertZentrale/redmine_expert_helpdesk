@@ -115,6 +115,39 @@
   </p>
 </fieldset>
 
+<% hd_maintenance = RedmineExpertHelpdesk::Maintenance.status %>
+<fieldset class="box tabular" id="hd-maintenance">
+  <legend><%= l(:label_helpdesk_maintenance) %></legend>
+  <p>
+    <%# id-less companion, see awaiting_agent_enabled below for why %>
+    <%= hidden_field_tag 'settings[maintenance_mode]', '0', :id => nil %>
+    <%= check_box_tag 'settings[maintenance_mode]', '1', hd_maintenance[:maintenance],
+          :id => 'settings_maintenance_mode' %>
+    <%= label_tag 'settings_maintenance_mode', l(:field_helpdesk_maintenance_mode) %>
+    <em class="info"><%= l(:text_helpdesk_maintenance_mode_info) %></em>
+  </p>
+  <p>
+    <label><%= l(:label_helpdesk_maintenance_running) %></label>
+    <% if hd_maintenance[:running].empty? %>
+      <span id="hd-maintenance-idle"><%= l(:text_helpdesk_maintenance_idle) %></span>
+    <% else %>
+      <span id="hd-maintenance-running">
+        <% hd_maintenance[:running].each do |r| %>
+          <%= r[:mailbox] %> &middot; <%= r[:host] %> &middot;
+          <%= l(:text_helpdesk_maintenance_run_detail, :processed => r[:processed],
+                :since => format_time(Time.zone.parse(r[:started_at]))) %><br>
+        <% end %>
+      </span>
+    <% end %>
+  </p>
+  <p>
+    <label></label>
+    <code>curl -X POST "<%= Setting.protocol %>://<%= Setting.host_name %>/helpdesk/maintenance?key=API-KEY&amp;enabled=1"</code><br>
+    <code>curl "<%= Setting.protocol %>://<%= Setting.host_name %>/helpdesk/maintenance?key=API-KEY"</code>
+    <em class="info"><%= l(:text_helpdesk_maintenance_api_info) %></em>
+  </p>
+</fieldset>
+
 <fieldset class="box tabular">
   <legend><%= l(:label_helpdesk_awaiting_agent_col) %></legend>
   <p>

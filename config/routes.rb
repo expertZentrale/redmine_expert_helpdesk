@@ -6,6 +6,9 @@ RedmineApp::Application.routes.draw do
   # Globaler Abruf aller aktiven Postfaecher (z. B. via curl/CronJob), gesichert per API-Key
   match 'helpdesk/fetch_all', :to => 'helpdesk_fetch#fetch_all', :via => [:get, :post], :as => 'helpdesk_fetch_all'
 
+  # Maintenance mode for upgrades: GET status, POST enabled=1|0 (fetch API key)
+  match 'helpdesk/maintenance', :to => 'helpdesk_fetch#maintenance', :via => [:get, :post], :as => 'helpdesk_maintenance'
+
   # SLA-Pruefung fuer externen CronJob, gesichert per eigenem API-Key
   match 'helpdesk/sla_check', :to => 'helpdesk_fetch#sla_check', :via => [:get, :post], :as => 'helpdesk_sla_check'
 

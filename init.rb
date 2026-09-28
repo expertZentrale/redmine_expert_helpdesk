@@ -59,6 +59,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/attachment_blacklist', 
 require File.expand_path('../lib/redmine_expert_helpdesk/reply_images', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/reply_box', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/note_quoter', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/maintenance', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mail_processor', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/init_mailer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/hooks', __FILE__)
@@ -99,6 +100,8 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'client_secret'            => '',
              'fetch_api_key'            => '',
              'sla_api_key'              => '',
+             # Maintenance mode: '1' stops every mail fetch (see Maintenance).
+             'maintenance_mode'         => '0',
              # Defaults for mailboxes with credentials_source = 'global'. The
              # application registration itself is tenant_id/client_id/client_secret
              # above - it is shared with the Graph provider, never duplicated here.

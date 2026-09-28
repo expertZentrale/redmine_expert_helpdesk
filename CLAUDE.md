@@ -162,6 +162,11 @@ No built-in scheduler. Fetch runs via the project settings button
 (*Helpdesk → Fetch mails now*) or the API-key-secured global endpoint used by cron:
 `curl "https://redmine.example.com/helpdesk/fetch_all?key=API-KEY"`. The `fetch_all`
 cycle also piggybacks the SLA breach check and the phishing-feed sync.
+**Maintenance mode** (`maintenance.rb`, plugin setting `maintenance_mode`, `GET/POST
+/helpdesk/maintenance?key=` with the fetch key) blocks both triggers, and
+`MailProcessor#process_all` re-reads the flag from the DB (`fresh: true`) before each message. Every
+fetch registers a `HelpdeskFetchRun` (migration 062, host + heartbeat) **before** checking the flag —
+that order is what makes `safe_to_stop` trustworthy across pods.
 
 ## Architecture
 
