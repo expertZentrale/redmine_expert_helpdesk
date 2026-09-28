@@ -5,6 +5,19 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Dokumentation
+
+- **Reranker einstellen, mit gemessenen Zahlen.** Der Wissensbasis-Abschnitt der README enthält jetzt
+  ein durchgerechnetes Beispiel: 22 synthetische Einträge und 12 Anfragen (4 davon unbeantwortbar),
+  durch die echte Suche geschickt — nur Vektorsuche und mit Reranker bei Schwellen von 0,01 bis 0,5.
+  Mit `bge-m3` + `bge-reranker-v2-m3` auf deutschen Tickets schlug die Vektorsuche bei jeder
+  unbeantwortbaren Anfrage Einträge vor, und die Reranker-Standardschwelle 0,2 verwarf zwei richtige
+  Umschreibungen (0,089, 0,114); 0,05–0,07 fand alle Antworten ohne Fehlalarm. Demo-Daten und
+  Mess-Skript liegen in `docs/kb_reranker_demo/`, damit Installationen die Messung mit den eigenen
+  Modellen wiederholen können.
+
 ## [0.18.0] - 2026-09-25
 
 ### Hinzugefügt

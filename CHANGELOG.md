@@ -6,6 +6,18 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Documentation
+
+- **Reranker tuning, with measured numbers.** The knowledge-base section of the README now has a
+  worked example: 22 synthetic entries and 12 queries (4 of them unanswerable) run through the real
+  retrieval with vector search only and with the reranker at bars from 0.01 to 0.5. With
+  `bge-m3` + `bge-reranker-v2-m3` on German tickets, vector search proposed entries for every
+  unanswerable query, and the reranker's default bar of 0.2 dropped two correct paraphrases (0.089,
+  0.114); 0.05–0.07 found all answers with no false alarm. Seed data and the measuring script ship in
+  `docs/kb_reranker_demo/` so installations can repeat the measurement with their own models.
+
 ## [0.18.0] - 2026-09-25
 
 ### Added

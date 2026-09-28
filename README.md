@@ -1297,7 +1297,8 @@ normalised scale is sharply separated:
 | unrelated | −10.99 | 0.000017 |
 
 Hence the default `kb_rerank_min_score` of **0.2**: it keeps genuine partial matches and drops
-everything merely topical by two orders of magnitude. Your corpus will differ — tune it.
+everything merely topical by two orders of magnitude. Your corpus will differ — tune it; the
+measured example below shows how, and why 0.2 can be too strict for colloquial German tickets.
 
 > **Thresholds are not interchangeable.** Cosine similarity and cross-encoder relevance are
 > different scales. While reranking is on, `kb_rerank_min_score` replaces `kb_min_score` as the
@@ -1306,6 +1307,66 @@ everything merely topical by two orders of magnitude. Your corpus will differ �
 > it on. If the reranker fails or times out, retrieval silently falls back to the similarity
 > ranking **and** the similarity thresholds — a dead reranker costs ordering, never the search.
 > Rerank calls are logged as `kb_rerank` in the AI statistics.
+
+**Tuning `kb_rerank_min_score` — a measured example.** A synthetic demo project with 22 solved
+tickets (typical helpdesk faults, several sharing vocabulary on purpose — three VPN problems,
+four printer problems, …) and 12 customer-style queries written in everyday German. For 8 queries
+one entry is the correct answer; 4 have **no** correct entry, and the right result for them is
+*nothing*. Embeddings `bge-m3`, reranker `bge-reranker-v2-m3`, `kb_top_k` 3, `kb_min_results` 1,
+20 candidates; every row is the plugin's real `KnowledgeRetrieval.search`. Data and scripts are in
+[`docs/kb_reranker_demo/`](docs/kb_reranker_demo/README.md) — run them against your own models.
+
+| configuration | correct entry first | correct entry shown | other entries shown | proposals for the 4 unanswerable queries |
+| --- | --- | --- | --- | --- |
+| vector only, `kb_min_score` 0.5 (default) | 7/8 | 8/8 | 16 | **4/4** |
+| vector only, `kb_min_score` 0.6 | 6/8 | 6/8 | 4 | 1/4 |
+| reranker, `kb_rerank_min_score` 0.01 | 8/8 | 8/8 | 4 | 1/4 |
+| reranker, 0.02 | 8/8 | 8/8 | 2 | 1/4 |
+| reranker, **0.05** | **8/8** | **8/8** | 2 | **0/4** |
+| reranker, **0.07** | **8/8** | **8/8** | 2 | **0/4** |
+| reranker, 0.1 | 7/8 | 7/8 | 2 | 0/4 |
+| reranker, 0.2 (default) | 6/8 | 6/8 | 2 | 0/4 |
+| reranker, 0.3 | 5/8 | 5/8 | 1 | 0/4 |
+| reranker, 0.5 | 5/8 | 5/8 | 0 | 0/4 |
+
+What the numbers show:
+
+- **Vector search alone cannot say "nothing".** Every unanswerable query got proposals — *"please
+  resend the invoice for the printer training"* returned the scan-to-mail, printer-driver and
+  empty-invoice-PDF entries at cosine 0.50–0.55 — plus 16 unrelated entries next to the right ones.
+  Raising `kb_min_score` does not fix it, because right and wrong cosines overlap: for *"the customer
+  finds our offers in his junk folder"* the correct SPF/DKIM entry scored **0.572**, *below* the
+  unrelated "ERP is slow" entry at 0.578; the correct MFA entry for *"new iPhone, it wants a code
+  from the app"* scored 0.592 — *lower* than the 0.602 that the unanswerable *"scanner only scans
+  black and white"* reached. At 0.6 two correct answers are lost and one false alarm remains.
+- **The cross-encoder separates what cosine cannot.** It ranked the correct entry first in all 8
+  queries (the junk-folder case moved from #2 to #1). Correct entries scored **0.089 – 0.999**; the
+  best candidate of any unanswerable query scored at most **0.048**. Everything from 0.05 to 0.09
+  lies in the gap.
+- **The default 0.2 is too strict here.** It drops the two paraphrases that share almost no words
+  with the entry — the junk-folder query (**0.089**) and the new-iPhone query (**0.114**); the VPN
+  query (0.30) is not far from the bar either. Colloquial German customer text scores lower against
+  this reranker than the calibration pairs above suggest. For this corpus **0.07** (the middle of the
+  gap) found every answer, raised no false alarm and kept margin on both sides; below 0.05 the
+  *"scanner only scans black and white"* query starts pulling in the docking-station and
+  scan-to-mail entries (0.048 / 0.042).
+- **"Other entries shown" are mostly neighbours, not noise.** From 0.02 to 0.2 they are the two
+  password faults showing up for each other (*account locked* ↔ *Outlook keeps asking for the
+  password*, scores 0.38 and 0.23) — plausible context for an agent. They only disappear at 0.5,
+  together with three correct answers.
+- **Scores are stable, but depend on the shortlist.** Repeated runs with the same candidates gave
+  identical scores; changing `kb_rerank_candidates` from 20 to 5 shifted them by a few hundredths
+  (the black-and-white query went from 0.048 to 0.059 and crossed a bar of 0.05). Keep the bar
+  about 0.02 away from both edges of the gap, and retune after changing the candidate count.
+- **The answer drafter uses its own bar on the same scale.** With reranking on,
+  `ai_answer_min_score` (default 0.65) is compared with the rerank score. In this demo only 3 of 8
+  queries would get a customer-facing draft (0.82 – 0.999); the print-queue answer at 0.63 would be
+  refused. That strictness is intended for text sent to customers; lower it per project if agents
+  miss drafts, not by lowering `kb_rerank_min_score`.
+
+To tune your own installation, replace the demo entries and queries with anonymised real examples —
+including a few questions the knowledge base cannot answer — and set the bar between the lowest
+correct score and the highest unanswerable one.
 
 **Per-project configuration** (project *Settings → expert Helpdesk*, shown when the KB is enabled):
 - **Contribute** (`kb_ingest_mode`): off / **auto** (ingest on close if a solution was found) /
