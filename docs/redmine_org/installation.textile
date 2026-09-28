@@ -61,6 +61,7 @@ Under *Administration → Plugins → Redmine expert Helpdesk*, or via the *expe
 | Default credentials for IMAP/SMTP | Preset, grant, authorization and token URL, scope, plus default IMAP/SMTP host, port and encryption |
 | API key (mail fetch) | Secures the global @helpdesk/fetch_all@ endpoint |
 | API key (SLA check) | Secures the @helpdesk/sla_check@ endpoint |
+| Maintenance mode | Pauses every mail fetch and lists the fetches still running, for upgrades and scaling down (see step 6) |
 | Entries per page | Page size of the customer list (default 25) |
 | Max. tickets in customer profile | Tickets shown in the customer detail view (default 10) |
 | Mark tickets awaiting a response | Flags tickets whose customer replied by mail and clears the flag when an agent answers (on by default) |
@@ -107,13 +108,22 @@ curl "https://redmine.example.com/helpdesk/sla_check?key=SLA-API-KEY"
 
 Both keys come from the central configuration. Endpoints without a key configured refuse the request rather than running unauthenticated.
 
+*Maintenance mode* pauses every fetch, for upgrades or before scaling pods down. Switch it under *Administration → Plugins → expert Helpdesk* or with the fetch key, then poll the status until @"safe_to_stop": true@ — it lists the fetches still in progress on any replica:
+
+<pre>
+curl -X POST "https://redmine.example.com/helpdesk/maintenance?key=FETCH-API-KEY&enabled=1"
+curl "https://redmine.example.com/helpdesk/maintenance?key=FETCH-API-KEY"
+</pre>
+
+While it is on, @fetch_all@ answers @{"maintenance": true}@ without touching a mailbox and a running fetch stops before its next message; unprocessed mails stay in the mailbox. Send @enabled=0@ to resume.
+
 h3. REST API
 
 The plugin's own REST API (contacts, tickets, project settings, mailboxes) is separate from the two cron endpoints above and uses Redmine's normal API authentication. Enable *Administration → Settings → API → Enable REST web service*; requests then authenticate with an @X-Redmine-API-Key@ header and are authorized by the same permissions as the UI. Mailbox endpoints require @manage_helpdesk@ for reading as well as writing, because the configuration exposes mail hosts, usernames and OAuth client ids. Full reference: "API.md":https://github.com/expertZentrale/redmine_expert_helpdesk/blob/main/API.md
 
 h3. Upgrading
 
-Replace the plugin directory with the new version, then run the migration command from step 2 again and restart. Migrations are additive and existing mailboxes keep their configuration; if a release needs anything beyond that it is called out in that version's notes.
+Switch on maintenance mode (see step 6) and wait for @"safe_to_stop": true@, replace the plugin directory with the new version, then run the migration command from step 2 again, restart and switch maintenance mode off. Migrations are additive and existing mailboxes keep their configuration; if a release needs anything beyond that it is called out in that version's notes.
 
 Downgrading is not supported — roll back the database alongside the plugin if you need to.
 

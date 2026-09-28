@@ -1,0 +1,8 @@
+h3. Added
+
+* *Maintenance mode for upgrades and scaling down.* Knowing whether a pod was in the middle of processing mail used to mean reading the logs and guessing. A switch under *Administration → Plugins → expert Helpdesk → Maintenance mode* now pauses every mail fetch: the cron endpoint @helpdesk/fetch_all@ answers @{"maintenance": true}@ without touching a mailbox, the project's *Fetch mails now* button only shows a notice, and a fetch that is already running finishes the message at hand and stops. Unprocessed mails stay in the mailbox and are picked up after the switch is turned off.
+* *Scriptable, with a status that covers every replica.* @POST /helpdesk/maintenance?key=FETCH-API-KEY&enabled=1@ (or @0@) switches it, @GET@ on the same URL lists the fetches still in progress on any pod — mailbox, host name, messages done, heartbeat — and reports @"safe_to_stop": true@ once the mode is on and none is left. A pod killed mid-fetch drops out of the list after 10 minutes without a heartbeat. Background jobs a fetch already queued (AI summary, completeness check) are not part of this status.
+
+h3. Upgrade notes
+
+Migration 062 adds the table @helpdesk_fetch_runs@. Run plugin migrations. The mode is off after the upgrade and the fetch API key is reused, so nothing needs configuring; the endpoint refuses requests while no fetch key is set. This upgrade itself still runs without the pause — from the next one on, switch it on first and wait for @"safe_to_stop": true@.

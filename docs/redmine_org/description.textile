@@ -38,6 +38,7 @@ h3. Features
 * *Ticket assignment* — new tickets from mail go to a user or a group chosen per project, a matching rule overrides that for the mail it applies to, and the "assign to me when replying" option preselects the replying agent, and only on a ticket nobody holds yet.
 * *Rules* — automation by subject or sender: set priority, tracker, category, assignee (user or group), or ignore the mail.
 * *Initial mail* — assign a customer contact to any ticket and optionally send the first outbound mail.
+* *Maintenance mode* — pauses every mail fetch for upgrades or scaling pods down; a running fetch stops before its next message, and a status endpoint lists the fetches still in progress on any replica, so an upgrade script can wait for @"safe_to_stop": true@ instead of reading logs.
 * *REST API* (JSON and XML) following Redmine's own conventions, authenticated with @X-Redmine-API-Key@ and scoped by the existing permissions: contacts, tickets, per-project settings and mailboxes. Mailboxes are fully configurable over the API — backend, IMAP/SMTP hosts, OAuth2 credentials, folders — with a @test_connection@ call to verify one. Secrets can be written but are never returned.
 
 h3. Requirements
