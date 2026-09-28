@@ -265,6 +265,10 @@ or the API-key-secured global endpoint used by cron: `/helpdesk/fetch_all?key=AP
     it, and **the threshold follows the score, not the setting**: `apply_rerank` rescues its own
     errors and returns a `reranked` flag, so a failed rerank leaves cosine scores gated by the
     cosine bar rather than by a cross-encoder one.
+    **Tuning evidence:** `docs/kb_reranker_demo/` (dataset + `seed.rb` + `experiment.rb`, run via
+    `docker compose run ... rails runner`) measures every threshold with the real `search`; the README
+    table comes from it. With bge-m3/bge-reranker-v2-m3 on German text the gap between correct and
+    unanswerable was 0.048–0.089, i.e. the 0.2 default is conservative — re-measure before changing it.
   - `answer_drafter.rb` — customer-facing answer drafts ("KI-Antwortvorschlag"), the only AI feature
     writing to the customer rather than the agent. Synchronous via `HelpdeskNoteContentController`'s
     `answer_draft` source (an agent is waiting), so it carries its own timeout (`ai_answer_timeout`,

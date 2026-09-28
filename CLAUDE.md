@@ -369,6 +369,10 @@ nested registration would never fire in production.
   errors and returns a `reranked` flag, so a dead reranker leaves cosine scores that are then
   gated by the cosine bar. Deciding the threshold from `kb_rerank_enabled` instead would judge
   similarities with a cross-encoder bar on every outage.
+  **Tuning evidence:** `docs/kb_reranker_demo/` (dataset + `seed.rb` + `experiment.rb`, run via
+  `docker compose run ... rails runner`) measures every threshold with the real `search`; the README
+  table comes from it. With bge-m3/bge-reranker-v2-m3 on German text the gap between correct and
+  unanswerable was 0.048–0.089, i.e. the 0.2 default is conservative — re-measure before changing it.
 - **`answer_drafter.rb`** — customer-facing answer drafts ("KI-Antwortvorschlag"), the only AI
   feature whose output is addressed to the customer rather than the agent. Reached synchronously
   through `HelpdeskNoteContentController`'s `answer_draft` source (not a job — an agent is

@@ -1360,7 +1360,8 @@ Umrechnung ist streng monoton, die Reihenfolge ändert sich also nie). Gemessen 
 
 Daher der Standardwert **0,2** für `kb_rerank_min_score`: Er behält echte Teiltreffer und wirft
 alles nur thematisch Verwandte um zwei Größenordnungen darunter weg. Der eigene Bestand
-unterscheidet sich — nachjustieren.
+unterscheidet sich — nachjustieren; das gemessene Beispiel unten zeigt wie, und warum 0,2 für
+umgangssprachliche deutsche Tickets zu streng sein kann.
 
 > **Die Schwellwerte sind nicht austauschbar.** Kosinus-Ähnlichkeit und Cross-Encoder-Relevanz
 > sind unterschiedliche Skalen. Solange das Reranking aktiv ist, ersetzt `kb_rerank_min_score`
@@ -1370,6 +1371,68 @@ unterscheidet sich — nachjustieren.
 > einen Timeout, greift still wieder die Ähnlichkeits-Reihenfolge **samt** ihrer Schwellwerte —
 > ein toter Reranker kostet die Sortierung, nie die Suche. Rerank-Aufrufe erscheinen in der
 > KI-Statistik als `kb_rerank`.
+
+**`kb_rerank_min_score` einstellen — ein gemessenes Beispiel.** Ein synthetisches Demo-Projekt mit
+22 gelösten Tickets (typische Helpdesk-Fehler, einige absichtlich mit ähnlichem Wortschatz — drei
+VPN-Probleme, vier Drucker-Probleme, …) und 12 Kundenanfragen in Alltagsdeutsch. Für 8 Anfragen ist
+ein Eintrag die richtige Antwort; 4 haben **keinen** passenden Eintrag, richtig ist dort *nichts*.
+Embeddings `bge-m3`, Reranker `bge-reranker-v2-m3`, `kb_top_k` 3, `kb_min_results` 1,
+20 Kandidaten; jede Zeile ist das echte `KnowledgeRetrieval.search` des Plugins. Daten und Skripte
+liegen in [`docs/kb_reranker_demo/`](docs/kb_reranker_demo/README.md) — mit den eigenen Modellen
+nachmessen.
+
+| Konfiguration | richtiger Eintrag zuerst | richtiger Eintrag dabei | weitere Einträge | Vorschläge bei den 4 unbeantwortbaren Anfragen |
+| --- | --- | --- | --- | --- |
+| nur Vektor, `kb_min_score` 0,5 (Standard) | 7/8 | 8/8 | 16 | **4/4** |
+| nur Vektor, `kb_min_score` 0,6 | 6/8 | 6/8 | 4 | 1/4 |
+| Reranker, `kb_rerank_min_score` 0,01 | 8/8 | 8/8 | 4 | 1/4 |
+| Reranker, 0,02 | 8/8 | 8/8 | 2 | 1/4 |
+| Reranker, **0,05** | **8/8** | **8/8** | 2 | **0/4** |
+| Reranker, **0,07** | **8/8** | **8/8** | 2 | **0/4** |
+| Reranker, 0,1 | 7/8 | 7/8 | 2 | 0/4 |
+| Reranker, 0,2 (Standard) | 6/8 | 6/8 | 2 | 0/4 |
+| Reranker, 0,3 | 5/8 | 5/8 | 1 | 0/4 |
+| Reranker, 0,5 | 5/8 | 5/8 | 0 | 0/4 |
+
+Was die Zahlen zeigen:
+
+- **Vektorsuche allein kann nicht „nichts" sagen.** Jede unbeantwortbare Anfrage bekam Vorschläge —
+  *„bitte die Rechnung für die Druckerschulung noch einmal schicken"* lieferte Scan-to-Mail,
+  Druckertreiber und leeres Rechnungs-PDF bei Kosinus 0,50–0,55 — dazu 16 unpassende Einträge neben
+  den richtigen. Ein höheres `kb_min_score` hilft nicht, weil sich richtige und falsche Werte
+  überlappen: bei *„der Kunde findet unsere Angebote im Junk-Ordner"* lag der richtige SPF/DKIM-Eintrag
+  mit **0,572** *unter* dem unpassenden „ERP langsam" mit 0,578; der richtige MFA-Eintrag für
+  *„neues iPhone, es will einen Code aus der App"* lag mit 0,592 *unter* den 0,602 der
+  unbeantwortbaren Anfrage *„Scanner scannt nur schwarz-weiß"*. Bei 0,6 gehen zwei richtige
+  Antworten verloren und ein Fehlalarm bleibt.
+- **Der Cross-Encoder trennt, was Kosinus nicht trennt.** Er setzte in allen 8 Anfragen den richtigen
+  Eintrag auf Platz 1 (der Junk-Ordner-Fall rückte von #2 auf #1). Richtige Einträge erreichten
+  **0,089 – 0,999**; der beste Kandidat einer unbeantwortbaren Anfrage höchstens **0,048**. Alles
+  zwischen 0,05 und 0,09 liegt in der Lücke.
+- **Der Standard 0,2 ist hier zu streng.** Er verwirft die zwei Umschreibungen, die kaum Wörter mit
+  dem Eintrag teilen — Junk-Ordner (**0,089**) und neues iPhone (**0,114**); die VPN-Anfrage (0,30)
+  liegt auch nicht weit darüber. Umgangssprachlicher deutscher Kundentext bekommt von diesem Reranker
+  niedrigere Werte, als die Kalibrierpaare oben vermuten lassen. Für diesen Bestand fand **0,07** (Mitte der
+  Lücke) jede Antwort, ohne Fehlalarm, mit Abstand nach beiden Seiten; unter 0,05 zieht
+  *„Scanner scannt nur schwarz-weiß"* Dockingstation und Scan-to-Mail heran (0,048 / 0,042).
+- **„Weitere Einträge" sind meist Nachbarn, kein Rauschen.** Von 0,02 bis 0,2 sind es die beiden
+  Kennwort-Fehler, die sich gegenseitig finden (*Konto gesperrt* ↔ *Outlook fragt ständig nach dem
+  Kennwort*, 0,38 und 0,23) — für einen Agenten plausibler Kontext. Sie verschwinden erst bei 0,5,
+  zusammen mit drei richtigen Antworten.
+- **Werte sind stabil, hängen aber von der Kandidatenliste ab.** Wiederholte Läufe mit denselben
+  Kandidaten ergaben identische Werte; `kb_rerank_candidates` von 20 auf 5 verschob sie um einige
+  Hundertstel (die Schwarz-weiß-Anfrage stieg von 0,048 auf 0,059 und übersprang eine Schwelle von
+  0,05). Die Schwelle etwa 0,02 von beiden Rändern der Lücke entfernt halten und nach Änderung der
+  Kandidatenzahl neu prüfen.
+- **Der Antwortentwurf nutzt eine eigene Schwelle auf derselben Skala.** Mit Reranker wird
+  `ai_answer_min_score` (Standard 0,65) mit dem Rerank-Wert verglichen. Im Demo bekämen nur 3 von 8
+  Anfragen einen Kundenentwurf (0,82 – 0,999); die Druckwarteschlange mit 0,63 würde abgelehnt. Diese
+  Strenge ist für Text an Kunden gewollt; fehlen Agenten Entwürfe, die Schwelle je Projekt senken —
+  nicht `kb_rerank_min_score`.
+
+Zum Einstellen der eigenen Installation die Demo-Einträge und -Anfragen durch anonymisierte echte
+Beispiele ersetzen — inklusive einiger Fragen, die die Wissensbasis nicht beantworten kann — und die
+Schwelle zwischen den niedrigsten richtigen und den höchsten unbeantwortbaren Wert legen.
 
 **Projekt-Konfiguration** (Projekt-*Einstellungen → expert Helpdesk*, sichtbar wenn die KB aktiv ist):
 - **Beitrag** (`kb_ingest_mode`): aus / **auto** (beim Schließen, wenn eine Lösung erkannt wurde) /
