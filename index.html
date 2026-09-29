@@ -1,0 +1,103 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+body { font-family: "Noto Sans", -apple-system, "Segoe UI", Roboto, Arial, sans-serif; font-size: 14px; background:#fff; margin:0; padding:20px; width: 900px; color:#333; }
+.variant { padding: 14px 16px 16px; border:1px solid #ddd; border-radius:6px; margin-bottom: 24px; background:#fff; }
+.vtitle { font-weight:bold; font-size:15px; margin-bottom:2px; }
+.vdesc { color:#666; font-size:12.5px; margin-bottom:8px; }
+.issue { background:#ffffdd; border:1px solid #d7d7d7; padding:10px 12px 60px; }
+.subject { font-size:16px; font-weight:bold; margin-bottom:6px; }
+.helpdesk-issue-header { display:flex; align-items:center; gap:14px; background:#f0f4fb; border:1px solid #c8d8ec; border-radius:3px; padding:5px 10px; margin:8px 0 4px 0; font-size:0.9em; color:#444; flex-wrap:wrap; }
+.helpdesk-issue-header a { color:#3a6699; text-decoration:none; }
+.hih-from { display:inline-flex; align-items:center; gap:6px; position:relative; }
+.hih-time { margin-left:auto; color:#888; white-space:nowrap; }
+.hih-addr-tag { display:inline-block; font-size:0.85em; padding:0 5px; line-height:1.5; border-radius:3px; background:#dde8f6; color:#3a6699; cursor:default; border:1px solid #c0d4ed; position:relative; }
+.hih-addr-tag.hover { outline:2px solid #e4572e; outline-offset:1px; }
+.muted { color:#888; }
+.tip { position:absolute; top:calc(100% + 6px); left:0; z-index:5; background:#fffff0; border:1px solid #999; box-shadow:1px 2px 4px rgba(0,0,0,.25); padding:4px 7px; font-size:12px; color:#222; white-space:pre; line-height:1.45; }
+.pop { position:absolute; top:calc(100% + 6px); left:0; z-index:5; background:#fff; border:1px solid #c8d8ec; border-radius:4px; box-shadow:0 3px 10px rgba(0,0,0,.15); padding:8px 10px; font-size:12.5px; color:#222; min-width:250px; line-height:1.5; }
+.pop h5 { margin:0 0 2px; font-size:11px; text-transform:uppercase; color:#888; letter-spacing:.04em; }
+.pop h5 + ul { margin:0 0 6px; padding-left:16px; }
+.pop ul:last-child { margin-bottom:0; }
+.pop .own { color:#888; font-size:11px; }
+.env { width:15px; height:15px; vertical-align:middle; }
+.arrow { color:#888; }
+</style></head><body>
+
+<svg width="0" height="0" style="position:absolute"><symbol id="env" viewBox="0 0 24 24"><path fill="none" stroke="#555" stroke-width="2" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path fill="none" stroke="#555" stroke-width="2" d="m3 7 9 6 9-6"/></symbol><symbol id="att" viewBox="0 0 24 24"><path fill="none" stroke="#555" stroke-width="2" d="M15 7l-6.5 6.5a1.5 1.5 0 0 0 3 3L18 10a3 3 0 0 0-6-6l-6.5 6.5a4.5 4.5 0 0 0 9 9L21 13"/></symbol></svg>
+
+<!-- Variant A -->
+<div class="variant" id="vA">
+  <div class="vtitle">Variante A – wie ausgehende Antworten (Vorschlag aus dem Issue)</div>
+  <div class="vdesc">Nur <b>+X</b> für weitere An-Empfänger und ein <b>CC</b>-Badge. Hover zeigt die vollständige Liste.</div>
+  <div class="issue"><div class="subject">Drucker im 2. OG druckt nicht</div>
+  <div class="helpdesk-issue-header">
+    <span class="hih-from"><svg class="env"><use href="#env"/></svg><span><a href="#">Florian Beispiel</a> (<a href="#">florian@kunde.example</a>)</span>
+      <span class="hih-addr-tag hover">+1<span class="tip">An: support@example.com, service@example.com</span></span>
+      <span class="hih-addr-tag">CC</span>
+    </span>
+    <span><svg class="env"><use href="#att"/></svg> <a href="#">Original-Mail (48 KB)</a></span>
+    <span class="hih-time">29.09.2026 13:40</span>
+  </div></div>
+</div>
+
+<!-- Variant B -->
+<div class="variant" id="vB">
+  <div class="vtitle">Variante B – wie eingehende Antworten im Verlauf</div>
+  <div class="vdesc">Beschriftete Badges <b>An +X</b> und <b>CC +X</b> (Zähler = weitere Adressen). Eindeutiger, was welcher Zähler bedeutet.</div>
+  <div class="issue"><div class="subject">Drucker im 2. OG druckt nicht</div>
+  <div class="helpdesk-issue-header">
+    <span class="hih-from"><svg class="env"><use href="#env"/></svg><span><a href="#">Florian Beispiel</a> (<a href="#">florian@kunde.example</a>)</span>
+      <span class="hih-addr-tag">An +1</span>
+      <span class="hih-addr-tag hover">CC +1<span class="tip">CC: manager@example.com, colleague@example.com</span></span>
+    </span>
+    <span><svg class="env"><use href="#att"/></svg> <a href="#">Original-Mail (48 KB)</a></span>
+    <span class="hih-time">29.09.2026 13:40</span>
+  </div></div>
+</div>
+
+<!-- Variant C -->
+<div class="variant" id="vC">
+  <div class="vtitle">Variante C – Empfangs-Postfach sichtbar</div>
+  <div class="vdesc">Zeigt zusätzlich, <b>an welches Postfach</b> die Mail ging (→ erste An-Adresse), danach <b>+X</b> und <b>CC</b> wie in A. Beantwortet „ging das an mehrere Support-Postfächer?“ ohne Hover.</div>
+  <div class="issue"><div class="subject">Drucker im 2. OG druckt nicht</div>
+  <div class="helpdesk-issue-header">
+    <span class="hih-from"><svg class="env"><use href="#env"/></svg><span><a href="#">Florian Beispiel</a> (<a href="#">florian@kunde.example</a>)</span>
+      <span class="arrow">→</span> <span>support@example.com</span>
+      <span class="hih-addr-tag">+1</span>
+      <span class="hih-addr-tag hover">CC<span class="tip">CC: manager@example.com, colleague@example.com</span></span>
+    </span>
+    <span><svg class="env"><use href="#att"/></svg> <a href="#">Original-Mail (48 KB)</a></span>
+    <span class="hih-time">29.09.2026 13:40</span>
+  </div></div>
+</div>
+
+<!-- Variant D -->
+<div class="variant" id="vD">
+  <div class="vtitle">Variante D – ein Empfänger-Badge mit Popover</div>
+  <div class="vdesc">Ein einziges Badge <b>3 Empfänger</b> (nur wenn es mehr als das eigene Postfach gibt). Klick/Hover öffnet ein Popover, An und CC getrennt aufgelistet – auch bei vielen Adressen gut lesbar.</div>
+  <div class="issue" style="padding-bottom:130px"><div class="subject">Drucker im 2. OG druckt nicht</div>
+  <div class="helpdesk-issue-header">
+    <span class="hih-from"><svg class="env"><use href="#env"/></svg><span><a href="#">Florian Beispiel</a> (<a href="#">florian@kunde.example</a>)</span>
+      <span class="hih-addr-tag hover">3 Empfänger ▾<span class="pop">
+        <h5>An</h5><ul><li>support@example.com <span class="own">(dieses Postfach)</span></li><li>service@example.com</li></ul>
+        <h5>CC</h5><ul><li>manager@example.com</li><li>colleague@example.com</li></ul>
+      </span></span>
+    </span>
+    <span><svg class="env"><use href="#att"/></svg> <a href="#">Original-Mail (48 KB)</a></span>
+    <span class="hih-time">29.09.2026 13:40</span>
+  </div></div>
+</div>
+
+<!-- Today -->
+<div class="variant" id="vNow">
+  <div class="vtitle">Heute (zum Vergleich)</div>
+  <div class="vdesc">Empfänger nur als Tooltip auf dem Brief-Icon – praktisch unauffindbar.</div>
+  <div class="issue" style="padding-bottom:20px"><div class="subject">Drucker im 2. OG druckt nicht</div>
+  <div class="helpdesk-issue-header">
+    <span class="hih-from"><svg class="env"><use href="#env"/></svg><span><a href="#">Florian Beispiel</a> (<a href="#">florian@kunde.example</a>)</span></span>
+    <span><svg class="env"><use href="#att"/></svg> <a href="#">Original-Mail (48 KB)</a></span>
+    <span class="hih-time">29.09.2026 13:40</span>
+  </div></div>
+</div>
+</body></html>
