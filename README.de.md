@@ -922,7 +922,11 @@ Aktualisierung](docs/screenshots/de/10-contact-profile.png)
 ### Kontaktanzeige auf der Ticketseite
 
 - **Info-Leiste** unterhalb der Ticket-Felder: Name, E-Mail und Firma des
-  Absenders, Link zur EML-Originaldatei.
+  Absenders, Link zur EML-Originaldatei. Ging die Erst-Mail auch an weitere
+  Personen, zählt eine Pille `An +1 | CC +2` diese (alle außer dem empfangenden
+  Postfach); Hover oder Fokus listet alle An-/CC-Adressen, das eigene Postfach
+  ist markiert. Eingehende Antworten tragen dieselbe Pille in ihrer
+  Journal-Überschrift.
 - **Seitenleiste**: Kundenkarte mit vollständigem Profil, Link zum
   Kundenprofil sowie Verlauf der gesendeten Antworten (To/CC/BCC, Zeitstempel,
   Anhänge).

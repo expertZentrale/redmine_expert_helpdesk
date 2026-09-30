@@ -5,6 +5,25 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **Empfänger der Erst-Mail in der Ticket-Kopfzeile (#43).** Wird ein Ticket aus einer E-Mail
+  erstellt, die auch an weitere Personen ging, zeigt die Info-Leiste neben dem Absender eine Pille
+  `An +1 | CC +2`: `+N` zählt die Personen außer dem Postfach, das die Mail empfangen hat. Hover
+  oder Fokus (Tastatur/Klick) öffnet ein Popover mit allen An- und CC-Adressen, das eigene
+  Postfach ist als *dieses Postfach* markiert — so sieht man sofort, ob der Kunde mehrere
+  Support-Postfächer angeschrieben oder Kollegen in Kopie genommen hat. Bisher standen die
+  Adressen nur im Tooltip des Brief-Icons.
+
+### Geändert
+
+- **Eingehende Antworten im Verlauf nutzen dieselbe Empfänger-Pille.** Die getrennten Tags
+  `An +1` / `CC +1` in den Journal-Überschriften werden durch die Pille ersetzt. Die Zählung ändert
+  sich mit: `+N` ist jetzt die Anzahl der Personen außer unserem Postfach (eine CC-Zeile mit zwei
+  Adressen zeigt `CC +2`, bisher `CC +1`).
+
 ## [0.19.0] - 2026-09-28
 
 ### Hinzugefügt

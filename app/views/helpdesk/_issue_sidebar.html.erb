@@ -233,8 +233,8 @@
       :journalId => m.journal_id,
       :name      => m.helpdesk_contact&.display_name.to_s,
       :email     => m.helpdesk_contact&.email.to_s,
-      :to        => m.recipient_to.to_s,
-      :cc        => m.recipient_cc.to_s,
+      :recipientsHtml => render(:partial => 'helpdesk/recipients_pill',
+                                :locals  => { :summary => HelpdeskMessage.recipient_summary(m) }).to_s.strip,
       :emlUrl    => (m.eml_attachment_id ? download_named_attachment_path(m.eml_attachment_id, m.eml_attachment.filename) : nil),
       :emlSize   => (m.eml_attachment_id ? number_to_human_size(m.eml_attachment.filesize) : nil),
       :sentAt    => (m.sent_at ? format_time(m.sent_at) : nil)
@@ -344,18 +344,9 @@
       : msg.email;
     wrap.appendChild(who);
 
-    // Empfaenger der eingehenden Mail (An/CC) als Tags mit Tooltip
-    [['An', msg.to], ['CC', msg.cc]].forEach(function(pair) {
-      var label = pair[0], val = pair[1];
-      if (!val) return;
-      var addrs = val.split(/[,;]+/).map(function(a){return a.trim();}).filter(Boolean);
-      if (!addrs.length) return;
-      var tag = document.createElement('span');
-      tag.className = 'hd-addr-tag';
-      tag.title = label + ': ' + addrs.join(', ');
-      tag.textContent = label + (addrs.length > 1 ? ' +' + (addrs.length - 1) : '');
-      wrap.appendChild(tag);
-    });
+    // Recipients pill (An +1 | CC +2 with popover), rendered server-side by
+    // helpdesk/_recipients_pill so it matches the ticket header exactly.
+    if (msg.recipientsHtml) { wrap.insertAdjacentHTML('beforeend', msg.recipientsHtml); }
 
     if (msg.emlUrl) {
       var attIcon = document.createElement('span');

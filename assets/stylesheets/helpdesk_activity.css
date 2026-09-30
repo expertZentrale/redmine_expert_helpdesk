@@ -205,3 +205,52 @@ a.hd-blacklist-attachment:hover {
   color: #bb0000;
   text-decoration: underline;
 }
+
+/* Recipients pill of an inbound mail (ticket header + incoming journals):
+ * "An +1 | CC +2" with a popover listing every address. The popover opens on
+ * hover and on keyboard focus/click (tabindex + :focus-within). */
+.hd-rcpt-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  font-size: 0.85em;
+  font-weight: normal;
+  line-height: 1.5;
+  border-radius: 3px;
+  background: #dde8f6;
+  color: #3a6699;
+  border: 1px solid #c0d4ed;
+  cursor: pointer;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.hd-rcpt-pill:focus { outline: 2px solid #88aad6; outline-offset: 1px; }
+.hd-rcpt-seg { padding: 0 6px; }
+.hd-rcpt-seg + .hd-rcpt-seg { border-left: 1px solid #c0d4ed; }
+.hd-rcpt-pop {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  min-width: 220px;
+  padding: 6px 10px;
+  background: #fff;
+  color: #222;
+  border: 1px solid #c8d8ec;
+  border-radius: 4px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: nowrap;
+  cursor: auto;
+}
+/* Bridges the 4px gap so the popover does not close on the way down. */
+.hd-rcpt-pop::before { content: ''; position: absolute; left: 0; right: 0; top: -5px; height: 5px; }
+.hd-rcpt-pill:hover .hd-rcpt-pop,
+.hd-rcpt-pill:focus-within .hd-rcpt-pop { display: block; }
+.hd-rcpt-pop-head { display: block; margin: 0 0 1px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; color: #888; }
+.hd-rcpt-pop ul { margin: 0 0 6px; padding-left: 16px; }
+.hd-rcpt-pop ul:last-child { margin-bottom: 0; }
+.hd-rcpt-own { color: #888; font-size: 11px; }

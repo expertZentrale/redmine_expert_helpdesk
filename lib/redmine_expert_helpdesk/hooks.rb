@@ -46,7 +46,7 @@ module RedmineExpertHelpdesk
       contact = HelpdeskTicketInfo.for_issue(issue)&.helpdesk_contact
       if contact
         # inbound ist nil wenn kein eingehendes Ticket existiert (manuell/ausgehend)
-        inbound = HelpdeskMessage.incoming.includes(:eml_attachment)
+        inbound = HelpdeskMessage.incoming.includes(:eml_attachment, :helpdesk_mailbox)
                                  .where(:issue_id => issue.id)
                                  .order(:id => :asc).first
 

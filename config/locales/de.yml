@@ -254,6 +254,10 @@ de:
   text_helpdesk_multi_recipients_hint: 'Mehrere Adressen mit Komma trennen'
   label_helpdesk_sent_to: 'Gesendet an'
   label_helpdesk_sent_on: 'Gesendet am'
+  label_helpdesk_recipients_to: 'An'
+  label_helpdesk_recipients_cc: 'CC'
+  label_helpdesk_recipients_own_mailbox: 'dieses Postfach'
+  label_helpdesk_recipients_pill_title: 'Alle Empfänger anzeigen'
 
   label_helpdesk_sla: 'SLA'
   field_helpdesk_sla_enabled: 'SLA aktiv'
