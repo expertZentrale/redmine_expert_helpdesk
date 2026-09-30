@@ -886,7 +886,7 @@ update](docs/screenshots/en/10-contact-profile.png)
 - **Info bar** below the ticket fields: sender name, email and company, link
   to the original EML file. If the initial mail was also addressed to other
   people, a pill `To +1 | CC +2` counts them (everyone besides the receiving
-  mailbox); hovering or focusing it lists every To/CC address, with our own
+  mailbox); hovering or clicking it lists every To/CC address, with our own
   mailbox marked. Incoming replies carry the same pill in their journal header.
 - **Sidebar**: Customer card with full profile, link to the customer profile
   and history of sent replies (To/CC/BCC, timestamp, attachments).

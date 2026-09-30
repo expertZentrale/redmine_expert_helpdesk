@@ -13,7 +13,7 @@
 - **Recipients of the initial mail on the ticket header (#43).** When a ticket is created from an
   email that was also addressed to other people, the info bar now shows a pill `To +1 | CC +2`
   next to the sender: `+N` counts the people besides the mailbox that received the mail. Hovering
-  or focusing it (keyboard/click) opens a popover listing every To and CC address, with our own
+  it, or clicking it / pressing Enter (it is a real button with `aria-expanded`), opens a popover listing every To and CC address, with our own
   mailbox marked *this mailbox* — so agents see at a glance whether the customer wrote to several
   support mailboxes or copied colleagues in. Previously the addresses were only a tooltip on the
   envelope icon.

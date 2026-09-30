@@ -1,14 +1,20 @@
 <%# Recipients pill of an inbound mail: "An +1 | CC +2" with a popover listing
-    every To/Cc address (styles in helpdesk_activity.css). Rendered only when
-    someone besides our own mailbox was addressed.
+    every To/Cc address (styles in helpdesk_activity.css, toggle script in
+    Hooks#view_layouts_base_html_head). Rendered only when someone besides our
+    own mailbox was addressed. The trigger is a real button (disclosure pattern):
+    its visible counts are its accessible name, aria-expanded/aria-controls tie
+    it to the popover. Hover opens the popover too, for mouse users.
     Locals: summary (HelpdeskMessage.recipient_summary) %>
 <% if summary[:to_others] + summary[:cc_others] > 0 %>
-<span class="hd-rcpt-pill" tabindex="0" aria-label="<%= l(:label_helpdesk_recipients_pill_title) %>"><%
+<%
+  pop_id   = "hd-rcpt-#{SecureRandom.hex(4)}"
   segments = []
   segments << "#{l(:label_helpdesk_recipients_to)} +#{summary[:to_others]}" if summary[:to_others] > 0
   segments << "#{l(:label_helpdesk_recipients_cc)} +#{summary[:cc_others]}" if summary[:cc_others] > 0
-  segments.each_with_index do |text, i| %><span class="hd-rcpt-seg"><%= text %><%= ' ▾' if i == segments.size - 1 %></span><% end
-%><span class="hd-rcpt-pop" role="tooltip"><%
+%>
+<span class="hd-rcpt"><button type="button" class="hd-rcpt-pill" aria-expanded="false" aria-controls="<%= pop_id %>"><%
+  segments.each do |text| %><span class="hd-rcpt-seg"><%= text %></span><% end
+%><span class="hd-rcpt-caret" aria-hidden="true">▾</span></button><span class="hd-rcpt-pop" id="<%= pop_id %>"><%
   [[:label_helpdesk_recipients_to, summary[:to]], [:label_helpdesk_recipients_cc, summary[:cc]]].each do |label, list|
     next if list.empty? %><span class="hd-rcpt-pop-head"><%= l(label) %></span><ul><%
     list.each do |r| %><li><%= r[:address] %><% if r[:own] %> <span class="hd-rcpt-own">(<%= l(:label_helpdesk_recipients_own_mailbox) %>)</span><% end %></li><% end %></ul><%
