@@ -6,6 +6,14 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Changed
+
+- **The plugin website updates itself on release.** The release workflow now asks
+  <https://redmine-plugins.expert.de> to rebuild after publishing, so a new version and its
+  download links appear there within minutes instead of on the weekly refresh.
+
 ## [0.20.0] - 2026-09-30
 
 ### Added

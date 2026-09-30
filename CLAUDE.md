@@ -101,6 +101,10 @@ version equals the tag (fails on mismatch), builds `redmine_expert_helpdesk-<ver
 (top-level `redmine_expert_helpdesk/` dir, dev files excluded) from the tagged tree, and publishes
 the release with notes taken from the CHANGELOG entries added since the previous tag. The two
 other workflows (`ci.yml`, `docker-image.yml`) run on `main`/PRs only.
+A final step asks the plugin website (`expertZentrale/redmine-plugins`) to rebuild via a
+`plugin-released` dispatch, using the `SITE_DISPATCH_TOKEN` secret (fine-grained token, Contents
+read/write on that repo only); without it the site catches up on its weekly cron, and the step
+never fails a release.
 
 **Every release must also update `docs/redmine_org/`** — the copy-paste sources for the listing at
 <https://www.redmine.org/plugins/redmine_expert_helpdesk>. That directory renders **Textile**, not
