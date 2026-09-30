@@ -1,0 +1,11 @@
+h3. Added
+
+* *Recipients of the initial mail on the ticket page.* When a ticket is created from an email that was also addressed to other people, the info bar now shows a pill such as @An +1 | CC +2@ next to the sender, counting everyone besides the mailbox that received the mail. Hovering or clicking it (or pressing Enter) opens a list of every To and CC address, with your own mailbox marked. Agents see at a glance whether the customer wrote to several support mailboxes or copied colleagues in. Previously the addresses were only a tooltip on the envelope icon.
+
+h3. Changed
+
+* *Incoming replies use the same pill.* The separate @An +1@ / @CC +1@ tags in the journal headers of incoming mails are replaced by the pill above. The counting changes with it: @+N@ is now the number of people besides your mailbox, so a CC line with two addresses reads @CC +2@ (was @CC +1@).
+
+h3. Upgrade notes
+
+No migrations and no new settings.

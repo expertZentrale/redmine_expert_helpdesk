@@ -5,17 +5,17 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
-## [Unreleased]
+## [0.20.0] - 2026-09-30
 
 ### Hinzugefügt
 
 - **Empfänger der Erst-Mail in der Ticket-Kopfzeile (#43).** Wird ein Ticket aus einer E-Mail
   erstellt, die auch an weitere Personen ging, zeigt die Info-Leiste neben dem Absender eine Pille
   `An +1 | CC +2`: `+N` zählt die Personen außer dem Postfach, das die Mail empfangen hat. Hover,
-  Klick oder Enter (echter Button mit `aria-expanded`) öffnet ein Popover mit allen An- und CC-Adressen, das eigene
-  Postfach ist als *dieses Postfach* markiert — so sieht man sofort, ob der Kunde mehrere
-  Support-Postfächer angeschrieben oder Kollegen in Kopie genommen hat. Bisher standen die
-  Adressen nur im Tooltip des Brief-Icons.
+  Klick oder Enter (echter Button mit `aria-expanded`) öffnet ein Popover mit allen An- und
+  CC-Adressen, das eigene Postfach ist als *dieses Postfach* markiert — so sieht man sofort, ob der
+  Kunde mehrere Support-Postfächer angeschrieben oder Kollegen in Kopie genommen hat. Bisher standen
+  die Adressen nur im Tooltip des Brief-Icons.
 
 ### Geändert
 
