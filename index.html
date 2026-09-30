@@ -22,6 +22,11 @@ body { font-family: "Noto Sans", -apple-system, "Segoe UI", Roboto, Arial, sans-
 .pop .own { color:#888; font-size:11px; }
 .env { width:15px; height:15px; vertical-align:middle; }
 .arrow { color:#888; }
+.pill { display:inline-flex; align-items:stretch; font-size:0.85em; line-height:1.5; border-radius:3px; background:#dde8f6; color:#3a6699; border:1px solid #c0d4ed; position:relative; cursor:pointer; }
+.pill > .seg { padding:0 6px; }
+.pill > .seg + .seg { border-left:1px solid #c0d4ed; }
+.pill > .seg.total { font-weight:bold; }
+.pill.hover { outline:2px solid #e4572e; outline-offset:1px; }
 </style></head><body>
 
 <svg width="0" height="0" style="position:absolute"><symbol id="env" viewBox="0 0 24 24"><path fill="none" stroke="#555" stroke-width="2" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path fill="none" stroke="#555" stroke-width="2" d="m3 7 9 6 9-6"/></symbol><symbol id="att" viewBox="0 0 24 24"><path fill="none" stroke="#555" stroke-width="2" d="M15 7l-6.5 6.5a1.5 1.5 0 0 0 3 3L18 10a3 3 0 0 0-6-6l-6.5 6.5a4.5 4.5 0 0 0 9 9L21 13"/></symbol></svg>
@@ -80,6 +85,39 @@ body { font-family: "Noto Sans", -apple-system, "Segoe UI", Roboto, Arial, sans-
   <div class="helpdesk-issue-header">
     <span class="hih-from"><svg class="env"><use href="#env"/></svg><span><a href="#">Florian Beispiel</a> (<a href="#">florian@kunde.example</a>)</span>
       <span class="hih-addr-tag hover">3 Empfänger ▾<span class="pop">
+        <h5>An</h5><ul><li>support@example.com <span class="own">(dieses Postfach)</span></li><li>service@example.com</li></ul>
+        <h5>CC</h5><ul><li>manager@example.com</li><li>colleague@example.com</li></ul>
+      </span></span>
+    </span>
+    <span><svg class="env"><use href="#att"/></svg> <a href="#">Original-Mail (48 KB)</a></span>
+    <span class="hih-time">29.09.2026 13:40</span>
+  </div></div>
+</div>
+
+
+<div class="variant" id="vK">
+  <div class="vtitle">Variante K – Mix aus B und D: eine Pille, Dropdown</div>
+  <div class="vdesc">Eine einzige Pille mit den Segmenten <b>An +1</b> und <b>CC +2</b> (+N = so viele Personen außer uns). Klick/Hover öffnet das Popover aus D mit allen Adressen, getrennt nach An und CC.</div>
+  <div class="issue" style="padding-bottom:150px"><div class="subject">Drucker im 2. OG druckt nicht</div>
+  <div class="helpdesk-issue-header">
+    <span class="hih-from"><svg class="env"><use href="#env"/></svg><span><a href="#">Florian Beispiel</a> (<a href="#">florian@kunde.example</a>)</span>
+      <span class="pill hover"><span class="seg">An +1</span><span class="seg">CC +2 ▾</span><span class="pop">
+        <h5>An</h5><ul><li>support@example.com <span class="own">(dieses Postfach)</span></li><li>service@example.com</li></ul>
+        <h5>CC</h5><ul><li>manager@example.com</li><li>colleague@example.com</li></ul>
+      </span></span>
+    </span>
+    <span><svg class="env"><use href="#att"/></svg> <a href="#">Original-Mail (48 KB)</a></span>
+    <span class="hih-time">29.09.2026 13:40</span>
+  </div></div>
+</div>
+
+<div class="variant" id="vL">
+  <div class="vtitle">Variante L – wie K, plus Gesamtzahl</div>
+  <div class="vdesc">Wie K, aber die Pille beginnt mit der <b>Gesamtzahl der weiteren Empfänger</b> (wie in D), danach die Aufteilung <b>An +1</b> / <b>CC +2</b>. Popover wie in D.</div>
+  <div class="issue" style="padding-bottom:150px"><div class="subject">Drucker im 2. OG druckt nicht</div>
+  <div class="helpdesk-issue-header">
+    <span class="hih-from"><svg class="env"><use href="#env"/></svg><span><a href="#">Florian Beispiel</a> (<a href="#">florian@kunde.example</a>)</span>
+      <span class="pill hover"><span class="seg total">3 Empfänger</span><span class="seg">An +1</span><span class="seg">CC +2 ▾</span><span class="pop">
         <h5>An</h5><ul><li>support@example.com <span class="own">(dieses Postfach)</span></li><li>service@example.com</li></ul>
         <h5>CC</h5><ul><li>manager@example.com</li><li>colleague@example.com</li></ul>
       </span></span>
