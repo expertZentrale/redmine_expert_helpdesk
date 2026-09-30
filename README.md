@@ -1899,6 +1899,9 @@ The [`release.yml`](.github/workflows/release.yml) workflow then **verifies** th
 version matches the tag (and fails if not), builds the `.zip`/`.tar.gz` archives, and publishes a
 GitHub Release with notes taken from the CHANGELOG entries added since the previous tag. Keep the
 CHANGELOG current so the notes are complete. Nothing is published on normal pushes — only on tags.
+A last step asks the [plugin website](https://redmine-plugins.expert.de) to rebuild, so the new
+version shows there within minutes (needs the `SITE_DISPATCH_TOKEN` secret; without it the site
+catches up on its weekly schedule).
 
 Then enable the **expert Helpdesk** module in the project and assign permissions to
 roles:

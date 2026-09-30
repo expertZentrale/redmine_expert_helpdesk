@@ -136,3 +136,22 @@ jobs:
           files: |
             redmine_expert_helpdesk-${{ steps.ver.outputs.version }}.zip
             redmine_expert_helpdesk-${{ steps.ver.outputs.version }}.tar.gz
+
+      # Tell the plugin website (expertZentrale/redmine-plugins) to rebuild, so
+      # the new version and download links are live within minutes instead of
+      # on its weekly cron. GITHUB_TOKEN cannot dispatch to another repository,
+      # hence SITE_DISPATCH_TOKEN: a fine-grained token with Contents read/write
+      # on redmine-plugins only. Missing token or a failed call never fails the
+      # release - the site then catches up on its own schedule.
+      - name: Notify the plugin website
+        if: steps.ver.outputs.prerelease != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::SITE_DISPATCH_TOKEN is not set - the website refreshes on its weekly cron"
+            exit 0
+          fi
+          gh api repos/expertZentrale/redmine-plugins/dispatches -f event_type=plugin-released \
+            && echo "Website rebuild requested" \
+            || echo "::warning::Could not trigger the website rebuild - it refreshes on its weekly cron"

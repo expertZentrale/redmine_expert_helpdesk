@@ -5,6 +5,14 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Geändert
+
+- **Die Plugin-Website aktualisiert sich beim Release selbst.** Der Release-Workflow stößt nach
+  dem Veröffentlichen einen Neubau von <https://redmine-plugins.expert.de> an, sodass eine neue
+  Version samt Download-Links dort binnen Minuten erscheint statt erst beim wöchentlichen Lauf.
+
 ## [0.20.0] - 2026-09-30
 
 ### Hinzugefügt

@@ -1992,6 +1992,9 @@ Der [`release.yml`](.github/workflows/release.yml)-Workflow **prüft** daraufhin
 veröffentlicht ein GitHub-Release mit Notizen aus den seit dem letzten Tag hinzugekommenen
 CHANGELOG-Einträgen. CHANGELOG aktuell halten, damit die Notizen vollständig sind. Bei normalen
 Pushes wird nichts veröffentlicht – nur auf Tags.
+Ein letzter Schritt stößt den Neubau der [Plugin-Website](https://redmine-plugins.expert.de) an,
+damit die neue Version dort binnen Minuten erscheint (braucht das Secret `SITE_DISPATCH_TOKEN`;
+ohne es holt die Website das beim wöchentlichen Lauf nach).
 
 Danach im Projekt das Modul **expert Helpdesk** aktivieren und die Berechtigungen
 den Rollen zuordnen:
