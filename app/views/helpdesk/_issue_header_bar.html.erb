@@ -6,15 +6,16 @@
 <% info_request_active = false unless defined?(info_request_active) %>
 <div class="helpdesk-issue-header">
   <span class="hih-from">
-    <% recipients_tooltip = []
-       recipients_tooltip << "An: #{inbound.recipient_to}" if inbound&.recipient_to.present?
-       recipients_tooltip << "CC: #{inbound.recipient_cc}" if inbound&.recipient_cc.present?
-    %>
-    <span class="icon icon-email"<% if recipients_tooltip.any? %> title="<%= recipients_tooltip.map { |r| h(r) }.join('&#10;').html_safe %>"<% end %>><%= hd_icon_label('email') %></span>
+    <span class="icon icon-email"><%= hd_icon_label('email') %></span>
     <%= link_to contact.display_name,
         edit_helpdesk_contact_path(contact, :project_id => issue.project),
         :title => l(:label_helpdesk_customer) %>
     (<%= mail_to contact.email, contact.email %>)
+    <%# Who else the initial mail was addressed to (#43), same pill as on incoming journals %>
+    <% if inbound %>
+      <%= render :partial => 'helpdesk/recipients_pill',
+                 :locals  => { :summary => HelpdeskMessage.recipient_summary(inbound) } %>
+    <% end %>
     <%# "Never ask this customer for more information". The marker matters on its
         own - without it the missing follow-up on a Veeam-style ticket looks like a
         broken check - and the toggle sits here because this is where an agent

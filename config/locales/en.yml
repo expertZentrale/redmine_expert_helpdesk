@@ -254,6 +254,9 @@ en:
   text_helpdesk_multi_recipients_hint: 'Separate multiple addresses with commas'
   label_helpdesk_sent_to: 'Sent to'
   label_helpdesk_sent_on: 'Sent on'
+  label_helpdesk_recipients_to: 'To'
+  label_helpdesk_recipients_cc: 'CC'
+  label_helpdesk_recipients_own_mailbox: 'this mailbox'
 
   label_helpdesk_sla: 'SLA'
   field_helpdesk_sla_enabled: 'Enable SLA'

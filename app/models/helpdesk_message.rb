@@ -80,6 +80,31 @@ class HelpdeskMessage < HelpdeskApplicationRecord
     { :to => to, :cc => cc }
   end
 
+  # What the recipients pill on the ticket header and on incoming journals
+  # shows for one inbound mail: every To/Cc address, each flagged whether it
+  # is the mailbox that received the mail, plus how many people besides us
+  # were addressed in each header (the pill's "An +1" / "CC +2").
+  #
+  # Unlike original_recipients_for our own mailbox stays in the lists - the
+  # popover marks it instead of hiding it, so agents see which of several
+  # support mailboxes the customer wrote to. An address in both headers is
+  # listed under To only.
+  def self.recipient_summary(msg)
+    own = mailbox_addresses(msg.helpdesk_mailbox).map { |a| a.to_s.strip.downcase }
+    to  = split_addresses(msg.recipient_to)
+    cc  = split_addresses(msg.recipient_cc, to.map(&:downcase))
+    tag = ->(addr) { { :address => addr, :own => own.include?(addr.downcase) } }
+    to  = to.map(&tag)
+    cc  = cc.map(&tag)
+
+    {
+      :to        => to,
+      :cc        => cc,
+      :to_others => to.count { |r| !r[:own] },
+      :cc_others => cc.count { |r| !r[:own] }
+    }
+  end
+
   # Splits a stored recipient header into single addresses. MailProcessor writes
   # these as Mail#to.join(', '), so they are bare addresses - but a hand-written
   # or legacy row can carry the RFC 2822 `"Name" <addr>` form, whose display

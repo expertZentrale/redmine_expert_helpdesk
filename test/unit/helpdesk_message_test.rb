@@ -189,4 +189,62 @@ class HelpdeskMessageTest < ActiveSupport::TestCase
     # Deliberately no :exclude - the message knows which mailbox received it.
     assert_equal ['chef@kunde.de'], HelpdeskMessage.original_recipients_for(issue)[:to]
   end
+  # -----------------------------------------------------------------------
+  # Recipient summary (recipients pill on ticket header + incoming journals)
+  # -----------------------------------------------------------------------
+
+  def summary_mailbox(issue)
+    HelpdeskMailbox.create!(:project => issue.project, :mailbox_address => 'support@expert.local',
+                            :provider => 'imap', :imap_host => 'mail.example.com')
+  end
+
+  # The mail from the issue: two To (one of them us), two CC -> "An +1 | CC +2".
+  def test_recipient_summary_counts_everyone_besides_the_receiving_mailbox
+    issue = Issue.first
+    msg = HelpdeskMessage.create!(:issue => issue, :direction => 'in', :helpdesk_mailbox => summary_mailbox(issue),
+                                  :recipient_to => 'Support@Expert.local, service@expert.local',
+                                  :recipient_cc => 'manager@kunde.de, kollege@kunde.de')
+    summary = HelpdeskMessage.recipient_summary(msg)
+
+    assert_equal 1, summary[:to_others]
+    assert_equal 2, summary[:cc_others]
+    assert_equal [{ :address => 'Support@Expert.local', :own => true },
+                  { :address => 'service@expert.local', :own => false }], summary[:to]
+    assert_equal %w[manager@kunde.de kollege@kunde.de], summary[:cc].map { |r| r[:address] }
+  end
+
+  def test_recipient_summary_is_empty_when_only_our_mailbox_was_addressed
+    issue = Issue.first
+    msg = HelpdeskMessage.create!(:issue => issue, :direction => 'in', :helpdesk_mailbox => summary_mailbox(issue),
+                                  :recipient_to => 'support@expert.local')
+    summary = HelpdeskMessage.recipient_summary(msg)
+
+    assert_equal 0, summary[:to_others] + summary[:cc_others]
+    assert_equal [], summary[:cc]
+  end
+
+  def test_recipient_summary_lists_an_address_in_both_headers_under_to_only
+    msg = inbound(Issue.first, 'chef@kunde.de', 'chef@kunde.de, kollege@kunde.de')
+    summary = HelpdeskMessage.recipient_summary(msg)
+
+    assert_equal ['chef@kunde.de'], summary[:to].map { |r| r[:address] }
+    assert_equal ['kollege@kunde.de'], summary[:cc].map { |r| r[:address] }
+  end
+
+  # Mailbox deleted or never linked: nothing can be recognised as ours, so
+  # every address counts - better an "An +1" too many than hiding someone.
+  def test_recipient_summary_without_mailbox_counts_every_address
+    msg = inbound(Issue.first, 'support@expert.local, chef@kunde.de')
+    summary = HelpdeskMessage.recipient_summary(msg)
+
+    assert_equal 2, summary[:to_others]
+    assert summary[:to].none? { |r| r[:own] }
+  end
+
+  def test_recipient_summary_survives_missing_headers
+    msg = inbound(Issue.first, nil)
+    summary = HelpdeskMessage.recipient_summary(msg)
+
+    assert_equal({ :to => [], :cc => [], :to_others => 0, :cc_others => 0 }, summary)
+  end
 end

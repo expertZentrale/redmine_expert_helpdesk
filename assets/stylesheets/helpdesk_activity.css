@@ -205,3 +205,58 @@ a.hd-blacklist-attachment:hover {
   color: #bb0000;
   text-decoration: underline;
 }
+
+/* Recipients pill of an inbound mail (ticket header + incoming journals):
+ * "An +1 | CC +2" with a popover listing every address. The trigger is a
+ * <button>; the popover opens on hover and while .hd-rcpt.open is set (click,
+ * Enter/Space - see the toggle script in Hooks#view_layouts_base_html_head). */
+.hd-rcpt { position: relative; display: inline-block; vertical-align: middle; }
+button.hd-rcpt-pill {
+  display: inline-flex;
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.85em;
+  font-weight: normal;
+  line-height: 1.5;
+  border-radius: 3px;
+  background: #dde8f6;
+  color: #3a6699;
+  border: 1px solid #c0d4ed;
+  box-shadow: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button.hd-rcpt-pill:focus-visible { outline: 2px solid #3a6699; outline-offset: 1px; }
+.hd-rcpt-seg { padding: 0 6px; }
+.hd-rcpt-seg + .hd-rcpt-seg { border-left: 1px solid #c0d4ed; }
+.hd-rcpt-caret { padding-right: 5px; margin-left: -3px; }
+.hd-rcpt-pop {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  min-width: 220px;
+  padding: 6px 10px;
+  background: #fff;
+  color: #222;
+  border: 1px solid #c8d8ec;
+  border-radius: 4px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  font-size: 12px;
+  font-weight: normal;
+  line-height: 1.5;
+  text-align: left;
+  white-space: nowrap;
+}
+/* Bridges the 4px gap so the popover does not close on the way down. */
+.hd-rcpt-pop::before { content: ''; position: absolute; left: 0; right: 0; top: -5px; height: 5px; }
+.hd-rcpt:hover .hd-rcpt-pop,
+.hd-rcpt.open .hd-rcpt-pop { display: block; }
+/* #666 on white: 5.7:1, WCAG AA for small text (#888 was 3.5:1). */
+.hd-rcpt-pop-head { display: block; margin: 0 0 1px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; color: #666; }
+.hd-rcpt-pop ul { margin: 0 0 6px; padding-left: 16px; }
+.hd-rcpt-pop ul:last-child { margin-bottom: 0; }
+.hd-rcpt-own { color: #666; font-size: 11px; }

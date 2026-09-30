@@ -7,6 +7,25 @@ module RedmineExpertHelpdesk
     # JavaScript erzeugte Elemente (Antwort-Button, Seitenleiste) korrekt Icons anzeigen.
     def view_layouts_base_html_head(context = {})
       out = stylesheet_link_tag('helpdesk_activity', :plugin => 'redmine_expert_helpdesk')
+      # Disclosure toggle of the recipients pill (_recipients_pill). Delegated on
+      # document, because the journal pills are injected after page load. Enter
+      # and Space arrive as click on a <button>; Escape and an outside click close.
+      out << javascript_tag(<<~JS)
+        (function(){
+          function setOpen(w,o){w.classList.toggle('open',o);w.querySelector('.hd-rcpt-pill').setAttribute('aria-expanded',o?'true':'false');}
+          function closeAll(except){document.querySelectorAll('.hd-rcpt.open').forEach(function(w){if(w!==except)setOpen(w,false);});}
+          document.addEventListener('click',function(e){
+            var b=e.target.closest&&e.target.closest('.hd-rcpt-pill');
+            if(!b){if(!(e.target.closest&&e.target.closest('.hd-rcpt-pop')))closeAll(null);return;}
+            var w=b.parentNode;closeAll(w);setOpen(w,!w.classList.contains('open'));
+          });
+          document.addEventListener('keydown',function(e){
+            if(e.key!=='Escape')return;
+            var w=document.querySelector('.hd-rcpt.open');if(!w)return;
+            setOpen(w,false);w.querySelector('.hd-rcpt-pill').focus();
+          });
+        })();
+      JS
       if Redmine::VERSION::MAJOR >= 6
         sprite = asset_path('icons.svg')
         out << javascript_tag(
@@ -46,7 +65,7 @@ module RedmineExpertHelpdesk
       contact = HelpdeskTicketInfo.for_issue(issue)&.helpdesk_contact
       if contact
         # inbound ist nil wenn kein eingehendes Ticket existiert (manuell/ausgehend)
-        inbound = HelpdeskMessage.incoming.includes(:eml_attachment)
+        inbound = HelpdeskMessage.incoming.includes(:eml_attachment, :helpdesk_mailbox)
                                  .where(:issue_id => issue.id)
                                  .order(:id => :asc).first
 
