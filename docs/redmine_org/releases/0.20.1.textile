@@ -1,0 +1,13 @@
+h3. Fixed
+
+* *Deleting a ticket left its helpdesk data behind.* Deleting an issue through Redmine itself (the issue page, bulk delete or deleting the project) kept its helpdesk ticket info and its mail messages. They are now deleted together with the issue.
+* *Deleting a project left its helpdesk contacts behind,* invisible in every list and impossible to delete through the REST API, not even by an administrator. A project's contacts are now deleted with it.
+* *Deleting a ticket that had mail through the REST API failed* (@DELETE /helpdesk/tickets/:id@ answered 500). It works now, and the ticket's messages are deleted with it.
+
+h3. Changed
+
+* The release workflow now refreshes the plugin website (redmine-plugins.expert.de) right after a release.
+
+h3. Upgrade notes
+
+Migration 063 runs once and removes what earlier deletes left behind: ticket infos and messages of tickets that no longer exist, and contacts of projects that no longer exist. Nothing it removes is reachable any more. On a database of about 180,000 tickets it took a few seconds. Run plugin migrations.
