@@ -6,6 +6,17 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Fixed
+
+- **An attachment read as text could take down the whole AI summary.** Text attachments were read
+  as raw bytes, which Ruby then refused to join with the UTF-8 prompt (`Encoding::CompatibilityError`)
+  — the job logged the error and the ticket got no summary at all. Any text file with an umlaut
+  triggered it, and so did a `.zip` that Outlook had labelled `text/plain`. Attachment text is now
+  read as UTF-8 (Windows-1252 as fallback, a character cut at the size limit is dropped), and
+  content that is actually binary is skipped instead of being sent to the model as noise.
+
 ## [0.20.2] - 2026-10-01
 
 ### Fixed

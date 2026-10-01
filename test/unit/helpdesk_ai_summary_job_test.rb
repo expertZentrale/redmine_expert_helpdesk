@@ -136,4 +136,65 @@ class HelpdeskAiSummaryJobTest < ActiveSupport::TestCase
       assert_nil HelpdeskKbProposal.find_by(:issue_id => issue.id).reranked
     end
   end
+
+  # --- attachment text (extract_text) ---
+
+  TextPs = Struct.new(:dummy) do
+    def ai_attach_metadata?; false; end
+    def ai_attach_text?; true; end
+    def ai_attach_images?; false; end
+  end
+
+  FakeAttachment = Struct.new(:filename, :content_type, :diskfile, :filesize)
+
+  def with_attachment(bytes, filename, content_type)
+    file = Tempfile.new('ai-att')
+    file.binmode
+    file.write(bytes)
+    file.close
+    yield FakeAttachment.new(filename, content_type, file.path, bytes.bytesize)
+  ensure
+    file&.unlink
+  end
+
+  def build_with(att)
+    job.send(:build_input, 'Siehe Anhang.', [att], TextPs.new, {}, nil, nil).first
+  end
+
+  # Field case #931581: Outlook labelled a forwarded .zip as text/plain; the
+  # binary read met the UTF-8 prompt and the whole summary died with
+  # Encoding::CompatibilityError.
+  def test_binary_labelled_as_text_is_skipped
+    zip = "PK\x03\x04\x14\x00\x08\x00\x08\x00\x80eXU\xC3\xFF".b
+    with_attachment(zip, 'GO!_Stammdaten.zip', 'text/plain') do |att|
+      input = build_with(att)
+      assert_equal Encoding::UTF_8, input.encoding
+      assert_equal 'Siehe Anhang.', input
+    end
+  end
+
+  # A read with a length returns ASCII-8BIT even for real UTF-8, so every
+  # text attachment with an umlaut crashed the same way.
+  def test_utf8_text_attachment_is_included
+    with_attachment('Grüße aus Köln – Zählerstand 4711'.b, 'log.txt', 'text/plain') do |att|
+      input = build_with(att)
+      assert_equal Encoding::UTF_8, input.encoding
+      assert_includes input, 'Grüße aus Köln – Zählerstand 4711'
+    end
+  end
+
+  def test_windows_1252_text_attachment_is_converted
+    with_attachment("Gr\xFC\xDFe;Stra\xDFe".b, 'export.csv', 'text/csv') do |att|
+      assert_includes build_with(att), 'Grüße;Straße'
+    end
+  end
+
+  def test_multibyte_character_cut_at_the_read_limit_stays_utf8
+    bytes = ('a' * (HelpdeskAiSummaryJob::MAX_ATT_TEXT_BYTES - 1) + 'ü').b
+    with_attachment(bytes, 'long.txt', 'text/plain') do |att|
+      text = job.send(:extract_text, att)
+      assert_equal Encoding::UTF_8, text.encoding
+      assert_equal 'a' * (HelpdeskAiSummaryJob::MAX_ATT_TEXT_BYTES - 1), text
+    end
+  end
 end

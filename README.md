@@ -1079,8 +1079,9 @@ centrally):
 - **Prompt mode** — *inherit* the central prompt, *extend* it, or *override* it with a
   project-specific prompt.
 - **Attachments** — independently choose what is sent to the AI: filenames/metadata,
-  extracted text (PDF via optional `pdf-reader`, text files), and/or images (requires a
-  vision-capable model).
+  extracted text (PDF via optional `pdf-reader`, text files — read as UTF-8, falling back to
+  Windows-1252; content that is actually binary is skipped even when the mail labels it as
+  text), and/or images (requires a vision-capable model).
 - **Minimum image size** — images below this many KB, or smaller than 64x64 pixels, are not
   sent to the model. Signature logos, social icons and tracking pixels hang off nearly every
   mail: they cost vision tokens for nothing and push the real screenshot out of the small
