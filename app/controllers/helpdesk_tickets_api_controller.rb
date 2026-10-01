@@ -60,9 +60,8 @@ class HelpdeskTicketsApiController < ApplicationController
   end
 
   def destroy
-    # Helpdesk-Zusatzdaten entfernen, damit keine verwaisten Zeilen bleiben.
-    HelpdeskTicketInfo.where(:issue_id => @issue.id).delete_all
-    HelpdeskMessage.where(:issue_id => @issue.id).update_all(:issue_id => nil)
+    # Ticket info and messages go with the issue through Issue's own
+    # :dependent options (IssuePatch), the same as for any core delete.
     @issue.destroy
     render_api_ok
   end

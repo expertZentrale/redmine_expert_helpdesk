@@ -123,6 +123,20 @@ class HelpdeskApiTest < Redmine::IntegrationTest
     assert_response :not_found
   end
 
+  # A ticket with mail used to answer 500: the delete tried to set the
+  # messages' NOT NULL issue_id to NULL. They now go with the ticket.
+  def test_delete_ticket_with_messages
+    issue = Issue.create!(:project_id => 1, :tracker_id => 1, :author_id => 1, :subject => 'Mit Mail')
+    HelpdeskTicketInfo.create!(:issue_id => issue.id)
+    message = HelpdeskMessage.create!(:issue => issue, :direction => 'in')
+
+    delete "/helpdesk/tickets/#{issue.id}.json", :headers => auth
+
+    assert_response :no_content
+    assert_not Issue.exists?(issue.id)
+    assert_not HelpdeskMessage.exists?(message.id)
+  end
+
   # --- Projekt-Einstellungen: anzeigen + (partiell) aktualisieren -----------
 
   def test_project_settings_show_and_update

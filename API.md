@@ -475,8 +475,10 @@ Response: `204 No Content`; `422` on validation error; `403` without `edit_issue
 
 `DELETE /helpdesk/tickets/:id.{json,xml}`
 
-Deletes the underlying issue (requires `delete_issues`) and removes the ticket's
-helpdesk info; helpdesk messages are detached (their `issue_id` is cleared).
+Deletes the underlying issue (requires `delete_issues`) together with the ticket's
+helpdesk info and its helpdesk messages. The same happens whenever the issue is deleted,
+also through Redmine itself (issue page, bulk delete, deleting the project). Deleting a
+project also deletes its helpdesk contacts.
 
 ```bash
 curl -X DELETE -H "X-Redmine-API-Key: $KEY" \
