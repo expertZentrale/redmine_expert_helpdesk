@@ -1,0 +1,12 @@
+h3. Fixed
+
+* *The sidebar could recommend a different ticket than the AI summary.* Both start from the same similar solved tickets, but the summary reads problem and solution and only cites the case that fits, while the sidebar showed them in plain score order. The sidebar now follows the summary: the case it cites comes first, marked _in the AI summary_, the others are greyed out, and if none fits the sidebar says so. This applies when a project shows proposed solutions in both places.
+* *The knowledge base was searched with the whole mail, signature included,* so a short request under a long signature could match the wrong entries. The search now uses the subject and what the customer wrote, without quoted history, closing greeting, signature, links, addresses, phone numbers and images. The AI summary still sees the full mail.
+
+h3. Added
+
+* If a configured reranker could not be reached, the sidebar now says that the order is by text similarity only.
+
+h3. Upgrade notes
+
+Migration 064 adds two columns to @helpdesk_kb_proposals@. Run plugin migrations. Existing tickets show the new sidebar after their AI summary is regenerated.
