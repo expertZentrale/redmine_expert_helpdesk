@@ -251,7 +251,7 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
 
     if attachments.any? && ps.ai_attach_text?
       attachments.each do |a|
-        txt = extract_text(a)
+        txt = extract_text(a, issue)
         parts << "\n[Anhang #{a.filename} – extrahierter Text:]\n#{txt}" if txt.present?
       end
     end
@@ -344,20 +344,51 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
   # Textextraktion aus Anhaengen: Text-basierte Typen direkt, PDF via pdf-reader
   # (optional; ohne das Gem wird PDF-Text uebersprungen). Bilder werden hier nicht
   # gelesen (dafuer ist die Vision-Option zustaendig).
-  def extract_text(att)
+  def extract_text(att, issue = nil)
     return nil unless att.diskfile && File.exist?(att.diskfile)
 
     ct  = att.content_type.to_s
     ext = File.extname(att.filename.to_s).delete('.').downcase
 
     if ct.start_with?('text/') || TEXT_CONTENT_TYPES.include?(ct) || TEXT_EXTENSIONS.include?(ext)
-      File.read(att.diskfile, MAX_ATT_TEXT_BYTES).to_s.scrub(' ')
+      text = decode_text(File.binread(att.diskfile, MAX_ATT_TEXT_BYTES),
+                         :truncated => File.size(att.diskfile) > MAX_ATT_TEXT_BYTES)
+      # Not an error - but without this line nothing shows that an attachment
+      # the mail declared as text never reached the model (#931581).
+      if text.nil? && att.filesize.to_i.positive?
+        RedmineExpertHelpdesk::AiLogger.debug(
+          "attachment-text issue=##{issue&.id} file=#{att.filename} type=#{ct} skipped=binary"
+        )
+      end
+      text
     elsif ct == 'application/pdf' || ext == 'pdf'
       extract_pdf(att.diskfile)
     end
   rescue => e
     Rails.logger.warn("[helpdesk][ai] Textextraktion fehlgeschlagen (#{att.filename}): #{e.message}")
     nil
+  end
+
+  # Raw attachment bytes -> UTF-8 text, or nil for binary content. A read with
+  # a length always returns ASCII-8BIT, which scrub leaves alone and which then
+  # raises Encoding::CompatibilityError as soon as it meets the UTF-8 prompt -
+  # that took down the whole summary. The declared type is no guarantee either:
+  # Outlook labels a forwarded .zip as text/plain, so binary is detected from
+  # the bytes (a NUL never occurs in text). Text that is not UTF-8 is read as
+  # Windows-1252, the usual encoding of German CSV/log exports. Invalid bytes
+  # at the very end only count as a UTF-8 character cut in half when the read
+  # actually stopped at the limit - otherwise "Gr\xFC" would lose its ü.
+  def decode_text(bytes, truncated: false)
+    return nil if bytes.nil? || bytes.empty? || bytes.include?("\0")
+
+    utf8 = bytes.dup.force_encoding(Encoding::UTF_8)
+    return utf8 if utf8.valid_encoding?
+
+    clean = utf8.scrub('')
+    return clean if truncated && bytes.bytesize - clean.bytesize <= 3 && bytes.byteslice(0, clean.bytesize) == clean.b
+
+    bytes.dup.force_encoding(Encoding::Windows_1252)
+         .encode(Encoding::UTF_8, :invalid => :replace, :undef => :replace, :replace => ' ')
   end
 
   def extract_pdf(path)

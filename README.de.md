@@ -1125,8 +1125,9 @@ aktiviert ist):
 - **Prompt-Modus** – zentralen Prompt *erben*, *erweitern* oder durch einen
   Projekt-Prompt *ersetzen*.
 - **Anhänge** – unabhängig wählbar, was an die KI geht: Dateinamen/Metadaten, extrahierter
-  Text (PDF via optionalem `pdf-reader`, Textdateien) und/oder Bilder (erfordert ein
-  vision-fähiges Modell).
+  Text (PDF via optionalem `pdf-reader`, Textdateien – gelesen als UTF-8, sonst Windows-1252;
+  tatsächlich binäre Inhalte werden übersprungen, auch wenn die Mail sie als Text ausweist)
+  und/oder Bilder (erfordert ein vision-fähiges Modell).
 - **Mindestgröße für Bilder** – Bilder unterhalb dieser KB-Grenze oder kleiner als 64x64 Pixel
   gehen nicht an das Modell. Signatur-Logos, Social-Media-Icons und Tracking-Pixel hängen an
   fast jeder Mail: sie kosten Vision-Tokens ohne Nutzen und verdrängen den eigentlichen

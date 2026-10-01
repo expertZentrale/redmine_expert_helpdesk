@@ -5,6 +5,20 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Behoben
+
+- **Ein als Text gelesener Anhang konnte die ganze KI-Zusammenfassung abbrechen.** Text-Anhänge
+  wurden als rohe Bytes gelesen, die Ruby dann nicht mit dem UTF-8-Prompt zusammenfügen wollte
+  (`Encoding::CompatibilityError`) – der Job protokollierte den Fehler, das Ticket bekam gar keine
+  Zusammenfassung. Jede Textdatei mit Umlaut löste das aus, ebenso eine `.zip`, die Outlook als
+  `text/plain` ausgewiesen hatte. Anhang-Text wird jetzt als UTF-8 gelesen (Windows-1252 als
+  Rückfall, ein an der Größengrenze abgeschnittenes Zeichen entfällt), tatsächlich binäre Inhalte
+  werden übersprungen, statt als Rauschen an das Modell zu gehen. Ein übersprungener Anhang wird als
+  `[helpdesk][ai][debug] attachment-text … skipped=binary` protokolliert (Level gemäß `ai_log_level`),
+  sodass nachvollziehbar ist, wenn eine Zusammenfassung eine Datei ausgelassen hat.
+
 ## [0.20.2] - 2026-10-01
 
 ### Behoben
