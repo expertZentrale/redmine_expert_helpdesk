@@ -189,8 +189,16 @@ class HelpdeskAiSummaryJobTest < ActiveSupport::TestCase
     end
   end
 
+  # Copilot review on PR #50: a short Windows-1252 file ending in a non-ASCII
+  # byte looks like a cut UTF-8 character, but nothing was cut.
+  def test_windows_1252_text_ending_in_an_umlaut_keeps_it
+    with_attachment("Gr\xFC".b, 'short.txt', 'text/plain') do |att|
+      assert_equal 'Grü', job.send(:extract_text, att)
+    end
+  end
+
   def test_multibyte_character_cut_at_the_read_limit_stays_utf8
-    bytes = ('a' * (HelpdeskAiSummaryJob::MAX_ATT_TEXT_BYTES - 1) + 'ü').b
+    bytes = ('a' * (HelpdeskAiSummaryJob::MAX_ATT_TEXT_BYTES - 1) + 'ü' + 'rest').b
     with_attachment(bytes, 'long.txt', 'text/plain') do |att|
       text = job.send(:extract_text, att)
       assert_equal Encoding::UTF_8, text.encoding

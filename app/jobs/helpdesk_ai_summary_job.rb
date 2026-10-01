@@ -351,7 +351,8 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
     ext = File.extname(att.filename.to_s).delete('.').downcase
 
     if ct.start_with?('text/') || TEXT_CONTENT_TYPES.include?(ct) || TEXT_EXTENSIONS.include?(ext)
-      decode_text(File.binread(att.diskfile, MAX_ATT_TEXT_BYTES))
+      decode_text(File.binread(att.diskfile, MAX_ATT_TEXT_BYTES),
+                  :truncated => File.size(att.diskfile) > MAX_ATT_TEXT_BYTES)
     elsif ct == 'application/pdf' || ext == 'pdf'
       extract_pdf(att.diskfile)
     end
@@ -365,17 +366,18 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
   # raises Encoding::CompatibilityError as soon as it meets the UTF-8 prompt -
   # that took down the whole summary. The declared type is no guarantee either:
   # Outlook labels a forwarded .zip as text/plain, so binary is detected from
-  # the bytes (a NUL never occurs in text). Text that is not UTF-8 beyond a
-  # character cut at the read limit is read as Windows-1252, the usual
-  # encoding of German CSV/log exports.
-  def decode_text(bytes)
+  # the bytes (a NUL never occurs in text). Text that is not UTF-8 is read as
+  # Windows-1252, the usual encoding of German CSV/log exports. Invalid bytes
+  # at the very end only count as a UTF-8 character cut in half when the read
+  # actually stopped at the limit - otherwise "Gr\xFC" would lose its ü.
+  def decode_text(bytes, truncated: false)
     return nil if bytes.nil? || bytes.empty? || bytes.include?("\0")
 
     utf8 = bytes.dup.force_encoding(Encoding::UTF_8)
     return utf8 if utf8.valid_encoding?
 
     clean = utf8.scrub('')
-    return clean if bytes.bytesize - clean.bytesize <= 3 && bytes.byteslice(0, clean.bytesize) == clean.b
+    return clean if truncated && bytes.bytesize - clean.bytesize <= 3 && bytes.byteslice(0, clean.bytesize) == clean.b
 
     bytes.dup.force_encoding(Encoding::Windows_1252)
          .encode(Encoding::UTF_8, :invalid => :replace, :undef => :replace, :replace => ' ')
