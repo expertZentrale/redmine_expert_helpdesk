@@ -15,7 +15,9 @@
   Zusammenfassung. Jede Textdatei mit Umlaut löste das aus, ebenso eine `.zip`, die Outlook als
   `text/plain` ausgewiesen hatte. Anhang-Text wird jetzt als UTF-8 gelesen (Windows-1252 als
   Rückfall, ein an der Größengrenze abgeschnittenes Zeichen entfällt), tatsächlich binäre Inhalte
-  werden übersprungen, statt als Rauschen an das Modell zu gehen.
+  werden übersprungen, statt als Rauschen an das Modell zu gehen. Ein übersprungener Anhang wird als
+  `[helpdesk][ai][debug] attachment-text … skipped=binary` protokolliert (Level gemäß `ai_log_level`),
+  sodass nachvollziehbar ist, wenn eine Zusammenfassung eine Datei ausgelassen hat.
 
 ## [0.20.2] - 2026-10-01
 

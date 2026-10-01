@@ -173,6 +173,22 @@ class HelpdeskAiSummaryJobTest < ActiveSupport::TestCase
     end
   end
 
+  def test_skipped_binary_attachment_is_logged
+    zip = "PK\x03\x04\x14\x00\x08\x00".b
+    with_attachment(zip, 'GO!_Stammdaten.zip', 'text/plain') do |att|
+      RedmineExpertHelpdesk::AiLogger.expects(:debug)
+        .with(regexp_matches(/attachment-text issue=#42 file=GO!_Stammdaten\.zip type=text\/plain skipped=binary/))
+      assert_nil job.send(:extract_text, att, Issue.new.tap { |i| i.id = 42 })
+    end
+  end
+
+  def test_readable_text_attachment_is_not_logged
+    with_attachment('Zählerstand 4711'.b, 'log.txt', 'text/plain') do |att|
+      RedmineExpertHelpdesk::AiLogger.expects(:debug).never
+      job.send(:extract_text, att)
+    end
+  end
+
   # A read with a length returns ASCII-8BIT even for real UTF-8, so every
   # text attachment with an umlaut crashed the same way.
   def test_utf8_text_attachment_is_included

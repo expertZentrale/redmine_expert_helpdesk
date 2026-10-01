@@ -251,7 +251,7 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
 
     if attachments.any? && ps.ai_attach_text?
       attachments.each do |a|
-        txt = extract_text(a)
+        txt = extract_text(a, issue)
         parts << "\n[Anhang #{a.filename} – extrahierter Text:]\n#{txt}" if txt.present?
       end
     end
@@ -344,15 +344,23 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
   # Textextraktion aus Anhaengen: Text-basierte Typen direkt, PDF via pdf-reader
   # (optional; ohne das Gem wird PDF-Text uebersprungen). Bilder werden hier nicht
   # gelesen (dafuer ist die Vision-Option zustaendig).
-  def extract_text(att)
+  def extract_text(att, issue = nil)
     return nil unless att.diskfile && File.exist?(att.diskfile)
 
     ct  = att.content_type.to_s
     ext = File.extname(att.filename.to_s).delete('.').downcase
 
     if ct.start_with?('text/') || TEXT_CONTENT_TYPES.include?(ct) || TEXT_EXTENSIONS.include?(ext)
-      decode_text(File.binread(att.diskfile, MAX_ATT_TEXT_BYTES),
-                  :truncated => File.size(att.diskfile) > MAX_ATT_TEXT_BYTES)
+      text = decode_text(File.binread(att.diskfile, MAX_ATT_TEXT_BYTES),
+                         :truncated => File.size(att.diskfile) > MAX_ATT_TEXT_BYTES)
+      # Not an error - but without this line nothing shows that an attachment
+      # the mail declared as text never reached the model (#931581).
+      if text.nil? && att.filesize.to_i.positive?
+        RedmineExpertHelpdesk::AiLogger.debug(
+          "attachment-text issue=##{issue&.id} file=#{att.filename} type=#{ct} skipped=binary"
+        )
+      end
+      text
     elsif ct == 'application/pdf' || ext == 'pdf'
       extract_pdf(att.diskfile)
     end

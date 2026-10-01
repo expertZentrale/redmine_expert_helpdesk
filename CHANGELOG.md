@@ -15,7 +15,9 @@
   — the job logged the error and the ticket got no summary at all. Any text file with an umlaut
   triggered it, and so did a `.zip` that Outlook had labelled `text/plain`. Attachment text is now
   read as UTF-8 (Windows-1252 as fallback, a character cut at the size limit is dropped), and
-  content that is actually binary is skipped instead of being sent to the model as noise.
+  content that is actually binary is skipped instead of being sent to the model as noise. A skipped
+  attachment is logged as `[helpdesk][ai][debug] attachment-text … skipped=binary` (level per
+  `ai_log_level`), so a summary that left a file out can be traced.
 
 ## [0.20.2] - 2026-10-01
 
