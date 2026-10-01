@@ -1,0 +1,7 @@
+h3. Fixed
+
+* *An attachment read as text could take down the whole AI summary.* Text attachments were read as raw bytes, which could not be joined with the prompt - any text file with an umlaut, or a @.zip@ that Outlook labelled @text/plain@, made the summary fail and the ticket got none. Attachment text is now read as UTF-8 (Windows-1252 as fallback), and content that is actually binary is skipped instead of being sent to the model. A skipped attachment is written to the log (@[helpdesk][ai][debug] attachment-text ... skipped=binary@, level per AI log level).
+
+h3. Upgrade notes
+
+No migrations. Tickets whose summary failed this way can get one with the sidebar's regenerate button.
