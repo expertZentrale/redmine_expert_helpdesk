@@ -13,6 +13,25 @@
   dem Veröffentlichen einen Neubau von <https://redmine-plugins.expert.de> an, sodass eine neue
   Version samt Download-Links dort binnen Minuten erscheint statt erst beim wöchentlichen Lauf.
 
+### Behoben
+
+- **Beim Löschen eines Tickets blieben seine Helpdesk-Daten zurück.** Nur das plugin-eigene
+  `DELETE /helpdesk/tickets/:id` räumte auf; beim Löschen über Redmine selbst (Ticketseite,
+  Sammellöschung, Löschen des Projekts) blieb der Ticket-Info-Datensatz stehen, und die
+  Nachrichten zeigten weiter auf ein Ticket, das es nicht mehr gibt. Jetzt gehören beide zum
+  Ticket und werden mit ihm gelöscht.
+  ([#47](https://github.com/expertZentrale/redmine_expert_helpdesk/issues/47))
+- **`DELETE /helpdesk/tickets/:id` schlug bei jedem Ticket mit Mails fehl.** Es versuchte, die
+  Nachrichten vom Ticket zu lösen, was das Schema nicht zulässt (`issue_id` ist `NOT NULL`), und
+  antwortete mit 500. Die Nachrichten werden jetzt mit dem Ticket gelöscht; die API-Referenz
+  („detached“) ist korrigiert.
+- **Beim Löschen eines Projekts blieben seine Kontakte zurück** — in keiner Liste sichtbar und
+  über die API nicht löschbar, nicht einmal für Administratoren (403). Die Kontakte eines Projekts
+  werden jetzt mit ihm gelöscht.
+  ([#46](https://github.com/expertZentrale/redmine_expert_helpdesk/issues/46))
+- **Migration 063 räumt auf, was frühere Löschvorgänge hinterlassen haben:** Ticket-Infos und
+  Nachrichten gelöschter Tickets sowie Kontakte gelöschter Projekte.
+
 ## [0.20.0] - 2026-09-30
 
 ### Hinzugefügt

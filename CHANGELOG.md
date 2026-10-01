@@ -14,6 +14,22 @@
   <https://redmine-plugins.expert.de> to rebuild after publishing, so a new version and its
   download links appear there within minutes instead of on the weekly refresh.
 
+### Fixed
+
+- **Deleting an issue left its helpdesk data behind.** Only the plugin's own
+  `DELETE /helpdesk/tickets/:id` cleaned up; deleting through Redmine itself (issue page, bulk
+  delete, deleting the project) kept the ticket-info row and left the issue's messages pointing at
+  an issue that no longer exists. Issues now own both, and both are deleted with them.
+  ([#47](https://github.com/expertZentrale/redmine_expert_helpdesk/issues/47))
+- **`DELETE /helpdesk/tickets/:id` failed for every ticket that had mail.** It tried to unlink the
+  messages, which the schema does not allow (`issue_id` is `NOT NULL`), and answered 500. The
+  messages are now deleted with the ticket; the API reference said "detached" and is corrected.
+- **Deleting a project left its contacts behind**, invisible in every list and impossible to
+  delete through the API, not even by an admin (403). A project's contacts are now deleted with it.
+  ([#46](https://github.com/expertZentrale/redmine_expert_helpdesk/issues/46))
+- **Migration 063 cleans up what earlier deletes left behind:** ticket infos and messages of
+  deleted issues, and contacts of deleted projects.
+
 ## [0.20.0] - 2026-09-30
 
 ### Added

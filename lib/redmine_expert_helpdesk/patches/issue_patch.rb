@@ -8,6 +8,16 @@ module RedmineExpertHelpdesk
   module Patches
     module IssuePatch
       def self.included(base)
+        # The issue owns its helpdesk data. Without these, deleting an issue
+        # through core Redmine (issue page, bulk delete, project delete) left
+        # its ticket-info row behind and its messages pointing at an issue_id
+        # that no longer exists; only the plugin's own API delete cleaned up
+        # (#47). Messages go too: issue_id is NOT NULL and the model requires
+        # an issue, and the ticket and its archived .eml are deleted anyway.
+        # (The API path tried to unlink them instead, which raised on every
+        # ticket that had mail.)
+        base.has_one :helpdesk_ticket_info, :dependent => :delete
+        base.has_many :helpdesk_messages, :dependent => :delete_all
         base.after_save :helpdesk_refresh_sla_deadlines
         base.after_save :helpdesk_enqueue_kb_ingest
         base.after_save :helpdesk_clear_awaiting_on_close
