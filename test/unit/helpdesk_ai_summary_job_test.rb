@@ -108,14 +108,23 @@ class HelpdeskAiSummaryJobTest < ActiveSupport::TestCase
     end
   end
 
-  # Only whole numbers that are a proposal's own ticket count: 9242010 or a
-  # phone number containing 924201 must not.
-  def test_verdict_ignores_numbers_that_only_contain_a_ticket_id
+  # Only explicit ticket references count. A bare number equal to the id (an
+  # order number), or one that merely contains it, must not.
+  def test_verdict_ignores_numbers_that_are_no_ticket_reference
     hits = [kb_hit(924_201, 0.83)]
     with_proposals(hits) do |issue|
-      job.send(:record_ai_verdict, issue, hits, 'Rufnummer 09242010 und Auftrag 1924201.')
+      job.send(:record_ai_verdict, issue, hits, 'Auftrag 924201, Rufnummer 09242010, Beleg #9242010.')
 
       assert_equal false, HelpdeskKbProposal.find_by(:issue_id => issue.id).ai_verdict
+    end
+  end
+
+  def test_verdict_accepts_ticket_without_hash
+    hits = [kb_hit(924_201, 0.83)]
+    with_proposals(hits) do |issue|
+      job.send(:record_ai_verdict, issue, hits, 'Lösungsvorschlag (Ticket 924201): Call Queue.')
+
+      assert_equal true, HelpdeskKbProposal.find_by(:issue_id => issue.id).ai_verdict
     end
   end
 

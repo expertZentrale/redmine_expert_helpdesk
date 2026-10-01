@@ -83,7 +83,9 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
     # RAG: similar solved tickets from the project's own knowledge base, searched
     # with what the customer wrote - subject plus body without signature,
     # quoted history, links and images (KnowledgeRetrieval.query_text).
-    query_text = RedmineExpertHelpdesk::KnowledgeRetrieval.query_text(issue.subject, base_text)
+    # The subject of the mail being summarized (source_subject), not the
+    # ticket's: a reply can be about something else than the original request.
+    query_text = RedmineExpertHelpdesk::KnowledgeRetrieval.query_text(subject.presence || issue.subject, base_text)
     retrieval = {}
     proposals = retrieve_proposals(issue, ps, settings, client, query_text, retrieval)
     if proposals.any?
@@ -91,6 +93,12 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
       reranked = client.rerank_configured? ? (retrieval[:reranked] == true) : nil
       persist_proposals(issue, proposals, reranked) if ps.kb_show_in_sidebar?
       system += kb_context_block(proposals) if ps.kb_show_in_summary?
+    elsif retrieval.key?(:candidates) && ps.kb_show_in_sidebar?
+      # The search ran and found nothing fitting: drop the previous run's rows,
+      # or the sidebar keeps an old case marked "in the AI summary" next to a
+      # summary that proposes nothing. A failed search (no diagnostics) keeps
+      # them - an outage is no reason to throw away a still valid proposal.
+      HelpdeskKbProposal.where(:issue_id => issue.id).delete_all
     end
 
     summary = client.summarize(system, user_text, image_parts,
@@ -393,12 +401,15 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
   # cite the fitting ones by ticket number - a far better judge than the
   # retrieval score, which only compares the problem text. Its verdict is
   # stored on the proposals so the sidebar shows the same choice as the
-  # summary instead of the raw ranking: cited = true, not cited = false. A
-  # number counts only if it is one of the proposals' own tickets, so other
-  # numbers in the summary (an extension, an order number) cannot match.
+  # summary instead of the raw ranking: cited = true, not cited = false. Only
+  # explicit ticket references count - "#1234" as the prompt asks for, or
+  # "Ticket 1234" - and only to one of the proposals' own tickets, so an
+  # extension or order number that happens to equal an id cannot match.
+  TICKET_REFERENCE = /(?:#|\bTicket\s+#?)(\d+)(?!\d)/i.freeze
+
   def record_ai_verdict(issue, proposals, summary)
     ids   = proposals.map { |h| (h[:payload] || {})['issue_id'].to_i }.reject(&:zero?)
-    cited = summary.to_s.scan(/(?<!\d)\d+(?!\d)/).map(&:to_i) & ids
+    cited = summary.to_s.scan(TICKET_REFERENCE).flatten.map(&:to_i) & ids
     scope = HelpdeskKbProposal.where(:issue_id => issue.id)
     scope.where(:source_issue_id => cited).update_all(:ai_verdict => true)
     scope.where.not(:source_issue_id => cited).update_all(:ai_verdict => false)
