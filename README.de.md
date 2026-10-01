@@ -1475,6 +1475,11 @@ Schwelle zwischen den niedrigsten richtigen und den höchsten unbeantwortbaren W
 - **Beitrag** (`kb_ingest_mode`): aus / **auto** (beim Schließen, wenn eine Lösung erkannt wurde) /
   **manuell** (beim Schließen entsteht ein *pending*-Eintrag; Freigabe über die Ticket-Seitenleiste).
 - **Lösungsvorschläge anzeigen** (`kb_proposal_display`): aus / Zusammenfassung / Seitenleiste / beides.
+  Bei *beides* folgt die Seitenleiste der Zusammenfassung: Der Fall, den die Zusammenfassung als
+  Lösung nennt, steht oben und ist mit *in der KI-Zusammenfassung* markiert; nicht genutzte Fälle
+  werden ausgegraut. Gesucht wird mit dem, was der Kunde geschrieben hat — Betreff und Text ohne
+  Signatur, zitierten Verlauf, Links und Bilder. War ein konfigurierter Reranker nicht erreichbar,
+  weist die Seitenleiste darauf hin.
 
 **Reiter „Wissensbasis" (Kuratierung).** Extrahierte Einträge sind nicht immer richtig, und den
 Payload direkt in Qdrant (oder einem anderen Vektor-Store) zu korrigieren hilft **nicht**: der Vektor

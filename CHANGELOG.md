@@ -6,6 +6,28 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Fixed
+
+- **The sidebar recommended a different ticket than the AI summary.** Both start from the same
+  knowledge-base hits, but the summary's model reads problem and solution and cites only the case
+  that fits, while the sidebar listed the hits in raw score order — so an unrelated "add a new
+  user" entry could sit on top while the summary rightly proposed the Teams call-queue fix. The
+  summary's verdict is now stored on the proposals (migration 064): the case it cites comes first
+  in the sidebar, marked *in the AI summary*, the others are greyed out, and if it cites none the
+  sidebar says so.
+- **The knowledge base was searched with the whole mail, signature included.** A two-line request
+  under a long signature (phone, links, social icons) matched entries on the signature instead of
+  the request. The search now uses the subject and what the customer wrote: quoted history,
+  everything from the closing line ("Viele Grüße", "Best regards", …), links, addresses, phone
+  numbers and image markers are dropped. The summary itself still sees the full mail.
+
+### Added
+
+- **The sidebar says when the reranker was not used.** A configured but unreachable reranker
+  silently fell back to vector order; the sidebar now notes "order by text similarity only".
+
 ## [0.20.1] - 2026-10-01
 
 ### Changed

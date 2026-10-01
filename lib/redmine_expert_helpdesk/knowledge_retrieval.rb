@@ -113,6 +113,50 @@ module RedmineExpertHelpdesk
       []
     end
 
+    # Closing lines after which a mail only carries the sender's name, the
+    # signature and quoted history. German and English, line start only.
+    CLOSING_LINE = /^\s*(mit\s+)?(freundlichen|viele|beste|liebe|herzliche|sonnige)\s+gr(ü|ue)(ß|ss)(e|en)\b|
+                    ^\s*(mfg|vg|lg|bg|gru(ß|ss)|gr(ü|ue)(ß|ss)e|danke(\s+(und|&)\s+gru(ß|ss))?)\s*[,!.]?\s*$|
+                    ^\s*(best|kind|warm)\s+regards\b|^\s*(regards|cheers|thanks|best)\s*,?\s*$/ix.freeze
+    # "Am 01.10.2026 um 10:00 schrieb Max Muster <max@example.com>:" - the German
+    # reply header names the author *after* "schrieb", which QUOTE_MARKERS'
+    # "... schrieb:" form does not cover.
+    REPLY_HEADER = /^\s*(am|on)\s.{0,120}\b(schrieb|wrote)\b.*:\s*$/i.freeze
+    NOISE = [
+      %r{\b(?:https?://|www\.)\S+}i,                    # links (signatures are full of them)
+      /\S+@\S+\.\w+/,                                  # mail addresses, also "x@y.demailto:x@y.de"
+      /\[(?:cid|image):[^\]]*\]/i,                       # inline image markers
+      /!\S+\.(?:png|jpe?g|gif|bmp|webp)!/i,              # Textile images rewritten by InlineImages
+      %r{!\[[^\]]*\]\([^)]*\)}i,                      # Markdown images
+      /(?:\+|\b00)\d[\d\s\/()-]{6,}\d/              # phone numbers
+    ].freeze
+
+    # What the knowledge base is searched with: the subject and the part of the
+    # mail the customer actually wrote. The whole body used to go in, so a
+    # two-line request ("add Ms. X to hunt group 261") was outweighed by its own
+    # signature - phone, links, social icons, the print-the-environment line -
+    # and any entry about "adding a person" ranked first. Quoted history,
+    # everything from the closing line on, links, addresses, phone numbers and
+    # image markers are dropped. Search only: the summary still sees the mail as
+    # sent. Falls back to the raw text if cleaning leaves nothing.
+    def query_text(subject, body)
+      text = body.to_s
+      (CompletenessCheck::QUOTE_MARKERS + [REPLY_HEADER]).each do |marker|
+        if (match = text.match(marker))
+          text = text[0...match.begin(0)]
+        end
+      end
+      if (match = text.match(CLOSING_LINE))
+        text = text[0...match.begin(0)]
+      end
+      text = text.lines.reject { |line| line =~ /^\s*>/ }.join
+      NOISE.each { |re| text = text.gsub(re, ' ') }
+      text = text.gsub(/[ \t]+/, ' ').gsub(/\s*\n\s*/, "\n").strip
+      text = body.to_s.strip if text.blank?
+
+      [subject.to_s.strip, text].reject(&:blank?).join("\n")
+    end
+
     # Numbered "Problem:/Loesung:" lines for a prompt block.
     #
     # with_issue_ids is load-bearing, not cosmetic. The summary is internal and

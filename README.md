@@ -1406,6 +1406,10 @@ correct score and the highest unanswerable one.
 - **Contribute** (`kb_ingest_mode`): off / **auto** (ingest on close if a solution was found) /
   **manual** (close creates a *pending* entry; approve it from the ticket sidebar).
 - **Show proposed solutions** (`kb_proposal_display`): off / summary note / sidebar panel / both.
+  With *both*, the sidebar follows the summary: the case the summary cites as its solution comes
+  first, marked *in the AI summary*, and the cases it did not use are greyed out. The knowledge
+  base is searched with what the customer wrote — subject and body without signature, quoted
+  history, links and images. If a configured reranker could not be reached, the sidebar says so.
 
 **Knowledge base tab (curation).** Extracted entries are not always right, and correcting the
 payload directly in Qdrant (or any other vector store) does **not** help: the vector was computed

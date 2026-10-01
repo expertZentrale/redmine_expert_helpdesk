@@ -5,6 +5,31 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Behoben
+
+- **Die Seitenleiste empfahl ein anderes Ticket als die KI-Zusammenfassung.** Beide gehen von
+  denselben Treffern der Wissensbasis aus, aber das Modell der Zusammenfassung liest Problem und
+  Lösung und nennt nur den passenden Fall, während die Seitenleiste die Treffer stur nach Score
+  sortierte — so konnte ein unpassender Eintrag „neuen Benutzer anlegen“ oben stehen, während die
+  Zusammenfassung richtig die Lösung über die Teams-Warteschlange vorschlug. Das Urteil der
+  Zusammenfassung wird jetzt an den Vorschlägen gespeichert (Migration 064): Der genannte Fall steht
+  oben und ist mit *in der KI-Zusammenfassung* markiert, die übrigen sind ausgegraut; nennt sie
+  keinen, sagt die Seitenleiste das.
+- **Die Wissensbasis wurde mit der ganzen Mail samt Signatur durchsucht.** Eine zweizeilige Bitte
+  unter einer langen Signatur (Telefon, Links, Social-Icons) traf Einträge über die Signatur statt
+  über das Anliegen. Gesucht wird jetzt mit Betreff und dem, was der Kunde geschrieben hat:
+  zitierter Verlauf, alles ab der Grußzeile („Viele Grüße“, „Best regards“, …), Links, Adressen,
+  Telefonnummern und Bildmarker fallen weg. Die Zusammenfassung selbst sieht weiterhin die ganze
+  Mail.
+
+### Hinzugefügt
+
+- **Die Seitenleiste zeigt an, wenn der Reranker nicht genutzt wurde.** Ein konfigurierter, aber
+  nicht erreichbarer Reranker fiel still auf die Vektor-Reihenfolge zurück; die Seitenleiste weist
+  jetzt mit „Reihenfolge nur nach Textähnlichkeit“ darauf hin.
+
 ## [0.20.1] - 2026-10-01
 
 ### Geändert

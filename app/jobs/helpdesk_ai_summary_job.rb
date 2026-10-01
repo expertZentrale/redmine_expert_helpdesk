@@ -80,21 +80,34 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
     prompt  = ps.effective_ai_prompt.presence || RedmineExpertHelpdesk::AiClient::DEFAULT_PROMPT
     system  = RedmineExpertHelpdesk::TemplateRenderer.render(prompt, :issue => issue, :contact => contact_for(issue))
 
-    # RAG: aehnliche geloeste Tickets aus der projekteigenen Wissensbasis.
-    # Fuer die Suche einen fokussierten Query nutzen (Betreff + Textkern statt des
-    # anhangslastigen user_text), das erhoeht die Aehnlichkeit zu den destillierten
-    # Wissensbasis-Eintraegen.
-    query_text = "#{issue.subject}\n#{base_text}"
-    proposals = retrieve_proposals(issue, ps, settings, client, query_text)
+    # RAG: similar solved tickets from the project's own knowledge base, searched
+    # with what the customer wrote - subject plus body without signature,
+    # quoted history, links and images (KnowledgeRetrieval.query_text).
+    # The subject of the mail being summarized (source_subject), not the
+    # ticket's: a reply can be about something else than the original request.
+    query_text = RedmineExpertHelpdesk::KnowledgeRetrieval.query_text(subject.presence || issue.subject, base_text)
+    retrieval = {}
+    proposals = retrieve_proposals(issue, ps, settings, client, query_text, retrieval)
     if proposals.any?
-      persist_proposals(issue, proposals) if ps.kb_show_in_sidebar?
+      # nil = no reranker configured, so nothing to point out in the sidebar.
+      reranked = client.rerank_configured? ? (retrieval[:reranked] == true) : nil
+      persist_proposals(issue, proposals, reranked) if ps.kb_show_in_sidebar?
       system += kb_context_block(proposals) if ps.kb_show_in_summary?
+    elsif retrieval.key?(:candidates) && ps.kb_show_in_sidebar?
+      # The search ran and found nothing fitting: drop the previous run's rows,
+      # or the sidebar keeps an old case marked "in the AI summary" next to a
+      # summary that proposes nothing. A failed search (no diagnostics) keeps
+      # them - an outage is no reason to throw away a still valid proposal.
+      HelpdeskKbProposal.where(:issue_id => issue.id).delete_all
     end
 
     summary = client.summarize(system, user_text, image_parts,
                                :log_context => { :request_type => 'summary',
                                                  :project_id => issue.project_id, :issue_id => issue.id })
 
+    if proposals.any? && ps.kb_show_in_summary? && ps.kb_show_in_sidebar?
+      record_ai_verdict(issue, proposals, summary)
+    end
     journal = create_note(issue, summary)
     record_summary(issue, journal, client)
   rescue RedmineExpertHelpdesk::AiClient::AiError => e
@@ -362,13 +375,14 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
   # RAG: aehnliche geloeste Tickets aus der Wissensbasis DES PROJEKTS holen
   # (strikte Isolation ueber den Store). Liefert nur, wenn genug Treffer ueber
   # dem Score-Schwellwert liegen. Fehler blockieren die Zusammenfassung nicht.
-  def retrieve_proposals(issue, ps, settings, client, query_text)
+  def retrieve_proposals(issue, ps, settings, client, query_text, diagnostics = nil)
     return [] unless ps.kb_show_in_summary? || ps.kb_show_in_sidebar?
 
-    RedmineExpertHelpdesk::KnowledgeRetrieval.search(issue, settings, client, query_text)
+    RedmineExpertHelpdesk::KnowledgeRetrieval.search(issue, settings, client, query_text,
+                                                     :diagnostics => diagnostics)
   end
 
-  def persist_proposals(issue, proposals)
+  def persist_proposals(issue, proposals, reranked = nil)
     HelpdeskKbProposal.where(:issue_id => issue.id).delete_all
     proposals.each do |h|
       p = h[:payload] || {}
@@ -377,9 +391,28 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
         :source_issue_id => p['issue_id'],
         :score           => h[:score],
         :problem         => p['problem'],
-        :solution        => p['solution']
+        :solution        => p['solution'],
+        :reranked        => reranked
       )
     end
+  end
+
+  # The model reads problem *and* solution of every proposal and is told to
+  # cite the fitting ones by ticket number - a far better judge than the
+  # retrieval score, which only compares the problem text. Its verdict is
+  # stored on the proposals so the sidebar shows the same choice as the
+  # summary instead of the raw ranking: cited = true, not cited = false. Only
+  # explicit ticket references count - "#1234" as the prompt asks for, or
+  # "Ticket 1234" - and only to one of the proposals' own tickets, so an
+  # extension or order number that happens to equal an id cannot match.
+  TICKET_REFERENCE = /(?:#|\bTicket\s+#?)(\d+)(?!\d)/i.freeze
+
+  def record_ai_verdict(issue, proposals, summary)
+    ids   = proposals.map { |h| (h[:payload] || {})['issue_id'].to_i }.reject(&:zero?)
+    cited = summary.to_s.scan(TICKET_REFERENCE).flatten.map(&:to_i) & ids
+    scope = HelpdeskKbProposal.where(:issue_id => issue.id)
+    scope.where(:source_issue_id => cited).update_all(:ai_verdict => true)
+    scope.where.not(:source_issue_id => cited).update_all(:ai_verdict => false)
   end
 
   def kb_context_block(proposals)
@@ -388,7 +421,8 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
     lines = RedmineExpertHelpdesk::KnowledgeRetrieval.format_hits(proposals, :with_issue_ids => true)
     "\n\n---\nAehnliche frueher geloeste Faelle aus der Wissensbasis:\n#{lines}\n\n" \
       'Wenn einer dieser Faelle zum aktuellen Anliegen passt, ergaenze am Ende der Zusammenfassung ' \
-      'einen Abschnitt "Loesungsvorschlag" mit dem passenden Vorgehen und nenne die Ticketnummer(n). ' \
+      'einen Abschnitt "Loesungsvorschlag" mit dem passenden Vorgehen und nenne die Ticketnummer(n) ' \
+      'im Format #1234 - nur die der wirklich passenden Faelle. ' \
       'Passt nichts, lasse den Abschnitt weg.'
   end
 

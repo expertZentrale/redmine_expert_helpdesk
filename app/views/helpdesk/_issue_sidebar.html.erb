@@ -89,12 +89,27 @@
 
     <%# --- Wissensbasis (RAG): Loesungsvorschlaege --- %>
     <% if kb_props.any? %>
+      <%# The summary's verdict wins over the retrieval score: what it cited
+          goes first and is marked, the rest is greyed out - the sidebar and
+          the summary must not recommend different tickets. Without a verdict
+          (nil) the list stays as ranked. %>
+      <% kb_sorted = kb_props.sort_by { |pr| [pr.ai_verdict == true ? 0 : 1, -pr.score.to_f] } %>
       <div class="hd-section-label">💡 <%= l(:label_helpdesk_kb_proposals) %></div>
+      <% if kb_props.all? { |pr| pr.ai_verdict == false } %>
+        <div class="hd-kb-note"><%= l(:text_helpdesk_kb_none_fitting) %></div>
+      <% end %>
+      <% if kb_props.any? { |pr| pr.reranked == false } %>
+        <div class="hd-kb-note"><%= l(:text_helpdesk_kb_not_reranked) %></div>
+      <% end %>
       <ul class="hd-kb-proposals">
-        <% kb_props.each do |pr| %>
-          <li>
+        <% kb_sorted.each do |pr| %>
+          <li class="<%= 'hd-kb-used' if pr.ai_verdict == true %><%= 'hd-kb-unfit' if pr.ai_verdict == false %>"
+              <% if pr.ai_verdict == false %>title="<%= l(:text_helpdesk_kb_not_fitting) %>"<% end %>>
             <% if pr.source_issue_id %><%= link_to "##{pr.source_issue_id}", issue_path(pr.source_issue_id) %><% end %>
             <span class="hd-kb-score"><%= "#{(pr.score.to_f * 100).round}%" %></span>
+            <% if pr.ai_verdict == true %>
+              <span class="hd-kb-used-tag">✓ <%= l(:label_helpdesk_kb_used_in_summary) %></span>
+            <% end %>
             <div class="hd-kb-sol"><%= truncate(pr.solution.to_s, :length => 180) %></div>
           </li>
         <% end %>
@@ -185,6 +200,13 @@
 .hd-kb-proposals li { margin: 0 0 8px; padding: 4px 6px; background: #f3f7ef; border: 1px solid #cfe0bf; border-radius: 3px; }
 .hd-kb-score { color: #5a7a3a; font-size: 0.82em; margin-left: 4px; }
 .hd-kb-sol { color: #444; font-size: 0.88em; margin-top: 2px; }
+.hd-kb-proposals li.hd-kb-used { border-color: #8db36b; border-width: 2px; }
+.hd-kb-used-tag { display: inline-block; margin-left: 4px; font-size: 0.78em; font-weight: bold; color: #3f6a1f; }
+/* Not a fit per the summary: neutral instead of green, still readable (#666 on #f5f5f5 = 5.3:1). */
+.hd-kb-proposals li.hd-kb-unfit { background: #f5f5f5; border-color: #ddd; }
+.hd-kb-proposals li.hd-kb-unfit .hd-kb-score,
+.hd-kb-proposals li.hd-kb-unfit .hd-kb-sol { color: #666; }
+.hd-kb-note { font-size: 0.82em; color: #666; margin: 2px 0 4px; }
 .hd-kb-actions { margin-top: 9px; }
 .hd-kb-status { font-size: 0.85em; margin: 2px 0; }
 .hd-kb-ok { color: #5a7a3a; }

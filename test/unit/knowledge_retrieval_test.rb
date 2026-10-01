@@ -374,4 +374,46 @@ class KnowledgeRetrievalTest < ActiveSupport::TestCase
                      :store => store_stub([hit(3, 0.9)]), :diagnostics => diag)
     assert_equal false, diag[:reranked]
   end
+
+  # --- query_text: what the knowledge base is searched with ---------------
+
+  # The mail from the field: two lines of request under a long signature. The
+  # signature used to outweigh the request, and an unrelated "add a person"
+  # entry ranked first.
+  def test_query_text_keeps_the_request_and_drops_the_signature
+    body = "Hi,\n\nbitte fügt Frau Stanelle zu unserer Sammelrufnummer 261 hinzu.\n\n" \
+           "Es wäre prima, wenn ihr morgen Vormittag dakota einrichten könntet.\n\n" \
+           "Viele Grüße\n\nSina Panitz\nPersonaladministration\n\n!image001.png!\n" \
+           "+49 511 78 08 261\nhttps://www.expert.de/\n" \
+           "personalbuero@expert.demailto:personalbuero@expert.de\n" \
+           "Bitte denken Sie an die Umwelt, bevor Sie diese E-Mail ausdrucken"
+    q = RedmineExpertHelpdesk::KnowledgeRetrieval.query_text('Sammelrufnummer', body)
+
+    assert_equal "Sammelrufnummer\nHi,\nbitte fügt Frau Stanelle zu unserer Sammelrufnummer 261 hinzu.\n" \
+                 'Es wäre prima, wenn ihr morgen Vormittag dakota einrichten könntet.', q
+  end
+
+  def test_query_text_drops_quoted_history
+    body = "Drucker druckt wieder nicht.\n\nAm 01.10.2026 um 10:00 schrieb Support:\n> Bitte neu starten."
+    assert_equal "Drucker\nDrucker druckt wieder nicht.",
+                 RedmineExpertHelpdesk::KnowledgeRetrieval.query_text('Drucker', body)
+  end
+
+  def test_query_text_drops_links_addresses_and_image_markers_inside_the_text
+    body = "Siehe [cid:image001.png@01DA] und https://example.com/x - Rückfragen an max@example.com."
+    q = RedmineExpertHelpdesk::KnowledgeRetrieval.query_text(nil, body)
+
+    assert_no_match(/cid|https|example\.com|@/, q)
+    assert_match(/Siehe/, q)
+  end
+
+  # A mail that is nothing but a closing line must not leave an empty query.
+  def test_query_text_falls_back_to_the_raw_body
+    assert_equal "Betreff\nViele Grüße", RedmineExpertHelpdesk::KnowledgeRetrieval.query_text('Betreff', 'Viele Grüße')
+  end
+
+  def test_query_text_keeps_greetings_in_the_middle_of_a_sentence
+    body = "Die Mail mit viele grüße im Text ist kein Gruß am Zeilenanfang.\nZweite Zeile."
+    assert_match(/Zweite Zeile/, RedmineExpertHelpdesk::KnowledgeRetrieval.query_text(nil, body))
+  end
 end
