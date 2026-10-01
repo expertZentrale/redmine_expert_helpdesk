@@ -72,4 +72,59 @@ class HelpdeskAiSummaryJobTest < ActiveSupport::TestCase
     Setting.stubs(:plugin_redmine_expert_helpdesk).returns({ 'ai_enabled' => '1' })
     assert_nothing_raised { HelpdeskAiSummaryJob.perform_now(-1) }
   end
+
+  # --- The sidebar follows the summary's choice (record_ai_verdict) ---
+
+  def kb_hit(issue_id, score)
+    { :score => score, :payload => { 'issue_id' => issue_id, 'problem' => "P#{issue_id}", 'solution' => "L#{issue_id}" } }
+  end
+
+  def with_proposals(hits, reranked = nil)
+    issue = Issue.first
+    job.send(:persist_proposals, issue, hits, reranked)
+    yield issue
+  ensure
+    HelpdeskKbProposal.where(:issue_id => Issue.first.id).delete_all
+  end
+
+  # The field case: retrieval ranked 919297 first, the summary cited 924201.
+  def test_verdict_marks_what_the_summary_cited
+    hits = [kb_hit(919_297, 0.84), kb_hit(924_201, 0.83), kb_hit(922_603, 0.81)]
+    with_proposals(hits) do |issue|
+      job.send(:record_ai_verdict, issue, hits,
+               "- Anliegen: ...\n- Lösungsvorschlag (Ticket #924201): Call Queue öffnen, Mitarbeiterin hinzufügen.")
+      verdicts = HelpdeskKbProposal.where(:issue_id => issue.id).pluck(:source_issue_id, :ai_verdict).to_h
+
+      assert_equal({ 919_297 => false, 924_201 => true, 922_603 => false }, verdicts)
+    end
+  end
+
+  def test_verdict_marks_all_as_unfit_when_nothing_is_cited
+    hits = [kb_hit(919_297, 0.84), kb_hit(924_201, 0.83)]
+    with_proposals(hits) do |issue|
+      job.send(:record_ai_verdict, issue, hits, "- Anliegen: Sammelrufnummer 261, Durchwahl 8261.")
+
+      assert_equal [false], HelpdeskKbProposal.where(:issue_id => issue.id).distinct.pluck(:ai_verdict)
+    end
+  end
+
+  # Only whole numbers that are a proposal's own ticket count: 9242010 or a
+  # phone number containing 924201 must not.
+  def test_verdict_ignores_numbers_that_only_contain_a_ticket_id
+    hits = [kb_hit(924_201, 0.83)]
+    with_proposals(hits) do |issue|
+      job.send(:record_ai_verdict, issue, hits, 'Rufnummer 09242010 und Auftrag 1924201.')
+
+      assert_equal false, HelpdeskKbProposal.find_by(:issue_id => issue.id).ai_verdict
+    end
+  end
+
+  def test_proposals_carry_the_reranked_flag
+    with_proposals([kb_hit(1, 0.5)], false) do |issue|
+      assert_equal false, HelpdeskKbProposal.find_by(:issue_id => issue.id).reranked
+    end
+    with_proposals([kb_hit(1, 0.5)]) do |issue|
+      assert_nil HelpdeskKbProposal.find_by(:issue_id => issue.id).reranked
+    end
+  end
 end
