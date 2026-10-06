@@ -48,7 +48,7 @@ Enable *expert Helpdesk* per project under *Project settings → Modules*, then 
 | View ticket statistics | The project's "Ticket statistics" tab (member roles only, e.g. a "helpdesk manager" role) |
 | View knowledge base | The project's "Knowledge base" tab: list and detail of the RAG entries |
 | Edit knowledge base entries | Correct, create, approve and reject entries (re-embeds on save); also the knowledge-base buttons in the ticket sidebar |
-| Manage knowledge base | Delete entries and rebuild the project's vector index |
+| Manage knowledge base | Delete entries, rebuild the project's vector index and re-extract entries at the current detail level |
 
 *View AI statistics* is the one *global* permission — it is granted once to a role and then applies across all projects without project membership, because it exposes the token spend of the AI features. The tab it unlocks is shown only where the AI features or the knowledge base are enabled; with both switched off it stays hidden and the page answers 403.
 
@@ -72,6 +72,7 @@ Under *Administration → Plugins → Redmine expert Helpdesk*, or via the *expe
 | Custom fields as macros | Issue custom fields that may be used as @{{issue.cf.…}}@ in templates. Nothing is enabled by default; a field's own Redmine visibility still applies on top |
 | Completeness check | Master switch for the automatic follow-up when an incoming mail carries too little information, plus the central texts and check prompt. Off by default, and each project additionally chooses its own mode |
 | AI answer drafts | Master switch for the customer-facing draft button, plus its prompt, minimum match, output budget and timeout. Off by default, and each project opts in separately. Requires the AI settings, and the knowledge base for every variant except "ask for missing details" |
+| Knowledge base detail level | How much concrete detail extracted entries keep: *General* (default, generalised), *Specific* (application names, versions, error codes) or *Most specific* (also paths, server and share names, configuration values, exact steps). The extraction prompt field stays empty to use the level's built-in prompt. Projects can override the level and add or replace the prompt |
 | Knowledge base reranker | Optional second retrieval stage: a cross-encoder re-scores the shortlist the vector store returns, which is markedly more precise than similarity alone. Off by default; endpoint and key fall back to the embeddings ones, since both models usually share a base URL. Its own minimum score replaces the similarity one while it is on, and both want retuning — the two are different scales |
 
 Nothing here is required for a mailbox that carries its own credentials — see the next step.

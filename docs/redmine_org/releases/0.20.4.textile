@@ -1,0 +1,18 @@
+h3. Added
+
+* *Detail level for knowledge-base extraction.* Entries used to be generalised, which dropped exactly what decides whether a past fix applies: application names, versions, error codes, paths, systems. A new setting offers three levels: *General* (previous behaviour, still the default), *Specific* (keeps application and product names, versions, error codes and messages) and *Most specific* (also paths, server and share names, configuration values and the exact order of steps). At every level the model is instructed to leave out credentials and personal data.
+* *Per-project extraction settings.* Projects can set their own detail level and extraction prompt (use central / extend / override, like the other AI prompts) in the knowledge-base section of the Helpdesk tab and via the REST API.
+* *Re-extraction of existing entries.* "Re-extract entries" on the Knowledge base tab (permission _Manage knowledge base_) and @rake redmine_expert_helpdesk:kb_reextract@ re-run extraction at the current level. Entries keep their status, a run without a solution leaves the entry unchanged, and entries curated by a person are never touched. Each entry costs one AI call; the confirmation shows the count.
+
+h3. Changed
+
+* The AI summary compares application, version, error code, paths and systems of matching knowledge-base cases with the ticket and names differences when several fit.
+* The customer-facing answer draft is instructed not to quote internal details (hosts, IPs, network paths, accounts, other customers) from knowledge-base cases.
+
+h3. Fixed
+
+* *Knowledge-base extraction dropped answers containing Windows paths.* A path copied verbatim (@\\SRV01\Share\Config@) is not valid JSON, so the entry was silently lost; paths like @C:\new\test@ were stored with a line break and a tab instead. Paths are now repaired before parsing, with the ticket text deciding ambiguous cases.
+
+h3. Upgrade notes
+
+Migration 065 adds the detail-level columns - run the migration command. Nothing changes until a level is raised: the default stays *General*, and a stored copy of an older default extraction prompt counts as not customised, so the level selection takes effect. Raise the level centrally or per project, then use "Re-extract entries" on the Knowledge base tab to bring existing entries to it.
