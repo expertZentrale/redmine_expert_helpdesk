@@ -66,10 +66,13 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
           elsif force || ps.kb_ingest_auto? then 'approved'
           else 'pending'
           end
-        # Keep the claim: a plain save would stamp "now", which a column without
-        # fractional seconds rounds back into the request's second.
-        entry.updated_at = claim_time(requested_at) if reextract && requested_at
-        entry.save!
+        # Keep the claim: a plain save stamps "now", which a column without
+        # fractional seconds rounds back into the request's second. lock! has
+        # already reloaded the claim time, so assigning it again changes
+        # nothing - the timestamp has to be switched off explicitly.
+        claimed = reextract && requested_at
+        entry.updated_at = claim_time(requested_at) if claimed
+        entry.save!(:touch => !claimed)
         saved = true
       end
     end
@@ -122,7 +125,8 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
   # row as it is now and undo or redo accordingly.
   def fence_index(entry)
     current = HelpdeskKnowledgeEntry.find_by(:id => entry.id)
-    return unless current
+    # Deleted meanwhile: the destroy removed the point before this upsert.
+    return HelpdeskKnowledgeEntry.unindex(entry) unless current
 
     if !current.approved?
       HelpdeskKnowledgeEntry.unindex(current)

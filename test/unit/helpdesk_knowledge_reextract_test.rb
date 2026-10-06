@@ -132,7 +132,9 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
     RedmineExpertHelpdesk::KnowledgeExtractor.any_instance.expects(:extract).once
       .returns(Result.new(:problem => 'neu', :solution => 's', :has_solution => true, :usage => nil, :detail => 'most_specific'))
     2.times { HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true, :requested_at => at) }
-    assert_operator e.reload.updated_at, :>, at
+    # Not just later than the request: a full second later, or a column without
+    # fractional seconds rounds it back (CI's MariaDB schema).
+    assert_operator e.reload.updated_at, :>=, at + 1.second
   end
 
   # A person rejects the entry while the embedding call is in flight: the job
@@ -142,6 +144,18 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
     stub_extract
     @store.stubs(:upsert).with do |*|
       HelpdeskKnowledgeEntry.where(:id => e.id).update_all(:status => 'rejected', :curated_at => Time.current)
+      true
+    end
+    HelpdeskKnowledgeEntry.expects(:unindex).with { |row| row.id == e.id }.returns(true)
+    HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true)
+  end
+
+  # ... or deletes it: the destroy removed the point before this upsert.
+  def test_delete_during_indexing_removes_the_point_again
+    e = entry
+    stub_extract
+    @store.stubs(:upsert).with do |*|
+      HelpdeskKnowledgeEntry.where(:id => e.id).delete_all
       true
     end
     HelpdeskKnowledgeEntry.expects(:unindex).with { |row| row.id == e.id }.returns(true)
