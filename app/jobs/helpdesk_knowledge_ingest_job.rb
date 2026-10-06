@@ -38,6 +38,11 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
     # only if untouched since the request; a duplicate job finds it claimed.
     return if reextract && requested_at && !claim_for_reextract(entry, requested_at)
 
+    # The row as claimed. The AI call takes seconds; a normal re-ingest or a
+    # newer re-extraction may write the row meanwhile, and this result must not
+    # replace that newer one (checked again under the row lock below).
+    claimed = claim_snapshot(entry.reload) if reextract && requested_at
+
     result = RedmineExpertHelpdesk::KnowledgeExtractor.new(settings).extract(issue)
     return unless result
     # Re-extraction promises to keep an entry's status. A run that finds no
@@ -51,6 +56,10 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
       # The extraction takes seconds; a person may have curated the row meanwhile.
       # Re-check under a row lock so the verdict cannot be overwritten.
       entry.lock! if entry.persisted?
+      if claimed && claim_snapshot(entry) != claimed
+        Rails.logger.info("[helpdesk][kb] Re-extraction of entry ##{entry.id} dropped: row changed during the AI call")
+        next
+      end
       unless !force && entry.persisted? && (entry.curated? || entry.rejected?)
         was_indexed = entry.point_id.present?
 
@@ -116,6 +125,12 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
   def claim_for_reextract(entry, requested_at)
     HelpdeskKnowledgeEntry.where(:id => entry.id).where('updated_at <= ?', requested_at)
                           .update_all(:updated_at => claim_time(requested_at)) == 1
+  end
+
+  # updated_at alone can miss a write within the same second on a column
+  # without fractional seconds; the content fields cannot.
+  def claim_snapshot(entry)
+    entry.attributes.slice('updated_at', 'status', 'problem', 'solution', 'curated_at', 'extract_detail')
   end
 
   # Strictly past requested_at, by at least a second (see the save above).

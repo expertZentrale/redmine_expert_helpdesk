@@ -275,7 +275,11 @@ module RedmineExpertHelpdesk
     # touched - solution text is full of real \n line breaks.
     # source: the ticket text the answer was extracted from (see path_segment?).
     def repair_paths(json, source = nil)
-      json.gsub(PATH_TOKEN) { |token| repair_path_token(token, source) }
+      # With the ticket text at hand even an escape that reads like a line break
+      # ("C:\Temp\nPruefen\test") stays in the token: path_segment? decides
+      # whether the ticket has that segment. Without it, line breaks end a path.
+      pattern = source ? PATH_TOKEN_WITH_BREAKS : PATH_TOKEN
+      json.gsub(pattern) { |token| repair_path_token(token, source) }
     end
 
     # Per separator, not per token: models mix spellings within one path
@@ -319,8 +323,8 @@ module RedmineExpertHelpdesk
 
     VALID_PATH_ESCAPE = %r{\\\\|\\["/]|\\u\h{4}}.freeze
     # A JSON control escape that could also start a path segment ("\new",
-    # "\Temp\tTab" - tab or folder "tTab"?). Real line breaks followed by a
-    # list marker never reach a token (PATH_TOKEN stops before them).
+    # "\Temp\tTab" - tab or folder "tTab"?). Without ticket text, line breaks
+    # followed by a list marker never reach a token (PATH_TOKEN stops before them).
     AMBIGUOUS_ESCAPE  = /\\[nrtbf]/.freeze
 
     # \n / \r that reads as a line break: followed by an uppercase letter, digit,
@@ -333,9 +337,13 @@ module RedmineExpertHelpdesk
     # ("C:\Program Files (x86)\new"), so prose after a path is not swallowed.
     # Starts: drive letter, UNC, registry hive (HKEY_LOCAL_MACHINE, HKLM ...) and
     # environment variable (%APPDATA%) - the path kinds 'most_specific' keeps.
-    PATH_TOKEN = %r{(?<![\\\w])(?:[A-Za-z]:\\|\\\\|(?i:HKEY_[A-Z_]+|HK(?:LM|CU|CR|U|CC))\\|%[A-Za-z_][\w()]*%\\)
+    PATH_START = %r{(?<![\\\w])(?:[A-Za-z]:\\|\\\\|(?i:HKEY_[A-Z_]+|HK(?:LM|CU|CR|U|CC))\\|%[A-Za-z_][\w()]*%\\)}.freeze
+    PATH_TOKEN = %r{#{PATH_START}
                     (?:\\\\|(?!#{LINE_BREAK})\\|[^\s"\\]|
                        [ ](?=(?:[^\s"\\]+[ ]){0,2}[^\s"\\]+(?!#{LINE_BREAK})\\))*}x.freeze
+    PATH_TOKEN_WITH_BREAKS = %r{#{PATH_START}
+                                (?:\\\\|\\|[^\s"\\]|
+                                   [ ](?=(?:[^\s"\\]+[ ]){0,2}[^\s"\\]+\\))*}x.freeze
 
     # A valid JSON escape (\" \\ \/ \b \f \n \r \t \uXXXX) as one token, else a
     # lone backslash. Valid pairs must be consumed whole: in "\\SRV" a lookahead

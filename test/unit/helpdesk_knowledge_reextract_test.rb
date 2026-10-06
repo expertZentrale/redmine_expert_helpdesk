@@ -188,6 +188,20 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
     HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true)
   end
 
+  # A normal re-ingest writes the row while this job waits for the model: the
+  # newer result wins, this one is dropped.
+  def test_row_changed_during_the_ai_call_is_not_overwritten
+    e = entry
+    e.update_columns(:updated_at => 1.hour.ago)
+    RedmineExpertHelpdesk::KnowledgeExtractor.any_instance.stubs(:extract).with do |*|
+      HelpdeskKnowledgeEntry.where(:id => e.id).update_all(:problem => 'neuer Lauf')
+      true
+    end.returns(Result.new(:problem => 'alter Lauf', :solution => 's', :has_solution => true, :usage => nil, :detail => 'most_specific'))
+    @store.expects(:upsert).never
+    HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true, :requested_at => 1.minute.ago)
+    assert_equal 'neuer Lauf', e.reload.problem
+  end
+
   # An entry changed after the request (e.g. a later re-close) is left alone.
   def test_reextract_skips_entry_touched_after_the_request
     entry

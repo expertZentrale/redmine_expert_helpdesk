@@ -283,6 +283,10 @@ that order is what makes `safe_to_stop` trustworthy across pods.
   (and the save after it) sets `updated_at` at least a second past `requested_at` — CI's MariaDB
   columns have no fractional seconds. After the post-commit upsert, `fence_index` re-reads the row
   and unindexes / re-embeds if a person rejected or edited it during the embedding call.
+  Before saving, the job compares the row under the lock with the snapshot taken at claim time
+  (`claim_snapshot`) and drops its result if anything wrote the row during the AI call. With ticket
+  text available, path tokens also span `\n`+uppercase (`PATH_TOKEN_WITH_BREAKS`); `path_segment?`
+  decides those too.
     pgvector needs `gem 'pg'` in the deployment (kept out of `PluginGemfile`).
   - `knowledge_retrieval.rb` — the one RAG search path, shared by the summary job and the answer
     drafter. `KnowledgeRetrieval.search` holds the settings defaults, the self-hit rejection and the

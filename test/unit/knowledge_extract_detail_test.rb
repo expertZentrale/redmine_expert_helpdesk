@@ -214,6 +214,18 @@ class KnowledgeExtractDetailTest < ActiveSupport::TestCase
     assert_equal 'C:\\new\\test', ex.send(:parse_json, '{"solution":"C:\\new\\test"}', 'Pfad C:\\New\\Test')['solution']
   end
 
+  # Even an escape that reads like a line break (\n + uppercase) stays a path
+  # segment when the ticket has that exact path.
+  def test_ticket_text_decides_line_break_looking_segments
+    ex = Extractor.new({})
+    raw = '{"solution":"1. C:\\Temp\\nPruefen\\test oeffnen\\n2. Neustart"}'.gsub('\\\\', '\\')
+    assert_equal "1. C:\\Temp\\nPruefen\\test oeffnen\n2. Neustart",
+                 ex.send(:parse_json, raw, 'Ordner C:\\Temp\\nPruefen\\test fehlt')['solution']
+    # Not in the ticket: line break and tab, as the model wrote them.
+    assert_equal "1. C:\\Temp\nPruefen\test oeffnen\n2. Neustart",
+                 ex.send(:parse_json, raw, 'Ordner C:\\Temp leeren')['solution']
+  end
+
   # Registry and environment-variable paths are paths too.
   def test_parse_repairs_registry_and_environment_paths
     parse = ->(raw, src = nil) { Extractor.new({}).send(:parse_json, raw, src)['solution'] }
