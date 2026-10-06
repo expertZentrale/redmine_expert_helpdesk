@@ -1304,8 +1304,41 @@ adds a **proposed solution** to the summary and/or a sidebar panel. Disabled by 
   (needs the `pg` gem in your deployment; `PgvectorStore` loads it via a guarded `require`).
 - **Embeddings**: provider (OpenAI or a self-hosted OpenAI-compatible endpoint — Anthropic has
   no embeddings API), model, endpoint, key (blank reuses the summary key for the same provider).
-- Extraction prompt and retrieval params (Top-K, min. score, min. results).
+- **Detail level** of extraction (`kb_extract_detail`), extraction prompt and retrieval params
+  (Top-K, min. score, min. results) — see below.
 - **Reranker** (`kb_rerank_*`, off by default) — see below.
+
+**Detail level.** How much concrete detail an entry keeps decides whether a past fix can be told
+apart from a similar-looking one. Three levels, central default **General** (the previous behaviour):
+
+| Level | Keeps |
+| --- | --- |
+| **General** | Generalised problem and solution. |
+| **Specific** | Application/product names, versions, error codes and messages (verbatim), affected component. |
+| **Most specific** | Additionally file/registry paths, server, host and share names, configuration values, commands and the exact order of steps. |
+
+At every level the prompt tells the model to leave out passwords, credentials, license keys and
+customer personal data — an instruction, not a filter, so review entries as usual. The extraction
+prompt field is empty by default and then uses the built-in prompt of the selected level (shown
+as placeholder); your own text replaces it for every level. An existing install's stored copy of
+the old default prompt counts as "not customised", so the level selection takes effect.
+
+**Per project** (*Settings → Helpdesk → Knowledge base*): detail level (blank = central setting),
+plus the project's own extraction prompt with the same modes as the other AI prompts — *use
+central*, *extend* (appended to the central prompt of the effective level) or *override*.
+Retrieval benefits directly — the specific problem text is what gets embedded and reranked — and
+the AI summary is told to compare application, version, error code, paths and systems and to name
+differences when several cases fit. The customer-facing **answer draft is instructed not to quote internal
+details** (hosts, IPs, network paths, accounts, other customers) from the cases, whatever the level —
+an instruction, not a filter; the agent reviews every draft before it is sent.
+
+**Re-extraction.** A level change applies to newly extracted entries. *Re-extract entries* on the
+Knowledge base tab (`manage_helpdesk_kb`) re-runs extraction for entries extracted at another
+level — once none are left, it offers all entries again, e.g. after a prompt change. Entries keep
+their status (approved stays approved and searchable; a run that finds no solution leaves the entry
+unchanged; a *skipped* entry the finer level finds a solution for becomes approved or pending like a
+new one); entries edited, approved or rejected by a
+person are never touched. Each entry costs one AI call; the confirmation shows the count.
 
 **Reranking (second stage).** Vector search alone is a bi-encoder: it ranks on whole-text
 proximity, so a ticket that merely shares vocabulary with the query can outrank the one
@@ -1437,7 +1470,7 @@ Three permissions in the *Helpdesk* module map to suggested roles:
 | --- | --- | --- |
 | `view_helpdesk_kb` | tab, list, detail page | KB viewer |
 | `edit_helpdesk_kb` | edit, new entry, approve, reject (also the ticket-sidebar KB buttons) | KB editor |
-| `manage_helpdesk_kb` | delete entries, rebuild the project index | KB admin |
+| `manage_helpdesk_kb` | delete entries, rebuild the project index, re-extract entries | KB admin |
 
 The ticket-sidebar buttons keep working with `send_helpdesk_reply` as before.
 
@@ -1446,7 +1479,9 @@ The ticket-sidebar buttons keep working with `send_helpdesk_reply` as before.
 
 **Batch:** `rake redmine_expert_helpdesk:kb_backfill` ingests existing closed tickets;
 `kb_reembed` rebuilds the vectors of all projects after an embedding-model change (the same
-rebuild as the tab's *Rebuild index*, for every project).
+rebuild as the tab's *Rebuild index*, for every project);
+`kb_reextract [PROJECT=<id|identifier>] [ALL=1]` re-extracts entries at the current detail level
+(the tab's *Re-extract entries*; without `PROJECT` for every contributing project).
 
 **Setup:** run a vector service reachable from Redmine — e.g. a `qdrant/qdrant` container
 (`http://qdrant:6333`) or a `pgvector/pgvector` Postgres — and point the plugin settings at it.

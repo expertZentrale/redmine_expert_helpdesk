@@ -193,4 +193,37 @@ class HelpdeskKbEntriesTest < Redmine::IntegrationTest
     post "#{base}/reindex"
     assert_redirected_to base
   end
+
+  def test_reextract_needs_manage_permission_and_queues_stale_entries
+    Issue.find(1).update_column(:status_id, 5) # only closed tickets are re-extracted
+    HelpdeskProjectSetting.where(:project_id => @project.id).delete_all
+    HelpdeskProjectSetting.create!(:project_id => @project.id, :kb_extract_detail => 'specific')
+    grant!(:view_helpdesk_kb, :edit_helpdesk_kb)
+    post "#{base}/reextract"
+    assert_response :forbidden
+
+    Role.find(1).add_permission!(:manage_helpdesk_kb)
+    get base
+    # @entry has no level yet (= general), the project wants 'specific'.
+    assert_select 'a[href=?]', "#{base}/reextract"
+
+    HelpdeskKnowledgeReextractJob.expects(:perform_later)
+      .with { |pid, opts| pid == @project.id && opts[:all] == false && opts[:requested_at].is_a?(Time) }
+    post "#{base}/reextract"
+    assert_redirected_to base
+  end
+
+  # Nothing left at another level: the button offers all entries again.
+  def test_reextract_offers_all_once_every_entry_is_current
+    Issue.find(1).update_column(:status_id, 5)
+    @entry.update_columns(:extract_detail => 'general')
+    grant!(:view_helpdesk_kb, :manage_helpdesk_kb)
+    get base
+    assert_select 'a[href=?]', "#{base}/reextract?all=1"
+
+    HelpdeskKnowledgeReextractJob.expects(:perform_later)
+      .with { |pid, opts| pid == @project.id && opts[:all] == true }
+    post "#{base}/reextract", :params => { :all => '1' }
+    assert_redirected_to base
+  end
 end

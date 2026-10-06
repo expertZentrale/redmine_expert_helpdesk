@@ -272,6 +272,12 @@ module RedmineExpertHelpdesk
         # Wissensbasis (RAG).
         api.kb_ingest_mode          s.kb_ingest_mode
         api.kb_proposal_display     s.kb_proposal_display
+        if s.has_attribute?(:kb_extract_detail)
+          api.kb_extract_detail           s.kb_extract_detail
+          api.kb_extract_prompt_mode      s.kb_extract_prompt_mode
+          api.kb_extract_prompt           s.kb_extract_prompt
+          api.effective_kb_extract_detail s.effective_kb_extract_detail
+        end
         api.array :sla_priorities do
           priorities.each do |p|
             api.sla_priority do

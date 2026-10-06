@@ -43,6 +43,15 @@ module RedmineExpertHelpdesk
     # else; this can.
     NO_DRAFT_TOKEN = 'KEIN_ENTWURF'.freeze
 
+    # Entries extracted at a finer detail level keep paths, hosts and systems -
+    # useful to the agent, not something to mail a customer. The draft keeps the
+    # steps and leaves those internals out.
+    INTERNALS_RULE = 'Uebernimm dabei keine internen Details aus den Faellen in den Antworttext: ' \
+                     'keine Server-, Host- oder Freigabenamen, IP-Adressen, Netzwerk- oder ' \
+                     'Server-Pfade, Benutzerkonten und nichts ueber andere Kunden. Beschreibe ' \
+                     'solche Schritte allgemein (z. B. "wir passen die Einstellung auf unserem ' \
+                     'Server an").'.freeze
+
     # Embedding is a small, fast call - it must not be allowed to spend the whole
     # request budget before the chat call has even started.
     EMBED_TIMEOUT      = 10
@@ -359,7 +368,9 @@ module RedmineExpertHelpdesk
         "Grundlage - erwaehne sie im Antworttext mit keinem Wort:\n" \
         "#{KnowledgeRetrieval.format_hits(hits, :with_issue_ids => false)}\n\n" \
         'Passt einer der Faelle zum Anliegen, formuliere dessen Loesung als Anleitung fuer den ' \
-        'Kunden um. Passt keiner davon wirklich, antworte ausschliesslich mit dem Wort ' \
+        'Kunden um. ' \
+        "#{INTERNALS_RULE} " \
+        'Passt keiner davon wirklich, antworte ausschliesslich mit dem Wort ' \
         "#{NO_DRAFT_TOKEN} und sonst nichts."
     end
 

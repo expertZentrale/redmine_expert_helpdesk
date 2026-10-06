@@ -454,6 +454,9 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
       'Wenn einer dieser Faelle zum aktuellen Anliegen passt, ergaenze am Ende der Zusammenfassung ' \
       'einen Abschnitt "Loesungsvorschlag" mit dem passenden Vorgehen und nenne die Ticketnummer(n) ' \
       'im Format #1234 - nur die der wirklich passenden Faelle. ' \
+      'Vergleiche dazu konkrete Merkmale wie Anwendung, Version, Fehlercode, Pfade und Systeme mit ' \
+      'dem aktuellen Anliegen: Passen mehrere Faelle, bevorzuge den, dessen Merkmale uebereinstimmen, ' \
+      'und nenne wesentliche Unterschiede. ' \
       'Passt nichts, lasse den Abschnitt weg.'
   end
 

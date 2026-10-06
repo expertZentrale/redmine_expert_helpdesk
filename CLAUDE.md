@@ -358,6 +358,33 @@ nested registration would never fire in production.
   entry unless `force`**, otherwise a re-close would replace a correction with the model's original
   mistake. `HelpdeskKnowledgeReindexJob.rebuild(pid)` is the one per-project rebuild (tab and
   `kb_reembed`). `AiFeatures.kb_ready?` gates every write to the store.
+  **Detail levels** (`KnowledgeExtractor::DETAIL_LEVELS` = general/specific/most_specific, migration
+  065): `prompt_for(level)` builds the built-in prompt; `general` keeps the old generalising
+  wording, plus the privacy instruction every level (and, via `with_privacy`, every own prompt) gets. init.rb used to seed the then-current default into `kb_extract_prompt`, so
+  `custom_prompt?` treats **any built-in text and every formerly shipped default
+  (`LEGACY_DEFAULT_PROMPTS`) as "not customised"** — otherwise existing installs stay pinned to
+  it. Changing a default prompt again means adding the old text to that list. The project combines level + own prompt via `effective_kb_extract_prompt`
+  (`combine_prompts`, central side = built-in of the *effective* level). Entries record
+  `extract_detail` (NULL = pre-levels = general). `HelpdeskKnowledgeReextractJob` fans out
+  `HelpdeskKnowledgeIngestJob(reextract: true)`, which **keeps approved/pending status** — in
+  `manual` mode a plain re-ingest would demote approved to pending and drop it from the store.
+  `reextract` also bypasses the `kb_ingest_mode` gate (it never creates a row); the re-extract
+  scope only counts entries whose ticket is still closed, since the job skips the rest. `parse_json`
+  **repairs Windows path tokens before parsing** (`repair_paths`/`PATH_TOKEN`): verbatim paths are
+  invalid JSON on json >= 2.10 (`\W`) or, worse, valid with the wrong meaning (`C:\new` → newline).
+  Only path tokens are touched (solutions carry real `\n` line breaks), and **per separator**, not per
+  token, because models mix spellings within one path (`\\SRV\\Share\new`).
+  An escape-like segment followed by lowercase (`C:\Temp\npruefen`) is ambiguous; the **ticket text
+  decides** (`path_segment?`: a segment the ticket contains is a path, otherwise it is the escape).
+  Re-extract jobs carry `requested_at` and **claim their row atomically** (`updated_at < requested_at`
+  → touch) before the AI call, so a double-submit or a second admin costs no second call. The claim
+  (and the save after it) sets `updated_at` at least a second past `requested_at` — CI's MariaDB
+  columns have no fractional seconds. After the post-commit upsert, `fence_index` re-reads the row
+  and unindexes / re-embeds if a person rejected or edited it during the embedding call.
+  Before saving, the job compares the row under the lock with the snapshot taken at claim time
+  (`claim_snapshot`) and drops its result if anything wrote the row during the AI call. With ticket
+  text available, path tokens also span `\n`+uppercase (`PATH_TOKEN_WITH_BREAKS`); `path_segment?`
+  decides those too.
   The **pgvector backend needs `gem 'pg'`** added in the deployment (not in `PluginGemfile`, to keep
   the default Qdrant build free of libpq).
 - **`knowledge_retrieval.rb`** — the one RAG search path, shared by the summary job and the

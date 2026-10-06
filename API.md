@@ -563,6 +563,10 @@ Response `200`:
     "info_request_status_id": null,
     "kb_ingest_mode": "off",
     "kb_proposal_display": "off",
+    "kb_extract_detail": null,
+    "kb_extract_prompt_mode": "inherit",
+    "kb_extract_prompt": null,
+    "effective_kb_extract_detail": "general",
     "sla_priorities": [
       { "priority_id": 5, "priority_name": "Urgent", "reaction_minutes": 15, "solution_minutes": 120 }
     ]
@@ -618,6 +622,9 @@ A **partial** update — only the keys you send are changed. Body key
 | `info_request_status_id` | integer \| null | Status set after a follow-up went out; `null` leaves the status untouched. Must be an existing **open** status — a closed or unknown one answers 422, because closing counts as both reaction and solution for the SLA. |
 | `kb_ingest_mode` | string | `off`, `auto` or `manual` — whether resolved tickets feed the knowledge base. |
 | `kb_proposal_display` | string | `off`, `summary`, `sidebar` or `both`. |
+| `kb_extract_detail` | string \| null | How much concrete detail extracted knowledge-base entries keep: `general`, `specific` or `most_specific`. `null` takes the central level (read-only `effective_kb_extract_detail` shows the result). |
+| `kb_extract_prompt_mode` | string | `inherit`, `extend` or `override` — how `kb_extract_prompt` combines with the central extraction prompt of the effective level. |
+| `kb_extract_prompt` | string \| null | Project extraction prompt. With `override` it must still make the model return the JSON object (`problem`, `solution`, `has_solution`). |
 
 Per-priority SLA overrides — top-level `sla_priorities` array of
 `{ priority_id, reaction_minutes, solution_minutes }`. An entry with **both**

@@ -6,6 +6,44 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Added
+
+- **Detail level for knowledge-base extraction.** The extraction prompt told the model to
+  generalise problem and solution, which dropped exactly what decides whether a past fix applies —
+  application names, versions, error codes, paths, systems. A new setting offers three levels:
+  *General* (previous behaviour, still the default), *Specific* (keeps application/product names,
+  versions, error codes and messages) and *Most specific* (also paths, server/share names,
+  configuration values and the exact order of steps). At every level, including General, and appended to own central or project prompts, the prompt now tells the model to leave out credentials and personal data.
+  The central extraction prompt field is now empty by default and uses the built-in prompt of the
+  selected level; a stored copy of the old default counts as not customised.
+- **Per-project extraction settings.** Projects can set their own detail level and extraction
+  prompt (use central / extend / override, like the other AI prompts) in the knowledge-base section
+  of the Helpdesk tab and via the REST API (`kb_extract_detail`, `kb_extract_prompt_mode`,
+  `kb_extract_prompt`, read-only `effective_kb_extract_detail`).
+- **Re-extraction of existing entries.** *Re-extract entries* on the Knowledge base tab
+  (`manage_helpdesk_kb`) and `rake redmine_expert_helpdesk:kb_reextract [PROJECT=…] [ALL=1]` re-run
+  extraction at the current level. Entries keep their status (a run without a solution leaves the entry
+  unchanged; a skipped entry that now yields a solution is treated like a new one); entries curated by a person are left alone. Migration 065 records the level per entry.
+
+### Changed
+
+- The AI summary now compares application, version, error code, paths and systems of the
+  knowledge-base cases with the current ticket and names differences when several fit.
+- The customer-facing answer draft is told never to quote internal details (hosts, IPs, network
+  paths, accounts, other customers) from knowledge-base cases.
+
+### Fixed
+
+- **Knowledge-base extraction dropped answers containing Windows paths.** A path copied verbatim
+  (`\\SRV01\Share\Config`) contains backslashes that are not valid JSON escapes; the stricter JSON
+  parser of current Ruby versions rejected the whole answer and the ticket silently got no entry —
+  measured on 5 of 16 answers for a ticket with a UNC path. Paths like `C:\new\test` were worse: they
+  parsed, with `\n`/`\t` turned into a line break and a tab. Path tokens (drive, UNC, registry hive, `%VAR%`) are now repaired before
+  parsing (line breaks elsewhere stay intact), the finer detail levels ask the model to escape them, and an answer that still is not
+  valid JSON is logged.
+
 ## [0.20.3] - 2026-10-01
 
 ### Fixed

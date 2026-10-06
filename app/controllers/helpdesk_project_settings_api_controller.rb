@@ -65,6 +65,12 @@ class HelpdeskProjectSettingsApiController < ApplicationController
     end
     @setting.kb_ingest_mode         = hp[:kb_ingest_mode]             if hp.key?(:kb_ingest_mode)
     @setting.kb_proposal_display    = hp[:kb_proposal_display]        if hp.key?(:kb_proposal_display)
+    if @setting.has_attribute?(:kb_extract_detail)
+      # Blank detail = central level; the model validates the level and mode.
+      @setting.kb_extract_detail      = hp[:kb_extract_detail].presence if hp.key?(:kb_extract_detail)
+      @setting.kb_extract_prompt_mode = hp[:kb_extract_prompt_mode]     if hp.key?(:kb_extract_prompt_mode)
+      @setting.kb_extract_prompt      = hp[:kb_extract_prompt].presence if hp.key?(:kb_extract_prompt)
+    end
     if hp.key?(:sla_work_days)
       days = Array(hp[:sla_work_days]).flat_map { |d| d.to_s.split(',') }
                                       .map(&:to_i).select { |d| (1..7).cover?(d) }

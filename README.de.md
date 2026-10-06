@@ -1368,8 +1368,44 @@ ein Seitenleisten-Panel. Standardmäßig deaktiviert.
 - **Embeddings**: Anbieter (OpenAI oder ein self-hosted OpenAI-kompatibler Endpunkt – Anthropic
   hat keine Embeddings-API), Modell, Endpunkt, Key (leer nutzt den Key der Zusammenfassung beim
   gleichen Anbieter).
-- Extraktions-Prompt und Retrieval-Parameter (Top-K, Min. Score, Min. Treffer).
+- **Detailgrad** der Extraktion (`kb_extract_detail`), Extraktions-Prompt und Retrieval-Parameter
+  (Top-K, Min. Score, Min. Treffer) — siehe unten.
 - **Reranker** (`kb_rerank_*`, standardmäßig aus) — siehe unten.
+
+**Detailgrad.** Wie viele konkrete Details ein Eintrag behält, entscheidet, ob sich eine frühere
+Lösung von einer ähnlich klingenden unterscheiden lässt. Drei Stufen, zentraler Standard
+**Allgemein** (das bisherige Verhalten):
+
+| Stufe | Behält |
+| --- | --- |
+| **Allgemein** | Problem und Lösung verallgemeinert. |
+| **Spezifisch** | Anwendungs-/Produktnamen, Versionen, Fehlercodes und -meldungen (wortgetreu), betroffene Komponente. |
+| **Sehr spezifisch** | Zusätzlich Datei-/Registry-Pfade, Server-, Host- und Freigabenamen, Konfigurationswerte, Befehle und die genaue Reihenfolge der Schritte. |
+
+Auf jeder Stufe weist der Prompt das Modell an, Passwörter, Zugangsdaten, Lizenzschlüssel und
+personenbezogene Kundendaten wegzulassen — eine Anweisung, kein Filter, Einträge also wie gewohnt prüfen.
+Das Feld Extraktions-Prompt ist standardmäßig leer und nutzt dann den eingebauten Prompt der
+gewählten Stufe (als Platzhalter angezeigt); eigener Text ersetzt ihn für alle Stufen. Die in einer
+bestehenden Installation gespeicherte Kopie des alten Standard-Prompts gilt als „nicht angepasst“,
+damit die Stufenwahl greift.
+
+**Pro Projekt** (*Einstellungen → Helpdesk → Wissensbasis*): Detailgrad (leer = zentrale
+Einstellung) sowie ein eigener Extraktions-Prompt mit denselben Modi wie die anderen KI-Prompts —
+*zentral verwenden*, *erweitern* (an den zentralen Prompt der wirksamen Stufe angehängt) oder
+*ersetzen*. Die Suche profitiert direkt — eingebettet und gerankt wird der spezifische
+Problemtext —, und die KI-Zusammenfassung vergleicht Anwendung, Version, Fehlercode, Pfade und
+Systeme und nennt Unterschiede, wenn mehrere Fälle passen. Der kundengerichtete
+**Antwortvorschlag wird angewiesen, keine internen Details** (Hosts, IPs, Netzwerkpfade, Konten,
+andere Kunden) aus den Fällen zu übernehmen, unabhängig von der Stufe — eine Anweisung, kein Filter;
+der Bearbeiter prüft jeden Entwurf vor dem Senden.
+
+**Neu-Extraktion.** Eine geänderte Stufe gilt für neu extrahierte Einträge. *Einträge neu
+extrahieren* im Reiter Wissensbasis (`manage_helpdesk_kb`) extrahiert die Einträge neu, die mit
+einer anderen Stufe entstanden sind — gibt es keine mehr, bietet der Button alle Einträge erneut an,
+z. B. nach einer Prompt-Änderung. Einträge behalten ihren Status (freigegeben bleibt freigegeben
+und durchsuchbar; findet ein Lauf keine Lösung, bleibt der Eintrag unverändert; ein *übersprungener* Eintrag, für den
+der feinere Grad eine Lösung findet, wird wie ein neuer freigegeben oder vorgemerkt); von Personen bearbeitete, freigegebene oder abgelehnte Einträge bleiben
+unberührt. Jeder Eintrag kostet einen KI-Aufruf; die Rückfrage nennt die Anzahl.
 
 **Reranking (zweite Stufe).** Die Vektorsuche allein ist ein Bi-Encoder: Sie bewertet die Nähe
 ganzer Texte, weshalb ein Ticket, das nur Vokabular mit der Anfrage teilt, dasjenige verdrängen
@@ -1508,7 +1544,7 @@ Drei Berechtigungen im Modul *Helpdesk*, passend zu vorgeschlagenen Rollen:
 | --- | --- | --- |
 | `view_helpdesk_kb` | Reiter, Liste, Detailseite | KB-Leser |
 | `edit_helpdesk_kb` | Bearbeiten, neuer Eintrag, Freigeben, Ablehnen (auch die KB-Buttons der Ticket-Seitenleiste) | KB-Redakteur |
-| `manage_helpdesk_kb` | Einträge löschen, Projekt-Index neu aufbauen | KB-Admin |
+| `manage_helpdesk_kb` | Einträge löschen, Projekt-Index neu aufbauen, Einträge neu extrahieren | KB-Admin |
 
 Die Buttons der Ticket-Seitenleiste funktionieren wie bisher auch mit `send_helpdesk_reply`.
 
@@ -1517,7 +1553,9 @@ Die Buttons der Ticket-Seitenleiste funktionieren wie bisher auch mit `send_help
 
 **Batch:** `rake redmine_expert_helpdesk:kb_backfill` nimmt bestehende geschlossene Tickets auf;
 `kb_reembed` baut die Vektoren aller Projekte nach einem Modellwechsel neu (derselbe Neuaufbau
-wie *Index neu aufbauen* im Reiter, für jedes Projekt).
+wie *Index neu aufbauen* im Reiter, für jedes Projekt);
+`kb_reextract [PROJECT=<id|identifier>] [ALL=1]` extrahiert Einträge mit dem aktuellen Detailgrad
+neu (wie *Einträge neu extrahieren* im Reiter; ohne `PROJECT` für alle beitragenden Projekte).
 
 **Einrichtung:** einen von Redmine erreichbaren Vektor-Dienst betreiben – z. B. einen
 `qdrant/qdrant`-Container (`http://qdrant:6333`) oder eine `pgvector/pgvector`-Postgres – und die

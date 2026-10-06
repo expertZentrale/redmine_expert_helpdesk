@@ -4,7 +4,7 @@
 # vector store never keeps a vector computed from outdated text.
 #
 # Permissions (init.rb): view_helpdesk_kb -> index/show, edit_helpdesk_kb -> write
-# entries, manage_helpdesk_kb -> destroy and project reindex.
+# entries, manage_helpdesk_kb -> destroy, project reindex and re-extraction.
 class HelpdeskKbEntriesController < ApplicationController
   before_action :find_project_by_project_id
   before_action :authorize
@@ -120,6 +120,26 @@ class HelpdeskKbEntriesController < ApplicationController
 
     HelpdeskKnowledgeReindexJob.perform_later(@project.id)
     flash[:notice] = l(:notice_helpdesk_kb_reindex_queued)
+    redirect_to helpdesk_kb_entries_path(:project_id => @project)
+  end
+
+  # Re-extracts entries at the project's current detail level. all=1 (offered
+  # once no entry is left at another level) re-extracts every eligible entry,
+  # e.g. after the prompt text changed. Each entry costs one AI call.
+  def reextract
+    unless RedmineExpertHelpdesk::AiFeatures.kb_ready?
+      flash[:warning] = l(:text_helpdesk_kb_not_configured)
+      return redirect_to helpdesk_kb_entries_path(:project_id => @project)
+    end
+
+    all   = params[:all] == '1'
+    count = HelpdeskKnowledgeReextractJob.scope_for(@project.id, :all => all).count
+    if count.zero?
+      flash[:notice] = l(:notice_helpdesk_kb_reextract_nothing)
+    else
+      HelpdeskKnowledgeReextractJob.perform_later(@project.id, :all => all, :requested_at => Time.current)
+      flash[:notice] = l(:notice_helpdesk_kb_reextract_queued, :count => count)
+    end
     redirect_to helpdesk_kb_entries_path(:project_id => @project)
   end
 
