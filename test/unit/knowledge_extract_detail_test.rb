@@ -42,6 +42,19 @@ class KnowledgeExtractDetailTest < ActiveSupport::TestCase
     [specific, most].each { |p| assert_includes p, 'Passwoerter' }
   end
 
+  # The docs promise no credentials/personal data at any level - general too.
+  def test_privacy_rule_is_sent_at_every_level
+    Extractor::DETAIL_LEVELS.each { |l| assert_includes Extractor.prompt_for(l), 'personenbezogenen Daten', l }
+  end
+
+  # The 0.20.3 default (no privacy sentence) sits in existing installs' settings.
+  def test_previous_default_without_privacy_rule_is_not_custom
+    previous = Extractor::LEGACY_DEFAULT_PROMPTS.last
+    assert_includes previous, 'Betreff:'
+    assert_not_includes previous, 'Passwoerter'
+    assert_not Extractor.custom_prompt?(previous)
+  end
+
   def test_unknown_level_falls_back_to_general
     assert_equal Extractor.prompt_for('general'), Extractor.prompt_for('bogus')
     assert_equal Extractor.prompt_for('general'), Extractor.prompt_for(nil)
@@ -137,6 +150,25 @@ class KnowledgeExtractDetailTest < ActiveSupport::TestCase
     assert_not_nil data
     assert_includes data['solution'], 'WINDVSW1\\CONFIGDB'
     assert_equal true, data['has_solution']
+  end
+
+  # Valid JSON with the wrong meaning: \n, \t, \b, \f inside a verbatim path
+  # parse without error into control characters.
+  def test_parse_repairs_paths_whose_backslashes_look_like_escapes
+    parse = ->(raw) { Extractor.new({}).send(:parse_json, raw)['solution'] }
+    assert_equal 'C:\\new\\test', parse.call('{"solution":"C:\\new\\test"}')
+    assert_equal 'Datei C:\\boot\\file loeschen', parse.call('{"solution":"Datei C:\\boot\\file loeschen"}')
+    # Whole UNC path kept, leading double backslash included.
+    assert_equal 'In \\\\SRV01\\WINDVSW1\\CONFIGDB', parse.call('{"solution":"In \\\\SRV01\\WINDVSW1\\CONFIGDB"}')
+  end
+
+  # Solutions are full of real line breaks - also right after a path.
+  def test_parse_keeps_line_breaks_and_tabs_outside_paths
+    parse = ->(raw) { Extractor.new({}).send(:parse_json, raw)['solution'] }
+    assert_equal "Schritt eins\nSchritt zwei\tTab", parse.call('{"solution":"Schritt eins\\nSchritt zwei\\tTab"}')
+    assert_equal "1. C:\\Temp leeren\n2. Neustart", parse.call('{"solution":"1. C:\\\\Temp leeren\\n2. Neustart"}')
+    assert_equal "1. C:\\Temp\n2. Neustart", parse.call('{"solution":"1. C:\\Temp\\n2. Neustart"}')
+    assert_equal 'Meldung "DBX00101" kam', parse.call('{"solution":"Meldung \\"DBX00101\\" kam"}')
   end
 
   def test_parse_keeps_correctly_escaped_paths

@@ -58,8 +58,9 @@ module RedmineExpertHelpdesk
       solution auf einen leeren String. Gib nur das JSON aus, ohne Codeblock-Markierung.
     PROMPT
 
-    # Never kept at any level: the finer levels are about technical detail, not
-    # about who the customer is or how to log in as them.
+    # Sent at every level: the finer levels are about technical detail, not about
+    # who the customer is or how to log in as them. An instruction to the model,
+    # not a filter - the entry is still reviewable in the knowledge base tab.
     PROMPT_PRIVACY = <<~PROMPT.freeze
       Uebernimm niemals Passwoerter, Zugangsdaten, Tokens oder Lizenzschluessel, und keine
       personenbezogenen Daten (Namen, E-Mail-Adressen, Telefonnummern) des Kunden.
@@ -74,20 +75,35 @@ module RedmineExpertHelpdesk
     def self.prompt_for(level)
       level = DEFAULT_DETAIL unless DETAIL_LEVELS.include?(level.to_s)
       fields = PROMPT_FIELDS.fetch(level.to_s).gsub(/^/, '  ')
-      extra = level.to_s == 'general' ? '' : "\n#{PROMPT_PRIVACY}\n#{PROMPT_ESCAPING}"
-      (PROMPT_HEAD + fields + PROMPT_TAIL + extra).freeze
+      escaping = level.to_s == 'general' ? '' : "\n#{PROMPT_ESCAPING}"
+      (PROMPT_HEAD + fields + PROMPT_TAIL + "\n" + PROMPT_PRIVACY + escaping).freeze
     end
 
-    # Unchanged from before the levels existed: init.rb used to seed it into
-    # 'kb_extract_prompt', so existing installs carry this exact text.
     DEFAULT_PROMPT = prompt_for(DEFAULT_DETAIL)
 
     # Defaults shipped before DEFAULT_PROMPT; init.rb seeded whichever was current
     # at install time, so these copies sit in existing installs' settings too.
-    # Before 0.7.1 (#18) the prompt did not mention the subject line.
-    LEGACY_DEFAULT_PROMPTS = [<<~PROMPT].freeze
+    # Before 0.7.1 (#18) the prompt did not mention the subject line; up to 0.20.3
+    # it had no privacy sentence.
+    LEGACY_DEFAULT_PROMPTS = [<<~PROMPT, <<~PROMPT].freeze
       Du erhaeltst den vollstaendigen Verlauf eines ABGESCHLOSSENEN Support-Tickets
       (Kundenanfrage und Bearbeiter-Antworten). Extrahiere daraus einen wiederverwendbaren
+      Wissensbasis-Eintrag und antworte AUSSCHLIESSLICH mit einem JSON-Objekt mit genau
+      diesen Feldern:
+        - "problem":  das urspruengliche Anliegen/Problem des Kunden, praegnant und
+                      verallgemeinert (deutsch).
+        - "solution": die tatsaechliche Loesung bzw. das Vorgehen, das zur Loesung fuehrte,
+                      praegnant, verallgemeinert und ohne kundenspezifische Geheimnisse
+                      (deutsch, gerne als kurze Schritte).
+        - "has_solution": true nur, wenn im Verlauf eine echte, nachvollziehbare Loesung
+                      erkennbar ist; sonst false.
+
+      Erfinde nichts. Wenn keine Loesung erkennbar ist, setze has_solution=false und
+      solution auf einen leeren String. Gib nur das JSON aus, ohne Codeblock-Markierung.
+    PROMPT
+      Du erhaeltst den vollstaendigen Verlauf eines ABGESCHLOSSENEN Support-Tickets
+      (Kundenanfrage und Bearbeiter-Antworten). Der Verlauf beginnt mit der Betreffzeile
+      ("Betreff: ..."); sie ist Teil der Kundenanfrage. Extrahiere daraus einen wiederverwendbaren
       Wissensbasis-Eintrag und antworte AUSSCHLIESSLICH mit einem JSON-Objekt mit genau
       diesen Feldern:
         - "problem":  das urspruengliche Anliegen/Problem des Kunden, praegnant und
@@ -229,18 +245,40 @@ module RedmineExpertHelpdesk
       m = s.match(/\{.*\}/m)
       return nil unless m
 
+      json = repair_paths(m[0])
       begin
-        JSON.parse(m[0])
+        JSON.parse(json)
       rescue JSON::ParserError
-        # Windows paths copied verbatim ("\\SRV01\WINDVSW1") carry backslashes that
-        # are no JSON escape; json >= 2.10 rejects them, and with them the whole
-        # entry. Measured: 5 of 16 'most_specific' answers for a UNC-path ticket.
-        JSON.parse(m[0].gsub(ESCAPE_TOKEN) { |esc| esc.length == 1 ? '\\\\' : esc })
+        # A lone backslash outside a recognisable path is no JSON escape either;
+        # json >= 2.10 rejects it, and with it the whole entry.
+        JSON.parse(json.gsub(ESCAPE_TOKEN) { |esc| esc.length == 1 ? '\\\\' : esc })
       end
     rescue JSON::ParserError => e
       Rails.logger.warn("[helpdesk][kb] Extraction answer is not valid JSON (#{raw.to_s.length} chars): #{e.message[0, 120]}")
       nil
     end
+
+    # Models copy Windows paths verbatim ("C:\new\test", "\\SRV01\WINDVSW1").
+    # That is either invalid JSON (\W - measured: 5 of 16 'most_specific' answers
+    # for a UNC-path ticket) or, worse, valid JSON with the wrong meaning (\n, \t,
+    # \b, \f), so it has to be repaired *before* parsing. Only path tokens are
+    # touched - solution text is full of real \n line breaks. A token counts as
+    # unescaped when its first separator is single ("C:\x"; escaped it reads
+    # "C:\\x") or it holds a backslash that starts no JSON escape; then every
+    # backslash in it is literal and gets doubled.
+    def repair_paths(json)
+      json.gsub(PATH_TOKEN) do |token|
+        unescaped = token.match?(/\A[A-Za-z]:\\(?!\\)/) ||
+                    token.gsub('\\\\', '').match?(%r{\\(?!["/bfnrtu])})
+        unescaped ? token.gsub('\\') { '\\\\' } : token
+      end
+    end
+
+    # Drive letter or UNC start in the raw JSON text, up to whitespace or a quote.
+    # It also ends before a \n / \r that reads as a line break (followed by a
+    # list marker, whitespace, a quote or the end), so "C:\Temp\n2. Neustart"
+    # keeps its step break.
+    PATH_TOKEN = /(?<![\\\w])(?:[A-Za-z]:\\|\\\\)(?:(?!\\[nr](?:\d+\.|[-*•\s"]|\z))[^\s"])*/.freeze
 
     # A valid JSON escape (\" \\ \/ \b \f \n \r \t \uXXXX) as one token, else a
     # lone backslash. Valid pairs must be consumed whole: in "\\SRV" a lookahead

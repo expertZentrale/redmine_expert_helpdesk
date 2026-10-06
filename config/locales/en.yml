@@ -621,7 +621,7 @@ en:
   label_helpdesk_kb_extract_detail_specific: 'Specific'
   label_helpdesk_kb_extract_detail_most_specific: 'Most specific'
   label_helpdesk_kb_extract_detail_central: 'Central setting (%{level})'
-  text_helpdesk_kb_extract_detail_info: 'How much concrete detail knowledge-base entries keep. General: generalised problem and solution. Specific: keeps application names, versions, error codes and messages. Most specific: also keeps paths, server and share names, configuration values and the exact order of steps. Passwords and personal data are never kept. Applies to newly extracted entries; existing ones can be re-extracted on the Knowledge base tab.'
+  text_helpdesk_kb_extract_detail_info: 'How much concrete detail knowledge-base entries keep. General: generalised problem and solution. Specific: keeps application names, versions, error codes and messages. Most specific: also keeps paths, server and share names, configuration values and the exact order of steps. At every level the model is told to leave out passwords and personal data. Applies to newly extracted entries; existing ones can be re-extracted on the Knowledge base tab.'
   text_helpdesk_kb_extract_prompt_project_info: 'Project extraction prompt, combined with the central prompt of the effective detail level according to the prompt mode. With "override" it must make the model return JSON.'
   field_helpdesk_kb_top_k: 'Top-K'
   field_helpdesk_kb_min_score: 'Min. score'

@@ -1317,7 +1317,8 @@ apart from a similar-looking one. Three levels, central default **General** (the
 | **Specific** | Application/product names, versions, error codes and messages (verbatim), affected component. |
 | **Most specific** | Additionally file/registry paths, server, host and share names, configuration values, commands and the exact order of steps. |
 
-Passwords, credentials, license keys and customer personal data are never kept. The extraction
+At every level the prompt tells the model to leave out passwords, credentials, license keys and
+customer personal data — an instruction, not a filter, so review entries as usual. The extraction
 prompt field is empty by default and then uses the built-in prompt of the selected level (shown
 as placeholder); your own text replaces it for every level. An existing install's stored copy of
 the old default prompt counts as "not customised", so the level selection takes effect.

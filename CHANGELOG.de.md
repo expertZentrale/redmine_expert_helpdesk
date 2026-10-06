@@ -15,7 +15,7 @@
   Stufen: *Allgemein* (bisheriges Verhalten, weiterhin Standard), *Spezifisch* (behält
   Anwendungs-/Produktnamen, Versionen, Fehlercodes und -meldungen) und *Sehr spezifisch* (zusätzlich
   Pfade, Server-/Freigabenamen, Konfigurationswerte und die genaue Reihenfolge der Schritte).
-  Zugangsdaten und personenbezogene Daten werden nie übernommen. Das zentrale Feld
+  Auf jeder Stufe, auch Allgemein, weist der Prompt das Modell jetzt an, Zugangsdaten und personenbezogene Daten wegzulassen. Das zentrale Feld
   Extraktions-Prompt ist jetzt standardmäßig leer und nutzt den eingebauten Prompt der gewählten
   Stufe; eine gespeicherte Kopie des alten Standards gilt als nicht angepasst.
 - **Extraktions-Einstellungen pro Projekt.** Projekte können im Wissensbasis-Abschnitt des
@@ -40,7 +40,8 @@
   Pfad (`\\SRV01\Share\Config`) enthält Backslashes, die keine gültigen JSON-Escapes sind; der
   strengere JSON-Parser aktueller Ruby-Versionen lehnte die ganze Antwort ab, und das Ticket bekam
   stillschweigend keinen Eintrag — gemessen bei 5 von 16 Antworten zu einem Ticket mit UNC-Pfad.
-  Solche Backslashes werden jetzt vor dem Parsen repariert, die feineren Detailgrade bitten das
+  Pfade wie `C:\new\test` waren schlimmer: Sie wurden geparst, mit `\n`/`\t` als Zeilenumbruch und
+  Tabulator. Pfad-Token werden jetzt vor dem Parsen repariert (Zeilenumbrüche sonst bleiben erhalten), die feineren Detailgrade bitten das
   Modell, sie zu maskieren, und eine weiterhin ungültige Antwort wird geloggt.
 
 ## [0.20.3] - 2026-10-01

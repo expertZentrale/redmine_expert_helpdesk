@@ -88,6 +88,24 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
     assert_equal 'rejected', e.reload.status
   end
 
+  # The tab still lists and counts entries of a project that stopped contributing;
+  # the re-extraction it queues must then actually run.
+  def test_reextract_runs_while_ingest_is_off
+    @ps.update!(:kb_ingest_mode => 'off')
+    e = entry
+    stub_extract
+    HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true)
+    assert_equal 'Outlook 2016 0x800CCC0E', e.reload.problem
+    assert_equal 'approved', e.status
+  end
+
+  def test_plain_ingest_still_respects_ingest_off
+    @ps.update!(:kb_ingest_mode => 'off')
+    entry
+    RedmineExpertHelpdesk::KnowledgeExtractor.any_instance.expects(:extract).never
+    HelpdeskKnowledgeIngestJob.perform_now(@issue.id)
+  end
+
   def test_reextract_never_creates_an_entry
     RedmineExpertHelpdesk::KnowledgeExtractor.any_instance.expects(:extract).never
     assert_no_difference('HelpdeskKnowledgeEntry.count') do

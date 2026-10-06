@@ -1382,7 +1382,8 @@ Lösung von einer ähnlich klingenden unterscheiden lässt. Drei Stufen, zentral
 | **Spezifisch** | Anwendungs-/Produktnamen, Versionen, Fehlercodes und -meldungen (wortgetreu), betroffene Komponente. |
 | **Sehr spezifisch** | Zusätzlich Datei-/Registry-Pfade, Server-, Host- und Freigabenamen, Konfigurationswerte, Befehle und die genaue Reihenfolge der Schritte. |
 
-Passwörter, Zugangsdaten, Lizenzschlüssel und personenbezogene Kundendaten werden nie übernommen.
+Auf jeder Stufe weist der Prompt das Modell an, Passwörter, Zugangsdaten, Lizenzschlüssel und
+personenbezogene Kundendaten wegzulassen — eine Anweisung, kein Filter, Einträge also wie gewohnt prüfen.
 Das Feld Extraktions-Prompt ist standardmäßig leer und nutzt dann den eingebauten Prompt der
 gewählten Stufe (als Platzhalter angezeigt); eigener Text ersetzt ihn für alle Stufen. Die in einer
 bestehenden Installation gespeicherte Kopie des alten Standard-Prompts gilt als „nicht angepasst“,

@@ -19,7 +19,9 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
     return unless issue && issue.closed?
 
     ps = HelpdeskProjectSetting.for_project(issue.project)
-    return unless force || ps.kb_ingest_auto? || ps.kb_ingest_manual?
+    # reextract is an explicit request for existing entries and also applies
+    # while the project no longer contributes new ones (it never creates a row).
+    return unless force || reextract || ps.kb_ingest_auto? || ps.kb_ingest_manual?
 
     store  = RedmineExpertHelpdesk::KnowledgeStore.for(settings)
     client = RedmineExpertHelpdesk::AiClient.new(settings)

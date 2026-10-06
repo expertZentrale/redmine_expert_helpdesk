@@ -368,6 +368,10 @@ nested registration would never fire in production.
   `extract_detail` (NULL = pre-levels = general). `HelpdeskKnowledgeReextractJob` fans out
   `HelpdeskKnowledgeIngestJob(reextract: true)`, which **keeps approved/pending status** — in
   `manual` mode a plain re-ingest would demote approved to pending and drop it from the store.
+  `reextract` also bypasses the `kb_ingest_mode` gate (it never creates a row). `parse_json`
+  **repairs Windows path tokens before parsing** (`repair_paths`/`PATH_TOKEN`): verbatim paths are
+  invalid JSON on json >= 2.10 (`\W`) or, worse, valid with the wrong meaning (`C:\new` → newline);
+  only path tokens are touched because solutions carry real `\n` line breaks.
   The **pgvector backend needs `gem 'pg'`** added in the deployment (not in `PluginGemfile`, to keep
   the default Qdrant build free of libpq).
 - **`knowledge_retrieval.rb`** — the one RAG search path, shared by the summary job and the

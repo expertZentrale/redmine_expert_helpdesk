@@ -621,7 +621,7 @@ de:
   label_helpdesk_kb_extract_detail_specific: 'Spezifisch'
   label_helpdesk_kb_extract_detail_most_specific: 'Sehr spezifisch'
   label_helpdesk_kb_extract_detail_central: 'Zentrale Einstellung (%{level})'
-  text_helpdesk_kb_extract_detail_info: 'Wie viele konkrete Details Wissensbasis-Einträge behalten. Allgemein: Problem und Lösung verallgemeinert. Spezifisch: behält Anwendungsnamen, Versionen, Fehlercodes und -meldungen. Sehr spezifisch: zusätzlich Pfade, Server- und Freigabenamen, Konfigurationswerte und die genaue Reihenfolge der Schritte. Passwörter und personenbezogene Daten werden nie übernommen. Gilt für neu extrahierte Einträge; bestehende lassen sich im Reiter Wissensbasis neu extrahieren.'
+  text_helpdesk_kb_extract_detail_info: 'Wie viele konkrete Details Wissensbasis-Einträge behalten. Allgemein: Problem und Lösung verallgemeinert. Spezifisch: behält Anwendungsnamen, Versionen, Fehlercodes und -meldungen. Sehr spezifisch: zusätzlich Pfade, Server- und Freigabenamen, Konfigurationswerte und die genaue Reihenfolge der Schritte. Auf jeder Stufe wird das Modell angewiesen, Passwörter und personenbezogene Daten wegzulassen. Gilt für neu extrahierte Einträge; bestehende lassen sich im Reiter Wissensbasis neu extrahieren.'
   text_helpdesk_kb_extract_prompt_project_info: 'Extraktions-Prompt des Projekts, je nach Prompt-Modus mit dem zentralen Prompt des wirksamen Detailgrads kombiniert. Bei „Ersetzen“ muss er das Modell JSON liefern lassen.'
   field_helpdesk_kb_top_k: 'Top-K'
   field_helpdesk_kb_min_score: 'Min. Score'

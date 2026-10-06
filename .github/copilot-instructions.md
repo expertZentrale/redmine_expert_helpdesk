@@ -270,6 +270,10 @@ that order is what makes `safe_to_stop` trustworthy across pods.
   `extract_detail` (NULL = pre-levels = general). `HelpdeskKnowledgeReextractJob` fans out
   `HelpdeskKnowledgeIngestJob(reextract: true)`, which **keeps approved/pending status** — in
   `manual` mode a plain re-ingest would demote approved to pending and drop it from the store.
+  `reextract` also bypasses the `kb_ingest_mode` gate (it never creates a row). `parse_json`
+  **repairs Windows path tokens before parsing** (`repair_paths`/`PATH_TOKEN`): verbatim paths are
+  invalid JSON on json >= 2.10 (`\W`) or, worse, valid with the wrong meaning (`C:\new` → newline);
+  only path tokens are touched because solutions carry real `\n` line breaks.
     pgvector needs `gem 'pg'` in the deployment (kept out of `PluginGemfile`).
   - `knowledge_retrieval.rb` — the one RAG search path, shared by the summary job and the answer
     drafter. `KnowledgeRetrieval.search` holds the settings defaults, the self-hit rejection and the
