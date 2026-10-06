@@ -220,6 +220,8 @@ class KnowledgeExtractDetailTest < ActiveSupport::TestCase
     assert_equal 'HKEY_LOCAL_MACHINE\\SOFTWARE\\new\\test',
                  parse.call('{"solution":"HKEY_LOCAL_MACHINE\\SOFTWARE\\new\\test"}')
     assert_equal 'HKLM\\Software\\DATEV', parse.call('{"solution":"HKLM\\\\Software\\\\DATEV"}')
+    assert_equal 'hkey_current_user\\new\\test', parse.call('{"solution":"hkey_current_user\\new\\test"}')
+    assert_equal 'hklm\\new', parse.call('{"solution":"hklm\\new"}')
     assert_equal '%APPDATA%\\new\\test', parse.call('{"solution":"%APPDATA%\\new\\test"}')
     # The ticket still decides escape-like segments.
     assert_equal "%TEMP%\nweiter", parse.call('{"solution":"%TEMP%\\nweiter"}', 'Ordner %TEMP% leeren')

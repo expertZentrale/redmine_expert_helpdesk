@@ -333,7 +333,7 @@ module RedmineExpertHelpdesk
     # ("C:\Program Files (x86)\new"), so prose after a path is not swallowed.
     # Starts: drive letter, UNC, registry hive (HKEY_LOCAL_MACHINE, HKLM ...) and
     # environment variable (%APPDATA%) - the path kinds 'most_specific' keeps.
-    PATH_TOKEN = %r{(?<![\\\w])(?:[A-Za-z]:\\|\\\\|(?:HKEY_[A-Z_]+|HK(?:LM|CU|CR|U|CC))\\|%[A-Za-z_][\w()]*%\\)
+    PATH_TOKEN = %r{(?<![\\\w])(?:[A-Za-z]:\\|\\\\|(?i:HKEY_[A-Z_]+|HK(?:LM|CU|CR|U|CC))\\|%[A-Za-z_][\w()]*%\\)
                     (?:\\\\|(?!#{LINE_BREAK})\\|[^\s"\\]|
                        [ ](?=(?:[^\s"\\]+[ ]){0,2}[^\s"\\]+(?!#{LINE_BREAK})\\))*}x.freeze
 
