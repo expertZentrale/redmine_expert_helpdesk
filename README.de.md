@@ -1395,8 +1395,9 @@ Einstellung) sowie ein eigener Extraktions-Prompt mit denselben Modi wie die and
 *ersetzen*. Die Suche profitiert direkt — eingebettet und gerankt wird der spezifische
 Problemtext —, und die KI-Zusammenfassung vergleicht Anwendung, Version, Fehlercode, Pfade und
 Systeme und nennt Unterschiede, wenn mehrere Fälle passen. Der kundengerichtete
-**Antwortvorschlag übernimmt nie interne Details** (Hosts, IPs, Netzwerkpfade, Konten, andere
-Kunden) aus den Fällen, unabhängig von der Stufe.
+**Antwortvorschlag wird angewiesen, keine internen Details** (Hosts, IPs, Netzwerkpfade, Konten,
+andere Kunden) aus den Fällen zu übernehmen, unabhängig von der Stufe — eine Anweisung, kein Filter;
+der Bearbeiter prüft jeden Entwurf vor dem Senden.
 
 **Neu-Extraktion.** Eine geänderte Stufe gilt für neu extrahierte Einträge. *Einträge neu
 extrahieren* im Reiter Wissensbasis (`manage_helpdesk_kb`) extrahiert die Einträge neu, die mit

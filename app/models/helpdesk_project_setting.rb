@@ -158,7 +158,9 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
     central = RedmineExpertHelpdesk::KnowledgeExtractor.central_prompt(settings, effective_kb_extract_detail(settings))
     return central unless has_attribute?(:kb_extract_prompt)
 
-    combine_prompts(central, kb_extract_prompt.to_s, kb_extract_prompt_mode)
+    RedmineExpertHelpdesk::KnowledgeExtractor.with_privacy(
+      combine_prompts(central, kb_extract_prompt.to_s, kb_extract_prompt_mode)
+    )
   end
 
   # --- KI-Antwortvorschlag (kundengerichtet) ---

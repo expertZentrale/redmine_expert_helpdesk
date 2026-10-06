@@ -1328,8 +1328,9 @@ plus the project's own extraction prompt with the same modes as the other AI pro
 central*, *extend* (appended to the central prompt of the effective level) or *override*.
 Retrieval benefits directly — the specific problem text is what gets embedded and reranked — and
 the AI summary is told to compare application, version, error code, paths and systems and to name
-differences when several cases fit. The customer-facing **answer draft never quotes internal
-details** (hosts, IPs, network paths, accounts, other customers) from the cases, whatever the level.
+differences when several cases fit. The customer-facing **answer draft is instructed not to quote internal
+details** (hosts, IPs, network paths, accounts, other customers) from the cases, whatever the level —
+an instruction, not a filter; the agent reviews every draft before it is sent.
 
 **Re-extraction.** A level change applies to newly extracted entries. *Re-extract entries* on the
 Knowledge base tab (`manage_helpdesk_kb`) re-runs extraction for entries extracted at another

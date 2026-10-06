@@ -15,7 +15,7 @@
   application names, versions, error codes, paths, systems. A new setting offers three levels:
   *General* (previous behaviour, still the default), *Specific* (keeps application/product names,
   versions, error codes and messages) and *Most specific* (also paths, server/share names,
-  configuration values and the exact order of steps). At every level, including General, the prompt now tells the model to leave out credentials and personal data.
+  configuration values and the exact order of steps). At every level, including General, and appended to own central or project prompts, the prompt now tells the model to leave out credentials and personal data.
   The central extraction prompt field is now empty by default and uses the built-in prompt of the
   selected level; a stored copy of the old default counts as not customised.
 - **Per-project extraction settings.** Projects can set their own detail level and extraction

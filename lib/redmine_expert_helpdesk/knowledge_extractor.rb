@@ -144,7 +144,15 @@ module RedmineExpertHelpdesk
     # Central prompt for a level: the admin's own text, else the built-in one.
     def self.central_prompt(settings, level)
       own = (settings || {})['kb_extract_prompt'].to_s
-      custom_prompt?(own) ? own.strip : prompt_for(level)
+      custom_prompt?(own) ? with_privacy(own.strip) : prompt_for(level)
+    end
+
+    # The privacy instruction survives own prompts (central or project override):
+    # appended unless the text already carries it.
+    def self.with_privacy(prompt)
+      return prompt if normalize(prompt).include?(normalize(PROMPT_PRIVACY))
+
+      "#{prompt.to_s.rstrip}\n\n#{PROMPT_PRIVACY}"
     end
 
     MAX_CHARS = 20_000
@@ -262,23 +270,39 @@ module RedmineExpertHelpdesk
     # That is either invalid JSON (\W - measured: 5 of 16 'most_specific' answers
     # for a UNC-path ticket) or, worse, valid JSON with the wrong meaning (\n, \t,
     # \b, \f), so it has to be repaired *before* parsing. Only path tokens are
-    # touched - solution text is full of real \n line breaks. A token counts as
-    # unescaped when its first separator is single ("C:\x"; escaped it reads
-    # "C:\\x") or it holds a backslash that starts no JSON escape; then every
-    # backslash in it is literal and gets doubled.
+    # touched - solution text is full of real \n line breaks.
     def repair_paths(json)
-      json.gsub(PATH_TOKEN) do |token|
-        unescaped = token.match?(/\A[A-Za-z]:\\(?!\\)/) ||
-                    token.gsub('\\\\', '').match?(%r{\\(?!["/bfnrtu])})
-        unescaped ? token.gsub('\\') { '\\\\' } : token
-      end
+      json.gsub(PATH_TOKEN) { |token| repair_path_token(token) }
     end
 
-    # Drive letter or UNC start in the raw JSON text, up to whitespace or a quote.
-    # It also ends before a \n / \r that reads as a line break (followed by a
-    # list marker, whitespace, a quote or the end), so "C:\Temp\n2. Neustart"
-    # keeps its step break.
-    PATH_TOKEN = /(?<![\\\w])(?:[A-Za-z]:\\|\\\\)(?:(?!\\[nr](?:\d+\.|[-*•\s"]|\z))[^\s"])*/.freeze
+    def repair_path_token(token)
+      # UNC prefix with two backslashes; escaped it would have four.
+      if token.match?(/\A\\\\(?!\\)/)
+        rest = token[2..]
+        # "\\SRV\\Share": separators escaped, only the prefix is short - the
+        # model's most common spelling (11 of 16 measured answers).
+        return '\\\\\\\\' + rest if rest.include?('\\\\')
+
+        return token.gsub('\\') { '\\\\' }
+      end
+      # "C:\x" (escaped: "C:\\x") or a backslash that starts no JSON escape:
+      # every backslash in the token is literal.
+      unescaped = token.match?(/\A[A-Za-z]:\\(?!\\)/) ||
+                  token.gsub('\\\\', '').match?(%r{\\(?!["/bfnrtu])})
+      unescaped ? token.gsub('\\') { '\\\\' } : token
+    end
+
+    # \n / \r that reads as a line break: followed by an uppercase letter, digit,
+    # list marker, whitespace, quote or the end. JSON escapes are lowercase, so a
+    # segment like "\new" is not taken for one.
+    LINE_BREAK = /\\[nr](?=[[:upper:][:digit:]\-*•\s"]|\z)/.freeze
+    # Drive letter or UNC start in the raw JSON text, then escaped pairs, single
+    # backslashes that are no line break, and non-space characters. A space only
+    # continues the token when up to three words later the path goes on
+    # ("C:\Program Files (x86)\new"), so prose after a path is not swallowed.
+    PATH_TOKEN = %r{(?<![\\\w])(?:[A-Za-z]:\\|\\\\)
+                    (?:\\\\|(?!#{LINE_BREAK})\\|[^\s"\\]|
+                       [ ](?=(?:[^\s"\\]+[ ]){0,2}[^\s"\\]+(?!#{LINE_BREAK})\\))*}x.freeze
 
     # A valid JSON escape (\" \\ \/ \b \f \n \r \t \uXXXX) as one token, else a
     # lone backslash. Valid pairs must be consumed whole: in "\\SRV" a lookahead

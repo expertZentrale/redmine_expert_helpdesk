@@ -15,7 +15,7 @@
   Stufen: *Allgemein* (bisheriges Verhalten, weiterhin Standard), *Spezifisch* (behält
   Anwendungs-/Produktnamen, Versionen, Fehlercodes und -meldungen) und *Sehr spezifisch* (zusätzlich
   Pfade, Server-/Freigabenamen, Konfigurationswerte und die genaue Reihenfolge der Schritte).
-  Auf jeder Stufe, auch Allgemein, weist der Prompt das Modell jetzt an, Zugangsdaten und personenbezogene Daten wegzulassen. Das zentrale Feld
+  Auf jeder Stufe, auch Allgemein, und angehängt an eigene zentrale oder Projekt-Prompts weist der Prompt das Modell jetzt an, Zugangsdaten und personenbezogene Daten wegzulassen. Das zentrale Feld
   Extraktions-Prompt ist jetzt standardmäßig leer und nutzt den eingebauten Prompt der gewählten
   Stufe; eine gespeicherte Kopie des alten Standards gilt als nicht angepasst.
 - **Extraktions-Einstellungen pro Projekt.** Projekte können im Wissensbasis-Abschnitt des
@@ -31,8 +31,8 @@
 
 - Die KI-Zusammenfassung vergleicht Anwendung, Version, Fehlercode, Pfade und Systeme der
   Wissensbasis-Fälle mit dem aktuellen Ticket und nennt Unterschiede, wenn mehrere passen.
-- Der kundengerichtete Antwortvorschlag übernimmt keine internen Details (Hosts, IPs,
-  Netzwerkpfade, Konten, andere Kunden) aus Wissensbasis-Fällen.
+- Der kundengerichtete Antwortvorschlag wird angewiesen, keine internen Details (Hosts, IPs,
+  Netzwerkpfade, Konten, andere Kunden) aus Wissensbasis-Fällen zu übernehmen.
 
 ### Behoben
 

@@ -47,6 +47,20 @@ class KnowledgeExtractDetailTest < ActiveSupport::TestCase
     Extractor::DETAIL_LEVELS.each { |l| assert_includes Extractor.prompt_for(l), 'personenbezogenen Daten', l }
   end
 
+  # Own prompts (central or project override) keep the privacy instruction -
+  # appended once, not again when the text already carries it.
+  def test_own_prompts_keep_the_privacy_rule
+    own = Extractor.with_privacy('Eigener Prompt')
+    assert own.start_with?('Eigener Prompt')
+    assert_includes own, 'personenbezogenen Daten'
+    assert_equal own, Extractor.with_privacy(own)
+    assert_equal Extractor.prompt_for('specific'), Extractor.with_privacy(Extractor.prompt_for('specific'))
+
+    @ps.kb_extract_prompt = 'Nur JSON bitte.'
+    @ps.kb_extract_prompt_mode = 'override'
+    assert_includes @ps.effective_kb_extract_prompt({}), 'personenbezogenen Daten'
+  end
+
   # The 0.20.3 default (no privacy sentence) sits in existing installs' settings.
   def test_previous_default_without_privacy_rule_is_not_custom
     previous = Extractor::LEGACY_DEFAULT_PROMPTS.last
@@ -85,7 +99,8 @@ class KnowledgeExtractDetailTest < ActiveSupport::TestCase
   def test_central_prompt_ignores_the_seeded_default
     settings = { 'kb_extract_prompt' => Extractor::DEFAULT_PROMPT }
     assert_equal Extractor.prompt_for('most_specific'), Extractor.central_prompt(settings, 'most_specific')
-    assert_equal 'EIGEN', Extractor.central_prompt({ 'kb_extract_prompt' => 'EIGEN' }, 'most_specific')
+    assert_equal Extractor.with_privacy('EIGEN'),
+                 Extractor.central_prompt({ 'kb_extract_prompt' => 'EIGEN' }, 'most_specific')
   end
 
   def test_central_detail_falls_back_when_unset_or_invalid
@@ -123,9 +138,9 @@ class KnowledgeExtractDetailTest < ActiveSupport::TestCase
   def test_override_uses_project_text_and_central_custom_prompt_otherwise
     @ps.kb_extract_prompt = 'PROJEKT'
     @ps.kb_extract_prompt_mode = 'override'
-    assert_equal 'PROJEKT', @ps.effective_kb_extract_prompt('kb_extract_prompt' => 'ZENTRAL')
+    assert_equal Extractor.with_privacy('PROJEKT'), @ps.effective_kb_extract_prompt('kb_extract_prompt' => 'ZENTRAL')
     @ps.kb_extract_prompt_mode = 'inherit'
-    assert_equal 'ZENTRAL', @ps.effective_kb_extract_prompt('kb_extract_prompt' => 'ZENTRAL')
+    assert_equal Extractor.with_privacy('ZENTRAL'), @ps.effective_kb_extract_prompt('kb_extract_prompt' => 'ZENTRAL')
   end
 
   def test_validates_level_and_mode
@@ -160,6 +175,28 @@ class KnowledgeExtractDetailTest < ActiveSupport::TestCase
     assert_equal 'Datei C:\\boot\\file loeschen', parse.call('{"solution":"Datei C:\\boot\\file loeschen"}')
     # Whole UNC path kept, leading double backslash included.
     assert_equal 'In \\\\SRV01\\WINDVSW1\\CONFIGDB', parse.call('{"solution":"In \\\\SRV01\\WINDVSW1\\CONFIGDB"}')
+  end
+
+  # UNC spellings seen from the model: unescaped with escape-like segments, and
+  # the most common one - separators escaped, only the prefix short.
+  def test_parse_repairs_unc_spellings
+    parse = ->(raw) { Extractor.new({}).send(:parse_json, raw)['solution'] }
+    # Unescaped, every segment escape-like (\n, \t): JSON alone would accept it.
+    assert_equal '\\\\server\\new\\test', parse.call('{"solution":"\\\\server\\new\\test"}')
+    # Separators escaped, only the prefix short - the model's usual spelling.
+    assert_equal 'In \\\\SRV01\\WINDVSW1\\CONFIGDB', parse.call('{"solution":"In \\\\SRV01\\\\WINDVSW1\\\\CONFIGDB"}')
+    # Fully escaped stays as it is.
+    assert_equal 'In \\\\SRV01\\Share', parse.call('{"solution":"In \\\\\\\\SRV01\\\\Share"}')
+  end
+
+  def test_parse_repairs_paths_with_spaces
+    parse = ->(raw) { Extractor.new({}).send(:parse_json, raw)['solution'] }
+    assert_equal 'C:\\Program Files\\new\\test', parse.call('{"solution":"C:\\Program Files\\new\\test"}')
+    assert_equal 'C:\\Program Files (x86)\\new', parse.call('{"solution":"C:\\Program Files (x86)\\new"}')
+    assert_equal 'C:\\Users\\Max Mustermann\\Desktop', parse.call('{"solution":"C:\\Users\\Max Mustermann\\Desktop"}')
+    # Prose after a path is not part of it - its line breaks stay.
+    assert_equal "1. C:\\Temp leeren\nPruefen ob\n2. Neustart",
+                 parse.call('{"solution":"1. C:\\Temp leeren\\nPruefen ob\\n2. Neustart"}')
   end
 
   # Solutions are full of real line breaks - also right after a path.

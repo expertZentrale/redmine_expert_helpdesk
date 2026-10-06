@@ -261,8 +261,8 @@ that order is what makes `safe_to_stop` trustworthy across pods.
     mistake. `HelpdeskKnowledgeReindexJob.rebuild(pid)` is the one per-project rebuild (tab and
     `kb_reembed`). `AiFeatures.kb_ready?` gates every write to the store.
   **Detail levels** (`KnowledgeExtractor::DETAIL_LEVELS` = general/specific/most_specific, migration
-  065): `prompt_for(level)` builds the built-in prompt; `general` is byte-identical to the old
-  `DEFAULT_PROMPT`. init.rb used to seed the then-current default into `kb_extract_prompt`, so
+  065): `prompt_for(level)` builds the built-in prompt; `general` keeps the old generalising
+  wording, plus the privacy instruction every level (and, via `with_privacy`, every own prompt) gets. init.rb used to seed the then-current default into `kb_extract_prompt`, so
   `custom_prompt?` treats **any built-in text and every formerly shipped default
   (`LEGACY_DEFAULT_PROMPTS`) as "not customised"** — otherwise existing installs stay pinned to
   it. Changing a default prompt again means adding the old text to that list. The project combines level + own prompt via `effective_kb_extract_prompt`
