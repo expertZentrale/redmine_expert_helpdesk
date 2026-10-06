@@ -142,16 +142,21 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
   # edited the entry meanwhile may have removed or re-embedded the point first;
   # this upsert would then bring back the stale machine text. Compare with the
   # row as it is now and undo or redo accordingly.
-  def fence_index(entry)
-    current = HelpdeskKnowledgeEntry.find_by(:id => entry.id)
-    # Deleted meanwhile: the destroy removed the point before this upsert.
-    return HelpdeskKnowledgeEntry.unindex(entry) unless current
+  def fence_index(entry, attempts = 3)
+    indexed = entry
+    attempts.times do
+      current = HelpdeskKnowledgeEntry.find_by(:id => entry.id)
+      # Deleted meanwhile: the destroy removed the point before this upsert.
+      return HelpdeskKnowledgeEntry.unindex(indexed) unless current
+      return HelpdeskKnowledgeEntry.unindex(current) unless current.approved?
+      return if current.problem == indexed.problem && current.solution == indexed.solution
 
-    if !current.approved?
-      HelpdeskKnowledgeEntry.unindex(current)
-    elsif current.problem != entry.problem || current.solution != entry.solution
+      # The corrective re-embed takes as long as the first one, so the row can
+      # change again under it: check once more afterwards (bounded).
       self.class.index_entry(current)
+      indexed = current
     end
+    Rails.logger.warn("[helpdesk][kb] Entry ##{entry.id} kept changing during re-indexing; left as last indexed")
   end
 
   def index!(store, client, entry)

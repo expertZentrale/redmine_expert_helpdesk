@@ -202,6 +202,23 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
     assert_equal 'neuer Lauf', e.reload.problem
   end
 
+  # The corrective re-embed itself races too: a reject during it must still
+  # end with the point removed.
+  def test_reject_during_corrective_reindex_removes_the_point
+    e = entry
+    stub_extract
+    @store.stubs(:upsert).with do |*|
+      HelpdeskKnowledgeEntry.where(:id => e.id).update_all(:problem => 'von Hand', :curated_at => Time.current)
+      true
+    end
+    HelpdeskKnowledgeIngestJob.stubs(:index_entry).with do |*|
+      HelpdeskKnowledgeEntry.where(:id => e.id).update_all(:status => 'rejected')
+      true
+    end.returns(true)
+    HelpdeskKnowledgeEntry.expects(:unindex).with { |row| row.id == e.id && row.rejected? }.returns(true)
+    HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true)
+  end
+
   # An entry changed after the request (e.g. a later re-close) is left alone.
   def test_reextract_skips_entry_touched_after_the_request
     entry
