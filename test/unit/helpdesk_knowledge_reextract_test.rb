@@ -123,6 +123,18 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
     assert_equal 'neu', e.reload.problem
   end
 
+  # Columns without fractional seconds: a claim in the request's second must
+  # still block the duplicate.
+  def test_claim_blocks_duplicate_within_the_same_second
+    e = entry
+    at = Time.current.change(:usec => 0)
+    e.update_columns(:updated_at => at - 1.second)
+    RedmineExpertHelpdesk::KnowledgeExtractor.any_instance.expects(:extract).once
+      .returns(Result.new(:problem => 'neu', :solution => 's', :has_solution => true, :usage => nil, :detail => 'most_specific'))
+    2.times { HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true, :requested_at => at) }
+    assert_operator e.reload.updated_at, :>, at
+  end
+
   # An entry changed after the request (e.g. a later re-close) is left alone.
   def test_reextract_skips_entry_touched_after_the_request
     entry

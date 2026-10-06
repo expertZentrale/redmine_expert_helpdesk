@@ -206,6 +206,10 @@ class KnowledgeExtractDetailTest < ActiveSupport::TestCase
     raw = '{"solution":"C:\\Temp\\npruefen"}'
     assert_equal "C:\\Temp\npruefen", ex.send(:parse_json, raw, 'Ordner C:\\Temp leeren')['solution']
     assert_equal 'C:\\Temp\\npruefen', ex.send(:parse_json, raw, 'Ordner C:\\Temp\\npruefen fehlt')['solution']
+    # A control escape right after a path, any case: only a ticket segment is a path.
+    tab = '{"solution":"C:\\\\Temp\\tTab"}'
+    assert_equal "C:\\Temp\tTab", ex.send(:parse_json, tab, 'Ordner C:\\Temp')['solution']
+    assert_equal 'C:\\Temp\\tTab', ex.send(:parse_json, tab, 'Ordner C:\\Temp\\tTab')['solution']
     # Case may differ between ticket and answer.
     assert_equal 'C:\\new\\test', ex.send(:parse_json, '{"solution":"C:\\new\\test"}', 'Pfad C:\\New\\Test')['solution']
   end

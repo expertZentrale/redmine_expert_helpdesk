@@ -318,8 +318,10 @@ module RedmineExpertHelpdesk
     end
 
     VALID_PATH_ESCAPE = %r{\\\\|\\["/]|\\u\h{4}}.freeze
-    # A JSON control escape that could also start a lowercase path segment.
-    AMBIGUOUS_ESCAPE  = /\\[nrtbf][[:lower:]]/.freeze
+    # A JSON control escape that could also start a path segment ("\new",
+    # "\Temp\tTab" - tab or folder "tTab"?). Real line breaks followed by a
+    # list marker never reach a token (PATH_TOKEN stops before them).
+    AMBIGUOUS_ESCAPE  = /\\[nrtbf]/.freeze
 
     # \n / \r that reads as a line break: followed by an uppercase letter, digit,
     # list marker, whitespace, quote or the end. JSON escapes are lowercase, so a

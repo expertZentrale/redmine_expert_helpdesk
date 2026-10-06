@@ -36,7 +36,7 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
     # Each entry costs an AI call: a double-submit or a second admin queues the
     # same entries again. Claim the row atomically (works across processes) and
     # only if untouched since the request; a duplicate job finds it claimed.
-    return if reextract && !claim_for_reextract(entry, requested_at || Time.current)
+    return if reextract && requested_at && !claim_for_reextract(entry, requested_at)
 
     result = RedmineExpertHelpdesk::KnowledgeExtractor.new(settings).extract(issue)
     return unless result
@@ -99,9 +99,13 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
 
   private
 
+  # The claim moves updated_at strictly past requested_at - by at least a second,
+  # since a column without fractional seconds would otherwise round the claim
+  # back to the request's second and let a duplicate through.
   def claim_for_reextract(entry, requested_at)
-    HelpdeskKnowledgeEntry.where(:id => entry.id).where('updated_at < ?', requested_at)
-                          .update_all(:updated_at => Time.current) == 1
+    claimed_at = [Time.current, requested_at + 1.second].max
+    HelpdeskKnowledgeEntry.where(:id => entry.id).where('updated_at <= ?', requested_at)
+                          .update_all(:updated_at => claimed_at) == 1
   end
 
   def index!(store, client, entry)
