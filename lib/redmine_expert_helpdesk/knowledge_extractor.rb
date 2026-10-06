@@ -3,12 +3,91 @@
 # Prompt. Liefert nichts Verwertbares, wenn keine echte Loesung erkennbar ist.
 module RedmineExpertHelpdesk
   class KnowledgeExtractor
-    Result = Struct.new(:problem, :solution, :has_solution, :usage, keyword_init: true)
+    Result = Struct.new(:problem, :solution, :has_solution, :usage, :detail, keyword_init: true)
 
-    DEFAULT_PROMPT = <<~PROMPT.freeze
+    # How much of the ticket's concrete detail an entry keeps. 'general' is the
+    # original behaviour; the finer levels keep what decides whether a past fix
+    # applies at all (application, version, error code, path, system) - a
+    # generalised "program does not start" matches every such ticket equally.
+    DETAIL_LEVELS  = %w[general specific most_specific].freeze
+    DEFAULT_DETAIL = 'general'.freeze
+
+    PROMPT_HEAD = <<~PROMPT.freeze
       Du erhaeltst den vollstaendigen Verlauf eines ABGESCHLOSSENEN Support-Tickets
       (Kundenanfrage und Bearbeiter-Antworten). Der Verlauf beginnt mit der Betreffzeile
       ("Betreff: ..."); sie ist Teil der Kundenanfrage. Extrahiere daraus einen wiederverwendbaren
+      Wissensbasis-Eintrag und antworte AUSSCHLIESSLICH mit einem JSON-Objekt mit genau
+      diesen Feldern:
+    PROMPT
+
+    PROMPT_FIELDS = {
+      'general' => <<~PROMPT,
+        - "problem":  das urspruengliche Anliegen/Problem des Kunden, praegnant und
+                      verallgemeinert (deutsch).
+        - "solution": die tatsaechliche Loesung bzw. das Vorgehen, das zur Loesung fuehrte,
+                      praegnant, verallgemeinert und ohne kundenspezifische Geheimnisse
+                      (deutsch, gerne als kurze Schritte).
+      PROMPT
+      'specific' => <<~PROMPT,
+        - "problem":  das urspruengliche Anliegen/Problem des Kunden, praegnant (deutsch).
+                      Behalte die konkreten Merkmale bei: Name der Anwendung bzw. des
+                      Produkts/Geraets, Version, Fehlercode und Fehlermeldung (wortgetreu),
+                      betroffene Komponente oder Funktion.
+        - "solution": die tatsaechliche Loesung bzw. das Vorgehen, das zur Loesung fuehrte
+                      (deutsch, gerne als kurze Schritte). Nenne die beteiligten Anwendungen,
+                      Versionen, Einstellungen und Menuepfade beim Namen.
+      PROMPT
+      'most_specific' => <<~PROMPT
+        - "problem":  das urspruengliche Anliegen/Problem des Kunden (deutsch). Verallgemeinere
+                      NICHT: Behalte Name der Anwendung bzw. des Produkts/Geraets, Version,
+                      Fehlercode und Fehlermeldung (wortgetreu), Datei- und Registry-Pfade,
+                      Server-, Host- und Freigabenamen sowie betroffene Komponenten bei.
+        - "solution": die tatsaechliche Loesung bzw. das Vorgehen, das zur Loesung fuehrte,
+                      als Schritte in der tatsaechlichen Reihenfolge (deutsch). Nenne Pfade,
+                      Systeme, Konfigurationswerte, Befehle und Menuepfade exakt so, wie sie im
+                      Verlauf stehen - gerade diese Details entscheiden, ob die Loesung auf
+                      einen neuen Fall passt.
+      PROMPT
+    }.freeze
+
+    PROMPT_TAIL = <<~PROMPT.freeze
+        - "has_solution": true nur, wenn im Verlauf eine echte, nachvollziehbare Loesung
+                      erkennbar ist; sonst false.
+
+      Erfinde nichts. Wenn keine Loesung erkennbar ist, setze has_solution=false und
+      solution auf einen leeren String. Gib nur das JSON aus, ohne Codeblock-Markierung.
+    PROMPT
+
+    # Never kept at any level: the finer levels are about technical detail, not
+    # about who the customer is or how to log in as them.
+    PROMPT_PRIVACY = <<~PROMPT.freeze
+      Uebernimm niemals Passwoerter, Zugangsdaten, Tokens oder Lizenzschluessel, und keine
+      personenbezogenen Daten (Namen, E-Mail-Adressen, Telefonnummern) des Kunden.
+    PROMPT
+
+    # Paths are what the finer levels keep, and a Windows path is backslashes.
+    PROMPT_ESCAPING = <<~PROMPT.freeze
+      Achte auf gueltiges JSON: Jeder Backslash in einem Wert wird verdoppelt, z. B. wird der
+      Pfad \\\\server\\freigabe als "\\\\\\\\server\\\\freigabe" geschrieben.
+    PROMPT
+
+    def self.prompt_for(level)
+      level = DEFAULT_DETAIL unless DETAIL_LEVELS.include?(level.to_s)
+      fields = PROMPT_FIELDS.fetch(level.to_s).gsub(/^/, '  ')
+      extra = level.to_s == 'general' ? '' : "\n#{PROMPT_PRIVACY}\n#{PROMPT_ESCAPING}"
+      (PROMPT_HEAD + fields + PROMPT_TAIL + extra).freeze
+    end
+
+    # Unchanged from before the levels existed: init.rb used to seed it into
+    # 'kb_extract_prompt', so existing installs carry this exact text.
+    DEFAULT_PROMPT = prompt_for(DEFAULT_DETAIL)
+
+    # Defaults shipped before DEFAULT_PROMPT; init.rb seeded whichever was current
+    # at install time, so these copies sit in existing installs' settings too.
+    # Before 0.7.1 (#18) the prompt did not mention the subject line.
+    LEGACY_DEFAULT_PROMPTS = [<<~PROMPT].freeze
+      Du erhaeltst den vollstaendigen Verlauf eines ABGESCHLOSSENEN Support-Tickets
+      (Kundenanfrage und Bearbeiter-Antworten). Extrahiere daraus einen wiederverwendbaren
       Wissensbasis-Eintrag und antworte AUSSCHLIESSLICH mit einem JSON-Objekt mit genau
       diesen Feldern:
         - "problem":  das urspruengliche Anliegen/Problem des Kunden, praegnant und
@@ -22,6 +101,35 @@ module RedmineExpertHelpdesk
       Erfinde nichts. Wenn keine Loesung erkennbar ist, setze has_solution=false und
       solution auf einen leeren String. Gib nur das JSON aus, ohne Codeblock-Markierung.
     PROMPT
+
+    # A stored central prompt only counts as the admin's own when it differs from
+    # every built-in and every formerly shipped default. Otherwise the copy init.rb
+    # seeded would pin every existing install to it, whatever level is selected.
+    def self.custom_prompt?(text)
+      normalized = normalize(text)
+      return false if normalized.empty?
+
+      builtin = DETAIL_LEVELS.map { |level| prompt_for(level) } + LEGACY_DEFAULT_PROMPTS
+      builtin.none? { |prompt| normalize(prompt) == normalized }
+    end
+
+    def self.normalize(text)
+      text.to_s.gsub(/\s+/, ' ').strip
+    end
+    private_class_method :normalize
+
+    # Central level; read with a fallback, since a key added to init.rb's
+    # :default hash reads nil until the settings form is saved again.
+    def self.central_detail(settings)
+      level = (settings || {})['kb_extract_detail'].to_s
+      DETAIL_LEVELS.include?(level) ? level : DEFAULT_DETAIL
+    end
+
+    # Central prompt for a level: the admin's own text, else the built-in one.
+    def self.central_prompt(settings, level)
+      own = (settings || {})['kb_extract_prompt'].to_s
+      custom_prompt?(own) ? own.strip : prompt_for(level)
+    end
 
     MAX_CHARS = 20_000
 
@@ -79,7 +187,7 @@ module RedmineExpertHelpdesk
       client = RedmineExpertHelpdesk::AiClient.new(@settings)
       return nil unless client.configured?
 
-      prompt = @settings['kb_extract_prompt'].presence || DEFAULT_PROMPT
+      prompt, detail = prompt_and_detail(issue)
       raw    = client.summarize(prompt, text,
                                 :log_context => { :request_type => 'kb_extract',
                                                   :project_id => issue.project_id, :issue_id => issue.id })
@@ -90,11 +198,22 @@ module RedmineExpertHelpdesk
         :problem      => data['problem'].to_s.strip,
         :solution     => data['solution'].to_s.strip,
         :has_solution => data['has_solution'] == true && data['solution'].to_s.strip.present?,
-        :usage        => client.last_usage
+        :usage        => client.last_usage,
+        :detail       => detail
       )
     end
 
     private
+
+    # The project decides (level, own prompt, mode); the extractor's settings
+    # are the central side of that combination.
+    def prompt_and_detail(issue)
+      ps = issue.project && HelpdeskProjectSetting.for_project(issue.project)
+      return [self.class.central_prompt(@settings, self.class.central_detail(@settings)),
+              self.class.central_detail(@settings)] unless ps
+
+      [ps.effective_kb_extract_prompt(@settings), ps.effective_kb_extract_detail(@settings)]
+    end
 
     # Beschreibung + alle Journal-Notizen (der Loesungsweg steht oft in internen
     # Notizen; die Wissensbasis ist projektintern).
@@ -110,9 +229,22 @@ module RedmineExpertHelpdesk
       m = s.match(/\{.*\}/m)
       return nil unless m
 
-      JSON.parse(m[0])
-    rescue JSON::ParserError
+      begin
+        JSON.parse(m[0])
+      rescue JSON::ParserError
+        # Windows paths copied verbatim ("\\SRV01\WINDVSW1") carry backslashes that
+        # are no JSON escape; json >= 2.10 rejects them, and with them the whole
+        # entry. Measured: 5 of 16 'most_specific' answers for a UNC-path ticket.
+        JSON.parse(m[0].gsub(ESCAPE_TOKEN) { |esc| esc.length == 1 ? '\\\\' : esc })
+      end
+    rescue JSON::ParserError => e
+      Rails.logger.warn("[helpdesk][kb] Extraction answer is not valid JSON (#{raw.to_s.length} chars): #{e.message[0, 120]}")
       nil
     end
+
+    # A valid JSON escape (\" \\ \/ \b \f \n \r \t \uXXXX) as one token, else a
+    # lone backslash. Valid pairs must be consumed whole: in "\\SRV" a lookahead
+    # would skip the first backslash and then double the second.
+    ESCAPE_TOKEN = /\\(?:["\\\/bfnrt]|u\h{4})|\\/.freeze
   end
 end

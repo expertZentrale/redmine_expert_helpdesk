@@ -530,6 +530,38 @@
             :id => 'hd_kb_display' %>
         <em class="info"><%= l(:text_helpdesk_kb_proposal_display_info) %></em>
       </p>
+      <% if hd_setting.has_attribute?(:kb_extract_detail) %>
+        <% kb_extractor = RedmineExpertHelpdesk::KnowledgeExtractor %>
+        <% kb_central = kb_extractor.central_detail(Setting.plugin_redmine_expert_helpdesk) %>
+        <p>
+          <label for="hd_kb_extract_detail"><%= l(:field_helpdesk_kb_extract_detail) %></label>
+          <%= select_tag 'helpdesk_project_setting[kb_extract_detail]',
+              options_for_select(
+                [[l(:label_helpdesk_kb_extract_detail_central,
+                    :level => l(:"label_helpdesk_kb_extract_detail_#{kb_central}")), '']] +
+                kb_extractor::DETAIL_LEVELS.map { |d| [l(:"label_helpdesk_kb_extract_detail_#{d}"), d] },
+                hd_setting.kb_extract_detail.to_s),
+              :id => 'hd_kb_extract_detail' %>
+          <em class="info"><%= l(:text_helpdesk_kb_extract_detail_info) %></em>
+        </p>
+        <p>
+          <label for="hd_kb_extract_prompt_mode"><%= l(:field_helpdesk_ai_prompt_mode) %></label>
+          <%= select_tag 'helpdesk_project_setting[kb_extract_prompt_mode]',
+              options_for_select(
+                HelpdeskProjectSetting::AI_PROMPT_MODES.map { |m| [l(:"label_helpdesk_ai_prompt_mode_#{m}"), m] },
+                hd_setting.kb_extract_prompt_mode.presence || 'inherit'),
+              :id => 'hd_kb_extract_prompt_mode' %>
+          <em class="info"><%= l(:text_helpdesk_ai_prompt_mode_info) %></em>
+        </p>
+        <p>
+          <label for="hd_kb_extract_prompt"><%= l(:field_helpdesk_kb_extract_prompt) %></label>
+          <%= text_area_tag 'helpdesk_project_setting[kb_extract_prompt]', hd_setting.kb_extract_prompt,
+                            :rows => 8, :cols => 70, :id => 'hd_kb_extract_prompt',
+                            :placeholder => kb_extractor.central_prompt(Setting.plugin_redmine_expert_helpdesk,
+                                                                        hd_setting.effective_kb_extract_detail) %>
+          <em class="info"><%= l(:text_helpdesk_kb_extract_prompt_project_info) %></em>
+        </p>
+      <% end %>
       <p><%= submit_tag l(:button_save) %></p>
     <% end %>
   </fieldset>

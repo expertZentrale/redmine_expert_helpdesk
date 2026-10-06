@@ -161,6 +161,15 @@ class HelpdeskProjectSettingsController < ApplicationController
     setting.kb_ingest_mode = mode if HelpdeskProjectSetting::KB_INGEST_MODES.include?(mode)
     disp = hp[:kb_proposal_display].to_s
     setting.kb_proposal_display = disp if HelpdeskProjectSetting::KB_DISPLAY_MODES.include?(disp)
+    return unless setting.has_attribute?(:kb_extract_detail)
+
+    # Blank detail = take the central level again.
+    detail = hp[:kb_extract_detail].to_s
+    setting.kb_extract_detail = detail.presence if
+      detail.blank? || RedmineExpertHelpdesk::KnowledgeExtractor::DETAIL_LEVELS.include?(detail)
+    mode = hp[:kb_extract_prompt_mode].to_s
+    setting.kb_extract_prompt_mode = mode if HelpdeskProjectSetting::AI_PROMPT_MODES.include?(mode)
+    setting.kb_extract_prompt = hp[:kb_extract_prompt].to_s.strip.presence
   end
 
   # Prioritaets-Overrides: leere Zeilen loeschen, gefuellte anlegen/aktualisieren

@@ -7,7 +7,11 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
 
   # force: true = manuelle Aufnahme aus dem Ticket -> sofort approved+indexiert,
   # unabhaengig vom Projekt-Modus.
-  def perform(issue_id, force: false)
+  # reextract: true = re-run the extraction of an existing entry (detail level
+  # changed). Curated/rejected entries stay untouched and the entry keeps its
+  # status: in 'manual' mode an approved entry would otherwise fall back to
+  # pending and drop out of the vector store.
+  def perform(issue_id, force: false, reextract: false)
     settings = Setting.plugin_redmine_expert_helpdesk
     return unless RedmineExpertHelpdesk::AiFeatures.kb_enabled?
 
@@ -26,6 +30,7 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
     # extraction: a reopened-and-closed ticket must not overwrite it. Only an explicit
     # manual ingest (force) replaces it.
     return if !force && entry.persisted? && (entry.curated? || entry.rejected?)
+    return if reextract && !entry.persisted?
 
     result = RedmineExpertHelpdesk::KnowledgeExtractor.new(settings).extract(issue)
     return unless result
@@ -48,8 +53,10 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
         entry.updated_by_id = nil
         entry.curated_at    = nil
 
+        entry.extract_detail = result.detail if entry.has_attribute?(:extract_detail)
         entry.status =
           if !result.has_solution then 'skipped'
+          elsif reextract && %w[approved pending].include?(entry.status_was) then entry.status_was
           elsif force || ps.kb_ingest_auto? then 'approved'
           else 'pending'
           end

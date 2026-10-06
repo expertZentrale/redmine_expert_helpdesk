@@ -358,6 +358,16 @@ nested registration would never fire in production.
   entry unless `force`**, otherwise a re-close would replace a correction with the model's original
   mistake. `HelpdeskKnowledgeReindexJob.rebuild(pid)` is the one per-project rebuild (tab and
   `kb_reembed`). `AiFeatures.kb_ready?` gates every write to the store.
+  **Detail levels** (`KnowledgeExtractor::DETAIL_LEVELS` = general/specific/most_specific, migration
+  065): `prompt_for(level)` builds the built-in prompt; `general` is byte-identical to the old
+  `DEFAULT_PROMPT`. init.rb used to seed the then-current default into `kb_extract_prompt`, so
+  `custom_prompt?` treats **any built-in text and every formerly shipped default
+  (`LEGACY_DEFAULT_PROMPTS`) as "not customised"** — otherwise existing installs stay pinned to
+  it. Changing a default prompt again means adding the old text to that list. The project combines level + own prompt via `effective_kb_extract_prompt`
+  (`combine_prompts`, central side = built-in of the *effective* level). Entries record
+  `extract_detail` (NULL = pre-levels = general). `HelpdeskKnowledgeReextractJob` fans out
+  `HelpdeskKnowledgeIngestJob(reextract: true)`, which **keeps approved/pending status** — in
+  `manual` mode a plain re-ingest would demote approved to pending and drop it from the store.
   The **pgvector backend needs `gem 'pg'`** added in the deployment (not in `PluginGemfile`, to keep
   the default Qdrant build free of libpq).
 - **`knowledge_retrieval.rb`** — the one RAG search path, shared by the summary job and the

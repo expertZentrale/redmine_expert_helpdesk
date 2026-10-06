@@ -174,7 +174,9 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'kb_embed_model'     => 'text-embedding-3-small',
              'kb_embed_endpoint'  => '',
              'kb_embed_api_key'   => '',
-             'kb_extract_prompt'  => RedmineExpertHelpdesk::KnowledgeExtractor::DEFAULT_PROMPT,
+             # Blank prompt = built-in prompt of the selected detail level.
+             'kb_extract_detail'  => RedmineExpertHelpdesk::KnowledgeExtractor::DEFAULT_DETAIL,
+             'kb_extract_prompt'  => '',
              'kb_top_k'           => '3',
              'kb_min_score'       => '0.5',
              'kb_min_results'     => '1',
@@ -232,7 +234,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
       :helpdesk_kb_entries => [:new, :create, :edit, :update, :approve, :reject]
     }, :require => :member
     permission :manage_helpdesk_kb, {
-      :helpdesk_kb_entries => [:destroy, :reindex]
+      :helpdesk_kb_entries => [:destroy, :reindex, :reextract]
     }, :require => :member
   end
 

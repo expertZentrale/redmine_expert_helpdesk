@@ -77,6 +77,14 @@ class AnswerDrafterTest < ActiveSupport::TestCase
     assert_includes block, Drafter::NO_DRAFT_TOKEN
   end
 
+  # Entries at a finer detail level carry paths and host names; the draft goes
+  # to the customer and must leave them out.
+  def test_kb_block_forbids_internal_details_in_the_reply
+    block = drafter.send(:kb_block, [hit(4711, 0.9, 'Freigabe fehlt', 'Pfad \\\\srv-fs01\\daten gemappt')])
+    assert_includes block, Drafter::INTERNALS_RULE
+    assert_includes block, 'Host'
+  end
+
   def test_kb_block_is_absent_without_hits
     assert_nil drafter.send(:kb_block, [])
   end

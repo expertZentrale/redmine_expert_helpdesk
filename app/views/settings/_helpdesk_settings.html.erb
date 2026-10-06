@@ -572,13 +572,36 @@
   <%= password_field_tag 'settings[kb_embed_api_key]', @settings['kb_embed_api_key'], :size => 40, :autocomplete => 'new-password' %>
   <em class="info"><%= l(:text_helpdesk_kb_embed_api_key_info) %></em>
 </p>
+<% kb_extractor = RedmineExpertHelpdesk::KnowledgeExtractor %>
+<% kb_detail = kb_extractor.central_detail(@settings) %>
+<p>
+  <label for="hd_kb_extract_detail"><%= l(:field_helpdesk_kb_extract_detail) %></label>
+  <%= select_tag 'settings[kb_extract_detail]',
+      options_for_select(kb_extractor::DETAIL_LEVELS.map { |d| [l(:"label_helpdesk_kb_extract_detail_#{d}"), d] }, kb_detail),
+      :id => 'hd_kb_extract_detail' %>
+  <em class="info"><%= l(:text_helpdesk_kb_extract_detail_info) %></em>
+</p>
 <p>
   <label><%= l(:field_helpdesk_kb_extract_prompt) %></label>
+  <%# The seeded copy of the old default is not the admin's own text: show it as
+      empty so the selected level's built-in prompt applies. %>
   <%= text_area_tag 'settings[kb_extract_prompt]',
-                    @settings['kb_extract_prompt'].presence || RedmineExpertHelpdesk::KnowledgeExtractor::DEFAULT_PROMPT,
-                    :rows => 8, :cols => 70 %>
+                    (kb_extractor.custom_prompt?(@settings['kb_extract_prompt']) ? @settings['kb_extract_prompt'] : ''),
+                    :rows => 8, :cols => 70,
+                    :placeholder => kb_extractor.prompt_for(kb_detail),
+                    :id => 'hd_kb_extract_prompt',
+                    :data => { :prompts => kb_extractor::DETAIL_LEVELS.to_h { |d| [d, kb_extractor.prompt_for(d)] }.to_json } %>
   <em class="info"><%= l(:text_helpdesk_kb_extract_prompt_info) %></em>
 </p>
+<%= javascript_tag do %>
+  (function() {
+    var sel = document.getElementById('hd_kb_extract_detail');
+    var area = document.getElementById('hd_kb_extract_prompt');
+    if (!sel || !area) return;
+    var prompts = JSON.parse(area.getAttribute('data-prompts'));
+    sel.addEventListener('change', function() { area.placeholder = prompts[sel.value] || ''; });
+  })();
+<% end %>
 <p>
   <label><%= l(:field_helpdesk_kb_top_k) %></label>
   <%= text_field_tag 'settings[kb_top_k]', @settings['kb_top_k'].presence || '3', :size => 4 %>

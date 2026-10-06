@@ -5,6 +5,44 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **Detailgrad für die Wissensbasis-Extraktion.** Der Extraktions-Prompt ließ das Modell Problem
+  und Lösung verallgemeinern und verwarf damit genau das, was entscheidet, ob eine frühere Lösung
+  passt — Anwendungsnamen, Versionen, Fehlercodes, Pfade, Systeme. Eine neue Einstellung bietet drei
+  Stufen: *Allgemein* (bisheriges Verhalten, weiterhin Standard), *Spezifisch* (behält
+  Anwendungs-/Produktnamen, Versionen, Fehlercodes und -meldungen) und *Sehr spezifisch* (zusätzlich
+  Pfade, Server-/Freigabenamen, Konfigurationswerte und die genaue Reihenfolge der Schritte).
+  Zugangsdaten und personenbezogene Daten werden nie übernommen. Das zentrale Feld
+  Extraktions-Prompt ist jetzt standardmäßig leer und nutzt den eingebauten Prompt der gewählten
+  Stufe; eine gespeicherte Kopie des alten Standards gilt als nicht angepasst.
+- **Extraktions-Einstellungen pro Projekt.** Projekte können im Wissensbasis-Abschnitt des
+  Helpdesk-Reiters und per REST-API einen eigenen Detailgrad und Extraktions-Prompt festlegen
+  (zentral verwenden / erweitern / ersetzen, wie bei den anderen KI-Prompts; `kb_extract_detail`,
+  `kb_extract_prompt_mode`, `kb_extract_prompt`, nur lesend `effective_kb_extract_detail`).
+- **Neu-Extraktion bestehender Einträge.** *Einträge neu extrahieren* im Reiter Wissensbasis
+  (`manage_helpdesk_kb`) und `rake redmine_expert_helpdesk:kb_reextract [PROJECT=…] [ALL=1]`
+  extrahieren mit der aktuellen Stufe neu. Einträge behalten ihren Status; von Personen kuratierte
+  Einträge bleiben unberührt. Migration 065 speichert die Stufe je Eintrag.
+
+### Geändert
+
+- Die KI-Zusammenfassung vergleicht Anwendung, Version, Fehlercode, Pfade und Systeme der
+  Wissensbasis-Fälle mit dem aktuellen Ticket und nennt Unterschiede, wenn mehrere passen.
+- Der kundengerichtete Antwortvorschlag übernimmt keine internen Details (Hosts, IPs,
+  Netzwerkpfade, Konten, andere Kunden) aus Wissensbasis-Fällen.
+
+### Behoben
+
+- **Die Wissensbasis-Extraktion verwarf Antworten mit Windows-Pfaden.** Ein wörtlich übernommener
+  Pfad (`\\SRV01\Share\Config`) enthält Backslashes, die keine gültigen JSON-Escapes sind; der
+  strengere JSON-Parser aktueller Ruby-Versionen lehnte die ganze Antwort ab, und das Ticket bekam
+  stillschweigend keinen Eintrag — gemessen bei 5 von 16 Antworten zu einem Ticket mit UNC-Pfad.
+  Solche Backslashes werden jetzt vor dem Parsen repariert, die feineren Detailgrade bitten das
+  Modell, sie zu maskieren, und eine weiterhin ungültige Antwort wird geloggt.
+
 ## [0.20.3] - 2026-10-01
 
 ### Behoben

@@ -41,6 +41,13 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
             :allow_nil => true
   validates :kb_ingest_mode,      :inclusion => { :in => KB_INGEST_MODES }, :allow_nil => true
   validates :kb_proposal_display, :inclusion => { :in => KB_DISPLAY_MODES }, :allow_nil => true
+  # Blank inherits the central detail level. Guarded: the model is loaded before
+  # migration 065 has run (Redmine migrates plugins after boot).
+  validates :kb_extract_detail,
+            :inclusion => { :in => RedmineExpertHelpdesk::KnowledgeExtractor::DETAIL_LEVELS },
+            :allow_blank => true, :if => -> { has_attribute?(:kb_extract_detail) }
+  validates :kb_extract_prompt_mode, :inclusion => { :in => AI_PROMPT_MODES },
+            :allow_nil => true, :if => -> { has_attribute?(:kb_extract_prompt_mode) }
   validates :info_request_mode, :inclusion => { :in => INFO_REQUEST_MODES }, :allow_nil => true
   validates :info_request_note_visibility,
             :inclusion => { :in => INFO_REQUEST_NOTE_VISIBILITIES }, :allow_nil => true
@@ -133,6 +140,25 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
 
   def kb_show_in_sidebar?
     %w[sidebar both].include?(kb_proposal_display.to_s)
+  end
+
+  # How much concrete detail extracted entries keep: the project's level, else
+  # the central one, else 'general'.
+  def effective_kb_extract_detail(settings = Setting.plugin_redmine_expert_helpdesk)
+    own = has_attribute?(:kb_extract_detail) ? kb_extract_detail.to_s : ''
+    return own if RedmineExpertHelpdesk::KnowledgeExtractor::DETAIL_LEVELS.include?(own)
+
+    RedmineExpertHelpdesk::KnowledgeExtractor.central_detail(settings)
+  end
+
+  # Extraction prompt, combined like the other AI prompts. The central side is
+  # the built-in prompt of the *effective* level (or the admin's own text), so a
+  # project that only raises the level still inherits or extends correctly.
+  def effective_kb_extract_prompt(settings = Setting.plugin_redmine_expert_helpdesk)
+    central = RedmineExpertHelpdesk::KnowledgeExtractor.central_prompt(settings, effective_kb_extract_detail(settings))
+    return central unless has_attribute?(:kb_extract_prompt)
+
+    combine_prompts(central, kb_extract_prompt.to_s, kb_extract_prompt_mode)
   end
 
   # --- KI-Antwortvorschlag (kundengerichtet) ---

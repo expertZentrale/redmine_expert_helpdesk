@@ -74,6 +74,7 @@ RedmineApp::Application.routes.draw do
       end
       collection do
         post :reindex
+        post :reextract
       end
     end
 

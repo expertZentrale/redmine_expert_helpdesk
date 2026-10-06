@@ -2,6 +2,7 @@
 #
 #   bundle exec rake redmine_expert_helpdesk:kb_backfill RAILS_ENV=production
 #   bundle exec rake redmine_expert_helpdesk:kb_reembed  RAILS_ENV=production
+#   bundle exec rake redmine_expert_helpdesk:kb_reextract [PROJECT=<id|identifier>] [ALL=1] RAILS_ENV=production
 #
 namespace :redmine_expert_helpdesk do
   desc 'Nimmt bereits geschlossene Tickets beitragender Projekte in die Wissensbasis auf'
@@ -61,5 +62,34 @@ namespace :redmine_expert_helpdesk do
       end
     end
     puts "Neu indexiert: #{ok} Eintraege."
+  end
+
+  desc 'Extrahiert Wissensbasis-Eintraege mit dem aktuellen Detailgrad neu (PROJECT=<id|identifier>, ALL=1 = alle)'
+  task :kb_reextract => :environment do
+    unless RedmineExpertHelpdesk::AiFeatures.kb_ready?
+      puts 'Wissensbasis ist deaktiviert oder nicht vollstaendig konfiguriert.'
+      next
+    end
+
+    all = ENV['ALL'] == '1'
+    projects =
+      if ENV['PROJECT'].present?
+        [Project.find_by(:id => ENV['PROJECT']) || Project.find_by(:identifier => ENV['PROJECT'])].compact
+      else
+        Project.where(:id => HelpdeskProjectSetting.where.not(:kb_ingest_mode => 'off').select(:project_id)).to_a
+      end
+    if projects.empty?
+      puts 'Kein passendes Projekt gefunden.'
+      next
+    end
+
+    total = 0
+    projects.each do |project|
+      level = HelpdeskProjectSetting.for_project(project).effective_kb_extract_detail
+      count = HelpdeskKnowledgeReextractJob.enqueue(project.id, :all => all).to_i
+      total += count
+      puts "#{project.identifier} (#{level}): #{count} Eintraege zur Neu-Extraktion eingereiht."
+    end
+    puts "Gesamt eingereiht: #{total} (je Eintrag ein KI-Aufruf)."
   end
 end

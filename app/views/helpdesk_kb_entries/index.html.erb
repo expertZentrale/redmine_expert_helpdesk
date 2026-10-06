@@ -13,6 +13,21 @@
                 :method => :post, :class => 'icon icon-reload',
                 :title => l(:text_helpdesk_kb_reindex_info),
                 :data => { :confirm => l(:text_helpdesk_kb_reindex_confirm) } %>
+    <%# Entries left at another detail level first; once none are, offer all of
+        them again (e.g. after the prompt text changed). %>
+    <% kb_level   = HelpdeskProjectSetting.for_project(@project).effective_kb_extract_detail %>
+    <% kb_stale   = HelpdeskKnowledgeReextractJob.scope_for(@project.id).count %>
+    <% kb_all     = kb_stale.zero? %>
+    <% kb_targets = kb_all ? HelpdeskKnowledgeReextractJob.scope_for(@project.id, :all => true).count : kb_stale %>
+    <% if kb_targets > 0 %>
+      <%= link_to hd_icon_label('reload', l(:button_helpdesk_kb_reextract)),
+                  reextract_helpdesk_kb_entries_path(:project_id => @project, :all => (kb_all ? '1' : nil)),
+                  :method => :post, :class => 'icon icon-reload',
+                  :title => l(:text_helpdesk_kb_reextract_info),
+                  :data => { :confirm => l(kb_all ? :text_helpdesk_kb_reextract_confirm_all : :text_helpdesk_kb_reextract_confirm,
+                                           :count => kb_targets,
+                                           :level => l(:"label_helpdesk_kb_extract_detail_#{kb_level}")) } %>
+    <% end %>
   <% end %>
 </div>
 
