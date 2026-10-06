@@ -75,10 +75,24 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
     assert_equal 'pending', e.reload.status
   end
 
-  def test_reextract_without_solution_skips_entry
+  # A re-extraction that finds no solution (often a one-off miss) keeps the
+  # entry as it was - still approved, still searchable, old text.
+  def test_reextract_without_solution_keeps_the_entry
     e = entry(:point_id => '1')
     stub_extract(:has_solution => false)
+    HelpdeskKnowledgeEntry.expects(:unindex).never
     HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true)
+    e.reload
+    assert_equal 'approved', e.status
+    assert_equal 'alt', e.problem
+    assert_equal '1', e.point_id
+  end
+
+  # A normal (re-)close without a solution still marks the entry skipped.
+  def test_plain_ingest_without_solution_still_skips
+    e = entry(:point_id => '1')
+    stub_extract(:has_solution => false)
+    HelpdeskKnowledgeIngestJob.perform_now(@issue.id)
     assert_equal 'skipped', e.reload.status
   end
 

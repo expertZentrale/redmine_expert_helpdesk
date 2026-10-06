@@ -1403,7 +1403,7 @@ der Bearbeiter prüft jeden Entwurf vor dem Senden.
 extrahieren* im Reiter Wissensbasis (`manage_helpdesk_kb`) extrahiert die Einträge neu, die mit
 einer anderen Stufe entstanden sind — gibt es keine mehr, bietet der Button alle Einträge erneut an,
 z. B. nach einer Prompt-Änderung. Einträge behalten ihren Status (freigegeben bleibt freigegeben
-und durchsuchbar); von Personen bearbeitete, freigegebene oder abgelehnte Einträge bleiben
+und durchsuchbar; findet ein Lauf keine Lösung, bleibt der Eintrag unverändert); von Personen bearbeitete, freigegebene oder abgelehnte Einträge bleiben
 unberührt. Jeder Eintrag kostet einen KI-Aufruf; die Rückfrage nennt die Anzahl.
 
 **Reranking (zweite Stufe).** Die Vektorsuche allein ist ein Bi-Encoder: Sie bewertet die Nähe

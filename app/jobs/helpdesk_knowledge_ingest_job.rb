@@ -40,6 +40,10 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
 
     result = RedmineExpertHelpdesk::KnowledgeExtractor.new(settings).extract(issue)
     return unless result
+    # Re-extraction promises to keep an entry's status. A run that finds no
+    # solution (often a one-off miss of the model) must not demote an approved
+    # or pending entry and pull it out of the search: keep the old text.
+    return if reextract && !result.has_solution && %w[approved pending].include?(entry.status)
 
     saved = false
     was_indexed = false

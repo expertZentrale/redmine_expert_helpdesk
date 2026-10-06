@@ -24,8 +24,8 @@
   `kb_extract_prompt_mode`, `kb_extract_prompt`, nur lesend `effective_kb_extract_detail`).
 - **Neu-Extraktion bestehender Einträge.** *Einträge neu extrahieren* im Reiter Wissensbasis
   (`manage_helpdesk_kb`) und `rake redmine_expert_helpdesk:kb_reextract [PROJECT=…] [ALL=1]`
-  extrahieren mit der aktuellen Stufe neu. Einträge behalten ihren Status; von Personen kuratierte
-  Einträge bleiben unberührt. Migration 065 speichert die Stufe je Eintrag.
+  extrahieren mit der aktuellen Stufe neu. Einträge behalten ihren Status (ein Lauf ohne Lösung lässt den
+  Eintrag unverändert); von Personen kuratierte Einträge bleiben unberührt. Migration 065 speichert die Stufe je Eintrag.
 
 ### Geändert
 
@@ -41,7 +41,7 @@
   strengere JSON-Parser aktueller Ruby-Versionen lehnte die ganze Antwort ab, und das Ticket bekam
   stillschweigend keinen Eintrag — gemessen bei 5 von 16 Antworten zu einem Ticket mit UNC-Pfad.
   Pfade wie `C:\new\test` waren schlimmer: Sie wurden geparst, mit `\n`/`\t` als Zeilenumbruch und
-  Tabulator. Pfad-Token werden jetzt vor dem Parsen repariert (Zeilenumbrüche sonst bleiben erhalten), die feineren Detailgrade bitten das
+  Tabulator. Pfad-Token (Laufwerk, UNC, Registry-Zweig, `%VAR%`) werden jetzt vor dem Parsen repariert (Zeilenumbrüche sonst bleiben erhalten), die feineren Detailgrade bitten das
   Modell, sie zu maskieren, und eine weiterhin ungültige Antwort wird geloggt.
 
 ## [0.20.3] - 2026-10-01

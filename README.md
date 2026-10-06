@@ -1335,7 +1335,8 @@ an instruction, not a filter; the agent reviews every draft before it is sent.
 **Re-extraction.** A level change applies to newly extracted entries. *Re-extract entries* on the
 Knowledge base tab (`manage_helpdesk_kb`) re-runs extraction for entries extracted at another
 level — once none are left, it offers all entries again, e.g. after a prompt change. Entries keep
-their status (approved stays approved and searchable); entries edited, approved or rejected by a
+their status (approved stays approved and searchable; a run that finds no solution leaves the entry
+unchanged); entries edited, approved or rejected by a
 person are never touched. Each entry costs one AI call; the confirmation shows the count.
 
 **Reranking (second stage).** Vector search alone is a bi-encoder: it ranks on whole-text

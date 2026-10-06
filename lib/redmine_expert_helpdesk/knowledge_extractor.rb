@@ -331,7 +331,9 @@ module RedmineExpertHelpdesk
     # backslashes that are no line break, and non-space characters. A space only
     # continues the token when up to three words later the path goes on
     # ("C:\Program Files (x86)\new"), so prose after a path is not swallowed.
-    PATH_TOKEN = %r{(?<![\\\w])(?:[A-Za-z]:\\|\\\\)
+    # Starts: drive letter, UNC, registry hive (HKEY_LOCAL_MACHINE, HKLM ...) and
+    # environment variable (%APPDATA%) - the path kinds 'most_specific' keeps.
+    PATH_TOKEN = %r{(?<![\\\w])(?:[A-Za-z]:\\|\\\\|(?:HKEY_[A-Z_]+|HK(?:LM|CU|CR|U|CC))\\|%[A-Za-z_][\w()]*%\\)
                     (?:\\\\|(?!#{LINE_BREAK})\\|[^\s"\\]|
                        [ ](?=(?:[^\s"\\]+[ ]){0,2}[^\s"\\]+(?!#{LINE_BREAK})\\))*}x.freeze
 

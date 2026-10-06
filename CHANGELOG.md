@@ -24,8 +24,8 @@
   `kb_extract_prompt`, read-only `effective_kb_extract_detail`).
 - **Re-extraction of existing entries.** *Re-extract entries* on the Knowledge base tab
   (`manage_helpdesk_kb`) and `rake redmine_expert_helpdesk:kb_reextract [PROJECT=…] [ALL=1]` re-run
-  extraction at the current level. Entries keep their status; entries curated by a person are left
-  alone. Migration 065 records the level per entry.
+  extraction at the current level. Entries keep their status (a run without a solution leaves the entry
+  unchanged); entries curated by a person are left alone. Migration 065 records the level per entry.
 
 ### Changed
 
@@ -40,7 +40,7 @@
   (`\\SRV01\Share\Config`) contains backslashes that are not valid JSON escapes; the stricter JSON
   parser of current Ruby versions rejected the whole answer and the ticket silently got no entry —
   measured on 5 of 16 answers for a ticket with a UNC path. Paths like `C:\new\test` were worse: they
-  parsed, with `\n`/`\t` turned into a line break and a tab. Path tokens are now repaired before
+  parsed, with `\n`/`\t` turned into a line break and a tab. Path tokens (drive, UNC, registry hive, `%VAR%`) are now repaired before
   parsing (line breaks elsewhere stay intact), the finer detail levels ask the model to escape them, and an answer that still is not
   valid JSON is logged.
 

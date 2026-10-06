@@ -214,6 +214,17 @@ class KnowledgeExtractDetailTest < ActiveSupport::TestCase
     assert_equal 'C:\\new\\test', ex.send(:parse_json, '{"solution":"C:\\new\\test"}', 'Pfad C:\\New\\Test')['solution']
   end
 
+  # Registry and environment-variable paths are paths too.
+  def test_parse_repairs_registry_and_environment_paths
+    parse = ->(raw, src = nil) { Extractor.new({}).send(:parse_json, raw, src)['solution'] }
+    assert_equal 'HKEY_LOCAL_MACHINE\\SOFTWARE\\new\\test',
+                 parse.call('{"solution":"HKEY_LOCAL_MACHINE\\SOFTWARE\\new\\test"}')
+    assert_equal 'HKLM\\Software\\DATEV', parse.call('{"solution":"HKLM\\\\Software\\\\DATEV"}')
+    assert_equal '%APPDATA%\\new\\test', parse.call('{"solution":"%APPDATA%\\new\\test"}')
+    # The ticket still decides escape-like segments.
+    assert_equal "%TEMP%\nweiter", parse.call('{"solution":"%TEMP%\\nweiter"}', 'Ordner %TEMP% leeren')
+  end
+
   def test_parse_repairs_paths_with_spaces
     parse = ->(raw) { Extractor.new({}).send(:parse_json, raw)['solution'] }
     assert_equal 'C:\\Program Files\\new\\test', parse.call('{"solution":"C:\\Program Files\\new\\test"}')
