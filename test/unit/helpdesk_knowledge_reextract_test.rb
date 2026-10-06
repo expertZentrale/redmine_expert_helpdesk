@@ -31,6 +31,11 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
     Setting.plugin_redmine_expert_helpdesk = @plugin_settings_snapshot if @plugin_settings_snapshot
   end
 
+  # Re-extraction only reaches closed tickets; most fixture issues are open.
+  def close!(*ids)
+    Issue.where(:id => ids).update_all(:status_id => 5)
+  end
+
   def entry(attrs = {})
     HelpdeskKnowledgeEntry.create!({ :project_id => @issue.project_id, :issue_id => @issue.id,
                                      :problem => 'alt', :solution => 'alt', :status => 'approved' }.merge(attrs))
@@ -116,6 +121,7 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
   # --- selection ---------------------------------------------------------------
 
   def test_scope_picks_entries_at_another_level
+    close!(1, 2, 3, 7)
     legacy  = entry                                              # NULL = general
     general = entry(:issue_id => 1, :extract_detail => 'general')
     current = entry(:issue_id => 2, :extract_detail => 'most_specific')
@@ -132,6 +138,7 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
   # At 'general' an entry from before the levels (NULL) is already current.
   def test_scope_treats_legacy_entries_as_general
     @ps.update!(:kb_extract_detail => 'general')
+    close!(1)
     entry
     specific = entry(:issue_id => 1, :extract_detail => 'specific')
     assert_equal [specific.id], HelpdeskKnowledgeReextractJob.scope_for(@issue.project_id).pluck(:id)
@@ -139,11 +146,24 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
 
   def test_enqueue_fans_out_one_ingest_job_per_entry
     RedmineExpertHelpdesk::AiFeatures.stubs(:kb_ready?).returns(true)
+    close!(1)
     entry
     entry(:issue_id => 1)
     HelpdeskKnowledgeIngestJob.expects(:perform_later).with(@issue.id, :reextract => true)
     HelpdeskKnowledgeIngestJob.expects(:perform_later).with(1, :reextract => true)
     assert_equal 2, HelpdeskKnowledgeReextractJob.enqueue(@issue.project_id)
+  end
+
+  # The ingest job skips reopened and deleted tickets; counting them kept the
+  # stale count above zero forever.
+  def test_scope_skips_reopened_and_deleted_tickets
+    closed   = entry
+    reopened = entry(:issue_id => 1) # fixture issue 1 is open
+    orphan   = entry(:issue_id => 2)
+    orphan.update_columns(:issue_id => 999_999)
+    ids = HelpdeskKnowledgeReextractJob.scope_for(@issue.project_id, :all => true).pluck(:id)
+    assert_equal [closed.id], ids
+    assert_not_includes ids, reopened.id
   end
 
   def test_enqueue_refuses_when_knowledge_base_not_ready

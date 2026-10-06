@@ -275,22 +275,23 @@ module RedmineExpertHelpdesk
       json.gsub(PATH_TOKEN) { |token| repair_path_token(token) }
     end
 
+    # Per separator, not per token: models mix spellings within one path
+    # ("\\SRV\\Share\new"). Valid escapes (\\ \" \/ \uXXXX) stay, every other
+    # backslash is literal and gets doubled - \n, \t, \b, \f included, since a
+    # path holds no control characters and real line breaks never reach a token.
     def repair_path_token(token)
-      # UNC prefix with two backslashes; escaped it would have four.
+      # A two-backslash UNC prefix is short either way: escaped it reads four.
+      # "\\SRV\\Share" (separators escaped, only the prefix short) is the model's
+      # usual spelling - 11 of 16 measured answers.
+      prefix = ''
       if token.match?(/\A\\\\(?!\\)/)
-        rest = token[2..]
-        # "\\SRV\\Share": separators escaped, only the prefix is short - the
-        # model's most common spelling (11 of 16 measured answers).
-        return '\\\\\\\\' + rest if rest.include?('\\\\')
-
-        return token.gsub('\\') { '\\\\' }
+        prefix = '\\\\\\\\'
+        token = token[2..]
       end
-      # "C:\x" (escaped: "C:\\x") or a backslash that starts no JSON escape:
-      # every backslash in the token is literal.
-      unescaped = token.match?(/\A[A-Za-z]:\\(?!\\)/) ||
-                  token.gsub('\\\\', '').match?(%r{\\(?!["/bfnrtu])})
-      unescaped ? token.gsub('\\') { '\\\\' } : token
+      prefix + token.gsub(PATH_ESCAPE) { |esc| esc == '\\' ? '\\\\' : esc }
     end
+
+    PATH_ESCAPE = %r{\\\\|\\["/]|\\u\h{4}|\\}.freeze
 
     # \n / \r that reads as a line break: followed by an uppercase letter, digit,
     # list marker, whitespace, quote or the end. JSON escapes are lowercase, so a

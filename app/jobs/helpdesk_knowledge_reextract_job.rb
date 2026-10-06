@@ -17,8 +17,12 @@ class HelpdeskKnowledgeReextractJob < ActiveJob::Base
   # Entries a re-extraction would touch. NULL extract_detail = extracted before
   # detail levels existed, i.e. at 'general'.
   def self.scope_for(project_id, all: false)
+    # Only tickets that are still closed: the ingest job skips reopened and
+    # deleted ones, so counting them would never reach zero (and the tab would
+    # never offer re-extracting all). A later re-close ingests them anyway.
     scope = HelpdeskKnowledgeEntry.where(:project_id => project_id, :curated_at => nil)
                                   .where.not(:status => 'rejected')
+                                  .joins(:issue => :status).where(:issue_statuses => { :is_closed => true })
     return scope if all || !HelpdeskKnowledgeEntry.column_names.include?('extract_detail')
 
     project = Project.find_by(:id => project_id)

@@ -195,6 +195,7 @@ class HelpdeskKbEntriesTest < Redmine::IntegrationTest
   end
 
   def test_reextract_needs_manage_permission_and_queues_stale_entries
+    Issue.find(1).update_column(:status_id, 5) # only closed tickets are re-extracted
     HelpdeskProjectSetting.where(:project_id => @project.id).delete_all
     HelpdeskProjectSetting.create!(:project_id => @project.id, :kb_extract_detail => 'specific')
     grant!(:view_helpdesk_kb, :edit_helpdesk_kb)
@@ -213,6 +214,7 @@ class HelpdeskKbEntriesTest < Redmine::IntegrationTest
 
   # Nothing left at another level: the button offers all entries again.
   def test_reextract_offers_all_once_every_entry_is_current
+    Issue.find(1).update_column(:status_id, 5)
     @entry.update_columns(:extract_detail => 'general')
     grant!(:view_helpdesk_kb, :manage_helpdesk_kb)
     get base

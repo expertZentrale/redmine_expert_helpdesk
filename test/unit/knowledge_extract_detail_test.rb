@@ -189,6 +189,16 @@ class KnowledgeExtractDetailTest < ActiveSupport::TestCase
     assert_equal 'In \\\\SRV01\\Share', parse.call('{"solution":"In \\\\\\\\SRV01\\\\Share"}')
   end
 
+  # Spellings mixed within one path: each separator is repaired on its own.
+  def test_parse_repairs_mixed_separators
+    parse = ->(raw) { Extractor.new({}).send(:parse_json, raw)['solution'] }
+    assert_equal '\\\\SRV01\\Share\\new\\test', parse.call('{"solution":"\\\\SRV01\\\\Share\\new\\test"}')
+    assert_equal 'C:\\Program\\new', parse.call('{"solution":"C:\\\\Program\\new"}')
+    # Escapes that belong in a path survive: umlaut as \u, quote after the path.
+    assert_equal "C:\\Benutzer\\M\u00fcller", parse.call('{"solution":"C:\\\\Benutzer\\\\M\\u00fcller"}')
+    assert_equal 'Pfad C:\\Temp "ok"', parse.call('{"solution":"Pfad C:\\\\Temp \\"ok\\""}')
+  end
+
   def test_parse_repairs_paths_with_spaces
     parse = ->(raw) { Extractor.new({}).send(:parse_json, raw)['solution'] }
     assert_equal 'C:\\Program Files\\new\\test', parse.call('{"solution":"C:\\Program Files\\new\\test"}')
