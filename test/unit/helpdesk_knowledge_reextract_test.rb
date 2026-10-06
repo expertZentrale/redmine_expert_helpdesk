@@ -135,6 +135,31 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
     assert_operator e.reload.updated_at, :>, at
   end
 
+  # A person rejects the entry while the embedding call is in flight: the job
+  # must not leave the stale machine text searchable.
+  def test_reject_during_indexing_removes_the_point_again
+    e = entry
+    stub_extract
+    @store.stubs(:upsert).with do |*|
+      HelpdeskKnowledgeEntry.where(:id => e.id).update_all(:status => 'rejected', :curated_at => Time.current)
+      true
+    end
+    HelpdeskKnowledgeEntry.expects(:unindex).with { |row| row.id == e.id }.returns(true)
+    HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true)
+  end
+
+  # ... or edits it: the current text is embedded again, not the job's.
+  def test_edit_during_indexing_reindexes_the_current_text
+    e = entry
+    stub_extract
+    @store.stubs(:upsert).with do |*|
+      HelpdeskKnowledgeEntry.where(:id => e.id).update_all(:problem => 'von Hand', :curated_at => Time.current)
+      true
+    end
+    HelpdeskKnowledgeIngestJob.expects(:index_entry).with { |row| row.problem == 'von Hand' }.returns(true)
+    HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true)
+  end
+
   # An entry changed after the request (e.g. a later re-close) is left alone.
   def test_reextract_skips_entry_touched_after_the_request
     entry

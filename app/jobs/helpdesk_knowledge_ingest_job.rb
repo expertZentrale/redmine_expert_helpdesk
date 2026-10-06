@@ -66,6 +66,9 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
           elsif force || ps.kb_ingest_auto? then 'approved'
           else 'pending'
           end
+        # Keep the claim: a plain save would stamp "now", which a column without
+        # fractional seconds rounds back into the request's second.
+        entry.updated_at = claim_time(requested_at) if reextract && requested_at
         entry.save!
         saved = true
       end
@@ -74,6 +77,7 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
 
     if entry.approved?
       index!(store, client, entry)
+      fence_index(entry)
     elsif was_indexed
       # Previously searchable, now not: drop the stale point.
       HelpdeskKnowledgeEntry.unindex(entry)
@@ -103,9 +107,28 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
   # since a column without fractional seconds would otherwise round the claim
   # back to the request's second and let a duplicate through.
   def claim_for_reextract(entry, requested_at)
-    claimed_at = [Time.current, requested_at + 1.second].max
     HelpdeskKnowledgeEntry.where(:id => entry.id).where('updated_at <= ?', requested_at)
-                          .update_all(:updated_at => claimed_at) == 1
+                          .update_all(:updated_at => claim_time(requested_at)) == 1
+  end
+
+  # Strictly past requested_at, by at least a second (see the save above).
+  def claim_time(requested_at)
+    [Time.current, requested_at + 1.second].max
+  end
+
+  # The embedding call runs after the row lock is gone. A person who rejected or
+  # edited the entry meanwhile may have removed or re-embedded the point first;
+  # this upsert would then bring back the stale machine text. Compare with the
+  # row as it is now and undo or redo accordingly.
+  def fence_index(entry)
+    current = HelpdeskKnowledgeEntry.find_by(:id => entry.id)
+    return unless current
+
+    if !current.approved?
+      HelpdeskKnowledgeEntry.unindex(current)
+    elsif current.problem != entry.problem || current.solution != entry.solution
+      self.class.index_entry(current)
+    end
   end
 
   def index!(store, client, entry)

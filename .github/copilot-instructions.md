@@ -279,7 +279,10 @@ that order is what makes `safe_to_stop` trustworthy across pods.
   An escape-like segment followed by lowercase (`C:\Temp\npruefen`) is ambiguous; the **ticket text
   decides** (`path_segment?`: a segment the ticket contains is a path, otherwise it is the escape).
   Re-extract jobs carry `requested_at` and **claim their row atomically** (`updated_at < requested_at`
-  → touch) before the AI call, so a double-submit or a second admin costs no second call.
+  → touch) before the AI call, so a double-submit or a second admin costs no second call. The claim
+  (and the save after it) sets `updated_at` at least a second past `requested_at` — CI's MariaDB
+  columns have no fractional seconds. After the post-commit upsert, `fence_index` re-reads the row
+  and unindexes / re-embeds if a person rejected or edited it during the embedding call.
     pgvector needs `gem 'pg'` in the deployment (kept out of `PluginGemfile`).
   - `knowledge_retrieval.rb` — the one RAG search path, shared by the summary job and the answer
     drafter. `KnowledgeRetrieval.search` holds the settings defaults, the self-hit rejection and the
