@@ -199,6 +199,17 @@ class KnowledgeExtractDetailTest < ActiveSupport::TestCase
     assert_equal 'Pfad C:\\Temp "ok"', parse.call('{"solution":"Pfad C:\\\\Temp \\"ok\\""}')
   end
 
+  # "C:\Temp\npruefen": path segment or line break? The ticket decides - the
+  # finer levels copy paths verbatim from it.
+  def test_ticket_text_decides_escape_like_segments
+    ex = Extractor.new({})
+    raw = '{"solution":"C:\\Temp\\npruefen"}'
+    assert_equal "C:\\Temp\npruefen", ex.send(:parse_json, raw, 'Ordner C:\\Temp leeren')['solution']
+    assert_equal 'C:\\Temp\\npruefen', ex.send(:parse_json, raw, 'Ordner C:\\Temp\\npruefen fehlt')['solution']
+    # Case may differ between ticket and answer.
+    assert_equal 'C:\\new\\test', ex.send(:parse_json, '{"solution":"C:\\new\\test"}', 'Pfad C:\\New\\Test')['solution']
+  end
+
   def test_parse_repairs_paths_with_spaces
     parse = ->(raw) { Extractor.new({}).send(:parse_json, raw)['solution'] }
     assert_equal 'C:\\Program Files\\new\\test', parse.call('{"solution":"C:\\Program Files\\new\\test"}')

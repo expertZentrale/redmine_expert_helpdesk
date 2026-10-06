@@ -11,7 +11,7 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
   # changed). Curated/rejected entries stay untouched and the entry keeps its
   # status: in 'manual' mode an approved entry would otherwise fall back to
   # pending and drop out of the vector store.
-  def perform(issue_id, force: false, reextract: false)
+  def perform(issue_id, force: false, reextract: false, requested_at: nil)
     settings = Setting.plugin_redmine_expert_helpdesk
     return unless RedmineExpertHelpdesk::AiFeatures.kb_enabled?
 
@@ -33,6 +33,10 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
     # manual ingest (force) replaces it.
     return if !force && entry.persisted? && (entry.curated? || entry.rejected?)
     return if reextract && !entry.persisted?
+    # Each entry costs an AI call: a double-submit or a second admin queues the
+    # same entries again. Claim the row atomically (works across processes) and
+    # only if untouched since the request; a duplicate job finds it claimed.
+    return if reextract && !claim_for_reextract(entry, requested_at || Time.current)
 
     result = RedmineExpertHelpdesk::KnowledgeExtractor.new(settings).extract(issue)
     return unless result
@@ -94,6 +98,11 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
   end
 
   private
+
+  def claim_for_reextract(entry, requested_at)
+    HelpdeskKnowledgeEntry.where(:id => entry.id).where('updated_at < ?', requested_at)
+                          .update_all(:updated_at => Time.current) == 1
+  end
 
   def index!(store, client, entry)
     vec = client.embed(entry.problem.to_s,

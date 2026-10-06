@@ -276,6 +276,10 @@ that order is what makes `safe_to_stop` trustworthy across pods.
   invalid JSON on json >= 2.10 (`\W`) or, worse, valid with the wrong meaning (`C:\new` → newline).
   Only path tokens are touched (solutions carry real `\n` line breaks), and **per separator**, not per
   token, because models mix spellings within one path (`\\SRV\\Share\new`).
+  An escape-like segment followed by lowercase (`C:\Temp\npruefen`) is ambiguous; the **ticket text
+  decides** (`path_segment?`: a segment the ticket contains is a path, otherwise it is the escape).
+  Re-extract jobs carry `requested_at` and **claim their row atomically** (`updated_at < requested_at`
+  → touch) before the AI call, so a double-submit or a second admin costs no second call.
     pgvector needs `gem 'pg'` in the deployment (kept out of `PluginGemfile`).
   - `knowledge_retrieval.rb` — the one RAG search path, shared by the summary job and the answer
     drafter. `KnowledgeRetrieval.search` holds the settings defaults, the self-hit rejection and the

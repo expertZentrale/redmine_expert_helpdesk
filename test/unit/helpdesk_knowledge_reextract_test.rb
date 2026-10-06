@@ -111,6 +111,25 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
     HelpdeskKnowledgeIngestJob.perform_now(@issue.id)
   end
 
+  # Double-submit / two admins: the same entry queued twice for one request
+  # costs one AI call - the second job finds the row already claimed.
+  def test_duplicate_reextract_job_calls_the_model_once
+    e = entry
+    e.update_columns(:updated_at => 1.hour.ago)
+    at = 1.minute.ago
+    RedmineExpertHelpdesk::KnowledgeExtractor.any_instance.expects(:extract).once
+      .returns(Result.new(:problem => 'neu', :solution => 's', :has_solution => true, :usage => nil, :detail => 'most_specific'))
+    2.times { HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true, :requested_at => at) }
+    assert_equal 'neu', e.reload.problem
+  end
+
+  # An entry changed after the request (e.g. a later re-close) is left alone.
+  def test_reextract_skips_entry_touched_after_the_request
+    entry
+    RedmineExpertHelpdesk::KnowledgeExtractor.any_instance.expects(:extract).never
+    HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true, :requested_at => 1.hour.ago)
+  end
+
   def test_reextract_never_creates_an_entry
     RedmineExpertHelpdesk::KnowledgeExtractor.any_instance.expects(:extract).never
     assert_no_difference('HelpdeskKnowledgeEntry.count') do
@@ -149,9 +168,10 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
     close!(1)
     entry
     entry(:issue_id => 1)
-    HelpdeskKnowledgeIngestJob.expects(:perform_later).with(@issue.id, :reextract => true)
-    HelpdeskKnowledgeIngestJob.expects(:perform_later).with(1, :reextract => true)
-    assert_equal 2, HelpdeskKnowledgeReextractJob.enqueue(@issue.project_id)
+    at = 1.minute.ago
+    HelpdeskKnowledgeIngestJob.expects(:perform_later).with(@issue.id, :reextract => true, :requested_at => at)
+    HelpdeskKnowledgeIngestJob.expects(:perform_later).with(1, :reextract => true, :requested_at => at)
+    assert_equal 2, HelpdeskKnowledgeReextractJob.enqueue(@issue.project_id, :requested_at => at)
   end
 
   # The ingest job skips reopened and deleted tickets; counting them kept the

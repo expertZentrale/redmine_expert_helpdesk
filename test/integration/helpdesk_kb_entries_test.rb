@@ -207,7 +207,8 @@ class HelpdeskKbEntriesTest < Redmine::IntegrationTest
     # @entry has no level yet (= general), the project wants 'specific'.
     assert_select 'a[href=?]', "#{base}/reextract"
 
-    HelpdeskKnowledgeReextractJob.expects(:perform_later).with(@project.id, :all => false)
+    HelpdeskKnowledgeReextractJob.expects(:perform_later)
+      .with { |pid, opts| pid == @project.id && opts[:all] == false && opts[:requested_at].is_a?(Time) }
     post "#{base}/reextract"
     assert_redirected_to base
   end
@@ -220,7 +221,8 @@ class HelpdeskKbEntriesTest < Redmine::IntegrationTest
     get base
     assert_select 'a[href=?]', "#{base}/reextract?all=1"
 
-    HelpdeskKnowledgeReextractJob.expects(:perform_later).with(@project.id, :all => true)
+    HelpdeskKnowledgeReextractJob.expects(:perform_later)
+      .with { |pid, opts| pid == @project.id && opts[:all] == true }
     post "#{base}/reextract", :params => { :all => '1' }
     assert_redirected_to base
   end

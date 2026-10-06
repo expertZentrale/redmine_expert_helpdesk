@@ -555,12 +555,26 @@
         </p>
         <p>
           <label for="hd_kb_extract_prompt"><%= l(:field_helpdesk_kb_extract_prompt) %></label>
+          <%# Placeholder = central prompt of the selected level ('' = central level),
+              kept current by the script below when the level changes. %>
+          <% kb_settings = Setting.plugin_redmine_expert_helpdesk %>
+          <% kb_prompts = { '' => kb_extractor.central_prompt(kb_settings, kb_central) }.merge(
+               kb_extractor::DETAIL_LEVELS.to_h { |d| [d, kb_extractor.central_prompt(kb_settings, d)] }) %>
           <%= text_area_tag 'helpdesk_project_setting[kb_extract_prompt]', hd_setting.kb_extract_prompt,
                             :rows => 8, :cols => 70, :id => 'hd_kb_extract_prompt',
-                            :placeholder => kb_extractor.central_prompt(Setting.plugin_redmine_expert_helpdesk,
-                                                                        hd_setting.effective_kb_extract_detail) %>
+                            :placeholder => kb_prompts[hd_setting.kb_extract_detail.to_s] || kb_prompts[''],
+                            :data => { :prompts => kb_prompts.to_json } %>
           <em class="info"><%= l(:text_helpdesk_kb_extract_prompt_project_info) %></em>
         </p>
+        <%= javascript_tag do %>
+          (function() {
+            var sel = document.getElementById('hd_kb_extract_detail');
+            var area = document.getElementById('hd_kb_extract_prompt');
+            if (!sel || !area) return;
+            var prompts = JSON.parse(area.getAttribute('data-prompts'));
+            sel.addEventListener('change', function() { area.placeholder = prompts[sel.value] || prompts[''] || ''; });
+          })();
+        <% end %>
       <% end %>
       <p><%= submit_tag l(:button_save) %></p>
     <% end %>

@@ -40,6 +40,11 @@ class HelpdeskKbExtractSettingsTest < Redmine::IntegrationTest
     end
     assert_select 'select#hd_kb_extract_prompt_mode'
     assert_select 'textarea#hd_kb_extract_prompt[placeholder*=?]', 'Fehlercode'
+    # One prompt per option so the placeholder can follow the select.
+    prompts = JSON.parse(css_select('textarea#hd_kb_extract_prompt').first['data-prompts'])
+    assert_equal ['', *RedmineExpertHelpdesk::KnowledgeExtractor::DETAIL_LEVELS].sort, prompts.keys.sort
+    assert_includes prompts['most_specific'], 'Verallgemeinere'
+    assert_equal prompts['specific'], prompts['']
   end
 
   def test_saving_stores_level_mode_and_prompt

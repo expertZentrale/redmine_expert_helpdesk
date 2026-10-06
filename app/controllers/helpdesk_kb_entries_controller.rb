@@ -137,7 +137,7 @@ class HelpdeskKbEntriesController < ApplicationController
     if count.zero?
       flash[:notice] = l(:notice_helpdesk_kb_reextract_nothing)
     else
-      HelpdeskKnowledgeReextractJob.perform_later(@project.id, :all => all)
+      HelpdeskKnowledgeReextractJob.perform_later(@project.id, :all => all, :requested_at => Time.current)
       flash[:notice] = l(:notice_helpdesk_kb_reextract_queued, :count => count)
     end
     redirect_to helpdesk_kb_entries_path(:project_id => @project)

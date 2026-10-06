@@ -9,8 +9,10 @@
 class HelpdeskKnowledgeReextractJob < ActiveJob::Base
   queue_as :default
 
-  def perform(project_id, all: false)
-    count = self.class.enqueue(project_id, :all => all)
+  # requested_at: when the person asked (button / rake). Each ingest job claims
+  # its entry only if untouched since then - see HelpdeskKnowledgeIngestJob.
+  def perform(project_id, all: false, requested_at: nil)
+    count = self.class.enqueue(project_id, :all => all, :requested_at => requested_at)
     Rails.logger.info("[helpdesk][kb] Project ##{project_id}: #{count.to_i} entries queued for re-extraction")
   end
 
@@ -37,12 +39,13 @@ class HelpdeskKnowledgeReextractJob < ActiveJob::Base
   end
 
   # Returns the number of queued entries, nil when the knowledge base is not usable.
-  def self.enqueue(project_id, all: false)
+  def self.enqueue(project_id, all: false, requested_at: nil)
     return nil unless RedmineExpertHelpdesk::AiFeatures.kb_ready?
 
+    requested_at ||= Time.current
     count = 0
     scope_for(project_id, :all => all).find_each do |entry|
-      HelpdeskKnowledgeIngestJob.perform_later(entry.issue_id, :reextract => true)
+      HelpdeskKnowledgeIngestJob.perform_later(entry.issue_id, :reextract => true, :requested_at => requested_at)
       count += 1
     end
     count

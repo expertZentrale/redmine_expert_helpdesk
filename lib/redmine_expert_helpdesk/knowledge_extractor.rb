@@ -1,6 +1,8 @@
 # Extrahiert aus einem abgeschlossenen Ticket ein {Problem, Loesung}-Paar fuer die
 # Wissensbasis. Nutzt den bestehenden AiClient (Chat) mit einem JSON-liefernden
 # Prompt. Liefert nichts Verwertbares, wenn keine echte Loesung erkennbar ist.
+require 'strscan'
+
 module RedmineExpertHelpdesk
   class KnowledgeExtractor
     Result = Struct.new(:problem, :solution, :has_solution, :usage, :detail, keyword_init: true)
@@ -215,7 +217,7 @@ module RedmineExpertHelpdesk
       raw    = client.summarize(prompt, text,
                                 :log_context => { :request_type => 'kb_extract',
                                                   :project_id => issue.project_id, :issue_id => issue.id })
-      data   = parse_json(raw)
+      data   = parse_json(raw, text)
       return nil unless data
 
       Result.new(
@@ -247,13 +249,13 @@ module RedmineExpertHelpdesk
 
     # Tolerantes JSON-Parsing: evtl. Codeblock-Markierung entfernen, nur das
     # erste JSON-Objekt betrachten.
-    def parse_json(raw)
+    def parse_json(raw, source = nil)
       s = raw.to_s.strip
       s = s.sub(/\A```(?:json)?\s*/i, '').sub(/```\s*\z/, '')
       m = s.match(/\{.*\}/m)
       return nil unless m
 
-      json = repair_paths(m[0])
+      json = repair_paths(m[0], source)
       begin
         JSON.parse(json)
       rescue JSON::ParserError
@@ -271,27 +273,53 @@ module RedmineExpertHelpdesk
     # for a UNC-path ticket) or, worse, valid JSON with the wrong meaning (\n, \t,
     # \b, \f), so it has to be repaired *before* parsing. Only path tokens are
     # touched - solution text is full of real \n line breaks.
-    def repair_paths(json)
-      json.gsub(PATH_TOKEN) { |token| repair_path_token(token) }
+    # source: the ticket text the answer was extracted from (see path_segment?).
+    def repair_paths(json, source = nil)
+      json.gsub(PATH_TOKEN) { |token| repair_path_token(token, source) }
     end
 
     # Per separator, not per token: models mix spellings within one path
     # ("\\SRV\\Share\new"). Valid escapes (\\ \" \/ \uXXXX) stay, every other
-    # backslash is literal and gets doubled - \n, \t, \b, \f included, since a
-    # path holds no control characters and real line breaks never reach a token.
-    def repair_path_token(token)
+    # backslash is literal and gets doubled.
+    def repair_path_token(token, source = nil)
+      out = +''
       # A two-backslash UNC prefix is short either way: escaped it reads four.
       # "\\SRV\\Share" (separators escaped, only the prefix short) is the model's
       # usual spelling - 11 of 16 measured answers.
-      prefix = ''
       if token.match?(/\A\\\\(?!\\)/)
-        prefix = '\\\\\\\\'
+        out << '\\\\\\\\'
         token = token[2..]
       end
-      prefix + token.gsub(PATH_ESCAPE) { |esc| esc == '\\' ? '\\\\' : esc }
+      scanner = StringScanner.new(token)
+      until scanner.eos?
+        if (esc = scanner.scan(VALID_PATH_ESCAPE))
+          out << esc
+        elsif scanner.check(AMBIGUOUS_ESCAPE) && !path_segment?(scanner.rest, source)
+          # A real \n (\t ...) followed by prose: the path ended before it.
+          return out << scanner.rest
+        elsif scanner.scan(/\\/)
+          out << '\\\\'
+        else
+          out << scanner.getch
+        end
+      end
+      out
     end
 
-    PATH_ESCAPE = %r{\\\\|\\["/]|\\u\h{4}|\\}.freeze
+    # "C:\Temp\npruefen" is a path segment "\npruefen" or "C:\Temp" plus a line
+    # break - the text alone cannot tell. The finer levels copy paths verbatim
+    # from the ticket, so the ticket decides: a segment it contains is a path.
+    # Without a source (or not found in it) it is the escape it spells.
+    def path_segment?(rest, source)
+      return true if source.nil?
+
+      segment = rest[/\A\\[^\s"\\]+/].to_s
+      source.downcase.include?(segment.downcase)
+    end
+
+    VALID_PATH_ESCAPE = %r{\\\\|\\["/]|\\u\h{4}}.freeze
+    # A JSON control escape that could also start a lowercase path segment.
+    AMBIGUOUS_ESCAPE  = /\\[nrtbf][[:lower:]]/.freeze
 
     # \n / \r that reads as a line break: followed by an uppercase letter, digit,
     # list marker, whitespace, quote or the end. JSON escapes are lowercase, so a
