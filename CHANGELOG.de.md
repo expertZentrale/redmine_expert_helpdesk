@@ -25,7 +25,7 @@
 - **Neu-Extraktion bestehender Einträge.** *Einträge neu extrahieren* im Reiter Wissensbasis
   (`manage_helpdesk_kb`) und `rake redmine_expert_helpdesk:kb_reextract [PROJECT=…] [ALL=1]`
   extrahieren mit der aktuellen Stufe neu. Einträge behalten ihren Status (ein Lauf ohne Lösung lässt den
-  Eintrag unverändert); von Personen kuratierte Einträge bleiben unberührt. Migration 065 speichert die Stufe je Eintrag.
+  Eintrag unverändert; ein übersprungener Eintrag, der jetzt eine Lösung liefert, wird wie ein neuer behandelt); von Personen kuratierte Einträge bleiben unberührt. Migration 065 speichert die Stufe je Eintrag.
 
 ### Geändert
 

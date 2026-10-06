@@ -25,7 +25,7 @@
 - **Re-extraction of existing entries.** *Re-extract entries* on the Knowledge base tab
   (`manage_helpdesk_kb`) and `rake redmine_expert_helpdesk:kb_reextract [PROJECT=…] [ALL=1]` re-run
   extraction at the current level. Entries keep their status (a run without a solution leaves the entry
-  unchanged); entries curated by a person are left alone. Migration 065 records the level per entry.
+  unchanged; a skipped entry that now yields a solution is treated like a new one); entries curated by a person are left alone. Migration 065 records the level per entry.
 
 ### Changed
 

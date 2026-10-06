@@ -153,7 +153,10 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
 
       # The corrective re-embed takes as long as the first one, so the row can
       # change again under it: check once more afterwards (bounded).
-      self.class.index_entry(current)
+      # A failed re-embed leaves the stale machine text in the store: remove it
+      # rather than treat the attempt as indexed.
+      return HelpdeskKnowledgeEntry.unindex(current) unless self.class.index_entry(current)
+
       indexed = current
     end
     Rails.logger.warn("[helpdesk][kb] Entry ##{entry.id} kept changing during re-indexing; left as last indexed")

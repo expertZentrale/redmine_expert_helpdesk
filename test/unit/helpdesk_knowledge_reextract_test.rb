@@ -219,6 +219,28 @@ class HelpdeskKnowledgeReextractTest < ActiveSupport::TestCase
     HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true)
   end
 
+  # A corrective re-embed that fails must not count as indexed: the stale
+  # point is removed instead.
+  def test_failed_corrective_reindex_removes_the_stale_point
+    e = entry
+    stub_extract
+    @store.stubs(:upsert).with do |*|
+      HelpdeskKnowledgeEntry.where(:id => e.id).update_all(:problem => 'von Hand', :curated_at => Time.current)
+      true
+    end
+    HelpdeskKnowledgeIngestJob.stubs(:index_entry).returns(false)
+    HelpdeskKnowledgeEntry.expects(:unindex).with { |row| row.id == e.id }.returns(true)
+    HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true)
+  end
+
+  # Deliberate: the finer level may find the solution the general run missed.
+  def test_skipped_entry_with_new_solution_is_treated_like_a_new_one
+    e = entry(:status => 'skipped')
+    stub_extract
+    HelpdeskKnowledgeIngestJob.perform_now(@issue.id, :reextract => true)
+    assert_equal 'pending', e.reload.status # manual mode
+  end
+
   # An entry changed after the request (e.g. a later re-close) is left alone.
   def test_reextract_skips_entry_touched_after_the_request
     entry
