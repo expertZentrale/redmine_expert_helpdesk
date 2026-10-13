@@ -291,6 +291,41 @@ class HelpdeskApiTest < Redmine::IntegrationTest
     assert_equal 'auto', body['kb_ingest_mode']
   end
 
+  # Nullable override: true/false are the project's own choice, null hands it back
+  # to the central setting. JSON body, because a form post cannot express null.
+  def test_project_settings_disable_thinking_round_trip
+    put_json = lambda do |value|
+      put "/projects/#{@project.id}/helpdesk/settings.json",
+          :params => { :helpdesk_project_setting => { :ai_summary_disable_thinking => value } }.to_json,
+          :headers => auth.merge('CONTENT_TYPE' => 'application/json')
+      assert_response :success
+    end
+    read_back = lambda do
+      get "/projects/#{@project.id}/helpdesk/settings.json", :headers => auth
+      ActiveSupport::JSON.decode(@response.body)['helpdesk_project_setting']
+    end
+
+    assert read_back.call.key?('ai_summary_disable_thinking'), 'the override must be part of the payload'
+
+    put_json.call(true)
+    assert_equal true, HelpdeskProjectSetting.for_project(@project).ai_summary_disable_thinking
+    assert_equal true, read_back.call['ai_summary_disable_thinking']
+
+    put_json.call(false)
+    assert_equal false, HelpdeskProjectSetting.for_project(@project).ai_summary_disable_thinking
+    assert_equal false, read_back.call['ai_summary_disable_thinking']
+
+    # A partial update without the key leaves the override alone.
+    put "/projects/#{@project.id}/helpdesk/settings.json",
+        :params => { :helpdesk_project_setting => { :ai_prompt => 'Kurz.' } }, :headers => auth
+    assert_response :success
+    assert_equal false, HelpdeskProjectSetting.for_project(@project).ai_summary_disable_thinking
+
+    put_json.call(nil)
+    assert_nil HelpdeskProjectSetting.for_project(@project).ai_summary_disable_thinking
+    assert_nil read_back.call['ai_summary_disable_thinking']
+  end
+
   def test_project_settings_api_rejects_invalid_ai_answer_min_score
     put "/projects/#{@project.id}/helpdesk/settings.json",
         :params => { :helpdesk_project_setting => { :ai_answer_min_score => 'o,7' } }, :headers => auth

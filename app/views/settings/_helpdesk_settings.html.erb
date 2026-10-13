@@ -415,14 +415,19 @@
 <p class="warning" id="hd_thinking_kb_warning" style="text-align:left;" hidden><%= l(:text_helpdesk_ai_thinking_kb_warning) %></p>
 <%= javascript_tag do %>
   // Without reasoning the model judges knowledge-base matches badly, so warn
-  // while thinking is off and the knowledge base is on (both in this form).
+  // while thinking is off and the knowledge base is on (all in this form).
+  // Only the custom provider actually switches thinking off (AiClient#thinking_params).
   (function () {
     var box = document.getElementById('settings_ai_summary_disable_thinking');
     var warn = document.getElementById('hd_thinking_kb_warning');
     function kb() { return document.querySelector('input[type=checkbox][name="settings[kb_enabled]"]'); }
-    function sync() { var k = kb(); warn.hidden = !(box.checked && k && k.checked); }
+    function provider() { return document.querySelector('select[name="settings[ai_provider]"]'); }
+    function sync() {
+      var k = kb(), p = provider();
+      warn.hidden = !(box.checked && k && k.checked && p && p.value === 'custom');
+    }
     box.addEventListener('change', sync);
-    document.addEventListener('change', function (e) { if (e.target === kb()) sync(); });
+    document.addEventListener('change', function (e) { if (e.target === kb() || e.target === provider()) sync(); });
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sync); else sync();
   })();
 <% end %>

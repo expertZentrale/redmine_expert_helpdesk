@@ -340,6 +340,8 @@
           (function () {
             var CENTRAL_OFF = <%= central_off ? 'true' : 'false' %>;
             var KB_ON = <%= RedmineExpertHelpdesk::AiFeatures.kb_enabled? ? 'true' : 'false' %>;
+            // Only the custom provider actually switches thinking off.
+            var CAN_DISABLE = <%= RedmineExpertHelpdesk::AiClient.new.can_disable_thinking? ? 'true' : 'false' %>;
             var sel = document.getElementById('hd_ai_summary_disable_thinking');
             var warn = document.getElementById('hd_thinking_kb_warning');
             function sync() {
@@ -347,7 +349,7 @@
               var disp = document.getElementById('hd_kb_display');
               var inSummary = disp ? ['summary', 'both'].indexOf(disp.value) >= 0
                                    : <%= hd_setting.kb_show_in_summary? ? 'true' : 'false' %>;
-              warn.hidden = !(off && KB_ON && inSummary);
+              warn.hidden = !(off && KB_ON && CAN_DISABLE && inSummary);
             }
             document.addEventListener('change', function (e) {
               if (e.target === sel || (e.target && e.target.id === 'hd_kb_display')) sync();
