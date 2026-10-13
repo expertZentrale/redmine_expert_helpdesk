@@ -151,4 +151,54 @@ class AiClientTest < ActiveSupport::TestCase
     c.define_singleton_method(:post_json) { |*| { 'choices' => [{ 'message' => { 'content' => '' } }] } }
     assert_raises(RedmineExpertHelpdesk::AiClient::AiError) { c.summarize('s', 'u') }
   end
+
+  def test_empty_answer_raises_empty_response_error
+    c = client
+    c.define_singleton_method(:post_json) { |*| { 'choices' => [{ 'message' => { 'content' => '', 'reasoning_content' => 'thinking' } }] } }
+    assert_raises(RedmineExpertHelpdesk::AiClient::EmptyResponseError) { c.summarize('s', 'u') }
+  end
+
+  def test_only_the_custom_provider_can_disable_thinking
+    assert client('ai_provider' => 'custom', 'ai_endpoint' => 'https://ai.local/v1').can_disable_thinking?
+    assert_not client('ai_provider' => 'openai').can_disable_thinking?
+    assert_not client('ai_provider' => 'anthropic').can_disable_thinking?
+  end
+
+  def capture_payload(c)
+    captured = {}
+    c.define_singleton_method(:post_json) do |_url, payload, _headers|
+      captured[:payload] = payload
+      if payload.key?('system')
+        { 'content' => [{ 'type' => 'text', 'text' => 'ok' }] }
+      else
+        { 'choices' => [{ 'message' => { 'content' => 'ok' } }] }
+      end
+    end
+    captured
+  end
+
+  def test_disable_thinking_sends_chat_template_kwargs_to_custom_provider
+    c = client('ai_provider' => 'custom', 'ai_endpoint' => 'https://ai.local/v1')
+    captured = capture_payload(c)
+    c.summarize('s', 'u', :disable_thinking => true)
+    assert_equal({ 'enable_thinking' => false }, captured[:payload]['chat_template_kwargs'])
+  end
+
+  def test_thinking_is_left_alone_by_default
+    c = client('ai_provider' => 'custom', 'ai_endpoint' => 'https://ai.local/v1')
+    captured = capture_payload(c)
+    c.summarize('s', 'u')
+    assert_not captured[:payload].key?('chat_template_kwargs')
+  end
+
+  # Official OpenAI and Anthropic must never get the field: OpenAI answers
+  # unknown or unsupported parameters with HTTP 400.
+  def test_disable_thinking_is_not_sent_to_openai_or_anthropic
+    %w[openai anthropic].each do |provider|
+      c = client('ai_provider' => provider)
+      captured = capture_payload(c)
+      c.summarize('s', 'u', :disable_thinking => true)
+      assert_not captured[:payload].key?('chat_template_kwargs'), provider
+    end
+  end
 end

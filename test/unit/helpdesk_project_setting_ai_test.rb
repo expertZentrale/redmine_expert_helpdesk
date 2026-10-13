@@ -103,4 +103,19 @@ class HelpdeskProjectSettingAiTest < ActiveSupport::TestCase
     ps = HelpdeskProjectSetting.new(:project_id => 1, :ai_answer_min_score => nil)
     assert_equal RedmineExpertHelpdesk::AnswerDrafter::DRAFT_MIN_SCORE, ps.effective_ai_answer_min_score
   end
+
+  def test_disable_thinking_follows_central_setting_when_project_has_none
+    ps = HelpdeskProjectSetting.new(:ai_summary_disable_thinking => nil)
+    assert ps.effective_ai_summary_disable_thinking?('ai_summary_disable_thinking' => '1')
+    assert_not ps.effective_ai_summary_disable_thinking?('ai_summary_disable_thinking' => '0')
+    # A key added to init.rb's defaults reads nil until the form is saved again.
+    assert_not ps.effective_ai_summary_disable_thinking?({})
+  end
+
+  def test_project_override_beats_central_setting
+    ps = HelpdeskProjectSetting.new(:ai_summary_disable_thinking => false)
+    assert_not ps.effective_ai_summary_disable_thinking?('ai_summary_disable_thinking' => '1')
+    ps.ai_summary_disable_thinking = true
+    assert ps.effective_ai_summary_disable_thinking?('ai_summary_disable_thinking' => '0')
+  end
 end

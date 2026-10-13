@@ -149,6 +149,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'ai_min_input_chars'   => '200',
              'ai_log_level'         => RedmineExpertHelpdesk::AiLogger::DEFAULT_LEVEL,
              'ai_max_output_tokens' => '500',
+             'ai_summary_disable_thinking' => '0',
              'ai_timeout'           => '60',
              # Kundengerichteter Antwortentwurf (Knopf in der Notiz-Werkzeugleiste).
              # Eigenes Zeitbudget, weil dieser Aufruf - anders als alle anderen -

@@ -99,6 +99,17 @@ class HelpdeskProjectSettingsController < ApplicationController
     setting.ai_min_image_kb    = hp[:ai_min_image_kb].presence&.to_i
     setting.ai_include_journal       = hp[:ai_include_journal] == '1'
     setting.ai_include_private_notes = hp[:ai_include_private_notes] == '1'
+    if setting.has_attribute?(:ai_summary_disable_thinking)
+      setting.ai_summary_disable_thinking = thinking_override(hp[:ai_summary_disable_thinking])
+    end
+  end
+
+  # Three-way select: blank = central setting (NULL), '1' = disable, '0' = allow.
+  def thinking_override(value)
+    case value.to_s
+    when '1' then true
+    when '0' then false
+    end
   end
 
   # KI-Antwortvorschlag (eigenes Formular im Tab). Teilt sich die Prompt-Modi mit

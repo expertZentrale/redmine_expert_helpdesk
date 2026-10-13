@@ -3,6 +3,7 @@ require File.expand_path('../../test_helper', __FILE__)
 # Tests fuer die Gate-Logik des KI-Jobs: ohne globale Aktivierung wird kein
 # Client erzeugt und keine Notiz geschrieben.
 class HelpdeskAiSummaryJobTest < ActiveSupport::TestCase
+  fixtures :projects, :trackers, :issue_statuses, :users, :enumerations, :issues
   # Attachment switches off: only the text path matters here.
   FakePs = Struct.new(:ai_attach_metadata, :ai_attach_text, :ai_attach_images) do
     def ai_attach_metadata?; false; end
@@ -71,6 +72,104 @@ class HelpdeskAiSummaryJobTest < ActiveSupport::TestCase
     # Global an, aber Issue existiert nicht -> Job endet ruhig (kein Raise).
     Setting.stubs(:plugin_redmine_expert_helpdesk).returns({ 'ai_enabled' => '1' })
     assert_nothing_raised { HelpdeskAiSummaryJob.perform_now(-1) }
+  end
+
+  # Field case #936648: a reasoning model put its whole answer into
+  # reasoning_content. The project's effective choice must reach the client.
+  def test_passes_the_effective_thinking_choice_to_the_client
+    settings = { 'ai_enabled' => '1', 'ai_provider' => 'custom', 'ai_endpoint' => 'https://ai.local/v1',
+                 'ai_api_key' => 'k', 'ai_model' => 'qwen3', 'ai_min_input_chars' => '0',
+                 'ai_summary_disable_thinking' => '1' }
+    Setting.stubs(:plugin_redmine_expert_helpdesk).returns(settings)
+    RedmineExpertHelpdesk::AiFeatures.stubs(:ai_enabled?).returns(true)
+    ps = HelpdeskProjectSetting.new(:ai_summary_enabled => true, :ai_summary_disable_thinking => nil)
+    HelpdeskProjectSetting.stubs(:for_project).returns(ps)
+    HelpdeskAiSummaryJob.any_instance.stubs(:build_input).returns(['Drucker druckt nicht.', []])
+    HelpdeskAiSummaryJob.any_instance.stubs(:retrieve_proposals).returns([])
+    # Raising ends the job right after the call; perform rescues AiError.
+    RedmineExpertHelpdesk::AiClient.any_instance.expects(:summarize)
+      .with { |*_args, **opts| opts[:disable_thinking] == true }
+      .raises(RedmineExpertHelpdesk::AiClient::AiError.new('stop'))
+
+    assert_nothing_raised { HelpdeskAiSummaryJob.perform_now(Issue.first.id) }
+  end
+
+  # --- Fallback when a reasoning model returns an empty answer ---
+
+  def stub_summary_run(provider: 'custom', disable_thinking: nil, kb_in_summary: false)
+    settings = { 'ai_enabled' => '1', 'ai_provider' => provider, 'ai_endpoint' => 'https://ai.local/v1',
+                 'ai_api_key' => 'k', 'ai_model' => 'qwen3', 'ai_min_input_chars' => '0',
+                 'ai_summary_disable_thinking' => '0' }
+    Setting.stubs(:plugin_redmine_expert_helpdesk).returns(settings)
+    RedmineExpertHelpdesk::AiFeatures.stubs(:ai_enabled?).returns(true)
+    ps = HelpdeskProjectSetting.new(:ai_summary_enabled => true, :ai_summary_disable_thinking => disable_thinking,
+                                    :kb_proposal_display => kb_in_summary ? 'summary' : 'off')
+    HelpdeskProjectSetting.stubs(:for_project).returns(ps)
+    HelpdeskAiSummaryJob.any_instance.stubs(:build_input).returns(['Drucker druckt nicht.', []])
+    proposals = kb_in_summary ? [{ :payload => { 'issue_id' => 7 }, :score => 0.9 }] : []
+    HelpdeskAiSummaryJob.any_instance.stubs(:retrieve_proposals).returns(proposals)
+    HelpdeskAiSummaryJob.any_instance.stubs(:kb_context_block).returns("\n\nKB-BLOCK")
+  end
+
+  def empty_answer
+    RedmineExpertHelpdesk::AiClient::EmptyResponseError.new('Leere Antwort vom KI-Provider')
+  end
+
+  def summary_notes(issue)
+    issue.journals.reload.where('notes LIKE ?', '🤖%')
+  end
+
+  def test_empty_answer_is_retried_once_without_thinking_and_without_kb_block
+    stub_summary_run(:kb_in_summary => true)
+    calls = []
+    RedmineExpertHelpdesk::AiClient.any_instance.stubs(:summarize).with do |system, *_rest, **opts|
+      calls << [system, opts[:disable_thinking]]
+      true
+    end.raises(empty_answer).then.returns('- Drucker defekt')
+    issue = Issue.first
+
+    HelpdeskAiSummaryJob.perform_now(issue.id)
+
+    assert_equal [false, true], calls.map(&:last)
+    assert_includes calls.first.first, 'KB-BLOCK'
+    assert_not_includes calls.last.first, 'KB-BLOCK'
+    note = summary_notes(issue).last
+    assert_includes note.notes, '- Drucker defekt'
+    assert_includes note.notes, I18n.t(:text_helpdesk_ai_summary_fallback)
+  end
+
+  def test_no_retry_when_thinking_was_already_off
+    stub_summary_run(:disable_thinking => true)
+    RedmineExpertHelpdesk::AiClient.any_instance.expects(:summarize).once.raises(empty_answer)
+    issue = Issue.first
+
+    assert_no_difference(-> { summary_notes(issue).count }) { HelpdeskAiSummaryJob.perform_now(issue.id) }
+  end
+
+  # OpenAI gets no thinking switch, so a retry would resend the identical request.
+  def test_no_retry_when_the_provider_cannot_disable_thinking
+    stub_summary_run(:provider => 'openai')
+    RedmineExpertHelpdesk::AiClient.any_instance.expects(:summarize).once.raises(empty_answer)
+
+    assert_nothing_raised { HelpdeskAiSummaryJob.perform_now(Issue.first.id) }
+  end
+
+  def test_other_provider_errors_are_not_retried
+    stub_summary_run
+    RedmineExpertHelpdesk::AiClient.any_instance.expects(:summarize).once
+                                   .raises(RedmineExpertHelpdesk::AiClient::AiError.new('HTTP 400', 400))
+
+    assert_nothing_raised { HelpdeskAiSummaryJob.perform_now(Issue.first.id) }
+  end
+
+  def test_normal_answer_has_no_fallback_hint
+    stub_summary_run
+    RedmineExpertHelpdesk::AiClient.any_instance.expects(:summarize).once.returns('- Drucker defekt')
+    issue = Issue.first
+
+    HelpdeskAiSummaryJob.perform_now(issue.id)
+
+    assert_not_includes summary_notes(issue).last.notes, I18n.t(:text_helpdesk_ai_summary_fallback)
   end
 
   # --- The sidebar follows the summary's choice (record_ai_verdict) ---

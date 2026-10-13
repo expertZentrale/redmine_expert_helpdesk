@@ -315,6 +315,47 @@
         <%= label_tag 'hd_ai_include_private', l(:field_helpdesk_ai_include_private_notes) %>
         <em class="info"><%= l(:text_helpdesk_ai_include_private_notes_info) %></em>
       </p>
+      <% if hd_setting.has_attribute?(:ai_summary_disable_thinking) %>
+        <%
+          central_off = Setting.plugin_redmine_expert_helpdesk['ai_summary_disable_thinking'].to_s == '1'
+          own = hd_setting.ai_summary_disable_thinking
+        %>
+        <p>
+          <label for="hd_ai_summary_disable_thinking"><%= l(:field_helpdesk_ai_summary_disable_thinking) %></label>
+          <%= select_tag 'helpdesk_project_setting[ai_summary_disable_thinking]',
+                options_for_select(
+                  [[l(:label_helpdesk_ai_thinking_central,
+                      :value => l(central_off ? :label_helpdesk_ai_thinking_off : :label_helpdesk_ai_thinking_on)), ''],
+                   [l(:label_helpdesk_ai_thinking_off), '1'],
+                   [l(:label_helpdesk_ai_thinking_on), '0']],
+                  own.nil? ? '' : (own ? '1' : '0')),
+                :id => 'hd_ai_summary_disable_thinking' %>
+          <em class="info"><%= l(:text_helpdesk_ai_summary_disable_thinking_info) %></em>
+        </p>
+        <p class="warning" id="hd_thinking_kb_warning" style="text-align:left;" hidden><%= l(:text_helpdesk_ai_thinking_kb_warning) %></p>
+        <%= javascript_tag do %>
+          // Warn while the effective choice is "thinking off" and knowledge-base
+          // proposals go into the summary. The display select lives in the
+          // knowledge-base form further down, so it is looked up on each change.
+          (function () {
+            var CENTRAL_OFF = <%= central_off ? 'true' : 'false' %>;
+            var KB_ON = <%= RedmineExpertHelpdesk::AiFeatures.kb_enabled? ? 'true' : 'false' %>;
+            var sel = document.getElementById('hd_ai_summary_disable_thinking');
+            var warn = document.getElementById('hd_thinking_kb_warning');
+            function sync() {
+              var off = sel.value === '1' || (sel.value === '' && CENTRAL_OFF);
+              var disp = document.getElementById('hd_kb_display');
+              var inSummary = disp ? ['summary', 'both'].indexOf(disp.value) >= 0
+                                   : <%= hd_setting.kb_show_in_summary? ? 'true' : 'false' %>;
+              warn.hidden = !(off && KB_ON && inSummary);
+            }
+            document.addEventListener('change', function (e) {
+              if (e.target === sel || (e.target && e.target.id === 'hd_kb_display')) sync();
+            });
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sync); else sync();
+          })();
+        <% end %>
+      <% end %>
       <p><%= submit_tag l(:button_save) %></p>
     <% end %>
   </fieldset>

@@ -6,6 +6,24 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Added
+
+- **Option to disable thinking mode for AI summaries**, centrally and per project (central setting
+  / disabled / allowed; migration 066). A reasoning model behind the custom provider occasionally
+  spent its whole output on `reasoning_content` and returned an empty answer, so the ticket got no
+  summary (*Leere Antwort vom KI-Provider*). When disabled, summary requests send
+  `chat_template_kwargs: {"enable_thinking": false}` (vLLM/SGLang, e.g. Qwen3). Only the custom
+  provider sends it; OpenAI and Anthropic requests are unchanged. Also in the project settings API
+  as `ai_summary_disable_thinking`. Both settings pages warn when thinking is off while
+  knowledge-base proposals go into the summary: without reasoning the model added an unfitting or
+  empty solution proposal in 9 of 20 test tickets (0 with thinking).
+- **Summaries retry once when the model returns an empty answer.** With thinking allowed and the
+  custom provider, an empty answer (`EmptyResponseError`) is asked again with thinking off and
+  without the knowledge-base block, which the model judges badly without reasoning. The note says
+  so, and the sidebar proposals keep no verdict for that run. Other errors are not retried.
+
 ## [0.20.4] - 2026-10-06
 
 ### Added

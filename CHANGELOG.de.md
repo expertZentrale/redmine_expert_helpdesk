@@ -5,6 +5,26 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **Denkmodus für KI-Zusammenfassungen abschaltbar**, zentral und je Projekt (zentrale Einstellung
+  / aus / erlaubt; Migration 066). Ein Reasoning-Modell hinter dem eigenen Endpunkt steckte
+  gelegentlich seine ganze Ausgabe in `reasoning_content` und lieferte eine leere Antwort, sodass
+  das Ticket keine Zusammenfassung bekam (*Leere Antwort vom KI-Provider*). Abgeschaltet senden
+  Zusammenfassungs-Anfragen `chat_template_kwargs: {"enable_thinking": false}` (vLLM/SGLang,
+  z. B. Qwen3). Nur der eigene Endpunkt sendet das Feld; Anfragen an OpenAI und Anthropic bleiben
+  unverändert. Auch in der Projekteinstellungs-API als `ai_summary_disable_thinking`. Beide
+  Einstellungsseiten warnen, wenn der Denkmodus aus ist, während Wissensbasis-Vorschläge in die
+  Zusammenfassung einfließen: Ohne Denkphase ergänzte das Modell in 9 von 20 Testtickets einen
+  unpassenden oder leeren Lösungsvorschlag (mit Denkmodus: 0).
+- **Zusammenfassungen werden bei leerer Antwort einmal wiederholt.** Mit erlaubtem Denkmodus und
+  eigenem Endpunkt wird eine leere Antwort (`EmptyResponseError`) ohne Denkmodus und ohne
+  Wissensbasis-Block erneut angefragt, weil das Modell diesen ohne Denkphase schlecht beurteilt.
+  Die Notiz weist darauf hin, und die Vorschläge in der Seitenleiste bekommen für diesen Lauf keine
+  Bewertung. Andere Fehler werden nicht wiederholt.
+
 ## [0.20.4] - 2026-10-06
 
 ### Hinzugefügt

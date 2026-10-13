@@ -227,6 +227,18 @@ class HelpdeskProjectSetting < HelpdeskApplicationRecord
     )
   end
 
+  # Should summaries switch off the model's reasoning ("thinking") mode? The
+  # project's own choice (true/false), else the central setting. Reasoning
+  # models sometimes spend the whole answer on reasoning_content and leave
+  # content empty, and a summary gains nothing from the extra latency.
+  # Guarded: the model is loaded before migration 066 has run.
+  def effective_ai_summary_disable_thinking?(settings = Setting.plugin_redmine_expert_helpdesk)
+    own = has_attribute?(:ai_summary_disable_thinking) ? ai_summary_disable_thinking : nil
+    return own unless own.nil?
+
+    settings['ai_summary_disable_thinking'].to_s == '1'
+  end
+
   # Ab welcher Aehnlichkeit ein Wissensbasis-Treffer einen kundengerichteten
   # Entwurf tragen darf: Projektwert, sonst zentraler Wert, sonst der Default
   # des Drafters. Bewusst unabhaengig von kb_min_score - der steuert die

@@ -249,6 +249,9 @@ module RedmineExpertHelpdesk
         api.ai_min_image_kb         s.ai_min_image_kb
         api.ai_include_journal      s.ai_include_journal
         api.ai_include_private_notes s.ai_include_private_notes
+        if s.has_attribute?(:ai_summary_disable_thinking)
+          api.ai_summary_disable_thinking s.ai_summary_disable_thinking
+        end
         # Completeness check of incoming first mails (opt-in per project).
         api.info_request_mode               s.info_request_mode
         api.info_request_min_chars          s.info_request_min_chars

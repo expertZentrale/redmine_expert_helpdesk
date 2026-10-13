@@ -1093,6 +1093,21 @@ centrally):
   instead of only the triggering mail, and optionally include **private notes** (off by
   default; those internal notes are then sent to the provider too). The plugin's own AI
   summary notes are always excluded.
+- **Thinking mode** — *central setting*, *disabled* or *allowed*. The central checkbox
+  **Disable thinking mode for summaries** (off by default) sets what *central setting* means.
+  When disabled, summary requests carry `chat_template_kwargs: {"enable_thinking": false}`,
+  which vLLM and SGLang pass to the chat template of reasoning models such as Qwen3. A summary
+  needs no reasoning phase, and a reasoning model sometimes spends its whole output on
+  `reasoning_content` and returns an empty answer (logged as *Leere Antwort vom KI-Provider*).
+  Only the **Custom** provider sends the field: official OpenAI rejects reasoning parameters on
+  non-reasoning models, and Anthropic only thinks when asked to, which the plugin never does.
+  **Keep thinking allowed while knowledge-base proposals go into the summary.** Without
+  reasoning the model judges badly whether a past case fits: in a test with 20 tickets it added
+  an unfitting or empty „Lösungsvorschlag“ 9 times, against 0 with thinking. Both settings pages
+  show a warning for that combination.
+  **Fallback:** while thinking is allowed, an empty answer is retried once with thinking off and
+  without the knowledge-base block, so the ticket still gets a summary. The note marks it, and its
+  sidebar proposals stay unjudged. Only the Custom provider retries; other errors never do.
 
 Summaries run **asynchronously** (ActiveJob `HelpdeskAiSummaryJob`), so AI latency or
 failures never block or slow the mail-fetch cycle; if the call fails, the ticket is still

@@ -548,6 +548,7 @@ Response `200`:
     "ai_attach_images": false,
     "ai_include_journal": false,
     "ai_include_private_notes": false,
+    "ai_summary_disable_thinking": null,
     "info_request_mode": "off",
     "info_request_min_chars": 200,
     "info_request_min_words": 20,
@@ -609,6 +610,7 @@ A **partial** update — only the keys you send are changed. Body key
 | `ai_attach_metadata` / `ai_attach_text` / `ai_attach_images` | boolean | Which parts of the attachments are fed to the model. |
 | `ai_include_journal` | boolean | Send the whole ticket history instead of just the mail body. |
 | `ai_include_private_notes` | boolean | Include private journal notes. |
+| `ai_summary_disable_thinking` | boolean \| null | Switch off the model's thinking mode for summaries (`true`), allow it (`false`), or follow the central setting (`null`). Only sent with the custom (OpenAI-compatible) provider. |
 | `info_request_mode` | string | `off`, `heuristic` or `ai` — completeness check of the first mail of a new ticket (off by default). |
 | `info_request_min_chars` / `info_request_min_words` | integer \| null | Rule mode: minimum body length. `0` disables the individual rule. |
 | `info_request_require_attachment` | boolean | Rule mode: treat a mail with no attachment as incomplete. |

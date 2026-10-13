@@ -405,6 +405,27 @@
   <label><%= l(:field_helpdesk_ai_timeout) %></label>
   <%= text_field_tag 'settings[ai_timeout]', @settings['ai_timeout'].presence || '60', :size => 8 %>
 </p>
+<p>
+  <%= hidden_field_tag 'settings[ai_summary_disable_thinking]', '0', :id => nil %>
+  <%= check_box_tag 'settings[ai_summary_disable_thinking]', '1',
+        @settings['ai_summary_disable_thinking'] == '1', :id => 'settings_ai_summary_disable_thinking' %>
+  <%= label_tag 'settings_ai_summary_disable_thinking', l(:field_helpdesk_ai_summary_disable_thinking) %>
+  <em class="info"><%= l(:text_helpdesk_ai_summary_disable_thinking_info) %></em>
+</p>
+<p class="warning" id="hd_thinking_kb_warning" style="text-align:left;" hidden><%= l(:text_helpdesk_ai_thinking_kb_warning) %></p>
+<%= javascript_tag do %>
+  // Without reasoning the model judges knowledge-base matches badly, so warn
+  // while thinking is off and the knowledge base is on (both in this form).
+  (function () {
+    var box = document.getElementById('settings_ai_summary_disable_thinking');
+    var warn = document.getElementById('hd_thinking_kb_warning');
+    function kb() { return document.querySelector('input[type=checkbox][name="settings[kb_enabled]"]'); }
+    function sync() { var k = kb(); warn.hidden = !(box.checked && k && k.checked); }
+    box.addEventListener('change', sync);
+    document.addEventListener('change', function (e) { if (e.target === kb()) sync(); });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sync); else sync();
+  })();
+<% end %>
 <p><em class="info"><%= l(:text_helpdesk_ai_privacy_info) %></em></p>
 
 <hr />

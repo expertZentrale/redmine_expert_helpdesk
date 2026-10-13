@@ -1139,6 +1139,23 @@ aktiviert ist):
   der auslösenden Mail senden, optional inklusive **privater Notizen** (Standard aus; diese
   internen Notizen gehen dann ebenfalls an den Anbieter). Die eigenen KI-Zusammenfassungs-
   Notizen werden immer ausgeschlossen.
+- **Denkmodus** – *zentrale Einstellung*, *aus* oder *erlaubt*. Was *zentrale Einstellung*
+  bedeutet, legt die zentrale Checkbox **Denkmodus für Zusammenfassungen abschalten** fest
+  (Standard aus). Abgeschaltet tragen Zusammenfassungs-Anfragen
+  `chat_template_kwargs: {"enable_thinking": false}`, das vLLM und SGLang an das Chat-Template
+  von Reasoning-Modellen wie Qwen3 weiterreichen. Eine Zusammenfassung braucht keine Denkphase,
+  und ein Reasoning-Modell steckt manchmal seine ganze Ausgabe in `reasoning_content` und
+  liefert eine leere Antwort (geloggt als *Leere Antwort vom KI-Provider*). Nur der Anbieter
+  **Eigener Endpunkt** sendet das Feld: das offizielle OpenAI lehnt Reasoning-Parameter bei
+  Nicht-Reasoning-Modellen ab, und Anthropic denkt nur auf Anfrage, die das Plugin nie stellt.
+  **Den Denkmodus erlauben, solange Wissensbasis-Vorschläge in die Zusammenfassung einfließen.**
+  Ohne Denkphase beurteilt das Modell schlecht, ob ein früherer Fall passt: Im Test mit 20 Tickets
+  ergänzte es 9-mal einen unpassenden oder leeren „Lösungsvorschlag“, mit Denkmodus 0-mal. Beide
+  Einstellungsseiten warnen bei dieser Kombination.
+  **Rückfallebene:** Bei erlaubtem Denkmodus wird eine leere Antwort einmal ohne Denkmodus und ohne
+  Wissensbasis-Block wiederholt, damit das Ticket trotzdem eine Zusammenfassung bekommt. Die Notiz
+  weist darauf hin, die Vorschläge in der Seitenleiste bleiben unbewertet. Nur der eigene Endpunkt
+  wiederholt; andere Fehler nie.
 
 Die Zusammenfassung läuft **asynchron** (ActiveJob `HelpdeskAiSummaryJob`); KI-Latenz oder
 -Fehler blockieren den Mailabruf nicht – scheitert der Call, wird das Ticket dennoch erzeugt

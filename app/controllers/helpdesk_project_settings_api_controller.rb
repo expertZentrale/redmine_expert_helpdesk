@@ -29,6 +29,9 @@ class HelpdeskProjectSettingsApiController < ApplicationController
     apply_boolean(:ai_attach_images, hp)
     apply_boolean(:ai_include_journal, hp)
     apply_boolean(:ai_include_private_notes, hp)
+    # null clears the override (Boolean cast keeps nil/blank as nil), so the
+    # project follows the central setting again.
+    apply_boolean(:ai_summary_disable_thinking, hp) if @setting.has_attribute?(:ai_summary_disable_thinking)
 
     @setting.reply_subject_template = hp[:reply_subject_template].to_s if hp.key?(:reply_subject_template)
     @setting.reply_status_id        = hp[:reply_status_id].presence   if hp.key?(:reply_status_id)

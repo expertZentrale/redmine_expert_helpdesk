@@ -92,7 +92,7 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
       # nil = no reranker configured, so nothing to point out in the sidebar.
       reranked = client.rerank_configured? ? (retrieval[:reranked] == true) : nil
       persist_proposals(issue, proposals, reranked) if ps.kb_show_in_sidebar?
-      system += kb_context_block(proposals) if ps.kb_show_in_summary?
+      kb_block = kb_context_block(proposals) if ps.kb_show_in_summary?
     elsif retrieval.key?(:candidates) && ps.kb_show_in_sidebar?
       # The search ran and found nothing fitting: drop the previous run's rows,
       # or the sidebar keeps an old case marked "in the AI summary" next to a
@@ -101,13 +101,32 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
       HelpdeskKbProposal.where(:issue_id => issue.id).delete_all
     end
 
-    summary = client.summarize(system, user_text, image_parts,
-                               :log_context => { :request_type => 'summary',
-                                                 :project_id => issue.project_id, :issue_id => issue.id })
+    log_context = { :request_type => 'summary', :project_id => issue.project_id, :issue_id => issue.id }
+    disable_thinking = ps.effective_ai_summary_disable_thinking?(settings)
+    fallback = false
+    begin
+      summary = client.summarize("#{system}#{kb_block}", user_text, image_parts,
+                                 :log_context => log_context, :disable_thinking => disable_thinking)
+    rescue RedmineExpertHelpdesk::AiClient::EmptyResponseError
+      raise if disable_thinking || !client.can_disable_thinking?
 
-    if proposals.any? && ps.kb_show_in_summary? && ps.kb_show_in_sidebar?
+      # A reasoning model spent its whole answer on reasoning. Ask once more
+      # without thinking - and without the knowledge-base block, because
+      # judging whether a past case fits is exactly what the model does badly
+      # without reasoning (9 unfitting proposals in 20 test tickets).
+      Rails.logger.warn("[helpdesk][ai] Leere Antwort (Issue ##{issue.id}), " \
+                        'wiederhole einmal ohne Denkmodus und ohne Wissensbasis-Block')
+      fallback = true
+      summary = client.summarize(system, user_text, image_parts,
+                                 :log_context => log_context, :disable_thinking => true)
+    end
+
+    # The fallback never saw the proposals, so it cannot have judged them:
+    # leave ai_verdict nil instead of marking every proposal as unfitting.
+    if !fallback && proposals.any? && ps.kb_show_in_summary? && ps.kb_show_in_sidebar?
       record_ai_verdict(issue, proposals, summary)
     end
+    summary = "#{summary}\n\n_#{I18n.t(:text_helpdesk_ai_summary_fallback)}_" if fallback
     journal = create_note(issue, summary)
     record_summary(issue, journal, client)
   rescue RedmineExpertHelpdesk::AiClient::AiError => e

@@ -34,6 +34,10 @@ module RedmineExpertHelpdesk
     # versuchen, oder in die Einstellungen schauen.
     class TransportError < AiError; end
 
+    # The provider answered, but with no text. Reasoning models do this when
+    # they spend the whole output on reasoning_content (prod issue #936648).
+    class EmptyResponseError < AiError; end
+
     PROVIDERS = %w[openai anthropic custom].freeze
 
     DEFAULT_ENDPOINTS = {
@@ -130,7 +134,9 @@ module RedmineExpertHelpdesk
     #   log_context : optional { :request_type, :project_id, :issue_id } – ist es
     #                 gesetzt, wird der Aufruf (Erfolg wie Fehler) in
     #                 HelpdeskAiRequest protokolliert.
-    def summarize(system_prompt, user_text, image_parts = [], log_context: nil)
+    #   disable_thinking : ask the model to skip its reasoning phase. Only the
+    #                 custom provider sends anything (see thinking_params).
+    def summarize(system_prompt, user_text, image_parts = [], log_context: nil, disable_thinking: false)
       raise ConfigurationError, 'KI ist nicht konfiguriert (API-Key, Modell oder Endpunkt fehlt)' unless configured?
 
       # Zuruecksetzen, damit ein Aufruf nie den Abbruchgrund des vorherigen erbt.
@@ -139,9 +145,27 @@ module RedmineExpertHelpdesk
         if provider == 'anthropic'
           summarize_anthropic(system_prompt, user_text, image_parts)
         else # openai + custom (OpenAI-kompatibel)
-          summarize_openai(system_prompt, user_text, image_parts)
+          summarize_openai(system_prompt, user_text, image_parts, disable_thinking)
         end
       end
+    end
+
+    # Request fields that switch off a model's reasoning mode. Only the custom
+    # provider gets one: vLLM and SGLang hand chat_template_kwargs to the chat
+    # template, where Qwen3-style models read enable_thinking, and other
+    # OpenAI-compatible servers ignore the unknown field. Official OpenAI
+    # rejects reasoning_effort with HTTP 400 on non-reasoning models
+    # (gpt-4o-mini ...), and Anthropic only thinks when asked to, which we
+    # never do - so both get nothing.
+    # Whether disable_thinking changes the request at all (see thinking_params).
+    def can_disable_thinking?
+      thinking_params(true).any?
+    end
+
+    def thinking_params(disable_thinking)
+      return {} unless disable_thinking && provider == 'custom'
+
+      { 'chat_template_kwargs' => { 'enable_thinking' => false } }
     end
 
     # --- Embeddings (fuer die Wissensbasis / RAG) --------------------------
@@ -340,7 +364,7 @@ module RedmineExpertHelpdesk
     end
 
     # --- OpenAI / OpenAI-kompatibel (custom) -------------------------------
-    def summarize_openai(system_prompt, user_text, image_parts)
+    def summarize_openai(system_prompt, user_text, image_parts, disable_thinking = false)
       content = user_text
       if image_parts.any?
         content = [{ 'type' => 'text', 'text' => user_text.to_s }]
@@ -364,7 +388,7 @@ module RedmineExpertHelpdesk
           { 'role' => 'system', 'content' => system_prompt.to_s },
           { 'role' => 'user',   'content' => content }
         ]
-      }
+      }.merge(thinking_params(disable_thinking))
 
       body = post_json("#{endpoint.chomp('/')}/chat/completions", payload,
                        { 'Authorization' => "Bearer #{api_key}" })
@@ -372,7 +396,7 @@ module RedmineExpertHelpdesk
       @last_usage = { :input => usage['prompt_tokens'], :output => usage['completion_tokens'] }
       @last_finish_reason = body.dig('choices', 0, 'finish_reason').to_s.presence
       text = body.dig('choices', 0, 'message', 'content').to_s.strip
-      raise AiError.new('Leere Antwort vom KI-Provider', nil, body.to_s) if text.blank?
+      raise EmptyResponseError.new('Leere Antwort vom KI-Provider', nil, body.to_s) if text.blank?
 
       text
     end
@@ -406,7 +430,7 @@ module RedmineExpertHelpdesk
       raw_stop = body['stop_reason'].to_s
       @last_finish_reason = raw_stop == 'max_tokens' ? 'length' : raw_stop.presence
       text = Array(body['content']).map { |c| c['text'] }.compact.join.strip
-      raise AiError.new('Leere Antwort vom KI-Provider', nil, body.to_s) if text.blank?
+      raise EmptyResponseError.new('Leere Antwort vom KI-Provider', nil, body.to_s) if text.blank?
 
       text
     end
