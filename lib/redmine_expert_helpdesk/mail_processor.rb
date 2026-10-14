@@ -116,6 +116,17 @@ module RedmineExpertHelpdesk
         return
       end
 
+      # The project already has this mail (it was addressed to two of its
+      # mailboxes, or a fetch repeats after a failed move). Another project
+      # receiving it is no duplicate - each project gets its own ticket.
+      if HelpdeskMessage.received_in_project?(meta.internet_message_id, @mailbox.project)
+        Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): Message-ID #{meta.internet_message_id} " \
+                          "already received in project #{@mailbox.project.identifier} - skipped"
+        move_skipped(meta.id)
+        result.skipped += 1
+        return
+      end
+
       mime = @provider.message_mime(meta.id)
 
       if auto_reply_filtered?(mime, sender)
@@ -150,6 +161,16 @@ module RedmineExpertHelpdesk
                             "#{phishing_suspicions.size} verschleierte(r) Link(s) markiert – #{subject.inspect} von #{sender}"
         end
       end
+
+      # Thread markers pointing at another project's ticket are removed, so the
+      # mail cannot leave this mailbox's project (see ThreadScope). Runs first:
+      # every step below looks up the referenced ticket and must only find ours.
+      scope = ThreadScope.new(@mailbox.project).scrub(mime)
+      if scope.changed
+        Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): thread markers of other projects removed " \
+                          "(#{scope.foreign_issues.map { |i| "##{i.id}" }.join(', ').presence || 'unknown tickets'})"
+      end
+      mime = scope.mime
 
       # Vorverarbeitung: Wenn das referenzierte Ticket geschlossen und zu alt ist,
       # Thread-Header entfernen, damit MailHandler ein neues Ticket anlegt.
@@ -227,6 +248,8 @@ module RedmineExpertHelpdesk
           # Mail-Kopfzeile wird clientseitig injiziert (_issue_sidebar.html.erb,
           # Badge im h4.note-header per Timestamp-Matching).
         end
+
+        relate_across_projects(issue, scope.foreign_issues, meta.internet_message_id)
 
         send_autoresponder(issue, contact, meta.internet_message_id) if new_issue && @mailbox.autoresponder_enabled?
         if phishing_hits.any? || phishing_suspicions.any?
@@ -326,22 +349,77 @@ module RedmineExpertHelpdesk
       mime
     end
 
-    # Sucht das im Betreff referenzierte Ticket (Muster [#ID]).
-    # Fallback: HelpdeskMessage-Tabelle per Internet-Message-ID aus In-Reply-To.
+    # The ticket of this mailbox's project the mail refers to: the [#ID] tag in
+    # the subject, else a logged helpdesk message named in In-Reply-To/References.
+    # Never a ticket of another project - ThreadScope has removed those markers
+    # already, and the lookup is scoped as well so it cannot reintroduce one.
     def find_referenced_issue(msg)
+      project_issues = Issue.where(:project_id => @mailbox.project_id)
+
       if msg.subject.to_s =~ /\[#(\d+)\]/
-        issue = Issue.find_by(:id => $1.to_i)
+        issue = project_issues.find_by(:id => $1.to_i)
         return issue if issue
       end
 
       ref_ids = [msg['in-reply-to']&.value.to_s, msg['references']&.value.to_s]
                 .join(' ').scan(/<([^>]+)>/).flatten
       if ref_ids.any?
-        hm = HelpdeskMessage.where(:message_id => ref_ids).first
+        variants = ref_ids.flat_map { |id| HelpdeskMessage.message_id_variants(id) }
+        hm = HelpdeskMessage.joins(:issue).where(:message_id => variants)
+                            .where(Issue.table_name => { :project_id => @mailbox.project_id }).first
         return hm.issue if hm&.issue
       end
 
       nil
+    end
+
+    # --- Cross-project references ---------------------------------------------
+
+    # Relates the ticket to the tickets of other projects this mail belongs to:
+    # the ones its thread markers pointed at (removed by ThreadScope) and the
+    # ones other projects created from the very same mail (same Message-ID).
+    # A relation instead of a note, because Redmine shows a relation - and its
+    # journal detail - only to users who can see both tickets: people of one
+    # project learn the mail went elsewhere too, without seeing anything of a
+    # project they have no access to.
+    #
+    # Redmine's "Allow cross-project issue relations" setting is respected; when
+    # it is off the relation is skipped and logged. A failure never breaks the
+    # mail processing - the ticket is already saved at this point.
+    def relate_across_projects(issue, foreign_issues, message_id)
+      variants = HelpdeskMessage.message_id_variants(message_id)
+      siblings = if variants.any?
+                   HelpdeskMessage.incoming.includes(:issue).where(:message_id => variants)
+                                  .where.not(:issue_id => issue.id).filter_map(&:issue)
+                 else
+                   []
+                 end
+
+      # A removed marker only proves that the sender knows a ticket number; any
+      # stranger can put "[#1]" in a subject. Relate to it only when the ticket
+      # is a helpdesk ticket, i.e. a conversation the mail can plausibly belong
+      # to. Siblings are helpdesk tickets by definition.
+      helpdesk_foreign = Array(foreign_issues).select { |o| o.project&.module_enabled?(:helpdesk) }
+      others = (helpdesk_foreign + siblings).uniq.reject { |o| o.project_id == issue.project_id }
+      others.each { |other| relate_issues(issue, other) }
+    rescue StandardError => e
+      Rails.logger.warn "Helpdesk (#{@mailbox.mailbox_address}): cross-project relation for ##{issue.id} failed: #{e.message}"
+    end
+
+    def relate_issues(issue, other)
+      return if IssueRelation.where(:issue_from_id => [issue.id, other.id], :issue_to_id => [issue.id, other.id]).exists?
+
+      # No init_journals: Redmine writes a history entry (and a notification)
+      # only when the controller asks for it. The relation is meant as a quiet
+      # pointer, not as news on a ticket of another team.
+      relation = IssueRelation.new(:issue_from => issue, :issue_to => other,
+                                   :relation_type => IssueRelation::TYPE_RELATES)
+      if relation.save
+        Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): ##{issue.id} related to ##{other.id} (other project)"
+      else
+        Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): ##{issue.id} not related to ##{other.id}: " \
+                          "#{relation.errors.full_messages.to_sentence}"
+      end
     end
 
     # Injiziert [#id] in den Betreff, wenn die Mail als Antwort auf eine bekannte

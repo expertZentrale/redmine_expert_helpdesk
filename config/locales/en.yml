@@ -484,6 +484,7 @@ en:
   permission_manage_helpdesk_contacts: Manage customer list
   label_helpdesk_mailbox: Mailbox
   label_helpdesk_original_mail: Original Email
+  label_helpdesk_also_received_by: Also received by
   label_helpdesk_previous_tickets: Previous tickets
   label_helpdesk_reply_to_customer: Reply to customer
   label_helpdesk_send_as_mail: Send as email to customer

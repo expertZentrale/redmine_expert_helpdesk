@@ -160,8 +160,14 @@ that order is what makes `safe_to_stop` trustworthy across pods.
   - `mail_processor.rb` — the heart: per mailbox, hands raw MIME to Redmine's own `MailHandler`
     (which does ticket creation / reply matching via `In-Reply-To`/`[#id]` / attachments /
     user creation), then applies the new-ticket defaults, links contact, autoresponder, phishing
-    check, stores `.eml`, moves the mail. Reply-vs-new matching is delegated entirely to
-    `MailHandler`. `apply_new_issue_defaults` runs for new tickets only: project
+    check, stores `.eml`, moves the mail. Reply-vs-new matching is done by `MailHandler`, but only
+    within the mailbox's project: `ThreadScope#scrub` (`thread_scope.rb`) first removes every thread
+    marker (`[#id]` subject tags, Redmine/helpdesk Message-IDs) pointing at another project's ticket,
+    subprojects included, and all ticket lookups after it are project-scoped. Removed tickets and
+    other projects' tickets from the same Message-ID are related (`relate_across_projects`);
+    `HelpdeskMessage.received_in_project?` skips a mail the project already has. Message-IDs are
+    stored in both spellings (incoming bare, outgoing `<id>`) — query via
+    `HelpdeskMessage.message_id_variants`. `apply_new_issue_defaults` runs for new tickets only: project
     `default_assigned_to_id` (a `Principal` — user **or** group) first, mailbox rules second
     (they win); an `Assigned to:` keyword already honoured by `MailHandler` beats both.
   - `inline_images.rb` — embedded images. `MailHandler` saves them as attachments but leaves the

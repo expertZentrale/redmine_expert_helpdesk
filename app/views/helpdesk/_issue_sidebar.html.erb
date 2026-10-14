@@ -49,6 +49,22 @@
     <div class="hd-section-value"><%= h(origin_mailbox.mailbox_address) %></div>
   <% end %>
 
+  <%# The same mail reached helpdesk mailboxes of other projects (To/Cc), each of
+      which made its own ticket. The address is in the mail's headers anyway; the
+      project name only for viewers who may see that project. %>
+  <% co_mailboxes = HelpdeskMessage.co_recipient_mailboxes(issue) %>
+  <% if co_mailboxes.any? %>
+    <div class="hd-section-label"><%= l(:label_helpdesk_also_received_by) %></div>
+    <div class="hd-section-value hd-also-received">
+      <% co_mailboxes.each do |mb| %>
+        <div>
+          <%= h(mb.mailbox_address) %>
+          <% if mb.project&.visible? %>(<%= link_to_project mb.project %>)<% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
   <% if eml_links.any? %>
     <div class="hd-section-label"><%= l(:label_helpdesk_original_mail) %></div>
     <div class="hd-section-value">

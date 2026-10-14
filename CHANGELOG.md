@@ -6,6 +6,40 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Fixed
+
+- **A mailbox only continues tickets of its own project.** Redmine's `MailHandler` follows a
+  `[#id]` subject tag or a Redmine/helpdesk Message-ID in `In-Reply-To`/`References` into any
+  project, and the plugin's own thread lookup searched all projects as well. A mail sent to project
+  B's address about a ticket of project A was therefore appended to A's ticket instead of becoming
+  one in B, and since mail is handed over without a permission check, any sender who knew a ticket
+  number could write into it — private projects and projects without the helpdesk module included.
+  Thread markers pointing at another project's ticket (subprojects included) are now removed before
+  `MailHandler` sees the mail, so it becomes a ticket of the mailbox's project; markers of the own
+  project are kept, ordinary replies are unaffected. A subject tag naming a ticket that does not
+  exist is removed too — the mail used to be rejected and land in the skipped folder.
+- **The same mail no longer lands twice in one project.** A mail addressed to two mailboxes of one
+  project, or to two projects of which one followed the other's thread, was added once per mailbox.
+  A Message-ID the project already received is now skipped; another project receiving the same mail
+  is not a duplicate and gets its own ticket.
+- **Replies to agent replies are found by Message-ID again.** Outgoing messages store their
+  Message-ID with angle brackets, incoming ones without; the thread lookup only searched the bare
+  form and so never matched an agent reply — it only worked while the subject still carried the
+  `[#id]` tag.
+
+### Added
+
+- **Cross-project references for a mail that went to several projects.** The ticket is related
+  (*related to*) to the other project's ticket — the one its removed markers pointed at, and the
+  one another project created from the same mail. A removed marker is only followed into a project
+  with the helpdesk module, since anyone can write a ticket number into a subject. The relation is
+  added quietly, without a history entry or notification. Redmine shows a relation only to users who may
+  see both tickets. The ticket sidebar lists the other helpdesk addresses the mail was sent to
+  under *Also received by*, naming the project only to viewers who may see it. The relation
+  requires Redmine's *Allow cross-project issue relations*; without it nothing is linked.
+
 ## [0.21.0] - 2026-10-14
 
 ### Added

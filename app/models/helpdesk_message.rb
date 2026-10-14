@@ -80,6 +80,44 @@ class HelpdeskMessage < HelpdeskApplicationRecord
     { :to => to, :cc => cc }
   end
 
+  # Both spellings of a Message-ID. Rows are not stored uniformly: incoming
+  # mail carries the provider's form (IMAP without, Graph with angle brackets),
+  # outgoing replies always store "<id>". A lookup with only one form misses
+  # half the rows.
+  def self.message_id_variants(id)
+    bare = id.to_s.strip.delete_prefix('<').delete_suffix('>')
+    return [] if bare.blank?
+
+    [bare, "<#{bare}>"]
+  end
+
+  # True when this project already received the mail - a second mailbox of the
+  # same project got it too (To + Cc), or a fetch is repeated after a failed
+  # move. Scoped to the project on purpose: the same mail sent to two projects
+  # is two tickets, one in each.
+  def self.received_in_project?(message_id, project)
+    variants = message_id_variants(message_id)
+    return false if variants.empty? || project.nil?
+
+    incoming.joins(:issue).where(:message_id => variants)
+            .where(Issue.table_name => { :project_id => project.id }).exists?
+  end
+
+  # The other helpdesk mailboxes a mail of this ticket was addressed to, i.e.
+  # the projects that got their own copy of it. Only To/Cc are known - a
+  # mailbox reached by Bcc stays invisible, as it should.
+  def self.co_recipient_mailboxes(issue)
+    addresses = incoming.where(:issue_id => issue.id).flat_map do |m|
+      split_addresses(m.recipient_to) + split_addresses(m.recipient_cc)
+    end.map(&:downcase).uniq
+    return [] if addresses.empty?
+
+    HelpdeskMailbox.includes(:project)
+                   .where('LOWER(mailbox_address) IN (?)', addresses)
+                   .where.not(:project_id => issue.project_id)
+                   .order(:mailbox_address).to_a
+  end
+
   # What the recipients pill on the ticket header and on incoming journals
   # shows for one inbound mail: every To/Cc address, each flagged whether it
   # is the mailbox that received the mail, plus how many people besides us

@@ -60,6 +60,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/reply_images', __FILE__
 require File.expand_path('../lib/redmine_expert_helpdesk/reply_box', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/note_quoter', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/maintenance', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/thread_scope', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mail_processor', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/init_mailer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/hooks', __FILE__)

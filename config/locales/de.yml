@@ -484,6 +484,7 @@ de:
   permission_manage_helpdesk_contacts: Kundenliste verwalten
   label_helpdesk_mailbox: Postfach
   label_helpdesk_original_mail: Original E-Mail
+  label_helpdesk_also_received_by: Auch zugestellt an
   label_helpdesk_previous_tickets: Frühere Tickets
   label_helpdesk_reply_to_customer: Antwort an Kunden
   label_helpdesk_send_as_mail: Als E-Mail an Kunden senden
