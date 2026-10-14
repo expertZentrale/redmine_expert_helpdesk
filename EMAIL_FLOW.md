@@ -322,6 +322,10 @@ flowchart TD
 - **Private notes stay behind** in the complete history: they were written for the source team.
 - The ticket in B is authored by the agent and gets the mailbox's *Defaults for new tickets*. The
   same customer becomes B's contact, so B can answer them from its ticket.
+- **Several recipients**: every participating project named in To, Cc or Bcc gets one ticket,
+  even when two of its mailboxes are named. Everybody else is mailed as before; when only
+  hand-over addresses were in To, the Cc moves up to To. If only Bcc recipients would be left, the
+  reply is refused before anything is handed over.
 - **If the mail to the remaining recipients fails**, the ticket in B is removed again, so sending
   once more does not create it twice.
 

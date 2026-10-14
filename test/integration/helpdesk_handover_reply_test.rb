@@ -140,6 +140,80 @@ class HelpdeskHandoverReplyTest < Redmine::IntegrationTest
     assert_equal before, other_project_tickets.count
   end
 
+  # --- several recipients -----------------------------------------------------
+
+  def third_project
+    project = Project.find(3)
+    project.enable_module!(:helpdesk)
+    HelpdeskProjectSetting.for_project(project).tap { |s| s.handover_enabled = true }.save!
+    HelpdeskMailbox.create!(:project => project, :mailbox_address => 'helpdesk-c@expert.local',
+                            :provider => 'imap', :imap_host => 'mail.example.com')
+    project
+  end
+
+  # Two projects in Cc: a ticket in each, the customer still gets the mail.
+  def test_two_target_projects_get_a_ticket_each
+    project_c = third_project
+    transport = FakeTransport.new
+    RedmineExpertHelpdesk::MailProvider.stubs(:outgoing_for).returns(transport)
+    data = reply(:reply_to => 'kunde@example.com',
+                 :reply_cc => 'helpdesk-b@expert.local, "Team C" <helpdesk-c@expert.local>',
+                 :handover_mode => 'note')
+
+    assert_response :success
+    projects = data['handovers'].map { |h| Issue.find(h['issue_id']).project }
+    assert_equal [@other, project_c].map(&:id).sort, projects.map(&:id).sort
+    assert_equal 1, transport.sent.size
+    assert_not_includes transport.sent.first, 'helpdesk-c@expert.local'
+  end
+
+  # The same target named twice, in another spelling: one ticket.
+  def test_same_target_twice_is_one_handover
+    RedmineExpertHelpdesk::MailProvider.stubs(:outgoing_for).returns(FakeTransport.new)
+    data = reply(:reply_to => 'kunde@example.com', :reply_cc => 'helpdesk-b@expert.local',
+                 :reply_bcc => 'Helpdesk-B@Expert.local', :handover_mode => 'note')
+
+    assert_equal 1, Array(data['handovers']).size, data.inspect
+  end
+
+  # Two mailboxes of one project: the project gets one ticket, not two.
+  def test_two_mailboxes_of_one_project_are_one_handover
+    HelpdeskMailbox.create!(:project => @other, :mailbox_address => 'helpdesk-b2@expert.local',
+                            :provider => 'imap', :imap_host => 'mail.example.com')
+    before = other_project_tickets.count
+    data = reply(:reply_to => 'helpdesk-b@expert.local', :reply_cc => 'helpdesk-b2@expert.local',
+                 :handover_mode => 'note')
+
+    assert_response :success
+    assert_equal 1, data['handovers'].size
+    assert_equal before + 1, other_project_tickets.count
+  end
+
+  # Target in To, customer in Cc: the customer moves up to To.
+  def test_cc_moves_to_to_when_only_targets_were_in_to
+    transport = FakeTransport.new
+    RedmineExpertHelpdesk::MailProvider.stubs(:outgoing_for).returns(transport)
+    reply(:reply_to => 'helpdesk-b@expert.local', :reply_cc => 'kunde@example.com', :handover_mode => 'note')
+
+    assert_response :success
+    mail = Mail.read_from_string(transport.sent.first)
+    assert_equal ['kunde@example.com'], mail.to
+    assert_empty Array(mail.cc)
+  end
+
+  # Only a Bcc left: a mail with no visible recipient is refused, and
+  # nothing is handed over either.
+  def test_only_bcc_left_is_refused_before_anything_happens
+    RedmineExpertHelpdesk::MailProvider.expects(:outgoing_for).never
+    before = other_project_tickets.count
+    data = reply(:reply_to => 'helpdesk-b@expert.local', :reply_bcc => 'chef@example.com',
+                 :handover_mode => 'note')
+
+    assert_response :unprocessable_entity
+    assert_not data['success']
+    assert_equal before, other_project_tickets.count
+  end
+
   # Without the hand-over the address is an ordinary recipient, as before.
   def test_switched_off_the_address_is_mailed
     HelpdeskProjectSetting.for_project(@other).update!(:handover_enabled => false)

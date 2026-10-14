@@ -331,6 +331,10 @@ flowchart TD
   Ausgangsteam geschrieben.
 - Autor des Tickets in B ist der Bearbeiter, es erhält die *Standardwerte für neue Tickets* des
   Postfachs. Derselbe Kunde wird Kontakt in B, damit B ihm aus seinem Ticket antworten kann.
+- **Mehrere Empfänger**: Jedes teilnehmende Projekt aus An, CC oder BCC erhält ein Ticket, auch
+  wenn zwei seiner Postfächer genannt sind. Alle anderen werden wie bisher gemailt; standen in An nur
+  Übergabe-Adressen, rückt CC nach An. Blieben nur BCC-Empfänger übrig, wird die Antwort abgelehnt,
+  bevor etwas übergeben wird.
 - **Schlägt die Mail an die übrigen Empfänger fehl**, wird das Ticket in B wieder entfernt, ein
   erneutes Senden legt es also nicht doppelt an.
 

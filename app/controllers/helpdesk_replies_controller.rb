@@ -41,7 +41,9 @@ class HelpdeskRepliesController < ApplicationController
       reply_to,  hits_to  = RedmineExpertHelpdesk::Handover.split(reply_to, targets)
       reply_cc,  hits_cc  = RedmineExpertHelpdesk::Handover.split(reply_cc, targets)
       reply_bcc, hits_bcc = RedmineExpertHelpdesk::Handover.split(reply_bcc, targets)
-      handovers = (hits_to + hits_cc + hits_bcc).uniq(&:id)
+      # One ticket per project: two of its mailboxes in To and Cc are still
+      # one hand-over, and the first one named supplies the defaults.
+      handovers = (hits_to + hits_cc + hits_bcc).uniq(&:project_id)
     end
     handover_mode = params[:handover_mode].to_s
     if handovers.any? && !RedmineExpertHelpdesk::Handover::MODES.include?(handover_mode)
@@ -49,9 +51,17 @@ class HelpdeskRepliesController < ApplicationController
              :status => :unprocessable_entity
       return
     end
-    # A mail needs a To: with only Cc left, the Cc becomes the To.
+    # A mail needs a To: with only Cc left, the Cc becomes the To. Only Bcc
+    # left is refused - promoting it would show the Bcc recipients to each
+    # other, and a mail without any To is not delivered the same way by every
+    # transport. Checked before anything is handed over.
     reply_to, reply_cc = reply_cc, '' if reply_to.blank? && reply_cc.present?
-    send_mail = reply_to.present? || reply_bcc.present?
+    if reply_to.blank? && reply_bcc.present?
+      render :json => { :success => false, :error => l(:error_helpdesk_handover_bcc_only) },
+             :status => :unprocessable_entity
+      return
+    end
+    send_mail = reply_to.present?
 
     # Betreff aus Projekteinstellungen mit Makro-Auswertung
     project_setting  = HelpdeskProjectSetting.for_project(@project)

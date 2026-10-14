@@ -49,7 +49,9 @@
   Anhänge; private Notizen bleiben zurück). Das Ticket wird dort direkt angelegt: mit dem Bearbeiter als
   Autor, den Standardwerten des Postfachs, dem Kunden als Kontakt, in Beziehung zum Ausgangsticket, und
   eine Zeile in der Notiz des Ausgangstickets nennt es. Übrige Empfänger werden wie bisher gemailt;
-  schlägt diese Mail fehl, wird die Übergabe zurückgenommen.
+  schlägt diese Mail fehl, wird die Übergabe zurückgenommen. Jedes teilnehmende Projekt erhält ein
+  Ticket, egal wie viele seiner Postfächer genannt sind; eine Antwort, nach der nur BCC-Empfänger übrig
+  blieben, wird abgelehnt, bevor etwas übergeben wird.
 - **Projektübergreifende Verweise für eine Mail an mehrere Projekte.** Das Ticket wird mit dem
   Ticket des anderen Projekts in Beziehung gesetzt (*verwandt mit*) – mit dem, auf das die
   entfernten Marker zeigten, und mit dem, das ein anderes Projekt aus derselben Mail angelegt hat. Einem entfernten Marker wird nur

@@ -49,6 +49,8 @@
   The ticket is created there directly: authored by the agent, the mailbox's defaults for new
   tickets, the customer as contact, related to the source ticket, and a line in the source note
   names it. Remaining recipients are mailed as before; if that mail fails, the hand-over is undone.
+  Each participating project gets one ticket however many of its mailboxes are named; a reply that
+  would leave only Bcc recipients is refused before anything is handed over.
 - **Cross-project references for a mail that went to several projects.** The ticket is related
   (*related to*) to the other project's ticket — the one its removed markers pointed at, and the
   one another project created from the same mail. A removed marker is only followed into a project

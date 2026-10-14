@@ -497,6 +497,7 @@ en:
   label_helpdesk_handover_history: 'History of %{issue}'
   text_helpdesk_handover_header: 'Handed over from %{issue} (%{project}) by %{user}.'
   text_helpdesk_handover_note_line: '→ Handed over to %{target}: %{issue}'
+  error_helpdesk_handover_bcc_only: 'Only Bcc recipients would be left after the hand-over. Put at least one of them into To or Cc.'
   error_helpdesk_handover_mode_missing: 'Choose what to hand over: only this note or the complete history.'
   label_helpdesk_previous_tickets: Previous tickets
   label_helpdesk_reply_to_customer: Reply to customer

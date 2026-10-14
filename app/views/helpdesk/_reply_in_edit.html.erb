@@ -567,7 +567,14 @@
       var text = ['hd-to', 'hd-cc', 'hd-bcc'].map(function(id) {
         var el = document.getElementById(id); return el ? el.value : '';
       }).join(',').toLowerCase();
-      var tokens = text.split(/[,;\s<>"]+/);
+      // Same rule as the server (HelpdeskMessage.scan_tokens/bare_address):
+      // entries are separated by , or ; and the address is the <...> part or
+      // the whole entry. Splitting on spaces too would offer a hand-over the
+      // server then does not make.
+      var tokens = text.split(/[,;]/).map(function(part) {
+        var m = part.match(/<([^>]*)>/);
+        return (m ? m[1] : part).trim();
+      });
       return handoverTargets.filter(function(t) { return tokens.indexOf(t.address) !== -1; });
     }
     function syncHandover() {
