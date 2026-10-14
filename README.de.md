@@ -389,6 +389,9 @@ Dienstkontos und dessen privaten PEM-Schlüssel eintragen, eine interaktive Zust
 
 ## E-Mail-Verarbeitung
 
+> **Diagramme aller Abläufe** – Abruf, Filter, Antwort oder neues Ticket, Mails an mehrere Projekte,
+> ausgehende Mails – mit allen Einstellungen, die sie verändern: [EMAIL_FLOW.de.md](EMAIL_FLOW.de.md).
+
 ### Ablauf pro Postfachabruf
 
 ```
@@ -540,8 +543,8 @@ gehört – eine Ticketnummer kann jeder in einen Betreff schreiben), und die Ti
 Helpdesk-Adressen, an die die Mail ging. Redmine zeigt eine Beziehung nur
 Benutzern, die beide Tickets sehen dürfen, und die Seitenleiste nennt das andere Projekt nur, wenn
 der Betrachter es sehen darf; niemand erfährt etwas über ein Projekt ohne Zugriff. Per BCC
-erreichte Postfächer bleiben unsichtbar. Die Beziehung setzt Redmines *Projektübergreifende
-Ticketbeziehungen erlauben* voraus (*Administration → Konfiguration → Tickets*); ohne die
+erreichte Postfächer bleiben unsichtbar. Die Beziehung setzt Redmines *Ticket-Beziehungen
+zwischen Projekten erlauben* voraus (*Administration → Konfiguration → Tickets*); ohne die
 Einstellung werden die Tickets trotzdem angelegt, nur nicht verknüpft. Die Beziehung wird still
 angelegt – kein Historieneintrag, keine Benachrichtigung an das andere Team.
 

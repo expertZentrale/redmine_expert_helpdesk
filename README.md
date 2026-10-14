@@ -374,6 +374,9 @@ its PEM private key; no interactive consent is needed.
 
 ## Email Processing
 
+> **Diagrams of every flow** — fetching, filters, reply or new ticket, mail to several projects,
+> outgoing mail — with all the settings that change them: [EMAIL_FLOW.md](EMAIL_FLOW.md).
+
 ### Flow per mailbox fetch
 
 ```

@@ -7,6 +7,13 @@
 
 ## [Unreleased]
 
+### Dokumentation
+
+- **`EMAIL_FLOW.de.md`** (englisch `EMAIL_FLOW.md`): Diagramme aller Mailabläufe – Abruf, Filter,
+  Antwort oder neues Ticket, was mit dem Ticket passiert, Mails an mehrere Projekte, ausgehende
+  Mails –, jeweils mit den Einstellungen, die den Weg verändern, dazu eine Übersicht all dieser
+  Einstellungen und wo sie gepflegt werden.
+
 ### Behoben
 
 - **Ein Postfach führt nur noch Tickets seines eigenen Projekts fort.** Redmines `MailHandler`
@@ -40,7 +47,7 @@
   Redmine zeigt eine Beziehung nur Benutzern, die beide Tickets sehen dürfen. Die Ticket-Seitenleiste
   listet unter *Auch zugestellt an* die anderen Helpdesk-Adressen, an die die Mail ging, und nennt
   das Projekt nur, wenn der Betrachter es sehen darf. Die Beziehung setzt Redmines
-  *Projektübergreifende Ticketbeziehungen erlauben* voraus; ohne die Einstellung wird nichts verknüpft.
+  *Ticket-Beziehungen zwischen Projekten erlauben* voraus; ohne die Einstellung wird nichts verknüpft.
 
 ## [0.21.0] - 2026-10-14
 

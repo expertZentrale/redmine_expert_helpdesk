@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+### Documentation
+
+- **`EMAIL_FLOW.md`** (German mirror `EMAIL_FLOW.de.md`): diagrams of every mail flow — fetching,
+  filters, reply or new ticket, what happens to the ticket, mail to several projects, outgoing
+  mail — each naming the settings that change its path, plus a reference of all those settings
+  and where they are configured.
+
 ### Fixed
 
 - **A mailbox only continues tickets of its own project.** Redmine's `MailHandler` follows a

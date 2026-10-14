@@ -20,7 +20,10 @@ codebase still has legacy German comments — leave them unless you're already e
 **i18n stays bilingual** (`config/locales/en.yml` + `de.yml`) and the plugin UI is German.
 Docs are **English-first with a German mirror kept in sync**: `README.md` (EN) / `README.de.md` (DE),
 and `CHANGELOG.md` (EN, authoritative — release notes are generated from it) / `CHANGELOG.de.md` (DE).
-Keep each EN/DE pair in sync for user-facing changes.
+Keep each EN/DE pair in sync for user-facing changes. **`EMAIL_FLOW.md` / `EMAIL_FLOW.de.md`** hold
+the Mermaid diagrams of every mail flow and the settings that steer them — any change to the
+incoming pipeline, reply matching, outgoing routes or a setting that affects them must update both
+(diagram *and* settings table), using the exact UI labels from `config/locales/{en,de}.yml`.
 
 ## Development workflow (Docker)
 

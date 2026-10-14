@@ -25,6 +25,10 @@ Redmine is supplied by a Docker image; the app only exists inside the running co
 - **Every change must update `CHANGELOG.md` (EN, authoritative)** and its German mirror
   **`CHANGELOG.de.md`**; for user-facing changes also **`README.md` (EN) and `README.de.md` (DE)**.
   Keep each EN/DE pair in sync. GitHub release notes are generated from `CHANGELOG.md`.
+- **`EMAIL_FLOW.md` / `EMAIL_FLOW.de.md`** hold the Mermaid diagrams of every mail flow and the
+  settings that steer them. Any change to the incoming pipeline, reply matching, outgoing routes or a
+  setting that affects them must update both (diagram and settings table), using the exact UI labels
+  from `config/locales/{en,de}.yml`.
 - **Language policy:** write **code comments in English** (legacy German comments may remain until
   that code is next touched). **i18n stays bilingual** (`config/locales/en.yml` + `de.yml`) and the
   plugin UI is German.
