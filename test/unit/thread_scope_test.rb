@@ -225,6 +225,70 @@ class ThreadScopeTest < ActiveSupport::TestCase
     assert_equal journals_before, @foreign.reload.journals.count
   end
 
+  # The mail gem (and MailHandler) read an id written without angle brackets.
+  def test_bracketless_foreign_redmine_id_is_removed
+    raw = mime(:subject => 'Hallo', :message_id => 'nb@x',
+               :in_reply_to => "redmine.issue-#{@foreign.id}.20260101000000@example.net")
+    result = scrub(raw)
+
+    assert_nil Mail.read_from_string(result.mime)['in-reply-to']
+    assert_equal [@foreign], result.foreign_issues
+  end
+
+  def test_bracketless_foreign_id_creates_ticket_end_to_end
+    journals_before = @foreign.journals.count
+    raw = mime(:subject => 'Hallo', :message_id => 'nb2@x',
+               :in_reply_to => "redmine.issue-#{@foreign.id}.20260101000000@example.net")
+    result = run_mail(raw, 'nb2@x')
+
+    assert_equal 1, result.created_issues.size, result.errors.inspect
+    assert_equal journals_before, @foreign.reload.journals.count
+  end
+
+  # Removing the inner tag exposes the outer one; it must go too.
+  def test_nested_foreign_subject_tag_is_removed_completely
+    result = scrub(mime(:subject => "[#[##{@foreign.id}]#{@foreign.id}] Frage", :message_id => 'n@x'))
+
+    subject = Mail.read_from_string(result.mime).subject
+    assert_no_match MailHandler::ISSUE_REPLY_SUBJECT_RE, subject
+  end
+
+  def test_nested_foreign_tag_does_not_write_into_foreign_ticket
+    journals_before = @foreign.journals.count
+    result = run_mail(mime(:subject => "[#[##{@foreign.id}]#{@foreign.id}] Frage", :message_id => 'n2@x'), 'n2@x')
+
+    assert_equal 1, result.created_issues.size, result.errors.inspect
+    assert_equal journals_before, @foreign.reload.journals.count
+  end
+
+  # A forum reply marker would make MailHandler post into the forum topic.
+  def test_forum_marker_is_removed
+    topic = Message.first
+    result = scrub(mime(:subject => "Re: [Help - msg#{topic.id}] Frage", :message_id => 'f@x'))
+
+    assert_equal 'Re: Frage', Mail.read_from_string(result.mime).subject
+  end
+
+  def test_forum_marker_creates_ticket_instead_of_forum_post
+    topic = Message.first
+    replies_before = Message.count
+    result = run_mail(mime(:subject => "Re: [Help - msg#{topic.id}] Frage", :message_id => 'f2@x'), 'f2@x')
+
+    assert_equal 1, result.created_issues.size, result.errors.inspect
+    assert_equal replies_before, Message.count
+  end
+
+  # The archived original keeps the headers as received.
+  def test_archived_eml_keeps_original_subject
+    result = run_mail(mime(:subject => "[##{@foreign.id}] Bitte an Team A", :message_id => 'eml@x'), 'eml@x')
+
+    created = Issue.find(result.created_issues.first)
+    eml = created.attachments.detect { |a| a.filename.end_with?('.eml') }
+    assert eml, 'no .eml attached'
+    assert_equal "[##{@foreign.id}] Bitte an Team A", Mail.read_from_string(File.binread(eml.diskfile)).subject
+    assert_equal "[##{@foreign.id}] Bitte an Team A", HelpdeskMessage.find_by(:issue_id => created.id).subject
+  end
+
   def test_message_id_variants
     assert_equal ['a@b', '<a@b>'], HelpdeskMessage.message_id_variants('<a@b>')
     assert_equal ['a@b', '<a@b>'], HelpdeskMessage.message_id_variants('a@b')

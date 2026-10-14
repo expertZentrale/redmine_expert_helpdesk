@@ -165,6 +165,11 @@ module RedmineExpertHelpdesk
       # Thread markers pointing at another project's ticket are removed, so the
       # mail cannot leave this mailbox's project (see ThreadScope). Runs first:
       # every step below looks up the referenced ticket and must only find ours.
+      # The archived .eml keeps the headers as received (after phishing
+      # neutralisation, which is deliberate) - agents need the original subject
+      # and references to follow the conversation. Only MailHandler sees the
+      # rewritten copy.
+      archive_mime = mime
       scope = ThreadScope.new(@mailbox.project).scrub(mime)
       if scope.changed
         Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): thread markers of other projects removed " \
@@ -226,7 +231,7 @@ module RedmineExpertHelpdesk
 
         eml_author = (object.is_a?(Journal) ? object.user : issue.author) || User.anonymous
 
-        parsed_mail = Mail.read_from_string(mime) rescue nil
+        parsed_mail = Mail.read_from_string(archive_mime) rescue nil
         msg = HelpdeskMessage.create!(
           :issue             => issue,
           :helpdesk_contact  => contact,
@@ -240,7 +245,7 @@ module RedmineExpertHelpdesk
           :journal_id        => (object.is_a?(Journal) ? object.id : nil)
         )
 
-        eml_att = attach_eml(issue, mime, eml_author)
+        eml_att = attach_eml(issue, archive_mime, eml_author)
         if eml_att
           msg.update_column(:eml_attachment_id, eml_att.id)
           # Kein HTML mehr in die Journal-Notiz schreiben: Redmines Wiki-Sanitizer

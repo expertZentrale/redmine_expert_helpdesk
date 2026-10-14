@@ -26,7 +26,10 @@
   Thread markers pointing at another project's ticket (subprojects included) are now removed before
   `MailHandler` sees the mail, so it becomes a ticket of the mailbox's project; markers of the own
   project are kept, ordinary replies are unaffected. A subject tag naming a ticket that does not
-  exist is removed too — the mail used to be rejected and land in the skipped folder.
+  exist is removed too — the mail used to be rejected and land in the skipped folder. Message-IDs
+  written without angle brackets, nested tags such as `[#[#4]4]` and forum reply tags
+  (`[Board - msg45]`, which let a mail post into a forum topic) are covered as well. The `.eml`
+  attached to the ticket keeps the headers as received.
 - **The same mail no longer lands twice in one project.** A mail addressed to two mailboxes of one
   project, or to two projects of which one followed the other's thread, was added once per mailbox.
   A Message-ID the project already received is now skipped; another project receiving the same mail

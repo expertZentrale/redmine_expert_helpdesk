@@ -133,6 +133,7 @@ sagen, zu welchem Ticket sie gehört:
 | Ticket-Tag | Betreff | `AW: [#123] Drucker defekt`, `[Projekt - Fehler #123]` |
 | Redmine-Benachrichtigungs-ID | `In-Reply-To` / `References` | `<redmine.issue-123.20261014…@example.com>` |
 | Protokollierte Helpdesk-Message-ID | `In-Reply-To` / `References` | ID einer Kundenmail oder Bearbeiterantwort, die der Helpdesk gespeichert hat |
+| Forum-Antwort-Tag | Betreff | `AW: [Forum - msg45] …` – wird immer entfernt, ein Helpdesk-Postfach schreibt nie in ein Forum |
 
 ```mermaid
 flowchart TD
@@ -155,7 +156,8 @@ flowchart TD
 - **Nur das eigene Projekt des Postfachs.** Ohne den ersten Schritt würde der `MailHandler` einem
   Marker in jedes Projekt folgen, und jeder, der eine Ticketnummer kennt, könnte in dieses Ticket
   schreiben. Marker des eigenen Projekts bleiben erhalten, die normale Antwort des Kunden findet
-  ihr Ticket also weiterhin.
+  ihr Ticket also weiterhin. Die am Ticket angehängte `.eml` behält Betreff und Header genau so, wie
+  sie angekommen sind.
 - **Max. Alter (Tage)** erzwingt ein neues Ticket für eine Antwort auf ein seit Langem
   geschlossenes Ticket. `0` oder leer schaltet das Limit ab.
 - **Unbekannte Absender** bestimmt, was der `MailHandler` mit einer Adresse ohne Redmine-Konto macht:

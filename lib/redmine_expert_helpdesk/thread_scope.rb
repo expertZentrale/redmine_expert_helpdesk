@@ -69,8 +69,17 @@ module RedmineExpertHelpdesk
       issue.project_id == @project.id
     end
 
+    # Read through the mail gem's parsed accessors, exactly as MailHandler does:
+    # they also return an id written without angle brackets, which Redmine's
+    # MESSAGE_ID_RE accepts. Scanning for "<...>" would let such an id through.
     def header_ids(msg, name)
-      msg[name]&.value.to_s.scan(/<([^>]+)>/).flatten
+      field = msg[name]
+      return [] unless field
+
+      parsed = name == 'in-reply-to' ? msg.in_reply_to : msg.references
+      Array(parsed).map { |id| id.to_s.strip.delete_prefix('<').delete_suffix('>') }.reject(&:blank?)
+    rescue StandardError
+      field.value.to_s.scan(/<([^>]+)>|([^\s<>]+@[^\s<>]+)/).flatten.compact
     end
 
     # Unknown ids are kept: they belong to no ticket, so MailHandler cannot
@@ -92,19 +101,30 @@ module RedmineExpertHelpdesk
       end
     end
 
+    # Forum reply markers ("[Board - msg123]"). MailHandler posts those into the
+    # forum topic, which a helpdesk mailbox never has a reason to do.
+    MESSAGE_REPLY_SUBJECT_RE =
+      defined?(MailHandler::MESSAGE_REPLY_SUBJECT_RE) ? MailHandler::MESSAGE_REPLY_SUBJECT_RE : /\[[^\]]*msg(\d+)\]/
+
     # MailHandler's own pattern, so "[Projekt - Ticket #12]" is caught as well
     # as "[#12]". A tag naming a ticket that does not exist is removed for the
-    # same reason as above.
+    # same reason as above. Repeated until nothing changes: removing an inner
+    # tag can expose an outer one ("[#[#4]4]" becomes "[#4]").
     def scrub_subject(subject, foreign)
-      subject.gsub(MailHandler::ISSUE_REPLY_SUBJECT_RE) do |tag|
-        issue = Issue.find_by(:id => Regexp.last_match(1).to_i)
-        if issue && local?(issue)
-          tag
-        else
-          foreign << issue if issue
-          ''
+      loop do
+        cleaned = subject.gsub(MESSAGE_REPLY_SUBJECT_RE, '').gsub(MailHandler::ISSUE_REPLY_SUBJECT_RE) do |tag|
+          issue = Issue.find_by(:id => Regexp.last_match(1).to_i)
+          if issue && local?(issue)
+            tag
+          else
+            foreign << issue if issue
+            ''
+          end
         end
-      end.gsub(/\s{2,}/, ' ').strip
+        break subject.gsub(/\s{2,}/, ' ').strip if cleaned == subject
+
+        subject = cleaned
+      end
     end
   end
 end

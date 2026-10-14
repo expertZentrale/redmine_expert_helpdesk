@@ -27,7 +27,9 @@
   bevor der `MailHandler` die Mail sieht, sodass sie zum Ticket im Projekt des Postfachs wird; Marker
   des eigenen Projekts bleiben, normale Antworten sind nicht betroffen. Ein Betrefftag auf ein nicht
   existierendes Ticket wird ebenfalls entfernt – die Mail wurde bisher abgelehnt und landete im
-  Skipped-Ordner.
+  Skipped-Ordner. Message-IDs ohne spitze Klammern, verschachtelte Tags wie `[#[#4]4]` und
+  Forum-Antwort-Tags (`[Forum - msg45]`, über die eine Mail in ein Forenthema schreiben konnte) sind
+  ebenfalls abgedeckt. Die am Ticket angehängte `.eml` behält die Header so, wie sie angekommen sind.
 - **Dieselbe Mail landet nicht mehr doppelt in einem Projekt.** Eine Mail an zwei Postfächer eines
   Projekts, oder an zwei Projekte, von denen eines dem Thread des anderen folgte, wurde je Postfach
   einmal ergänzt. Eine Message-ID, die das Projekt schon erhalten hat, wird jetzt übersprungen; ein

@@ -130,6 +130,7 @@ belongs to:
 | Ticket tag | Subject | `Re: [#123] Printer broken`, `[Project - Bug #123]` |
 | Redmine notification ID | `In-Reply-To` / `References` | `<redmine.issue-123.20261014…@example.com>` |
 | Logged helpdesk Message-ID | `In-Reply-To` / `References` | ID of a customer mail or an agent reply the helpdesk stored |
+| Forum reply tag | Subject | `Re: [Board - msg45] …` — always removed, a helpdesk mailbox never posts into a forum |
 
 ```mermaid
 flowchart TD
@@ -151,7 +152,8 @@ flowchart TD
 
 - **Only the mailbox's own project.** Without the first step, `MailHandler` would follow a marker
   into any project, and anyone who knows a ticket number could write into that ticket. Markers of
-  the own project are kept, so the customer's ordinary reply still finds its ticket.
+  the own project are kept, so the customer's ordinary reply still finds its ticket. The `.eml`
+  attached to the ticket keeps the subject and headers exactly as received.
 - **Max. age (days)** forces a new ticket for an answer to a ticket that was closed long ago. `0`
   or empty turns the limit off.
 - **Unknown senders** decides what `MailHandler` does with an address that has no Redmine account:
