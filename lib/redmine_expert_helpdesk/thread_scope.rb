@@ -24,6 +24,27 @@ module RedmineExpertHelpdesk
       @project = project
     end
 
+    # Relates two tickets of different projects ("related to"), at most once.
+    # No init_journals: Redmine writes a history entry (and a notification) only
+    # when the controller asks for it. The relation is meant as a quiet pointer,
+    # not as news on a ticket of another team. Redmine's "Allow cross-project
+    # issue relations" is enforced by the relation's own validation.
+    def self.relate(issue, other, log_prefix = 'Helpdesk')
+      return true if IssueRelation.where(:issue_from_id => [issue.id, other.id],
+                                         :issue_to_id => [issue.id, other.id]).exists?
+
+      relation = IssueRelation.new(:issue_from => issue, :issue_to => other,
+                                   :relation_type => IssueRelation::TYPE_RELATES)
+      if relation.save
+        Rails.logger.info "#{log_prefix}: ##{issue.id} related to ##{other.id} (other project)"
+        true
+      else
+        Rails.logger.info "#{log_prefix}: ##{issue.id} not related to ##{other.id}: " \
+                          "#{relation.errors.full_messages.to_sentence}"
+        false
+      end
+    end
+
     def scrub(mime)
       msg     = Mail.read_from_string(mime)
       foreign = []

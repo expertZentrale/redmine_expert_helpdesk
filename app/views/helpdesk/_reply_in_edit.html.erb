@@ -56,6 +56,24 @@
                  placeholder="<%= h(l(:label_helpdesk_reply_addresses_hint)) %>" />
         </td>
       </tr>
+      <% if local_assigns[:handover_targets].present? %>
+      <%# Experimental hand-over: appears as soon as a recipient field names the
+          helpdesk address of a participating project (see Handover). No choice
+          is preselected - the agent decides how much of the ticket goes over. %>
+      <tr id="hd-handover" hidden data-hd-targets="<%= h(handover_targets.to_json) %>">
+        <th style="vertical-align: top; padding-top: 5px;"><%= l(:label_helpdesk_handover_title) %></th>
+        <td>
+          <div class="hd-handover-box">
+            <div><%= l(:text_helpdesk_handover_intro) %></div>
+            <ul id="hd-handover-list"></ul>
+            <label><input type="radio" name="hd_handover_mode" value="note" id="hd-handover-note" />
+              <%= l(:label_helpdesk_handover_mode_note) %></label>
+            <label><input type="radio" name="hd_handover_mode" value="history" id="hd-handover-history" />
+              <%= l(:label_helpdesk_handover_mode_history) %></label>
+          </div>
+        </td>
+      </tr>
+      <% end %>
       <% if issue.attachments.any? %>
       <tr>
         <th style="vertical-align: top; padding-top: 5px;"><%= l(:label_helpdesk_reply_attachments) %></th>
@@ -135,6 +153,8 @@
   margin-top: 1px;
 }
 #hd-send-error .hd-err-text { flex: 1; }
+#hd-handover .hd-handover-box > label { display: block; margin-top: 4px; }
+#hd-handover #hd-handover-list { margin: 6px 0; }
 #hd-send-error .hd-err-close {
   cursor: pointer;
   font-size: 1.1em;
@@ -536,9 +556,68 @@
       window.addEventListener('load', applyInitialReplyDefaults);
     }
 
+    // Experimental hand-over: show the choice while a recipient field names a
+    // participating project's helpdesk address.
+    var handoverRow = document.getElementById('hd-handover');
+    var handoverTargets = [];
+    try { handoverTargets = handoverRow ? JSON.parse(handoverRow.getAttribute('data-hd-targets') || '[]') : []; }
+    catch (err) { handoverTargets = []; }
+
+    function handoverMatches() {
+      var text = ['hd-to', 'hd-cc', 'hd-bcc'].map(function(id) {
+        var el = document.getElementById(id); return el ? el.value : '';
+      }).join(',').toLowerCase();
+      var tokens = text.split(/[,;\s<>"]+/);
+      return handoverTargets.filter(function(t) { return tokens.indexOf(t.address) !== -1; });
+    }
+    function syncHandover() {
+      if (!handoverRow) return [];
+      var hits = handoverMatches();
+      handoverRow.hidden = hits.length === 0;
+      var list = document.getElementById('hd-handover-list');
+      list.innerHTML = '';
+      hits.forEach(function(t) {
+        var li = document.createElement('li');
+        li.textContent = t.project ? t.address + ' (' + t.project + ')' : t.address;
+        list.appendChild(li);
+      });
+      return hits;
+    }
+    if (handoverRow) {
+      ['hd-to', 'hd-cc', 'hd-bcc'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.addEventListener('input', syncHandover); el.addEventListener('change', syncHandover); }
+      });
+      syncHandover();
+    }
+
     // Form-Submit: erst Mail senden, dann normaler Redmine-Submit (Notiz → Journal)
     issueForm.addEventListener('submit', function(e) {
       if (!cb.checked) return; // kein Haken → normaler Submit ohne Mail
+
+      // A hand-over needs an explicit choice; nothing is preselected.
+      var handoverMode = '';
+      if (syncHandover().length > 0) {
+        var picked = document.querySelector('input[name="hd_handover_mode"]:checked');
+        if (!picked) {
+          e.preventDefault();
+          var hoErr = document.getElementById('hd-send-error');
+          hoErr.innerHTML = '<span class="hd-err-icon">&#9888;</span><span class="hd-err-text">' +
+                            '<%= j(l(:error_helpdesk_handover_mode_missing)) %></span>';
+          hoErr.style.display = 'flex';
+          handoverRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          // jquery-ujs disables data-disable-with buttons on a 13 ms timer after
+          // this handler; re-enable once it has, or the corrected form is stuck.
+          setTimeout(function() {
+            if (window.jQuery && jQuery.rails && jQuery.rails.enableFormElements) {
+              jQuery.rails.enableFormElements(jQuery(issueForm));
+            }
+            issueForm.querySelectorAll('[type=submit]').forEach(function(btn) { btn.disabled = false; });
+          }, 50);
+          return;
+        }
+        handoverMode = picked.value;
+      }
 
       var notesEl     = document.getElementById('issue_notes');
       var noteContent = notesEl ? notesEl.value.trim() : '';
@@ -561,6 +640,7 @@
       formData.append('reply_to',     toVal);
       formData.append('reply_cc',     ccVal);
       formData.append('reply_bcc',    bccVal);
+      if (handoverMode) { formData.append('handover_mode', handoverMode); }
       // Kennzeichnet die gesendete Mail als KI-entworfen (siehe Migration 054).
       if (window.hdAiDraft && window.hdAiDraft.used()) {
         formData.append('hd_ai_drafted', '1');
@@ -601,6 +681,17 @@
           idInput.name  = 'hd_sent_message_id';
           idInput.value = data.helpdesk_message_id;
           issueForm.appendChild(idInput);
+        }
+
+        // Hand-over: record it in this ticket's note, so the history shows
+        // where the topic went.
+        if (data.handovers && data.handovers.length && notesEl) {
+          var lines = data.handovers.map(function(h) {
+            var target = h.project ? h.project + ' (' + h.address + ')' : h.address;
+            return '<%= j(l(:text_helpdesk_handover_note_line)) %>'
+              .replace('%{target}', target).replace('%{issue}', '#' + h.issue_id);
+          });
+          notesEl.value = notesEl.value.replace(/\s+$/, '') + '\n\n' + lines.join('\n');
         }
 
         // Status and assignee are deliberately not touched here any more: both

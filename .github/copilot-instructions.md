@@ -171,7 +171,11 @@ that order is what makes `safe_to_stop` trustworthy across pods.
     other projects' tickets from the same Message-ID are related (`relate_across_projects`);
     `HelpdeskMessage.received_in_project?` skips a mail the project already has. Message-IDs are
     stored in both spellings (incoming bare, outgoing `<id>`) — query via
-    `HelpdeskMessage.message_id_variants`. `apply_new_issue_defaults` runs for new tickets only: project
+    `HelpdeskMessage.message_id_variants`. Experimental `handover.rb`: with the central
+    `handover_enabled` and both projects' `HelpdeskProjectSetting#handover_enabled` on, the reply
+    controller takes participating helpdesk addresses out of the mail and creates the ticket there
+    (`note` or `history` mode, chosen by the agent; private notes never go over), before the mail,
+    undone if the mail fails. `apply_new_issue_defaults` runs for new tickets only: project
     `default_assigned_to_id` (a `Principal` — user **or** group) first, mailbox rules second
     (they win); an `Assigned to:` keyword already honoured by `MailHandler` beats both.
   - `inline_images.rb` — embedded images. `MailHandler` saves them as attachments but leaves the

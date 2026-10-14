@@ -41,6 +41,14 @@
 
 ### Added
 
+- **Hand-over to another project instead of a mail (experimental).** Central switch *Enable
+  hand-over to other projects* plus *Take part in hand-overs* per project (migration 067); both
+  projects have to take part. A reply naming a participating project's helpdesk address takes that
+  address out of the mail and asks the agent what goes over — only the note with its attachments,
+  or the complete history (description, public notes, all attachments; private notes stay behind).
+  The ticket is created there directly: authored by the agent, the mailbox's defaults for new
+  tickets, the customer as contact, related to the source ticket, and a line in the source note
+  names it. Remaining recipients are mailed as before; if that mail fails, the hand-over is undone.
 - **Cross-project references for a mail that went to several projects.** The ticket is related
   (*related to*) to the other project's ticket — the one its removed markers pointed at, and the
   one another project created from the same mail. A removed marker is only followed into a project

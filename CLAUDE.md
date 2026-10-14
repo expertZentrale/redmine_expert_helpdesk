@@ -228,6 +228,17 @@ nested registration would never fire in production.
   `Setting.cross_project_issue_relations`); `HelpdeskMessage.received_in_project?` skips a mail the
   project already has. **Message-IDs are stored in both spellings** (incoming bare, outgoing
   `<id>`) — always query through `HelpdeskMessage.message_id_variants`. Returns a `Result` struct.
+- **`handover.rb`** — experimental hand-over to another project instead of a mail. Active only when
+  the central `handover_enabled` **and** `HelpdeskProjectSetting#handover_enabled` of *both* projects
+  are on (migration 067). `HelpdeskRepliesController#create` splits participating helpdesk
+  addresses out of To/Cc/Bcc (`Handover.split`, same parser as the recipient pill), requires
+  `handover_mode` (`note`|`history`, nothing preselected in the form), creates the target tickets
+  **before** the mail and destroys them again if the mail raises — the agent re-sends after an
+  error, and a surviving hand-over would then exist twice. History mode quotes the description and
+  **public** notes only and copies all attachments via `Attachment#copy` (shared disk file). The
+  reply form re-enables its submit button on a 50 ms timer: jquery-ujs disables
+  `data-disable-with` buttons on a 13 ms timer *after* the submit handler, so a synchronous or
+  0 ms re-enable is undone and the form stays stuck.
   `apply_new_issue_defaults` runs **for new tickets only** and in this order: the project's
   `default_assigned_to_id` (a `Principal`, so a user **or** a group — skipped when `MailHandler`
   already honoured an `Assigned to:` keyword), then the mailbox rules, which are the more

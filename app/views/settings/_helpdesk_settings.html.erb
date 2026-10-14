@@ -164,6 +164,17 @@
 </fieldset>
 
 <fieldset class="box tabular">
+  <legend><%= l(:label_helpdesk_handover) %></legend>
+  <p>
+    <%= hidden_field_tag 'settings[handover_enabled]', '0', :id => nil %>
+    <%= check_box_tag 'settings[handover_enabled]', '1',
+          @settings['handover_enabled'].to_s == '1', :id => 'settings_handover_enabled' %>
+    <%= label_tag 'settings_handover_enabled', l(:field_helpdesk_handover_enabled) %>
+    <em class="info"><%= l(:text_helpdesk_handover_enabled_info) %></em>
+  </p>
+</fieldset>
+
+<fieldset class="box tabular">
   <legend><%= l(:label_helpdesk_inline_images) %></legend>
   <p>
     <%# Same id-less hidden companion as above: it carries the unchecked value. %>

@@ -303,6 +303,37 @@ flowchart LR
   Empfänger ist. Das Postfach jenes Projekts entfernt sie beim Eingang
   ([Abschnitt 6](#6-eine-mail-mehrere-projekte)).
 
+### Übergabe statt Mail (experimentell)
+
+Nennt ein Bearbeiter in einer Antwort das Helpdesk-Postfach eines anderen Projekts, würde die Mail
+per SMTP hinaus- und über dieses Postfach wieder hereinlaufen. Mit eingeschalteter Übergabe wird
+das Ticket im anderen Projekt direkt angelegt, und diese Adresse erhält keine Mail.
+
+```mermaid
+flowchart TD
+  R["Bearbeiter schreibt eine Antwort<br/>An / CC / BCC enthält helpdesk-b@…"] --> E{"Übergabe für beide Projekte aktiv?<br/><i>Übergabe an andere Projekte aktivieren</i> (zentral)<br/><i>An Übergaben teilnehmen</i> (Projekt A und B)"}
+  E -- nein --> MAIL["Normaler Empfänger:<br/>wird gemailt, beim Eingang Ticket in B"]
+  E -- ja --> ASK{"Bearbeiter wählt<br/>(nichts vorausgewählt)"}
+  ASK -- "Nur diese Notiz" --> N1(["Neues Ticket in B:<br/>Notiz + mitgesendete Anhänge"]):::new
+  ASK -- "Komplette Historie" --> N2(["Neues Ticket in B:<br/>Notiz + Beschreibung + öffentliche Notizen<br/>+ alle Anhänge"]):::new
+  N1 --> LINK["Beziehung zum A-Ticket, Kunde als Kontakt<br/>in B, Zeile in der Notiz von A"]
+  N2 --> LINK
+  LINK --> REST{"Weitere Empfänger übrig?"}
+  REST -- ja --> SEND["Mail an sie, ohne die Adresse von B"]
+  REST -- nein --> DONE["Gar keine Mail"]
+  classDef new fill:#d8efe1,stroke:#1f7a4d,color:#10301f
+```
+
+- **Beide Projekte müssen teilnehmen.** Der zentrale Schalter macht die Option in den
+  Projekteinstellungen sichtbar; jedes Projekt entscheidet dann selbst, ob es übergibt und
+  Übergaben annimmt.
+- **Private Notizen bleiben zurück**, auch bei der kompletten Historie: Sie waren für das
+  Ausgangsteam geschrieben.
+- Autor des Tickets in B ist der Bearbeiter, es erhält die *Standardwerte für neue Tickets* des
+  Postfachs. Derselbe Kunde wird Kontakt in B, damit B ihm aus seinem Ticket antworten kann.
+- **Schlägt die Mail an die übrigen Empfänger fehl**, wird das Ticket in B wieder entfernt, ein
+  erneutes Senden legt es also nicht doppelt an.
+
 ---
 
 ## 8. Einstellungsübersicht
@@ -342,6 +373,8 @@ flowchart LR
 | Ticket-Beziehungen zwischen Projekten erlauben | Redmine, *Tickets* | Tickets verschiedener Projekte können verknüpft werden | [6](#6-eine-mail-mehrere-projekte) |
 | Versandweg | Postfach | *Backend des Postfachs*, *Microsoft Graph API* oder *SMTP (Redmine-Standard)* | [7](#7-ausgehende-mails) |
 | Abweichender Absender (From), Reply-To auf die Postfach-Adresse setzen | Postfach (SMTP-Weg) | Absenderadresse beim Versand über *SMTP (Redmine-Standard)* | [7](#7-ausgehende-mails) |
+| Übergabe an andere Projekte aktivieren | Zentral | Experimentell: Übergabe statt Mail wird verfügbar | [7](#übergabe-statt-mail-experimentell) |
+| An Übergaben teilnehmen (experimentell) | Projekt | Dieses Projekt übergibt und nimmt Übergaben an | [7](#übergabe-statt-mail-experimentell) |
 | Ordner für gesendete Mails | Postfach (IMAP) | Wo die Kopie einer gesendeten Mail abgelegt wird | [7](#7-ausgehende-mails) |
 | Betreff-Vorlage | Projekt | Betreff von Bearbeiterantworten | [7](#7-ausgehende-mails) |
 | Kopfzeile, Fußzeile, Fußzeilen-Modus | Postfach (+ zentrale Fußzeile) | Rahmen um den Antworttext | [7](#7-ausgehende-mails) |

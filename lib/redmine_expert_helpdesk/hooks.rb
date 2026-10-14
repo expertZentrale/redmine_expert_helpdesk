@@ -394,7 +394,13 @@ module RedmineExpertHelpdesk
           :original_to            => original[:to],
           :original_cc            => original[:cc],
           :box_color              => project_setting.effective_reply_box_color,
-          :hazard_color           => project_setting.effective_reply_hazard_color
+          :hazard_color           => project_setting.effective_reply_hazard_color,
+          # Experimental hand-over: addresses the form offers to hand over to.
+          # The project name only for viewers who may see that project.
+          :handover_targets       => RedmineExpertHelpdesk::Handover.targets_for(project).values.map { |mb|
+            { :address => mb.mailbox_address.to_s.downcase,
+              :project => (mb.project.visible? ? mb.project.name : nil) }
+          }
         }
       })
     end

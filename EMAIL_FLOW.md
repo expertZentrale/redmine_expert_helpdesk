@@ -296,6 +296,35 @@ flowchart LR
 - Outgoing mails keep their markers even when another project's helpdesk address is a recipient.
   That project's mailbox removes them on arrival ([section 6](#6-one-mail-several-projects)).
 
+### Hand-over instead of mail (experimental)
+
+When an agent addresses another project's helpdesk mailbox in a reply, the mail would travel out
+through SMTP and come back in through that mailbox. With the hand-over switched on, the ticket is
+created in the other project directly and that address gets no mail.
+
+```mermaid
+flowchart TD
+  R["Agent writes a reply<br/>To / Cc / Bcc contains helpdesk-b@…"] --> E{"Hand-over active for both projects?<br/><i>Enable hand-over to other projects</i> (central)<br/><i>Take part in hand-overs</i> (project A and B)"}
+  E -- no --> MAIL["Ordinary recipient:<br/>mailed, becomes a ticket in B on arrival"]
+  E -- yes --> ASK{"Agent chooses<br/>(nothing preselected)"}
+  ASK -- "Only this note" --> N1(["New ticket in B:<br/>note + attachments sent with it"]):::new
+  ASK -- "Complete history" --> N2(["New ticket in B:<br/>note + description + public notes<br/>+ all attachments"]):::new
+  N1 --> LINK["Related to A's ticket, customer linked as<br/>B's contact, line added to A's note"]
+  N2 --> LINK
+  LINK --> REST{"Other recipients left?"}
+  REST -- yes --> SEND["Mail to them, without B's address"]
+  REST -- no --> DONE["No mail at all"]
+  classDef new fill:#d8efe1,stroke:#1f7a4d,color:#10301f
+```
+
+- **Both projects have to take part.** The central switch makes the option visible in the project
+  settings; each project then decides for itself whether it hands over and accepts hand-overs.
+- **Private notes stay behind** in the complete history: they were written for the source team.
+- The ticket in B is authored by the agent and gets the mailbox's *Defaults for new tickets*. The
+  same customer becomes B's contact, so B can answer them from its ticket.
+- **If the mail to the remaining recipients fails**, the ticket in B is removed again, so sending
+  once more does not create it twice.
+
 ---
 
 ## 8. Settings reference
@@ -335,6 +364,8 @@ flowchart LR
 | Allow cross-project issue relations | Redmine, *Issue tracking* | Tickets of different projects can be related | [6](#6-one-mail-several-projects) |
 | Send via | Mailbox | Outgoing route: *Mailbox backend*, *Microsoft Graph API* or *SMTP (Redmine default)* | [7](#7-outgoing-mail) |
 | Sender override (From), Set Reply-To to the mailbox address | Mailbox (SMTP route) | Sender address when sending via *SMTP (Redmine default)* | [7](#7-outgoing-mail) |
+| Enable hand-over to other projects | Central | Experimental: hand-over instead of mail becomes available | [7](#hand-over-instead-of-mail-experimental) |
+| Take part in hand-overs (experimental) | Project | This project hands over and accepts hand-overs | [7](#hand-over-instead-of-mail-experimental) |
 | Sent folder | Mailbox (IMAP) | Where the copy of a sent mail is filed | [7](#7-outgoing-mail) |
 | Subject template | Project | Subject of agent replies | [7](#7-outgoing-mail) |
 | Header, Footer, Footer mode | Mailbox (+ central footer) | Frame around the reply text | [7](#7-outgoing-mail) |

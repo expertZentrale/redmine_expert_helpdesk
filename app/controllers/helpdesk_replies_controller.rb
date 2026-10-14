@@ -33,6 +33,26 @@ class HelpdeskRepliesController < ApplicationController
     reply_cc  = params[:reply_cc].to_s.strip.gsub(/[\s,;]+\z/, '')
     reply_bcc = params[:reply_bcc].to_s.strip.gsub(/[\s,;]+\z/, '')
 
+    # Experimental hand-over: helpdesk addresses of participating projects are
+    # taken out of the mail and get the ticket directly (see Handover).
+    targets   = RedmineExpertHelpdesk::Handover.targets_for(@project)
+    handovers = []
+    if targets.any?
+      reply_to,  hits_to  = RedmineExpertHelpdesk::Handover.split(reply_to, targets)
+      reply_cc,  hits_cc  = RedmineExpertHelpdesk::Handover.split(reply_cc, targets)
+      reply_bcc, hits_bcc = RedmineExpertHelpdesk::Handover.split(reply_bcc, targets)
+      handovers = (hits_to + hits_cc + hits_bcc).uniq(&:id)
+    end
+    handover_mode = params[:handover_mode].to_s
+    if handovers.any? && !RedmineExpertHelpdesk::Handover::MODES.include?(handover_mode)
+      render :json => { :success => false, :error => l(:error_helpdesk_handover_mode_missing) },
+             :status => :unprocessable_entity
+      return
+    end
+    # A mail needs a To: with only Cc left, the Cc becomes the To.
+    reply_to, reply_cc = reply_cc, '' if reply_to.blank? && reply_cc.present?
+    send_mail = reply_to.present? || reply_bcc.present?
+
     # Betreff aus Projekteinstellungen mit Makro-Auswertung
     project_setting  = HelpdeskProjectSetting.for_project(@project)
     subject_template = project_setting.effective_subject_template
@@ -59,6 +79,26 @@ class HelpdeskRepliesController < ApplicationController
     inline_tokens = Array(params[:inline_attachment_tokens]).map(&:to_s).reject(&:blank?).first(20)
     inline_atts   = inline_tokens.filter_map { |tok| Attachment.find_by_token(tok) }
                                  .select { |a| a.author_id == User.current.id }
+
+    # The hand-over runs before the mail, so a failed mail can take it back
+    # (rescue below) instead of leaving a ticket nobody was told about.
+    created = []
+    handovers.each do |target|
+      created << RedmineExpertHelpdesk::Handover.new(
+        :source => @issue, :mailbox => target, :user => User.current, :mode => handover_mode,
+        :note => note, :attachments => Attachment.where(:id => valid_att_ids).to_a + inline_atts,
+        :contact => contact
+      ).call
+    end
+    handover_json = created.zip(handovers).map do |i, target|
+      { :issue_id => i.id, :address => target.mailbox_address,
+        :project  => (i.project.visible? ? i.project.name : nil) }
+    end
+
+    unless send_mail
+      render :json => { :success => true, :helpdesk_message_id => nil, :handovers => handover_json }
+      return
+    end
 
     message_id = nil
 
@@ -115,14 +155,26 @@ class HelpdeskRepliesController < ApplicationController
     # SLA: Kundenantwort stoppt die Reaktionsuhr.
     RedmineExpertHelpdesk::Sla.record_first_response!(@issue, Time.current, :by => User.current)
 
-    render :json => { :success => true, :helpdesk_message_id => hd_msg.id }
+    render :json => { :success => true, :helpdesk_message_id => hd_msg.id, :handovers => handover_json }
   rescue RedmineExpertHelpdesk::MailProvider::ProviderError => e
+    undo_handovers(created)
     render :json => { :success => false, :error => e.message }, :status => :unprocessable_entity
   rescue StandardError => e
+    undo_handovers(created)
     render :json => { :success => false, :error => e.message }, :status => :unprocessable_entity
   end
 
   private
+
+  # The agent sees an error and sends again, so a hand-over that went through
+  # before the mail failed would otherwise be created twice.
+  def undo_handovers(issues)
+    Array(issues).each do |issue|
+      issue.destroy
+    rescue StandardError => e
+      Rails.logger.error "Helpdesk handover: ##{issue.id} could not be removed after a failed send: #{e.message}"
+    end
+  end
 
   def build_recipients(addresses_str)
     addresses_str.to_s.split(/[,;]+/).map(&:strip).reject(&:blank?).map do |addr|

@@ -1,0 +1,155 @@
+# Hand-over of a ticket to another project, without a mail (experimental).
+#
+# An agent who puts the helpdesk address of another project into a reply wants
+# that project to take the topic on. Mailing it there sends the conversation
+# through SMTP and IMAP only to be turned back into a ticket - and the copy
+# carries the source ticket's thread markers, which the receiving mailbox then
+# has to strip again (see ThreadScope). When both projects take part in
+# hand-overs, the reply controller removes such addresses from the mail and
+# creates the ticket in the other project directly.
+#
+# The agent chooses what goes over:
+#   note    - the reply text with the attachments sent along with it
+#   history - additionally the ticket's description and public notes, and all
+#             of its attachments. Private notes stay behind: they were written
+#             for the source team only.
+#
+# Switched on centrally (plugin setting handover_enabled) *and* per project
+# (HelpdeskProjectSetting#handover_enabled); a hand-over needs the source and
+# the target project to take part, so each team decides for itself.
+module RedmineExpertHelpdesk
+  class Handover
+    MODES = %w[note history].freeze
+
+    class Error < StandardError; end
+
+    def self.enabled?(settings = Setting.plugin_redmine_expert_helpdesk)
+      settings['handover_enabled'].to_s == '1'
+    end
+
+    def self.project_enabled?(project)
+      return false unless enabled? && project&.active? && project.module_enabled?(:helpdesk)
+
+      setting = HelpdeskProjectSetting.for_project(project)
+      setting.has_attribute?(:handover_enabled) && setting.handover_enabled? ? true : false
+    end
+
+    # The mailboxes a ticket of +project+ can be handed over to, keyed by their
+    # address in lower case.
+    def self.targets_for(project)
+      return {} unless project_enabled?(project)
+
+      HelpdeskMailbox.enabled.includes(:project).where.not(:project_id => project.id).to_a
+                     .select { |mb| project_enabled?(mb.project) }
+                     .index_by { |mb| mb.mailbox_address.to_s.downcase }
+    end
+
+    # Splits a recipient field into what is still mailed and the hand-over
+    # mailboxes it named.
+    def self.split(value, targets)
+      kept = []
+      hits = []
+      HelpdeskMessage.scan_tokens(value).each do |token|
+        next if token.strip.empty?
+
+        mailbox = targets[HelpdeskMessage.bare_address(token).downcase]
+        mailbox ? hits << mailbox : kept << token.strip
+      end
+      [kept.join(', '), hits]
+    end
+
+    # +attachments+ are the ones the agent sent with the reply (selected ticket
+    # attachments and freshly pasted images).
+    def initialize(source:, mailbox:, user:, mode:, note:, attachments: [], contact: nil)
+      raise Error, "unknown hand-over mode #{mode.inspect}" unless MODES.include?(mode.to_s)
+
+      @source      = source
+      @mailbox     = mailbox
+      @user        = user
+      @mode        = mode.to_s
+      @note        = note.to_s
+      @attachments = Array(attachments)
+      @contact     = contact
+    end
+
+    def call
+      project = @mailbox.project
+      issue = Issue.new(:project => project, :author => @user)
+      issue.tracker     = @mailbox.default_tracker || project.trackers.sorted.first
+      issue.subject     = @source.subject.to_s.truncate(255)
+      issue.description = description
+      issue.priority    = @mailbox.default_priority || IssuePriority.default || issue.priority
+      issue.status      = @mailbox.default_status || issue.tracker&.default_status || issue.status
+
+      Mailer.with_deliveries(!@mailbox.suppress_notifications?) do
+        Issue.transaction do
+          # Without validation like the mail path: a mandatory field of the
+          # other project must not swallow the hand-over.
+          issue.save(:validate => false) || raise(Error, issue.errors.full_messages.to_sentence)
+          copy_attachments(issue)
+        end
+      end
+
+      link_contact(issue)
+      ThreadScope.relate(issue, @source, 'Helpdesk handover')
+      Rails.logger.info "Helpdesk handover: ##{@source.id} -> ##{issue.id} " \
+                        "(#{project.identifier}, mode #{@mode}, by #{@user.login})"
+      issue
+    end
+
+    private
+
+    def description
+      parts = [I18n.t(:text_helpdesk_handover_header, :issue => "##{@source.id}",
+                      :project => @source.project.name, :user => @user.name)]
+      parts << @note if @note.strip.present?
+      if @mode == 'history'
+        parts << I18n.t(:label_helpdesk_handover_history, :issue => "##{@source.id}")
+        parts.concat(history_entries)
+      end
+      parts.join("\n\n")
+    end
+
+    # The description first, then every public note, oldest first - quoted, so
+    # the other team sees at a glance what was written where.
+    def history_entries
+      entries = []
+      if @source.description.present?
+        entries << entry(@source.author, @source.created_on, @source.description)
+      end
+      @source.journals.where(:private_notes => false).where.not(:notes => [nil, ''])
+             .includes(:user).order(:created_on, :id).each do |j|
+        entries << entry(j.user, j.created_on, j.notes)
+      end
+      entries
+    end
+
+    def entry(author, at, text)
+      who  = author&.name.presence || I18n.t(:label_user_anonymous)
+      when_ = at ? I18n.l(at, :format => :short) : ''
+      quoted = text.to_s.gsub("\r\n", "\n").split("\n", -1).map { |l| "> #{l}" }.join("\n")
+      "#{who}, #{when_}:\n\n#{quoted}"
+    end
+
+    # Attachment#copy shares the stored file; Redmine only deletes it from disk
+    # once no attachment row points at it any more.
+    def copy_attachments(issue)
+      list = @mode == 'history' ? (@source.attachments.to_a + @attachments) : @attachments
+      list.uniq(&:id).each do |att|
+        copy = att.copy(:container => issue, :author => @user)
+        copy.save!
+      end
+    end
+
+    # The other project gets its own contact for the same customer, so its
+    # agents can answer them from their ticket.
+    def link_contact(issue)
+      return unless @contact&.email.present?
+
+      contact = HelpdeskContact.find_or_create_for(@contact.email, @contact.name, issue.project)
+      HelpdeskTicketInfo.link!(issue, contact, @mailbox)
+    rescue StandardError => e
+      Rails.logger.warn "Helpdesk handover: contact for ##{issue.id} not linked: #{e.message}"
+    end
+  end
+end

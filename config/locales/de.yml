@@ -485,6 +485,19 @@ de:
   label_helpdesk_mailbox: Postfach
   label_helpdesk_original_mail: Original E-Mail
   label_helpdesk_also_received_by: Auch zugestellt an
+  label_helpdesk_handover: 'Übergabe an andere Projekte (experimentell)'
+  field_helpdesk_handover_enabled: 'Übergabe an andere Projekte aktivieren'
+  text_helpdesk_handover_enabled_info: 'Experimentell. Nennt eine Antwort die Helpdesk-Adresse eines anderen Projekts, wird das Ticket dort direkt angelegt statt per Mail zugestellt. Jedes Projekt muss zusätzlich zustimmen (Projekteinstellungen, Reiter Helpdesk).'
+  field_helpdesk_project_handover_enabled: 'An Übergaben teilnehmen (experimentell)'
+  text_helpdesk_project_handover_enabled_info: 'Tickets können ohne Mail aus diesem und an dieses Projekt übergeben werden. Funktioniert nur zwischen Projekten, die beide teilnehmen.'
+  label_helpdesk_handover_title: 'Übergabe'
+  text_helpdesk_handover_intro: 'Diese Empfänger gehören zu Projekten, die an Übergaben teilnehmen. Sie erhalten keine Mail; das Ticket wird dort direkt angelegt:'
+  label_helpdesk_handover_mode_note: 'Nur diese Notiz mit ihren Anhängen'
+  label_helpdesk_handover_mode_history: 'Die komplette Historie (Beschreibung, öffentliche Notizen, alle Anhänge)'
+  label_helpdesk_handover_history: 'Verlauf von %{issue}'
+  text_helpdesk_handover_header: 'Übergeben aus %{issue} (%{project}) von %{user}.'
+  text_helpdesk_handover_note_line: '→ Übergeben an %{target}: %{issue}'
+  error_helpdesk_handover_mode_missing: 'Bitte wählen, was übergeben wird: nur diese Notiz oder die komplette Historie.'
   label_helpdesk_previous_tickets: Frühere Tickets
   label_helpdesk_reply_to_customer: Antwort an Kunden
   label_helpdesk_send_as_mail: Als E-Mail an Kunden senden

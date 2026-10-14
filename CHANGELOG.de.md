@@ -41,6 +41,15 @@
 
 ### Hinzugefügt
 
+- **Übergabe an ein anderes Projekt statt einer Mail (experimentell).** Zentraler Schalter
+  *Übergabe an andere Projekte aktivieren* plus *An Übergaben teilnehmen* je Projekt (Migration 067);
+  beide Projekte müssen teilnehmen. Nennt eine Antwort die Helpdesk-Adresse eines teilnehmenden
+  Projekts, wird diese Adresse aus der Mail genommen und der Bearbeiter gefragt, was übergeben wird –
+  nur die Notiz mit ihren Anhängen oder die komplette Historie (Beschreibung, öffentliche Notizen, alle
+  Anhänge; private Notizen bleiben zurück). Das Ticket wird dort direkt angelegt: mit dem Bearbeiter als
+  Autor, den Standardwerten des Postfachs, dem Kunden als Kontakt, in Beziehung zum Ausgangsticket, und
+  eine Zeile in der Notiz des Ausgangstickets nennt es. Übrige Empfänger werden wie bisher gemailt;
+  schlägt diese Mail fehl, wird die Übergabe zurückgenommen.
 - **Projektübergreifende Verweise für eine Mail an mehrere Projekte.** Das Ticket wird mit dem
   Ticket des anderen Projekts in Beziehung gesetzt (*verwandt mit*) – mit dem, auf das die
   entfernten Marker zeigten, und mit dem, das ein anderes Projekt aus derselben Mail angelegt hat. Einem entfernten Marker wird nur
