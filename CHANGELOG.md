@@ -66,7 +66,10 @@
   left out of a public note. The agent has to be able to see the source ticket. The customer's
   contact in the target project lists the ticket right away, before any mail of theirs reaches it.
   A handed-over ticket moved on to a third project keeps receiving replies through the mailbox it
-  was handed over to (migration 068).
+  was handed over to (migration 068). Only projects the agent can see are offered as targets - the
+  address of any other project stays an ordinary recipient, and the form never learns it. Without a
+  helpdesk default assignee, Redmine's project default applies when it is assignable. Contact
+  histories list only tickets the viewer may see.
   Each participating project gets one ticket however many of its mailboxes are named; a reply that
   would leave only Bcc recipients is refused before anything is handed over.
 - **Cross-project references for a mail that went to several projects** (with project-scoped

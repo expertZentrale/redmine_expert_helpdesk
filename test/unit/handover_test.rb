@@ -24,10 +24,12 @@ class HandoverTest < ActiveSupport::TestCase
     @target = HelpdeskMailbox.create!(:project => @project_b, :mailbox_address => 'helpdesk-b@expert.local',
                                       :provider => 'imap', :imap_host => 'mail.example.com')
     @contact = HelpdeskContact.create!(:project => @project_a, :email => 'kunde@example.com', :name => 'Kunde')
+    User.current = @agent
   end
 
   def teardown
     Setting.plugin_redmine_expert_helpdesk = @settings_before
+    User.current = nil
   end
 
   def hand_over(mode, attachments: [], note: 'Bitte uebernehmen')
@@ -196,6 +198,44 @@ class HandoverTest < ActiveSupport::TestCase
 
     assert RedmineExpertHelpdesk::ThreadScope.new(@project_b).local?(issue.reload)
     assert_not RedmineExpertHelpdesk::ThreadScope.new(@project_a).local?(issue)
+  end
+
+  # Only projects the agent can see are offered; the others' addresses never
+  # reach the form.
+  def test_targets_only_list_projects_the_user_can_see
+    assert_includes Handover.targets_for(@project_a, @agent).keys, 'helpdesk-b@expert.local'
+    assert_empty Handover.targets_for(@project_a, User.anonymous), 'project 2 is private'
+  end
+
+  # Without a helpdesk default, Redmine's project default takes the ticket.
+  def test_redmine_project_default_assignee_is_the_fallback
+    assignee = @project_b.assignable_users.first
+    assert assignee, 'fixture project 2 needs an assignable user'
+    @project_b.update_column(:default_assigned_to_id, assignee.id)
+
+    assert_equal assignee, hand_over('note').assigned_to
+  end
+
+  # Only this Redmine's attachment paths are remapped, not other sites' URLs.
+  def test_external_attachment_urls_are_left_alone
+    image = attach(@source, 'shot.txt')
+    external = "https://vendor.example/attachments/download/#{image.id}/manual.pdf"
+    @source.update_column(:description, "Bild: !/attachments/download/#{image.id}/shot.txt! Handbuch: #{external}")
+    issue = hand_over('history')
+    copy  = issue.attachments.detect { |a| a.filename == 'shot.txt' }
+
+    assert_includes issue.reload.description, "/attachments/download/#{copy.id}/shot.txt"
+    assert_includes issue.description, external
+  end
+
+  # A contact's history hides tickets the viewer may not see - a handed-over
+  # ticket sits in project 2, which is private.
+  def test_contact_history_respects_visibility
+    issue   = hand_over('note')
+    contact = HelpdeskContact.find_by(:project_id => @project_b.id, :email => 'kunde@example.com')
+
+    assert_includes contact.issues(User.find(1)).to_a, issue
+    assert_not_includes contact.issues(User.anonymous).to_a, issue
   end
 
   def test_unknown_mode_is_rejected

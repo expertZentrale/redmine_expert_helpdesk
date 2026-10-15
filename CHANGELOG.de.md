@@ -70,7 +70,10 @@
   aus einer öffentlichen Notiz heraus. Der Bearbeiter muss das Ausgangsticket sehen dürfen. Der Kontakt des Kunden im
   Zielprojekt führt das Ticket sofort, schon bevor eine Mail von ihm dort ankommt. Ein übergebenes
   Ticket, das in ein drittes Projekt weiterverschoben wird, erhält Antworten über das Postfach, an
-  das es übergeben wurde, weiterhin (Migration 068). Jedes teilnehmende Projekt erhält ein
+  das es übergeben wurde, weiterhin (Migration 068). Als Ziel werden nur Projekte angeboten, die der
+  Bearbeiter sehen darf – die Adresse jedes anderen Projekts bleibt ein normaler Empfänger, und das
+  Formular erfährt sie nie. Ohne Helpdesk-Standardzuweisung gilt Redmines Projektstandard, sofern
+  zuweisbar. Kontaktverläufe zeigen nur Tickets, die der Betrachter sehen darf. Jedes teilnehmende Projekt erhält ein
   Ticket, egal wie viele seiner Postfächer genannt sind; eine Antwort, nach der nur BCC-Empfänger übrig
   blieben, wird abgelehnt, bevor etwas übergeben wird.
 - **Projektübergreifende Verweise für eine Mail an mehrere Projekte** (bei eingeschalteter

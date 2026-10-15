@@ -338,7 +338,8 @@ flowchart TD
 - **Private Notizen bleiben zurück**, auch bei der kompletten Historie: Sie waren für das
   Ausgangsteam geschrieben.
 - Autor des Tickets in B ist der Bearbeiter, es erhält die *Standardwerte für neue Tickets* des
-  Postfachs und *Neue Tickets zuweisen an* von B. Derselbe Kunde wird Kontakt in B, damit B ihm aus seinem Ticket antworten kann.
+  Postfachs und *Neue Tickets zuweisen an* von B (sonst Redmines Projektstandard). Übergabeziele sind nur Projekte,
+  die der Bearbeiter sehen darf; die Adresse jedes anderen Projekts wird wie bisher gemailt. Derselbe Kunde wird Kontakt in B, damit B ihm aus seinem Ticket antworten kann.
 - **Mehrere Empfänger**: Jedes teilnehmende Projekt aus An, CC oder BCC erhält ein Ticket, auch
   wenn zwei seiner Postfächer genannt sind. Alle anderen werden wie bisher gemailt; standen in An nur
   Übergabe-Adressen, rückt CC nach An. Blieben nur BCC-Empfänger übrig, wird die Antwort abgelehnt,

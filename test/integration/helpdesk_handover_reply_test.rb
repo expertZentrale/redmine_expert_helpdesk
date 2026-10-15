@@ -251,11 +251,12 @@ class HelpdeskHandoverReplyTest < Redmine::IntegrationTest
     created = Issue.find(data['handovers'].first['issue_id'])
     contact = HelpdeskContact.find_by(:project_id => @other.id, :email => 'kunde@example.com')
 
-    assert_includes contact.issues.to_a, created
+    admin = User.find(1)
+    assert_includes contact.issues(admin).to_a, created
     # The list's sortable ticket count counts it too.
     count = HelpdeskContact.where(:id => contact.id)
                            .pick(Arel.sql(HelpdeskContactsController::TICKET_COUNT_SQL))
-    assert_equal contact.issues.count, count.to_i
+    assert_equal contact.issues(admin).count, count.to_i
   end
 
   # The contact is itself a participating mailbox and To is cleared: only

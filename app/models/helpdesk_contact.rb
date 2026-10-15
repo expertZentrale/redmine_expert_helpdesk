@@ -39,9 +39,14 @@ class HelpdeskContact < HelpdeskApplicationRecord
   # Tickets of this contact: those with a mail of theirs, and those linked to
   # them without one yet - a hand-over creates the ticket and the contact link
   # directly, and the customer only writes later, if at all.
-  def issues
-    Issue.where(:id => helpdesk_messages.select(:issue_id))
-         .or(Issue.where(:id => helpdesk_ticket_infos.select(:issue_id)))
+  #
+  # Only tickets +user+ may see: a handed-over ticket can move on to a project
+  # the viewer has no access to, and the history would otherwise show its
+  # subject and status.
+  def issues(user = User.current)
+    Issue.visible(user)
+         .where(:id => helpdesk_messages.select(:issue_id))
+         .or(Issue.visible(user).where(:id => helpdesk_ticket_infos.select(:issue_id)))
          .distinct
   end
 end

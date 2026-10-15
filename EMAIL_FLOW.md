@@ -329,7 +329,8 @@ flowchart TD
   settings; each project then decides for itself whether it hands over and accepts hand-overs.
 - **Private notes stay behind** in the complete history: they were written for the source team.
 - The ticket in B is authored by the agent and gets the mailbox's *Defaults for new tickets* and B's
-  *Assign new tickets to*. The same customer becomes B's contact, so B can answer them from its ticket.
+  *Assign new tickets to* (else Redmine's project default). Only projects the agent can see are
+  hand-over targets; any other project's address is mailed as before. The same customer becomes B's contact, so B can answer them from its ticket.
 - **Several recipients**: every participating project named in To, Cc or Bcc gets one ticket,
   even when two of its mailboxes are named. Everybody else is mailed as before; when only
   hand-over addresses were in To, the Cc moves up to To. If only Bcc recipients would be left, the

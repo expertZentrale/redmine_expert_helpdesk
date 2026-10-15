@@ -35,13 +35,15 @@ module RedmineExpertHelpdesk
     end
 
     # The mailboxes a ticket of +project+ can be handed over to, keyed by their
-    # address in lower case.
-    def self.targets_for(project)
+    # address in lower case. Only projects +user+ can see: the list is shipped
+    # to the reply form, and an address of a project the agent cannot see is
+    # none of their business - to them it stays an ordinary recipient.
+    def self.targets_for(project, user = User.current)
       return {} unless project_enabled?(project)
 
       # One query: settings looked up per mailbox cost a query for every
       # project with a helpdesk, on every ticket page and reply.
-      participating = Project.active.has_module(:helpdesk)
+      participating = Project.active.has_module(:helpdesk).visible(user)
                              .where(:id => HelpdeskProjectSetting.where(:handover_enabled => true).select(:project_id))
       HelpdeskMailbox.enabled.includes(:project).where.not(:project_id => project.id)
                      .where(:project_id => participating.select(:id)).to_a
@@ -88,6 +90,11 @@ module RedmineExpertHelpdesk
       # (MailProcessor#apply_new_issue_defaults). Mailbox rules are not applied:
       # they match on a sender and a subject this ticket was never mailed with.
       issue.assigned_to = HelpdeskProjectSetting.for_project(project).default_assignee
+      # Redmine's own project default as the fallback, as for any new ticket.
+      # save(validate: false) skips its before_validation :default_assign, so
+      # it is applied here - only when it can actually be assigned.
+      fallback = project.default_assigned_to
+      issue.assigned_to ||= fallback if fallback && issue.assignable_users.include?(fallback)
 
       # Silent for now: the caller may still take the hand-over back when its
       # mail fails, and a notification about a deleted ticket cannot be
@@ -176,7 +183,7 @@ module RedmineExpertHelpdesk
     def relink_attachments(issue, copies)
       return if copies.empty? || issue.description.blank?
 
-      text = issue.description.gsub(%r{(/attachments/(?:download/|thumbnail/)?)(\d+)(?!\d)}) do
+      text = issue.description.gsub(local_attachment_path) do
         copy = copies[Regexp.last_match(2).to_i]
         copy ? "#{Regexp.last_match(1)}#{copy.id}" : Regexp.last_match(0)
       end
@@ -190,6 +197,14 @@ module RedmineExpertHelpdesk
       # StaleObjectError - but nothing else that touches it later does.)
       Issue.where(:id => issue.id).update_all(:description => text)
       issue.reload
+    end
+
+    # An attachment path of this Redmine: relative, or under its own host. The
+    # lookbehind keeps paths inside other sites' URLs out - a vendor's
+    # .../attachments/download/42/manual.pdf is not our attachment 42.
+    def local_attachment_path
+      own = Regexp.escape("#{Setting.protocol}://#{Setting.host_name}")
+      %r{(?<![\w.\-:/])((?:#{own})?/attachments/(?:download/|thumbnail/)?)(\d+)(?!\d)}
     end
 
     # Where the hand-over arrived, for ThreadScope#opened_here?: a handed-over
