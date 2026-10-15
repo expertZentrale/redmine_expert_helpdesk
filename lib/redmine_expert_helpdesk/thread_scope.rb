@@ -187,14 +187,30 @@ module RedmineExpertHelpdesk
     MESSAGE_REPLY_SUBJECT_RE =
       defined?(MailHandler::MESSAGE_REPLY_SUBJECT_RE) ? MailHandler::MESSAGE_REPLY_SUBJECT_RE : /\[[^\]]*msg(\d+)\]/
 
+    # Distinct ticket numbers a subject may name before it is no longer worth
+    # looking at. A real reply carries one or two.
+    MAX_SUBJECT_TAGS = 20
+
     # MailHandler's own pattern, so "[Projekt - Ticket #12]" is caught as well
     # as "[#12]". A tag naming a ticket that does not exist is removed for the
     # same reason as above. Repeated until nothing changes: removing an inner
     # tag can expose an outer one ("[#[#4]4]" becomes "[#4]").
+    #
+    # The subject is the sender's to write, so its tags are looked up in one
+    # query per pass, and only MAX_SUBJECT_TAGS distinct numbers in total.
+    # Beyond that every tag goes without a lookup: the mail becomes a new
+    # ticket, but no marker of another project can survive.
     def scrub_subject(subject, foreign)
+      issues = {}
       loop do
-        cleaned = subject.gsub(MESSAGE_REPLY_SUBJECT_RE, '').gsub(MailHandler::ISSUE_REPLY_SUBJECT_RE) do |tag|
-          issue = Issue.find_by(:id => Regexp.last_match(1).to_i)
+        subject = subject.gsub(MESSAGE_REPLY_SUBJECT_RE, '')
+        ids     = subject.scan(MailHandler::ISSUE_REPLY_SUBJECT_RE).map { |m| m.first.to_i }.uniq - issues.keys
+        return strip_all_tags(subject) if issues.size + ids.size > MAX_SUBJECT_TAGS
+
+        found = Issue.where(:id => ids).index_by(&:id)
+        ids.each { |id| issues[id] = found[id] }
+        cleaned = subject.gsub(MailHandler::ISSUE_REPLY_SUBJECT_RE) do |tag|
+          issue = issues[Regexp.last_match(1).to_i]
           if issue && local?(issue)
             tag
           else
@@ -203,6 +219,16 @@ module RedmineExpertHelpdesk
           end
         end
         break subject.gsub(/\s{2,}/, ' ').strip if cleaned == subject
+
+        subject = cleaned
+      end
+    end
+
+    # Pure string work, no lookups; every pass shortens the subject.
+    def strip_all_tags(subject)
+      loop do
+        cleaned = subject.gsub(MESSAGE_REPLY_SUBJECT_RE, '').gsub(MailHandler::ISSUE_REPLY_SUBJECT_RE, '')
+        return cleaned.gsub(/\s{2,}/, ' ').strip if cleaned == subject
 
         subject = cleaned
       end
