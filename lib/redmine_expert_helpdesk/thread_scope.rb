@@ -30,6 +30,7 @@ module RedmineExpertHelpdesk
 
     def initialize(project)
       @project = project
+      @local   = {}
     end
 
     # Relates two tickets of different projects ("related to"), at most once.
@@ -56,13 +57,18 @@ module RedmineExpertHelpdesk
     def scrub(mime)
       msg     = Mail.read_from_string(mime)
       foreign = []
+      irt     = header_ids(msg, 'in-reply-to')
+      refs    = header_ids(msg, 'references')
+      # One query for every id in both headers: a long conversation carries
+      # dozens of References, and looking each up alone costs a round trip.
+      preload_logged(irt + refs)
 
-      kept_irt  = keep_local_ids(header_ids(msg, 'in-reply-to'), foreign)
-      kept_refs = keep_local_ids(header_ids(msg, 'references'), foreign)
+      kept_irt  = keep_local_ids(irt, foreign)
+      kept_refs = keep_local_ids(refs, foreign)
       subject   = scrub_subject(msg.subject.to_s, foreign)
 
-      changed = kept_irt.size  != header_ids(msg, 'in-reply-to').size ||
-                kept_refs.size != header_ids(msg, 'references').size ||
+      changed = kept_irt.size  != irt.size ||
+                kept_refs.size != refs.size ||
                 subject != msg.subject.to_s
       return Result.new(mime, foreign.uniq, false) unless changed
 
@@ -87,8 +93,7 @@ module RedmineExpertHelpdesk
                end
       end
 
-      issues = HelpdeskMessage.where(:message_id => HelpdeskMessage.message_id_variants(id))
-                              .includes(:issue).filter_map(&:issue)
+      issues = logged_issues(id)
       issues.find { |i| local?(i) } || issues.first
     end
 
@@ -99,7 +104,8 @@ module RedmineExpertHelpdesk
     def local?(issue)
       return true if issue.project_id == @project.id
 
-      opened_here?(issue)
+      # Cached per scrub: the same ticket is named in several headers.
+      @local.fetch(issue.id) { @local[issue.id] = opened_here?(issue) }
     end
 
     # Whether the mail that created the ticket came in through this project.
@@ -121,6 +127,30 @@ module RedmineExpertHelpdesk
     CREATION_WINDOW = 10.minutes
 
     private
+
+    # Issues of the logged helpdesk messages named by +ids+, keyed by the bare
+    # id; both spellings are queried (see HelpdeskMessage.message_id_variants).
+    def preload_logged(ids)
+      variants = ids.uniq.flat_map { |id| HelpdeskMessage.message_id_variants(id) }
+      @logged = Hash.new { |h, k| h[k] = [] }
+      return if variants.empty?
+
+      HelpdeskMessage.where(:message_id => variants).includes(:issue).each do |m|
+        @logged[bare_id(m.message_id)] << m.issue if m.issue
+      end
+    end
+
+    # Preloaded by scrub; a lookup from outside it queries on its own.
+    def logged_issues(id)
+      return @logged.fetch(bare_id(id), []) if @logged
+
+      HelpdeskMessage.where(:message_id => HelpdeskMessage.message_id_variants(id))
+                     .includes(:issue).filter_map(&:issue)
+    end
+
+    def bare_id(id)
+      id.to_s.strip.delete_prefix('<').delete_suffix('>')
+    end
 
     # Read through the mail gem's parsed accessors, exactly as MailHandler does:
     # they also return an id written without angle brackets, which Redmine's
