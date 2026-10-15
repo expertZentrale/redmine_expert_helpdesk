@@ -292,6 +292,30 @@ class ThreadScopeTest < ActiveSupport::TestCase
     assert_equal "[##{@foreign.id}] Bitte an Team A", HelpdeskMessage.find_by(:issue_id => created.id).subject
   end
 
+  # A reply naming only our own agent reply in In-Reply-To continues the
+  # ticket. A foreign row with the same id does not pull it elsewhere.
+  def test_in_reply_to_of_local_agent_reply_continues_the_ticket
+    HelpdeskMessage.create!(:issue => @local, :direction => 'out', :message_id => '<agent-1@expert.local>')
+    HelpdeskMessage.create!(:issue => @foreign, :direction => 'in', :message_id => 'agent-1@expert.local')
+    result = run_mail(mime(:subject => 'AW: Drucker', :message_id => 'irt-local@x',
+                           :in_reply_to => '<agent-1@expert.local>', :from => 'jsmith@somenet.foo'),
+                      'irt-local@x')
+
+    assert_equal [@local.id], result.updated_issues, result.errors.inspect
+    assert_empty result.created_issues
+  end
+
+  # Many references cost one lookup query, not one per id.
+  def test_references_are_resolved_in_one_query
+    refs = (1..30).map { |i| "<unknown-#{i}@else.example>" }.join(' ')
+    raw  = mime(:subject => 'Hallo', :message_id => 'many@x', :references => refs)
+    queries = []
+    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql].include?('helpdesk_messages') }
+    ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { scrub(raw) }
+
+    assert_equal 1, queries.size, queries.join("\n")
+  end
+
   # --- switch and moved tickets ----------------------------------------------
 
   # Off (the default for existing installs): a foreign marker still wins, as
