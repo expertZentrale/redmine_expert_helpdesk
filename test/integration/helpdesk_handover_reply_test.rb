@@ -140,6 +140,44 @@ class HelpdeskHandoverReplyTest < Redmine::IntegrationTest
     assert_equal before, other_project_tickets.count
   end
 
+  # Delivered, then the bookkeeping fails: the hand-over stays and the reply
+  # counts as sent, so the agent does not mail the customer twice.
+  def test_failure_after_delivery_keeps_the_handover
+    transport = FakeTransport.new
+    RedmineExpertHelpdesk::MailProvider.stubs(:outgoing_for).returns(transport)
+    RedmineExpertHelpdesk::Sla.stubs(:record_first_response!).raises(RuntimeError, 'SLA down')
+    before = other_project_tickets.count
+    data = reply(:reply_to => 'kunde@example.com', :reply_cc => 'helpdesk-b@expert.local',
+                 :handover_mode => 'note')
+
+    assert_response :success
+    assert data['success']
+    assert data['warning']
+    assert_equal 1, transport.sent.size
+    assert_equal before + 1, other_project_tickets.count
+  end
+
+  # To cleared on purpose, only the other project in Cc: a hand-over without
+  # a mail, not a mail to the customer.
+  def test_cleared_to_with_handover_mails_nobody
+    RedmineExpertHelpdesk::MailProvider.expects(:outgoing_for).never
+    data = reply(:reply_to => '', :reply_cc => 'helpdesk-b@expert.local', :handover_mode => 'note')
+
+    assert_response :success
+    assert_equal 1, data['handovers'].size
+  end
+
+  # The receiving project's default assignee takes the ticket, as for mail.
+  def test_handover_uses_the_target_default_assignee
+    agent = User.find(3)
+    Member.create!(:principal => agent, :project => @other, :role_ids => [1]) unless agent.member_of?(@other)
+    HelpdeskProjectSetting.for_project(@other).update!(:default_assigned_to_id => agent.id)
+    RedmineExpertHelpdesk::MailProvider.expects(:outgoing_for).never
+    data = reply(:reply_to => 'helpdesk-b@expert.local', :handover_mode => 'note')
+
+    assert_equal agent, Issue.find(data['handovers'].first['issue_id']).assigned_to
+  end
+
   # --- several recipients -----------------------------------------------------
 
   def third_project

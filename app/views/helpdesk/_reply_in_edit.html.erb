@@ -704,6 +704,9 @@
         // Status and assignee are deliberately not touched here any more: both
         // have been sitting in the form since the checkbox was ticked, and are
         // therefore the agent's choice, not the plugin's.
+        // Sent, but not recorded: the page is about to reload, so a blocking
+        // alert is the one way the agent learns not to send it again.
+        if (data.warning) window.alert(data.warning);
         issueForm.submit(); // normaler Submit, bypasses event listener
       }).catch(function(err) {
         // Submit-Buttons wieder aktivieren, damit das Formular weiter nutzbar bleibt

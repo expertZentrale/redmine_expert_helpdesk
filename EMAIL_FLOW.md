@@ -326,14 +326,16 @@ flowchart TD
 - **Both projects have to take part.** The central switch makes the option visible in the project
   settings; each project then decides for itself whether it hands over and accepts hand-overs.
 - **Private notes stay behind** in the complete history: they were written for the source team.
-- The ticket in B is authored by the agent and gets the mailbox's *Defaults for new tickets*. The
-  same customer becomes B's contact, so B can answer them from its ticket.
+- The ticket in B is authored by the agent and gets the mailbox's *Defaults for new tickets* and B's
+  *Assign new tickets to*. The same customer becomes B's contact, so B can answer them from its ticket.
 - **Several recipients**: every participating project named in To, Cc or Bcc gets one ticket,
   even when two of its mailboxes are named. Everybody else is mailed as before; when only
   hand-over addresses were in To, the Cc moves up to To. If only Bcc recipients would be left, the
-  reply is refused before anything is handed over.
+  reply is refused before anything is handed over. A To cleared on purpose stays empty: with only
+  B's address in Cc, nothing is mailed, not even to the customer.
 - **If the mail to the remaining recipients fails**, the ticket in B is removed again, so sending
-  once more does not create it twice.
+  once more does not create it twice. Once the mail is out, the ticket stays even if recording the
+  reply fails afterwards; the agent is told not to send again.
 
 ---
 

@@ -55,7 +55,9 @@
   or the complete history (description, public notes, all attachments; private notes stay behind).
   The ticket is created there directly: authored by the agent, the mailbox's defaults for new
   tickets, the customer as contact, related to the source ticket, and a line in the source note
-  names it. Remaining recipients are mailed as before; if that mail fails, the hand-over is undone.
+  names it; the receiving project's *Assign new tickets to* applies. Remaining recipients are mailed
+  as before; if that mail fails, the hand-over is undone, but never once the mail is out. A To
+  cleared on purpose stays empty, so a hand-over to a Cc address mails nobody.
   Each participating project gets one ticket however many of its mailboxes are named; a reply that
   would leave only Bcc recipients is refused before anything is handed over.
 - **Cross-project references for a mail that went to several projects** (with project-scoped

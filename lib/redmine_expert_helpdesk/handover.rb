@@ -80,6 +80,10 @@ module RedmineExpertHelpdesk
       issue.description = description
       issue.priority    = @mailbox.default_priority || IssuePriority.default || issue.priority
       issue.status      = @mailbox.default_status || issue.tracker&.default_status || issue.status
+      # The receiving team's queue, as for a ticket that came in by mail
+      # (MailProcessor#apply_new_issue_defaults). Mailbox rules are not applied:
+      # they match on a sender and a subject this ticket was never mailed with.
+      issue.assigned_to = HelpdeskProjectSetting.for_project(project).default_assignee
 
       Mailer.with_deliveries(!@mailbox.suppress_notifications?) do
         Issue.transaction do

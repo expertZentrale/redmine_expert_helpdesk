@@ -44,6 +44,11 @@ class HelpdeskRepliesController < ApplicationController
       # One ticket per project: two of its mailboxes in To and Cc are still
       # one hand-over, and the first one named supplies the defaults.
       handovers = (hits_to + hits_cc + hits_bcc).uniq(&:project_id)
+      # A To the agent cleared on purpose stays empty: the customer fallback
+      # above would otherwise mail them a reply meant only for the other
+      # project. Without a hand-over the fallback stays, so a reply never ends
+      # up going nowhere.
+      reply_to = '' if handovers.any? && params.key?(:reply_to) && params[:reply_to].to_s.strip.empty?
     end
     handover_mode = params[:handover_mode].to_s
     if handovers.any? && !RedmineExpertHelpdesk::Handover::MODES.include?(handover_mode)
@@ -111,6 +116,7 @@ class HelpdeskRepliesController < ApplicationController
     end
 
     message_id = nil
+    delivered  = false
 
     # Inline image candidates: freshly inserted uploads AND the ticket's own
     # image attachments — a quote of the original mail refers to the latter.
@@ -120,6 +126,7 @@ class HelpdeskRepliesController < ApplicationController
       processed_html, embedded_atts = RedmineExpertHelpdesk::ReplyImages.to_data_uri(body_html, image_atts)
       message_id = send_reply_smtp(mailbox, reply_to, reply_cc, reply_bcc, subject, processed_html,
                                    valid_att_ids, embedded_atts, sent_filenames)
+      delivered  = true
     else
       # Roher MIME-Versand fuer zuverlaessige CID-Inline-Bilder – sowohl ueber
       # die Graph-API als auch ueber den eigenen SMTP-Server des Postfachs.
@@ -138,6 +145,7 @@ class HelpdeskRepliesController < ApplicationController
       ) do
         RedmineExpertHelpdesk::MailProvider.outgoing_for(mailbox).send_mail_mime(mime_msg)
       end
+      delivered = true
       sent_filenames.concat(regular_atts.map(&:filename))
       sent_filenames.concat(cid_map.keys.map(&:filename))
     end
@@ -170,6 +178,15 @@ class HelpdeskRepliesController < ApplicationController
     undo_handovers(created)
     render :json => { :success => false, :error => e.message }, :status => :unprocessable_entity
   rescue StandardError => e
+    # Once the mail is out, the hand-over stays: that mail left the other
+    # project's address out, so removing its ticket would leave the team with
+    # nothing. Reported as sent - an error would invite a second, duplicate mail.
+    if delivered
+      Rails.logger.error "Helpdesk reply on ##{@issue.id}: delivered, but recording it failed: #{e.class}: #{e.message}"
+      render :json => { :success => true, :helpdesk_message_id => hd_msg&.id, :handovers => handover_json,
+                        :warning => l(:warning_helpdesk_reply_not_recorded) }
+      return
+    end
     undo_handovers(created)
     render :json => { :success => false, :error => e.message }, :status => :unprocessable_entity
   end
