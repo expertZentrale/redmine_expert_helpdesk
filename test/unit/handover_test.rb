@@ -188,6 +188,16 @@ class HandoverTest < ActiveSupport::TestCase
     end
   end
 
+  # Moved on from B, the handed-over ticket still belongs to B's mailbox: a
+  # reply through it keeps its thread markers.
+  def test_moved_handover_ticket_stays_local_to_the_target_mailbox
+    issue = hand_over('note')
+    issue.update_column(:project_id, 3)
+
+    assert RedmineExpertHelpdesk::ThreadScope.new(@project_b).local?(issue.reload)
+    assert_not RedmineExpertHelpdesk::ThreadScope.new(@project_a).local?(issue)
+  end
+
   def test_unknown_mode_is_rejected
     assert_raises(Handover::Error) { hand_over('everything') }
   end

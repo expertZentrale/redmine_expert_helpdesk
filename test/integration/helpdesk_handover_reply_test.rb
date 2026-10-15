@@ -258,6 +258,37 @@ class HelpdeskHandoverReplyTest < Redmine::IntegrationTest
     assert_equal contact.issues.count, count.to_i
   end
 
+  # The contact is itself a participating mailbox and To is cleared: only
+  # the project the agent named in Cc gets a ticket.
+  def test_cleared_to_does_not_hand_over_to_the_contact
+    project_c = third_project
+    @contact.update_column(:email, 'helpdesk-b@expert.local')
+    RedmineExpertHelpdesk::MailProvider.expects(:outgoing_for).never
+    data = reply(:reply_to => '', :reply_cc => 'helpdesk-c@expert.local', :handover_mode => 'note')
+
+    assert_response :success
+    assert_equal [project_c.id], data['handovers'].map { |h| Issue.find(h['issue_id']).project_id }
+  end
+
+  # A rewritten image link, then the mail fails: the hand-over is still
+  # taken back (the reload keeps lock_version current for the destroy).
+  def test_failed_mail_undoes_a_handover_with_rewritten_images
+    set_tmp_attachments_directory
+    image = Attachment.create!(:container => @issue, :author => User.find(2), :filename => 'shot.png',
+                               :content_type => 'image/png',
+                               :file => uploaded_test_file('testfile.txt', 'image/png'))
+    RedmineExpertHelpdesk::MailProvider.stubs(:outgoing_for)
+      .returns(FakeTransport.new(:fail_with => RedmineExpertHelpdesk::MailProvider::ProviderError.new('SMTP down')))
+    before = other_project_tickets.count
+    with_settings :text_formatting => 'textile' do
+      reply(:note_content => "Siehe !/attachments/download/#{image.id}/shot.png!",
+            :reply_to => 'kunde@example.com', :reply_cc => 'helpdesk-b@expert.local', :handover_mode => 'note')
+    end
+
+    assert_response :unprocessable_entity
+    assert_equal before, other_project_tickets.count
+  end
+
   # --- several recipients -----------------------------------------------------
 
   def third_project

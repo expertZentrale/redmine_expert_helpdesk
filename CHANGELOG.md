@@ -64,6 +64,8 @@
   team's notification goes out only once the hand-over is final. A target reached by Bcc only is
   left out of a public note. The agent has to be able to see the source ticket. The customer's
   contact in the target project lists the ticket right away, before any mail of theirs reaches it.
+  A handed-over ticket moved on to a third project keeps receiving replies through the mailbox it
+  was handed over to (migration 068).
   Each participating project gets one ticket however many of its mailboxes are named; a reply that
   would leave only Bcc recipients is refused before anything is handed over.
 - **Cross-project references for a mail that went to several projects** (with project-scoped

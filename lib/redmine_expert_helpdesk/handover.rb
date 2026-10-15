@@ -101,6 +101,7 @@ module RedmineExpertHelpdesk
           # Inside the transaction: an exception here rolls the ticket back.
           # Committed already, it would be a ticket the caller never got to
           # undo, and the agent's retry would create it twice.
+          record_origin(issue)
           link_contact(issue)
           ThreadScope.relate(issue, @source, 'Helpdesk handover')
         end
@@ -183,11 +184,23 @@ module RedmineExpertHelpdesk
 
       # update_all, not update_column: inside the reply request update_column
       # left the row unchanged (the test of the quoted image caught it), while
-      # a plain UPDATE does land. The object is synced by hand, without making
-      # the description dirty for a later save.
+      # a plain UPDATE does land. update_all also bumps lock_version, so the
+      # instance is reloaded to match the row. (Taking the hand-over back would
+      # survive a stale one - Redmine's Issue#destroy reloads on
+      # StaleObjectError - but nothing else that touches it later does.)
       Issue.where(:id => issue.id).update_all(:description => text)
-      issue.description = text
-      issue.clear_attribute_changes([:description])
+      issue.reload
+    end
+
+    # Where the hand-over arrived, for ThreadScope#opened_here?: a handed-over
+    # ticket has no incoming mail that could say so, and moved on to another
+    # project it still belongs to the mailbox's replies.
+    def record_origin(issue)
+      return unless HelpdeskTicketInfo.column_names.include?('handover_mailbox_id')
+
+      info = HelpdeskTicketInfo.find_or_initialize_by(:issue_id => issue.id)
+      info.handover_mailbox_id = @mailbox.id
+      info.save!
     end
 
     # The other project gets its own contact for the same customer, so its

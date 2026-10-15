@@ -29,7 +29,12 @@ class HelpdeskRepliesController < ApplicationController
       return
     end
 
-    reply_to  = params[:reply_to].to_s.strip.presence  || contact.email
+    # The customer stands in for an empty To - but only after the hand-over
+    # targets were taken from what the agent actually typed. Filling it in
+    # first would hand over to the contact itself when that is a participating
+    # mailbox, a project the agent never named.
+    typed_to  = params[:reply_to].to_s.strip
+    reply_to  = params.key?(:reply_to) ? typed_to : contact.email
     reply_cc  = params[:reply_cc].to_s.strip.gsub(/[\s,;]+\z/, '')
     reply_bcc = params[:reply_bcc].to_s.strip.gsub(/[\s,;]+\z/, '')
 
@@ -52,8 +57,11 @@ class HelpdeskRepliesController < ApplicationController
       # above would otherwise mail them a reply meant only for the other
       # project. Without a hand-over the fallback stays, so a reply never ends
       # up going nowhere.
-      reply_to = '' if handovers.any? && params.key?(:reply_to) && params[:reply_to].to_s.strip.empty?
     end
+    # A To cleared on purpose stays empty when something is handed over: the
+    # fallback would mail the customer a reply meant only for the other
+    # project. Without a hand-over it stays, so a reply never goes nowhere.
+    reply_to = contact.email if typed_to.empty? && handovers.empty? && reply_to.blank?
     handover_mode = params[:handover_mode].to_s
     if handovers.any? && !RedmineExpertHelpdesk::Handover::MODES.include?(handover_mode)
       render :json => { :success => false, :error => l(:error_helpdesk_handover_mode_missing) },

@@ -120,11 +120,22 @@ module RedmineExpertHelpdesk
     # and was stored right after the ticket - the time bound keeps rows from
     # before migration 021, where replies have no journal_id either, out.
     def opened_here?(issue)
+      return true if handed_over_here?(issue)
+
       first = HelpdeskMessage.incoming.where(:issue_id => issue.id).order(:id).first
       return false unless first && first.journal_id.nil? && first.helpdesk_mailbox&.project_id == @project.id
       return false unless first.created_at && issue.created_on
 
       (first.created_at - issue.created_on).abs <= CREATION_WINDOW
+    end
+
+    # A ticket created by a hand-over to one of this project's mailboxes. Only
+    # Handover writes handover_mailbox_id, unlike helpdesk_mailbox_id.
+    def handed_over_here?(issue)
+      return false unless HelpdeskTicketInfo.column_names.include?('handover_mailbox_id')
+
+      mailbox_id = HelpdeskTicketInfo.where(:issue_id => issue.id).pick(:handover_mailbox_id)
+      mailbox_id.present? && HelpdeskMailbox.where(:id => mailbox_id, :project_id => @project.id).exists?
     end
 
     # How long after the ticket the creating mail's row may be stored.

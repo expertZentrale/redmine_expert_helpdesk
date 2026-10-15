@@ -67,7 +67,9 @@
   gehen mit, und Bildverweise im kopierten Text zeigen auf die Kopien. Die Benachrichtigung des
   Zielteams geht erst raus, wenn die Übergabe endgültig ist. Ein nur per BCC erreichtes Ziel bleibt
   aus einer öffentlichen Notiz heraus. Der Bearbeiter muss das Ausgangsticket sehen dürfen. Der Kontakt des Kunden im
-  Zielprojekt führt das Ticket sofort, schon bevor eine Mail von ihm dort ankommt. Jedes teilnehmende Projekt erhält ein
+  Zielprojekt führt das Ticket sofort, schon bevor eine Mail von ihm dort ankommt. Ein übergebenes
+  Ticket, das in ein drittes Projekt weiterverschoben wird, erhält Antworten über das Postfach, an
+  das es übergeben wurde, weiterhin (Migration 068). Jedes teilnehmende Projekt erhält ein
   Ticket, egal wie viele seiner Postfächer genannt sind; eine Antwort, nach der nur BCC-Empfänger übrig
   blieben, wird abgelehnt, bevor etwas übergeben wird.
 - **Projektübergreifende Verweise für eine Mail an mehrere Projekte** (bei eingeschalteter

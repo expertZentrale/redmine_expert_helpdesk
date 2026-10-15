@@ -244,7 +244,8 @@ nested registration would never fire in production.
   the target's "issue added" notification is held back (`with_deliveries(false)`) and sent by
   `Handover.notify` once final. `relink_attachments` points `/attachments/…/<id>` references in the
   copied text at the copies — via `update_all`: `update_column` did not persist inside the reply
-  request. Hand-over requires `@issue.visible?`; Bcc-only targets carry `bcc: true` so the form keeps
+  request. `HelpdeskTicketInfo#handover_mailbox_id` (migration 068, written only by `Handover`) is the
+  provenance `ThreadScope#handed_over_here?` trusts for a moved hand-over ticket. Hand-over requires `@issue.visible?`; Bcc-only targets carry `bcc: true` so the form keeps
   them out of public notes. History mode quotes the description and
   **public** notes only and copies all attachments via `Attachment#copy` (shared disk file). The
   reply form re-enables its submit button on a 50 ms timer: jquery-ujs disables
