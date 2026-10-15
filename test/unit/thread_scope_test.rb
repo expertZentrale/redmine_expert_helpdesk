@@ -316,6 +316,28 @@ class ThreadScopeTest < ActiveSupport::TestCase
     assert_equal 1, queries.size, queries.join("\n")
   end
 
+  # Redmine notification ids are batch-loaded as well: one query for the
+  # issues, one for the journals, however many references there are.
+  def test_redmine_notification_ids_are_resolved_in_batches
+    refs = (1..15).map { |i| "<redmine.journal-#{900_000 + i}.20260101000000@example.net>" } +
+           (1..15).map { |i| "<redmine.issue-#{900_000 + i}.20260101000000@example.net>" }
+    raw  = mime(:subject => 'Hallo', :message_id => 'many-redmine@x', :references => refs.join(' '))
+    queries = []
+    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql] =~ /FROM [`"]?(issues|journals)[`"]?/ }
+    ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { scrub(raw) }
+
+    assert_operator queries.size, :<=, 2, queries.join("\n")
+  end
+
+  # A ticket moved away does not list the mailbox it was opened through as
+  # "also received by".
+  def test_origin_mailbox_of_moved_ticket_is_no_co_recipient
+    HelpdeskMessage.create!(:issue => @foreign, :helpdesk_mailbox => @mailbox, :direction => 'in',
+                            :message_id => 'moved-co@x', :recipient_to => 'support-a@expert.local')
+
+    assert_empty HelpdeskMessage.co_recipient_mailboxes(@foreign)
+  end
+
   # --- switch and moved tickets ----------------------------------------------
 
   # Off (the default for existing installs): a foreign marker still wins, as

@@ -112,8 +112,13 @@ class HelpdeskMessage < HelpdeskApplicationRecord
   # The other helpdesk mailboxes a mail of this ticket was addressed to, i.e.
   # the projects that got their own copy of it. Only To/Cc are known - a
   # mailbox reached by Bcc stays invisible, as it should.
+  #
+  # The mailboxes that received the ticket's mails are never "also": for a
+  # ticket moved to another project, the mailbox it was opened through is still
+  # in To but belongs to the old project.
   def self.co_recipient_mailboxes(issue)
-    addresses = incoming.where(:issue_id => issue.id).flat_map do |m|
+    rows      = incoming.where(:issue_id => issue.id).to_a
+    addresses = rows.flat_map do |m|
       split_addresses(m.recipient_to) + split_addresses(m.recipient_cc)
     end.map(&:downcase).uniq
     return [] if addresses.empty?
@@ -121,6 +126,7 @@ class HelpdeskMessage < HelpdeskApplicationRecord
     HelpdeskMailbox.includes(:project)
                    .where('LOWER(mailbox_address) IN (?)', addresses)
                    .where.not(:project_id => issue.project_id)
+                   .where.not(:id => rows.map(&:helpdesk_mailbox_id).compact)
                    .order(:mailbox_address).to_a
   end
 
