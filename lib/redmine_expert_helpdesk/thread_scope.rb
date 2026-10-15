@@ -38,16 +38,28 @@ module RedmineExpertHelpdesk
       foreign = []
       irt     = header_ids(msg, 'in-reply-to')
       refs    = header_ids(msg, 'references')
+      # The headers are the sender's to write, like the subject. Beyond the
+      # budget both are dropped unchecked: the mail threads on its subject or
+      # becomes a new ticket, and no marker of another project survives.
+      if (irt + refs).uniq.size > MAX_HEADER_REFS
+        irt  = []
+        refs = []
+        msg['in-reply-to'] = nil
+        msg['references']  = nil
+        cleared = true
+      end
       # One query for every id in both headers: a long conversation carries
       # dozens of References, and looking each up alone costs a round trip.
       preload_logged(irt + refs)
       @redmine = load_redmine_refs((irt + refs).filter_map { |id| redmine_ref(id) })
+      prime_local(@logged.values.flatten + @redmine.values.compact)
 
       kept_irt  = keep_local_ids(irt, foreign)
       kept_refs = keep_local_ids(refs, foreign)
       subject   = scrub_subject(msg.subject.to_s, foreign)
 
-      changed = kept_irt.size  != irt.size ||
+      changed = cleared ||
+                kept_irt.size  != irt.size ||
                 kept_refs.size != refs.size ||
                 subject != msg.subject.to_s
       return Result.new(mime, foreign.uniq, false) unless changed
@@ -94,8 +106,10 @@ module RedmineExpertHelpdesk
     # creating mail is the ticket's first incoming message, carries no journal
     # and was stored right after the ticket - the time bound keeps rows from
     # before migration 021, where replies have no journal_id either, out.
-    def opened_here?(issue)
-      first = HelpdeskMessage.incoming.where(:issue_id => issue.id).order(:id).first
+    # +first+ is the ticket's first incoming message when the caller already
+    # has it (prime_local), false for "has none".
+    def opened_here?(issue, first = nil)
+      first = HelpdeskMessage.incoming.where(:issue_id => issue.id).order(:id).first if first.nil?
       return false unless first && first.journal_id.nil? && first.helpdesk_mailbox&.project_id == @project.id
       return false unless first.created_at && issue.created_on
 
@@ -117,6 +131,18 @@ module RedmineExpertHelpdesk
       HelpdeskMessage.where(:message_id => variants).includes(:issue).each do |m|
         @logged[bare_id(m.message_id)] << m.issue if m.issue
       end
+    end
+
+    # The moved-ticket check for every candidate at once: the first incoming
+    # message per ticket in one query, instead of one per foreign ticket.
+    def prime_local(issues)
+      candidates = issues.uniq(&:id).reject { |i| i.project_id == @project.id || @local.key?(i.id) }
+      return if candidates.empty?
+
+      first_ids = HelpdeskMessage.incoming.where(:issue_id => candidates.map(&:id))
+                                 .group(:issue_id).minimum(:id).values
+      firsts = HelpdeskMessage.where(:id => first_ids).includes(:helpdesk_mailbox).index_by(&:issue_id)
+      candidates.each { |issue| @local[issue.id] = opened_here?(issue, firsts[issue.id] || false) }
     end
 
     # Preloaded by scrub; a lookup from outside it queries on its own.
@@ -186,6 +212,10 @@ module RedmineExpertHelpdesk
     # forum topic, which a helpdesk mailbox never has a reason to do.
     MESSAGE_REPLY_SUBJECT_RE =
       defined?(MailHandler::MESSAGE_REPLY_SUBJECT_RE) ? MailHandler::MESSAGE_REPLY_SUBJECT_RE : /\[[^\]]*msg(\d+)\]/
+
+    # Distinct message ids In-Reply-To and References may name together. A
+    # long thread collects a few dozen; beyond that nobody is replying.
+    MAX_HEADER_REFS = 50
 
     # Distinct ticket numbers a subject may name before it is no longer worth
     # looking at. A real reply carries one or two.

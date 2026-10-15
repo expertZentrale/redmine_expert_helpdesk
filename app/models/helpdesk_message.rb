@@ -105,8 +105,13 @@ class HelpdeskMessage < HelpdeskApplicationRecord
 
     mailbox_ids = HelpdeskMailbox.where(:project_id => project.id).select(:id)
     rows = incoming.where(:message_id => variants)
-    rows.where(:helpdesk_mailbox_id => mailbox_ids).exists? ||
-      rows.joins(:issue).where(Issue.table_name => { :project_id => project.id }).exists?
+    return true if rows.where(:helpdesk_mailbox_id => mailbox_ids).exists? ||
+                   rows.joins(:issue).where(Issue.table_name => { :project_id => project.id }).exists?
+
+    # A ticket opened here and moved away counts as ours (ThreadScope#local?),
+    # whichever project's mailbox happened to fetch the reply first.
+    scope = RedmineExpertHelpdesk::ThreadScope.new(project)
+    rows.includes(:issue).any? { |m| m.issue && scope.local?(m.issue) }
   end
 
   # The other helpdesk mailboxes a mail of this ticket was addressed to, i.e.

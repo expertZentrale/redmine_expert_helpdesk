@@ -387,6 +387,55 @@ class ThreadScopeTest < ActiveSupport::TestCase
     assert_operator queries.size, :<=, 2, queries.join("\n")
   end
 
+  # Too many header references: both headers go, unchecked, and nothing is
+  # related - the sender cannot make us look up or relate hundreds of tickets.
+  def test_header_references_over_budget_are_dropped
+    ids = (1..60).map do |i|
+      HelpdeskMessage.create!(:issue => @foreign, :direction => 'out', :message_id => "<flood-#{i}@expert.local>")
+      "<flood-#{i}@expert.local>"
+    end
+    result = scrub(mime(:subject => 'Hallo', :message_id => 'flood@x', :references => ids.join(' ')))
+    out = Mail.read_from_string(result.mime)
+
+    assert result.changed
+    assert_nil out['references']
+    assert_empty result.foreign_issues
+  end
+
+  # Existing foreign tickets in the headers: the moved-ticket check for all of
+  # them costs a fixed number of queries.
+  def test_moved_ticket_check_is_batched_for_header_references
+    foreign = Issue.where.not(:project_id => @project.id).limit(8).to_a
+    refs = foreign.each_with_index.map do |issue, i|
+      HelpdeskMessage.create!(:issue => issue, :direction => 'in', :message_id => "batch-#{i}@x")
+      "<batch-#{i}@x>"
+    end
+    queries = []
+    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql].include?('helpdesk_messages') }
+    ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
+      scrub(mime(:subject => 'Hallo', :message_id => 'batch@x', :references => refs.join(' ')))
+    end
+
+    assert_operator queries.size, :<=, 3, queries.join("\n")
+  end
+
+  # The destination project's mailbox fetched the reply to a moved ticket
+  # first; the origin mailbox fetching it afterwards adds no second note.
+  def test_moved_ticket_reply_fetched_by_destination_first_is_one_note
+    opened_through(@foreign, @mailbox)
+    dest = HelpdeskMailbox.create!(:project => @foreign.project, :mailbox_address => 'support-b@expert.local',
+                                   :provider => 'imap', :imap_host => 'mail.example.com',
+                                   :unknown_user_mode => 'accept')
+    raw = mime(:subject => "Re: [##{@foreign.id}] Drucker", :message_id => 'dest-first@x',
+               :from => 'jsmith@somenet.foo', :cc => 'support-b@expert.local')
+    run_mail(raw, 'dest-first@x', dest)
+    journals = @foreign.reload.journals.count
+    result = run_mail(raw, 'dest-first@x')
+
+    assert_equal 1, result.skipped, result.errors.inspect
+    assert_equal journals, @foreign.reload.journals.count
+  end
+
   # --- switch and moved tickets ----------------------------------------------
 
   # Off (the default for existing installs): a foreign marker still wins, as
