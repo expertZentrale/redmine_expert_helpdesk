@@ -25,6 +25,10 @@ Redmine is supplied by a Docker image; the app only exists inside the running co
 - **Every change must update `CHANGELOG.md` (EN, authoritative)** and its German mirror
   **`CHANGELOG.de.md`**; for user-facing changes also **`README.md` (EN) and `README.de.md` (DE)**.
   Keep each EN/DE pair in sync. GitHub release notes are generated from `CHANGELOG.md`.
+- **`EMAIL_FLOW.md` / `EMAIL_FLOW.de.md`** hold the Mermaid diagrams of every mail flow and the
+  settings that steer them. Any change to the incoming pipeline, reply matching, outgoing routes or a
+  setting that affects them must update both (diagram and settings table), using the exact UI labels
+  from `config/locales/{en,de}.yml`.
 - **Language policy:** write **code comments in English** (legacy German comments may remain until
   that code is next touched). **i18n stays bilingual** (`config/locales/en.yml` + `de.yml`) and the
   plugin UI is German.
@@ -160,8 +164,19 @@ that order is what makes `safe_to_stop` trustworthy across pods.
   - `mail_processor.rb` — the heart: per mailbox, hands raw MIME to Redmine's own `MailHandler`
     (which does ticket creation / reply matching via `In-Reply-To`/`[#id]` / attachments /
     user creation), then applies the new-ticket defaults, links contact, autoresponder, phishing
-    check, stores `.eml`, moves the mail. Reply-vs-new matching is delegated entirely to
-    `MailHandler`. `apply_new_issue_defaults` runs for new tickets only: project
+    check, stores `.eml`, moves the mail. Reply-vs-new matching is done by `MailHandler`; with the
+    experimental, opt-in plugin setting `thread_scope_enabled` (`ThreadScope.enabled?`, default off,
+    gated through `MailProcessor#thread_scope?`) only within the mailbox's project:
+    `ThreadScope#scrub` (`thread_scope.rb`) first removes every thread
+    marker (`[#id]` subject tags, Redmine/helpdesk Message-IDs) pointing at another project's ticket,
+    subprojects included, and all ticket lookups after it are project-scoped. `ThreadScope#local?`
+    also counts a ticket opened through one of the project's mailboxes and moved away since
+    (provenance from the creating incoming `HelpdeskMessage`, not `HelpdeskTicketInfo#helpdesk_mailbox`,
+    which `link!` also fills on replies). Removed tickets and
+    other projects' tickets from the same Message-ID are related (`relate_across_projects`);
+    `HelpdeskMessage.received_in_project?` skips a mail the project already has. Message-IDs are
+    stored in both spellings (incoming bare, outgoing `<id>`) — query via
+    `HelpdeskMessage.message_id_variants`. `apply_new_issue_defaults` runs for new tickets only: project
     `default_assigned_to_id` (a `Principal` — user **or** group) first, mailbox rules second
     (they win); an `Assigned to:` keyword already honoured by `MailHandler` beats both.
   - `inline_images.rb` — embedded images. `MailHandler` saves them as attachments but leaves the

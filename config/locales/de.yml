@@ -292,6 +292,10 @@ de:
   label_helpdesk_awaiting_show_all: 'Alle anzeigen'
   field_helpdesk_awaiting_agent_enabled: 'Tickets markieren, die auf Bearbeitung warten'
   text_helpdesk_awaiting_agent_enabled_info: 'Markiert ein Ticket, wenn ein Kunde per Mail antwortet oder ein geschlossenes Ticket wiedereröffnet wird. Die Markierung entfällt, sobald ein Mitarbeiter öffentlich antwortet oder das Ticket schließt.'
+  label_helpdesk_experimental: 'Experimentell'
+  text_helpdesk_experimental_warning: 'Diese Schalter ändern, welchem Ticket eingehende Mails zugeordnet werden oder wie Antworten zugestellt werden. Bitte zuerst in einem Projekt ausprobieren und die Ergebnisse prüfen.'
+  field_helpdesk_thread_scope_enabled: 'Antworten nur im Projekt des Postfachs zuordnen'
+  text_helpdesk_thread_scope_enabled_info: 'Eine Mail setzt ein Ticket nur fort, wenn es zum Projekt des empfangenden Postfachs gehört (oder darüber eröffnet und später verschoben wurde). Ticketnummern und Mail-Verweise anderer Projekte werden ignoriert: Die Mail wird hier ein neues Ticket, verknüpft mit dem anderen. Aus: Ein Verweis auf ein beliebiges Ticket in einem beliebigen Projekt gewinnt, wie bisher.'
   label_helpdesk_inline_images: 'Eingebettete Bilder'
   field_helpdesk_inline_images_enabled: 'Eingebettete Bilder im Ticket anzeigen'
   text_helpdesk_inline_images_enabled_info: 'Ersetzt die "[cid:...]"-Markierungen, die eine eingehende Mail im Text hinterlässt, durch das Bild selbst – das Ticket liest sich dadurch wie die Originalmail. Die Bilder werden ohnehin als Anhang gespeichert.'
@@ -484,6 +488,7 @@ de:
   permission_manage_helpdesk_contacts: Kundenliste verwalten
   label_helpdesk_mailbox: Postfach
   label_helpdesk_original_mail: Original E-Mail
+  label_helpdesk_also_received_by: Auch zugestellt an
   label_helpdesk_previous_tickets: Frühere Tickets
   label_helpdesk_reply_to_customer: Antwort an Kunden
   label_helpdesk_send_as_mail: Als E-Mail an Kunden senden

@@ -51,7 +51,9 @@ see [Tests](#tests).
 
 - **Email to ticket**: Mails from Microsoft 365 or any IMAP mailbox are created as tickets;
   replies are matched to existing tickets via `In-Reply-To` / `[#id]` subject
-  patterns (uses Redmine's standard `MailHandler`, including attachments).
+  patterns (uses Redmine's standard `MailHandler`, including attachments). A mailbox only
+  continues tickets of **its own project** — see
+  [Mail addressed to several projects](#mail-addressed-to-several-projects).
 - **Status on a customer reply**: Per mailbox, an inbound reply can move the ticket to a
   status of its own — one for a closed ticket (the classic reopen), a separate one for a
   ticket that is still open, e.g. *Waiting for customer* → *In progress*. See
@@ -372,6 +374,9 @@ its PEM private key; no interactive consent is needed.
 
 ## Email Processing
 
+> **Diagrams of every flow** — fetching, filters, reply or new ticket, mail to several projects,
+> outgoing mail — with all the settings that change them: [EMAIL_FLOW.md](EMAIL_FLOW.md).
+
 ### Flow per mailbox fetch
 
 ```
@@ -395,7 +400,12 @@ Provider (source folder) — Graph API or IMAP
         │                   (optional per project; on "neutralize" the links
         │                    are rewritten in the body and processing continues)
         ▼
+  Already received in this project? ── same Message-ID ─▶ skipped folder
+        │                              (another project receiving it is no duplicate)
+        ▼
   MIME preprocessing
+    ├─ remove thread markers ([#id], Message-IDs) pointing at tickets of
+    │  OTHER projects  →  the mail stays in the mailbox's project
     ├─ strip thread headers if the referenced ticket is closed and older than
     │  the mailbox's reopen_max_age_days  →  forces a NEW ticket
     ├─ strip the Auto-Submitted header on NDR/bounce mails
@@ -422,6 +432,9 @@ Provider (source folder) — Graph API or IMAP
         │
         ▼
   Create HelpdeskMessage (direction=in) + attach original mail as .eml
+        │
+        ▼
+  Relate to tickets of other projects (removed markers, same mail elsewhere)
         │
         ▼
   Autoresponder (new tickets only, if enabled on the mailbox)
@@ -478,6 +491,54 @@ The `MailHandler` checks in this order:
 > **Note**: The `MailHandler` also handles user creation and permission checks.
 > `unknown_user_mode` on the mailbox controls what happens with unknown senders
 > (`accept`, `create`, `ignore`).
+
+### Mail addressed to several projects
+
+Redmine's `MailHandler` follows a thread marker into **any** project: the mailbox only decides
+where a *new* ticket goes. With many projects sharing one Redmine that has two effects — a mail
+written to project B's address about a ticket of project A ends up in A's ticket, and, because the
+helpdesk hands mail over without a permission check, anyone who knows a ticket number can write
+into it, private projects included.
+
+The plugin can keep every mailbox inside its own project. This is **experimental and off by
+default**, because it changes which ticket an incoming mail lands in: switch it on under
+*Administration → Plugins → Redmine expert Helpdesk → Configure → Experimental → Match replies only
+within the mailbox's project*, ideally after trying it on a test project. While it is off, mail is
+matched as before and the rest of this section does not apply.
+
+With the switch on, before `MailHandler` sees a mail,
+every thread marker that points at a ticket of **another** project is removed — `[#id]` and
+`[Project - Tracker #id]` in the subject, Redmine notification IDs and logged helpdesk Message-IDs
+in `In-Reply-To`/`References`. A tag naming a ticket that does not exist is removed as well, so the
+mail becomes a ticket instead of being rejected. Markers pointing at a ticket of the mailbox's own
+project stay untouched, so ordinary customer replies keep working. Subprojects count as other
+projects. A ticket opened through a mailbox and moved to another project since still counts as the
+mailbox's own, so the customer's replies follow it.
+
+What that means in practice:
+
+| Situation | Result |
+| --- | --- |
+| Customer writes to A and B (To/Cc/Bcc) | One ticket in A, one in B |
+| Mail to B quoting `[#123]` of project A | New ticket in B, related to #123 |
+| Reply to an A conversation, sent to B | New ticket in B, related to the A ticket |
+| Same mail reaches two mailboxes of **one** project | One ticket; the second copy is skipped |
+
+**How the projects learn about each other**: the tickets are linked with a *related to* relation
+(a removed `[#id]` only when that ticket belongs to a project with the helpdesk module — anyone can
+write a ticket number into a subject),
+and the ticket sidebar lists the other helpdesk addresses the mail was sent to under *Also received
+by*. Redmine shows a relation only to users who can see both
+tickets, and the sidebar names the other project only to viewers who may see it; nobody learns
+anything about a project they have no access to. Mailboxes reached by Bcc stay invisible. The
+relation needs Redmine's *Allow cross-project issue relations* (*Administration → Settings →
+Issue tracking*); without it the tickets are still created, only not linked. The relation is
+added quietly — no history entry, no notification to the other team.
+
+Outgoing replies keep their `[#id]` tag and thread headers: the customer's answer still finds its
+ticket, and other projects' mailboxes simply ignore the markers. An outgoing mail interceptor that
+strips these markers (as some installations used for RedmineUP) is no longer needed for mailboxes
+handled by this plugin.
 
 ### Status on a customer reply
 

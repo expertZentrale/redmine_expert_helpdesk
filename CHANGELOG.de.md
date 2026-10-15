@@ -5,6 +5,66 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Dokumentation
+
+- **`EMAIL_FLOW.de.md`** (englisch `EMAIL_FLOW.md`): Diagramme aller Mailabläufe – Abruf, Filter,
+  Antwort oder neues Ticket, was mit dem Ticket passiert, Mails an mehrere Projekte, ausgehende
+  Mails –, jeweils mit den Einstellungen, die den Weg verändern, dazu eine Übersicht all dieser
+  Einstellungen und wo sie gepflegt werden.
+
+### Behoben
+
+- **Ein Postfach führt nur noch Tickets seines eigenen Projekts fort** – zuschaltbar, experimentell. Redmines `MailHandler`
+  folgt einem `[#id]`-Betrefftag oder einer Redmine-/Helpdesk-Message-ID in
+  `In-Reply-To`/`References` in jedes Projekt, und die Thread-Suche des Plugins durchsuchte ebenfalls
+  alle Projekte. Eine Mail an die Adresse von Projekt B zu einem Ticket aus Projekt A wurde deshalb
+  an das Ticket von A angehängt, statt in B ein Ticket zu werden – und da Mails ohne
+  Berechtigungsprüfung übergeben werden, konnte jeder Absender, der eine Ticketnummer kannte, in
+  dieses Ticket schreiben, auch in privaten Projekten und Projekten ohne Helpdesk-Modul.
+  Thread-Marker auf Tickets anderer Projekte (Unterprojekte eingeschlossen) werden jetzt entfernt,
+  bevor der `MailHandler` die Mail sieht, sodass sie zum Ticket im Projekt des Postfachs wird; Marker
+  des eigenen Projekts bleiben, normale Antworten sind nicht betroffen. Ein Betrefftag auf ein nicht
+  existierendes Ticket wird ebenfalls entfernt – die Mail wurde bisher abgelehnt und landete im
+  Skipped-Ordner. Message-IDs ohne spitze Klammern, verschachtelte Tags wie `[#[#4]4]` und
+  Forum-Antwort-Tags (`[Forum - msg45]`, über die eine Mail in ein Forenthema schreiben konnte) sind
+  ebenfalls abgedeckt. Die am Ticket angehängte `.eml` behält die Header so, wie sie angekommen sind.
+  Ein Betreff mit mehr als 20 Ticketnummern, mehr als fünf Ebenen Verschachtelung oder mehr als 998
+  Zeichen verliert alle Tags (und eckigen Klammern) ohne Nachschlagen, ein präparierter
+  Betreff kann den Abruf also nicht aufhalten; ebenso werden `In-Reply-To`/`References` mit mehr als
+  50 Message-IDs ungeprüft verworfen.
+  Ein Ticket, das über ein Postfach eröffnet und später in ein anderes Projekt verschoben wurde,
+  erhält die Antworten des Kunden weiterhin. **Standardmäßig aus**, weil es ändert, in welchem Ticket
+  eine Mail landet: einschalten unter *Administration → Plugins → Redmine expert Helpdesk →
+  Konfigurieren → Experimentell → Antworten nur im Projekt des Postfachs zuordnen*; solange es aus
+  ist, werden Mails zugeordnet wie bisher.
+- **Dieselbe Mail landet nicht mehr doppelt in einem Projekt.** Eine Mail an zwei Postfächer eines
+  Projekts, oder an zwei Projekte, von denen eines dem Thread des anderen folgte, wurde je Postfach
+  einmal ergänzt. Mit projektbezogener Zuordnung wird eine Message-ID, die das Projekt schon
+  erhalten hat, übersprungen; ein
+  anderes Projekt, das dieselbe Mail erhält, ist kein Duplikat und bekommt sein eigenes Ticket.
+- **Antworten auf Agentenantworten werden wieder per Message-ID gefunden.** Ausgehende Nachrichten
+  speichern ihre Message-ID mit spitzen Klammern, eingehende ohne; die Thread-Suche suchte nur die
+  nackte Form und fand eine Agentenantwort deshalb nie – sie funktionierte nur, solange der Betreff
+  noch das `[#id]`-Tag trug.
+
+### Hinzugefügt
+
+- **Experimentelle Einstellungen, gerahmt.** Die Plugin-Einstellungen erhalten einen Abschnitt
+  *Experimentell* mit gelbem Warnrahmen für die Schalter, die ändern, wie Mails zugeordnet oder
+  zugestellt werden.
+- **Projektübergreifende Verweise für eine Mail an mehrere Projekte** (bei eingeschalteter
+  projektbezogener Zuordnung). Das Ticket wird mit dem
+  Ticket des anderen Projekts in Beziehung gesetzt (*verwandt mit*) – mit dem, auf das die
+  entfernten Marker zeigten, und mit dem, das ein anderes Projekt aus derselben Mail angelegt hat. Einem entfernten Marker wird nur
+  in ein Projekt mit Helpdesk-Modul gefolgt, da jeder eine Ticketnummer in einen Betreff schreiben
+  kann. Die Beziehung wird still angelegt, ohne Historieneintrag und Benachrichtigung.
+  Redmine zeigt eine Beziehung nur Benutzern, die beide Tickets sehen dürfen. Die Ticket-Seitenleiste
+  listet unter *Auch zugestellt an* die anderen Helpdesk-Adressen, an die die Mail ging, und nennt
+  das Projekt nur, wenn der Betrachter es sehen darf. Die Beziehung setzt Redmines
+  *Ticket-Beziehungen zwischen Projekten erlauben* voraus; ohne die Einstellung wird nichts verknüpft.
+
 ## [0.21.0] - 2026-10-14
 
 ### Hinzugefügt

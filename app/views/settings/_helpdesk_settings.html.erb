@@ -163,6 +163,20 @@
   </p>
 </fieldset>
 
+<%# Switches that change how mail is matched or delivered. Framed so nobody ticks
+    them in passing; styles in helpdesk_activity.css. %>
+<fieldset class="box tabular hd-experimental" id="hd_experimental">
+  <legend><%= l(:label_helpdesk_experimental) %></legend>
+  <p class="hd-experimental-warning"><%= l(:text_helpdesk_experimental_warning) %></p>
+  <p>
+    <%= hidden_field_tag 'settings[thread_scope_enabled]', '0', :id => nil %>
+    <%= check_box_tag 'settings[thread_scope_enabled]', '1',
+          @settings['thread_scope_enabled'].to_s == '1', :id => 'settings_thread_scope_enabled' %>
+    <%= label_tag 'settings_thread_scope_enabled', l(:field_helpdesk_thread_scope_enabled) %>
+    <em class="info"><%= l(:text_helpdesk_thread_scope_enabled_info) %></em>
+  </p>
+</fieldset>
+
 <fieldset class="box tabular">
   <legend><%= l(:label_helpdesk_inline_images) %></legend>
   <p>

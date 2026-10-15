@@ -52,7 +52,9 @@ siehe [Tests](#tests).
 
 - **E-Mail zu Ticket**: Mails aus Microsoft 365 oder beliebigen IMAP-Postfächern werden als Tickets angelegt;
   Antworten werden über `In-Reply-To` / `[#id]`-Betreff dem bestehenden Ticket
-  zugeordnet (nutzt den Redmine-Standard-`MailHandler`, inkl. Anhänge).
+  zugeordnet (nutzt den Redmine-Standard-`MailHandler`, inkl. Anhänge). Ein Postfach führt nur
+  Tickets **seines eigenen Projekts** fort – siehe
+  [Mails an mehrere Projekte](#mails-an-mehrere-projekte).
 - **Status bei einer Kundenantwort**: Je Postfach kann eine eingehende Antwort das Ticket
   auf einen eigenen Status setzen — einen für ein geschlossenes Ticket (die klassische
   Wiedereröffnung) und einen getrennten für ein noch offenes, z. B. *Warten auf Kunde* →
@@ -387,6 +389,9 @@ Dienstkontos und dessen privaten PEM-Schlüssel eintragen, eine interaktive Zust
 
 ## E-Mail-Verarbeitung
 
+> **Diagramme aller Abläufe** – Abruf, Filter, Antwort oder neues Ticket, Mails an mehrere Projekte,
+> ausgehende Mails – mit allen Einstellungen, die sie verändern: [EMAIL_FLOW.de.md](EMAIL_FLOW.de.md).
+
 ### Ablauf pro Postfachabruf
 
 ```
@@ -410,7 +415,12 @@ Graph API (Quellordner)
         │                  (optional pro Projekt; bei „neutralize" werden die
         │                   Links im Body ersetzt, die Verarbeitung läuft weiter)
         ▼
+  In diesem Projekt schon erhalten? ── gleiche Message-ID ─▶ Skipped-Ordner
+        │                               (ein anderes Projekt ist kein Duplikat)
+        ▼
   MIME-Vorverarbeitung
+    ├─ Thread-Marker ([#id], Message-IDs) entfernen, die auf Tickets ANDERER
+    │  Projekte zeigen  →  die Mail bleibt im Projekt des Postfachs
     ├─ Thread-Header entfernen, wenn das referenzierte Ticket geschlossen und
     │  älter als reopen_max_age_days des Postfachs ist → erzwingt ein NEUES Ticket
     ├─ Auto-Submitted-Header bei NDR-/Bounce-Mails entfernen
@@ -438,6 +448,10 @@ Graph API (Quellordner)
         │
         ▼
   HelpdeskMessage erstellen (direction=in) + Originalmail als .eml anhängen
+        │
+        ▼
+  Mit Tickets anderer Projekte in Beziehung setzen (entfernte Marker,
+  dieselbe Mail anderswo)
         │
         ▼
   Autoresponder (nur bei neuen Tickets, wenn am Postfach aktiviert)
@@ -497,6 +511,54 @@ Der `MailHandler` prüft in dieser Reihenfolge:
 > **Hinweis**: Der `MailHandler` verwaltet auch Benutzeranlage und
 > Berechtigungsprüfungen. `unknown_user_mode` am Postfach steuert, was bei
 > unbekannten Absendern passiert (`accept`, `create`, `ignore`).
+
+### Mails an mehrere Projekte
+
+Redmines `MailHandler` folgt einem Thread-Marker in **jedes** Projekt: Das Postfach bestimmt nur,
+wohin ein *neues* Ticket geht. Teilen sich viele Projekte ein Redmine, hat das zwei Folgen – eine
+Mail an die Adresse von Projekt B zu einem Ticket aus Projekt A landet im Ticket von A, und weil der
+Helpdesk Mails ohne Berechtigungsprüfung übergibt, kann jeder, der eine Ticketnummer kennt, in dieses
+Ticket schreiben, auch in privaten Projekten.
+
+Das Plugin kann jedes Postfach in seinem eigenen Projekt halten. Das ist **experimentell und
+standardmäßig aus**, weil es ändert, in welchem Ticket eine eingehende Mail landet: einschalten unter
+*Administration → Plugins → Redmine expert Helpdesk → Konfigurieren → Experimentell → Antworten nur
+im Projekt des Postfachs zuordnen*, am besten nach einem Versuch in einem Testprojekt. Solange der
+Schalter aus ist, werden Mails zugeordnet wie bisher, und der Rest dieses Abschnitts gilt nicht.
+
+Mit eingeschaltetem Schalter wird, bevor der `MailHandler` eine Mail sieht, jeder Thread-Marker entfernt, der auf ein Ticket eines **anderen** Projekts zeigt –
+`[#id]` und `[Projekt - Tracker #id]` im Betreff, Redmine-Benachrichtigungs-IDs und protokollierte
+Helpdesk-Message-IDs in `In-Reply-To`/`References`. Ein Tag auf ein nicht existierendes Ticket wird
+ebenfalls entfernt, damit die Mail zum Ticket wird statt abgelehnt zu werden. Marker auf ein Ticket
+des eigenen Projekts bleiben unverändert, normale Kundenantworten funktionieren also weiter.
+Unterprojekte zählen als andere Projekte. Ein Ticket, das über ein Postfach eröffnet und später in
+ein anderes Projekt verschoben wurde, zählt weiterhin als eigenes, die Antworten des Kunden folgen
+ihm also.
+
+In der Praxis:
+
+| Situation | Ergebnis |
+| --- | --- |
+| Kunde schreibt an A und B (An/CC/BCC) | Ein Ticket in A, eines in B |
+| Mail an B mit `[#123]` aus Projekt A | Neues Ticket in B, Beziehung zu #123 |
+| Antwort auf eine A-Konversation, an B gesendet | Neues Ticket in B, Beziehung zum A-Ticket |
+| Dieselbe Mail erreicht zwei Postfächer **eines** Projekts | Ein Ticket; die zweite Kopie wird übersprungen |
+
+**Wie die Projekte voneinander erfahren**: Die Tickets werden mit einer Beziehung *verwandt mit*
+verknüpft (bei einem entfernten `[#id]` nur, wenn dieses Ticket zu einem Projekt mit Helpdesk-Modul
+gehört – eine Ticketnummer kann jeder in einen Betreff schreiben), und die Ticket-Seitenleiste listet unter *Auch zugestellt an* die anderen
+Helpdesk-Adressen, an die die Mail ging. Redmine zeigt eine Beziehung nur
+Benutzern, die beide Tickets sehen dürfen, und die Seitenleiste nennt das andere Projekt nur, wenn
+der Betrachter es sehen darf; niemand erfährt etwas über ein Projekt ohne Zugriff. Per BCC
+erreichte Postfächer bleiben unsichtbar. Die Beziehung setzt Redmines *Ticket-Beziehungen
+zwischen Projekten erlauben* voraus (*Administration → Konfiguration → Tickets*); ohne die
+Einstellung werden die Tickets trotzdem angelegt, nur nicht verknüpft. Die Beziehung wird still
+angelegt – kein Historieneintrag, keine Benachrichtigung an das andere Team.
+
+Ausgehende Antworten behalten ihr `[#id]`-Tag und die Thread-Header: Die Antwort des Kunden findet
+ihr Ticket weiterhin, und Postfächer anderer Projekte ignorieren die Marker einfach. Ein
+Interceptor für ausgehende Mails, der diese Marker entfernt (wie ihn manche Installationen für
+RedmineUP nutzten), ist für Postfächer dieses Plugins nicht mehr nötig.
 
 ### Status bei einer Kundenantwort
 

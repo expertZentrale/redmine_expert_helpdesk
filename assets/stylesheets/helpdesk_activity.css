@@ -260,3 +260,22 @@ button.hd-rcpt-pill:focus-visible { outline: 2px solid #3a6699; outline-offset: 
 .hd-rcpt-pop ul { margin: 0 0 6px; padding-left: 16px; }
 .hd-rcpt-pop ul:last-child { margin-bottom: 0; }
 .hd-rcpt-own { color: #666; font-size: 11px; }
+
+/* --- Experimental settings: framed so nobody ticks them in passing --------
+   Border and background from Redmine's flash.warning; the text is darker
+   than its #A6750C, which reached only 3.8:1 here (#805900: 5.9:1, WCAG AA). */
+fieldset.hd-experimental,
+.hd-experimental-option {
+  border: 1px solid #FDBF3B;
+  border-left-width: 4px;
+  background: #FFF8E6;
+}
+.hd-experimental-option { padding: 0.4em 0.6em; margin: 0.4em 0; border-radius: 3px; }
+fieldset.hd-experimental > legend,
+.hd-experimental-badge { color: #805900; font-weight: bold; }
+fieldset.hd-experimental > legend::before { content: "\26A0\FE0E  "; }
+p.hd-experimental-warning { color: #805900; padding-left: 0 !important; }
+.hd-experimental-badge {
+  display: inline-block; margin-left: 0.4em; padding: 0 0.4em; font-size: 0.85em;
+  border: 1px solid #FDBF3B; border-radius: 3px; background: #FFEBC1;
+}

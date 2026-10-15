@@ -292,6 +292,10 @@ en:
   label_helpdesk_awaiting_show_all: 'Show all'
   field_helpdesk_awaiting_agent_enabled: 'Mark tickets awaiting a response'
   text_helpdesk_awaiting_agent_enabled_info: 'Flags a ticket when a customer replies by mail or a closed ticket is reopened. The flag is cleared as soon as an agent posts a public reply or closes the ticket.'
+  label_helpdesk_experimental: 'Experimental'
+  text_helpdesk_experimental_warning: 'These switches change how incoming mail is matched to tickets or how replies are delivered. Try them in one project first and check the results before relying on them.'
+  field_helpdesk_thread_scope_enabled: 'Match replies only within the mailbox''s project'
+  text_helpdesk_thread_scope_enabled_info: 'A mail continues a ticket only if that ticket belongs to the project of the receiving mailbox (or was opened through it and moved since). Ticket numbers and message references of other projects are ignored: the mail becomes a new ticket here, related to the other one. Off: a reference to any ticket in any project wins, as before.'
   label_helpdesk_inline_images: 'Embedded images'
   field_helpdesk_inline_images_enabled: 'Show embedded images in the ticket'
   text_helpdesk_inline_images_enabled_info: 'Replaces the "[cid:...]" markers an incoming mail leaves in the text with the image itself, so the ticket reads like the original mail. The images are stored as attachments either way.'
@@ -484,6 +488,7 @@ en:
   permission_manage_helpdesk_contacts: Manage customer list
   label_helpdesk_mailbox: Mailbox
   label_helpdesk_original_mail: Original Email
+  label_helpdesk_also_received_by: Also received by
   label_helpdesk_previous_tickets: Previous tickets
   label_helpdesk_reply_to_customer: Reply to customer
   label_helpdesk_send_as_mail: Send as email to customer
