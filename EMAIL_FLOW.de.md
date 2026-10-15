@@ -160,7 +160,8 @@ flowchart TD
   in dieses Ticket schreiben – so verhält es sich, solange der Schalter aus ist. Marker des eigenen
   Projekts bleiben erhalten, die normale Antwort des Kunden findet ihr Ticket also weiterhin. Ein
   Ticket, das über dieses Postfach eröffnet und später in ein anderes Projekt verschoben wurde, zählt
-  ebenfalls als eigenes Projekt. Ein Betreff mit mehr als 20 Ticketnummern verliert alle Tags. Die
+  ebenfalls als eigenes Projekt. Ein Betreff mit mehr als 20 Ticketnummern verliert alle Tags,
+  `In-Reply-To`/`References` mit mehr als 50 Message-IDs werden verworfen. Die
   am Ticket angehängte `.eml` behält Betreff und Header genau so, wie
   sie angekommen sind.
 - **Max. Alter (Tage)** erzwingt ein neues Ticket für eine Antwort auf ein seit Langem
