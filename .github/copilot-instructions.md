@@ -180,7 +180,11 @@ that order is what makes `safe_to_stop` trustworthy across pods.
     `handover_enabled` and both projects' `HelpdeskProjectSetting#handover_enabled` on, the reply
     controller takes participating helpdesk addresses out of the mail and creates the ticket there
     (`note` or `history` mode, chosen by the agent; private notes never go over), before the mail,
-    undone if the mail fails. `apply_new_issue_defaults` runs for new tickets only: project
+    undone only if the mail fails before delivery. The target's notification is held back and sent
+    by `Handover.notify` once final; `relink_attachments` points image references at the copies
+    (`update_all` — `update_column` did not persist inside the reply request); the source ticket
+    must be visible; Bcc-only targets are flagged `bcc: true` and kept out of public notes.
+    `apply_new_issue_defaults` runs for new tickets only: project
     `default_assigned_to_id` (a `Principal` — user **or** group) first, mailbox rules second
     (they win); an `Assigned to:` keyword already honoured by `MailHandler` beats both.
   - `inline_images.rb` — embedded images. `MailHandler` saves them as attachments but leaves the

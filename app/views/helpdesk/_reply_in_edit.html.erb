@@ -692,8 +692,13 @@
 
         // Hand-over: record it in this ticket's note, so the history shows
         // where the topic went.
-        if (data.handovers && data.handovers.length && notesEl) {
-          var lines = data.handovers.map(function(h) {
+        // A target reached by Bcc only stays out of a public note - its
+        // readers would learn about a recipient the mail kept blind.
+        var privateCb   = document.getElementById('issue_private_notes');
+        var notePrivate = !!(privateCb && privateCb.checked);
+        var listed = (data.handovers || []).filter(function(h) { return !h.bcc || notePrivate; });
+        if (listed.length && notesEl) {
+          var lines = listed.map(function(h) {
             var target = h.project ? h.project + ' (' + h.address + ')' : h.address;
             return '<%= j(l(:text_helpdesk_handover_note_line)) %>'
               .replace('%{target}', target).replace('%{issue}', '#' + h.issue_id);
@@ -757,6 +762,8 @@
       var lastComma = val.lastIndexOf(',');
       var prefix    = lastComma >= 0 ? val.substring(0, lastComma + 1) + ' ' : '';
       input.value   = prefix + label + ', ';
+      // Programmatic value changes fire no event; the hand-over choice listens.
+      input.dispatchEvent(new Event('change', { bubbles: true }));
       closeDropdown();
       input.focus();
     }
@@ -895,12 +902,14 @@
     var current = parseList(input.value);
     current.push(addr);
     input.value = current.join(', ') + ', ';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   function removeAddress(input, addr) {
     var needle = addr.toLowerCase();
     var kept   = parseList(input.value).filter(function(a) { return bareAddress(a) !== needle; });
     input.value = kept.length ? kept.join(', ') + ', ' : '';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   function setupWrap(wrap) {

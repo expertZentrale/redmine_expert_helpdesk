@@ -345,7 +345,11 @@ flowchart TD
 - **Schlägt die Mail an die übrigen Empfänger fehl**, wird das Ticket in B wieder entfernt, ein
   erneutes Senden legt es also nicht doppelt an. Ist die Mail einmal raus, bleibt das Ticket, auch
   wenn das Protokollieren der Antwort danach fehlschlägt; der Bearbeiter wird gewarnt, nicht erneut
-  zu senden.
+  zu senden. Die Benachrichtigung von B über das neue Ticket geht erst dann raus, nie für eine
+  zurückgenommene Übergabe.
+- Bilder des Tickets, die die Notiz zitiert, gehen mit, auch ohne Haken; Bildverweise im kopierten
+  Text zeigen auf die Kopien. Ein nur per BCC erreichtes Projekt wird in der Notiz des
+  Ausgangstickets nur genannt, wenn die Notiz privat ist.
 
 ---
 

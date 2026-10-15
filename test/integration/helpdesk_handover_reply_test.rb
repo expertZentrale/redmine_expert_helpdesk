@@ -178,6 +178,72 @@ class HelpdeskHandoverReplyTest < Redmine::IntegrationTest
     assert_equal agent, Issue.find(data['handovers'].first['issue_id']).assigned_to
   end
 
+  # A target named in Bcc only is flagged, so the form keeps it out of a
+  # public note.
+  def test_bcc_only_target_is_flagged
+    RedmineExpertHelpdesk::MailProvider.stubs(:outgoing_for).returns(FakeTransport.new)
+    data = reply(:reply_to => 'kunde@example.com', :reply_bcc => 'helpdesk-b@expert.local',
+                 :handover_mode => 'note')
+
+    assert_response :success
+    assert_equal true, data['handovers'].first['bcc']
+  end
+
+  def test_target_in_cc_is_not_flagged
+    RedmineExpertHelpdesk::MailProvider.stubs(:outgoing_for).returns(FakeTransport.new)
+    data = reply(:reply_to => 'kunde@example.com', :reply_cc => 'helpdesk-b@expert.local',
+                 :handover_mode => 'note')
+
+    assert_equal false, data['handovers'].first['bcc']
+  end
+
+  # A hand-over copies the ticket out; an agent who may not read it gets 403.
+  def test_handover_needs_a_visible_source_ticket
+    Issue.any_instance.stubs(:visible?).returns(false)
+    before = other_project_tickets.count
+    reply(:reply_to => 'helpdesk-b@expert.local', :handover_mode => 'history')
+
+    assert_response :forbidden
+    assert_equal before, other_project_tickets.count
+  end
+
+  # A ticket image the note quotes goes along, checked or not.
+  def test_quoted_ticket_image_is_handed_over
+    set_tmp_attachments_directory
+    image = Attachment.create!(:container => @issue, :author => User.find(2), :filename => 'shot.png',
+                               :content_type => 'image/png',
+                               :file => uploaded_test_file('testfile.txt', 'image/png'))
+    with_settings :text_formatting => 'textile' do
+      data = reply(:note_content => "Siehe !/attachments/download/#{image.id}/shot.png!",
+                   :reply_to => 'helpdesk-b@expert.local', :handover_mode => 'note')
+      created = Issue.find(data['handovers'].first['issue_id'])
+      # The only file handed over; its name comes from the uploaded test file.
+      copy = created.attachments.detect { |a| a.digest == image.digest }
+
+      assert copy, 'quoted image not handed over'
+      assert_includes created.description, "/attachments/download/#{copy.id}/"
+      assert_not_includes created.description, "/attachments/download/#{image.id}/"
+    end
+  end
+
+  # No notification about a hand-over that a failed mail takes back again.
+  def test_failed_mail_sends_no_handover_notification
+    RedmineExpertHelpdesk::MailProvider.stubs(:outgoing_for)
+      .returns(FakeTransport.new(:fail_with => RedmineExpertHelpdesk::MailProvider::ProviderError.new('SMTP down')))
+    RedmineExpertHelpdesk::Handover.expects(:notify).never
+    reply(:reply_to => 'kunde@example.com', :reply_cc => 'helpdesk-b@expert.local', :handover_mode => 'note')
+
+    assert_response :unprocessable_entity
+  end
+
+  def test_delivered_handover_is_notified
+    RedmineExpertHelpdesk::MailProvider.stubs(:outgoing_for).returns(FakeTransport.new)
+    RedmineExpertHelpdesk::Handover.expects(:notify).once
+    reply(:reply_to => 'kunde@example.com', :reply_cc => 'helpdesk-b@expert.local', :handover_mode => 'note')
+
+    assert_response :success
+  end
+
   # --- several recipients -----------------------------------------------------
 
   def third_project

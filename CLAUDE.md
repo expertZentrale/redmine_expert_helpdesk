@@ -240,7 +240,12 @@ nested registration would never fire in production.
   addresses out of To/Cc/Bcc (`Handover.split`, same parser as the recipient pill), requires
   `handover_mode` (`note`|`history`, nothing preselected in the form), creates the target tickets
   **before** the mail and destroys them again if the mail raises — the agent re-sends after an
-  error, and a surviving hand-over would then exist twice. History mode quotes the description and
+  error, and a surviving hand-over would then exist twice. Only failures *before* delivery undo it;
+  the target's "issue added" notification is held back (`with_deliveries(false)`) and sent by
+  `Handover.notify` once final. `relink_attachments` points `/attachments/…/<id>` references in the
+  copied text at the copies — via `update_all`: `update_column` did not persist inside the reply
+  request. Hand-over requires `@issue.visible?`; Bcc-only targets carry `bcc: true` so the form keeps
+  them out of public notes. History mode quotes the description and
   **public** notes only and copies all attachments via `Attachment#copy` (shared disk file). The
   reply form re-enables its submit button on a 50 ms timer: jquery-ujs disables
   `data-disable-with` buttons on a 13 ms timer *after* the submit handler, so a synchronous or

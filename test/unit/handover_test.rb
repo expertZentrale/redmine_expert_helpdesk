@@ -131,6 +131,40 @@ class HandoverTest < ActiveSupport::TestCase
     assert_includes issue.attachments.map(&:filename), 'two.txt'
   end
 
+  # Image references in the copied text move to the copies.
+  def test_history_mode_points_image_references_at_the_copies
+    image = attach(@source, 'shot.txt')
+    @source.update_column(:description, "Bild: !/attachments/download/#{image.id}/shot.txt!")
+    issue = hand_over('history')
+    copy  = issue.attachments.detect { |a| a.filename == 'shot.txt' }
+
+    assert_includes issue.reload.description, "/attachments/download/#{copy.id}/shot.txt"
+    assert_not_includes issue.description, "/attachments/download/#{image.id}/"
+  end
+
+  # Creating the ticket mails nobody (Redmine still calls the mailer, the
+  # deliveries are switched off); notify does, once the hand-over is final.
+  def test_notification_waits_for_notify
+    issue = nil
+    with_settings :notified_events => ['issue_added'] do
+      ActionMailer::Base.deliveries.clear
+      issue = hand_over('note')
+      assert_empty ActionMailer::Base.deliveries
+
+      Mailer.expects(:deliver_issue_add).with(issue).once
+      Handover.notify(issue, @target)
+    end
+  end
+
+  def test_notify_respects_suppressed_notifications
+    issue = hand_over('note')
+    @target.update_column(:suppress_notifications, true)
+    with_settings :notified_events => ['issue_added'] do
+      Mailer.expects(:deliver_issue_add).never
+      Handover.notify(issue, @target.reload)
+    end
+  end
+
   def test_unknown_mode_is_rejected
     assert_raises(Handover::Error) { hand_over('everything') }
   end

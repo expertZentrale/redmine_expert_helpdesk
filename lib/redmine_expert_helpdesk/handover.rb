@@ -85,12 +85,15 @@ module RedmineExpertHelpdesk
       # they match on a sender and a subject this ticket was never mailed with.
       issue.assigned_to = HelpdeskProjectSetting.for_project(project).default_assignee
 
-      Mailer.with_deliveries(!@mailbox.suppress_notifications?) do
+      # Silent for now: the caller may still take the hand-over back when its
+      # mail fails, and a notification about a deleted ticket cannot be
+      # recalled. Handover.notify sends it once the hand-over is final.
+      Mailer.with_deliveries(false) do
         Issue.transaction do
           # Without validation like the mail path: a mandatory field of the
           # other project must not swallow the hand-over.
           issue.save(:validate => false) || raise(Error, issue.errors.full_messages.to_sentence)
-          copy_attachments(issue)
+          relink_attachments(issue, copy_attachments(issue))
         end
       end
 
@@ -99,6 +102,18 @@ module RedmineExpertHelpdesk
       Rails.logger.info "Helpdesk handover: ##{@source.id} -> ##{issue.id} " \
                         "(#{project.identifier}, mode #{@mode}, by #{@user.login})"
       issue
+    end
+
+    # Redmine's "issue added" notification for a hand-over ticket, sent once
+    # the hand-over is final. Respects the target mailbox's "Suppress Redmine
+    # notifications" like the mail path. Never raises: the reply is sent by now.
+    def self.notify(issue, mailbox)
+      return if mailbox&.suppress_notifications?
+      return unless Setting.notified_events.include?('issue_added')
+
+      Mailer.deliver_issue_add(issue)
+    rescue StandardError => e
+      Rails.logger.error "Helpdesk handover: notification for ##{issue&.id} failed: #{e.message}"
     end
 
     private
@@ -137,12 +152,36 @@ module RedmineExpertHelpdesk
 
     # Attachment#copy shares the stored file; Redmine only deletes it from disk
     # once no attachment row points at it any more.
+    # Returns { original id => copy }.
     def copy_attachments(issue)
       list = @mode == 'history' ? (@source.attachments.to_a + @attachments) : @attachments
-      list.uniq(&:id).each do |att|
+      list.uniq(&:id).each_with_object({}) do |att, map|
         copy = att.copy(:container => issue, :author => @user)
         copy.save!
+        map[att.id] = copy if att.id
       end
+    end
+
+    # Images in the copied text point at the source ticket's attachments by id
+    # (InlineImages.target writes /attachments/download/<id>/...). The other
+    # team may not see the source ticket, and the copies outlive it, so the
+    # references move to the copies. (?!\d) keeps id 65 out of 653.
+    def relink_attachments(issue, copies)
+      return if copies.empty? || issue.description.blank?
+
+      text = issue.description.gsub(%r{(/attachments/(?:download/|thumbnail/)?)(\d+)(?!\d)}) do
+        copy = copies[Regexp.last_match(2).to_i]
+        copy ? "#{Regexp.last_match(1)}#{copy.id}" : Regexp.last_match(0)
+      end
+      return if text == issue.description
+
+      # update_all, not update_column: inside the reply request update_column
+      # left the row unchanged (the test of the quoted image caught it), while
+      # a plain UPDATE does land. The object is synced by hand, without making
+      # the description dirty for a later save.
+      Issue.where(:id => issue.id).update_all(:description => text)
+      issue.description = text
+      issue.clear_attribute_changes([:description])
     end
 
     # The other project gets its own contact for the same customer, so its

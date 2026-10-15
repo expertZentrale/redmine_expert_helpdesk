@@ -335,7 +335,11 @@ flowchart TD
   B's address in Cc, nothing is mailed, not even to the customer.
 - **If the mail to the remaining recipients fails**, the ticket in B is removed again, so sending
   once more does not create it twice. Once the mail is out, the ticket stays even if recording the
-  reply fails afterwards; the agent is told not to send again.
+  reply fails afterwards; the agent is told not to send again. B's notification about the new
+  ticket goes out only then, never for a hand-over that is taken back.
+- Ticket images the note quotes go along even when their checkbox is not ticked; image references
+  in the copied text point at the copies. A project reached by Bcc only is named in the source
+  note only when that note is private.
 
 ---
 

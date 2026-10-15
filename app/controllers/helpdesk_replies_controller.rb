@@ -37,6 +37,7 @@ class HelpdeskRepliesController < ApplicationController
     # taken out of the mail and get the ticket directly (see Handover).
     targets   = RedmineExpertHelpdesk::Handover.targets_for(@project)
     handovers = []
+    bcc_only  = []
     if targets.any?
       reply_to,  hits_to  = RedmineExpertHelpdesk::Handover.split(reply_to, targets)
       reply_cc,  hits_cc  = RedmineExpertHelpdesk::Handover.split(reply_cc, targets)
@@ -44,6 +45,9 @@ class HelpdeskRepliesController < ApplicationController
       # One ticket per project: two of its mailboxes in To and Cc are still
       # one hand-over, and the first one named supplies the defaults.
       handovers = (hits_to + hits_cc + hits_bcc).uniq(&:project_id)
+      # Projects named in Bcc only: the form must not name them in a public
+      # note, or every reader learns about a recipient the mail kept blind.
+      bcc_only  = hits_bcc.map(&:project_id) - (hits_to + hits_cc).map(&:project_id)
       # A To the agent cleared on purpose stays empty: the customer fallback
       # above would otherwise mail them a reply meant only for the other
       # project. Without a hand-over the fallback stays, so a reply never ends
@@ -54,6 +58,13 @@ class HelpdeskRepliesController < ApplicationController
     if handovers.any? && !RedmineExpertHelpdesk::Handover::MODES.include?(handover_mode)
       render :json => { :success => false, :error => l(:error_helpdesk_handover_mode_missing) },
              :status => :unprocessable_entity
+      return
+    end
+    # A hand-over copies the ticket's text and files into another project, so
+    # the agent has to be able to read the ticket - send_helpdesk_reply is a
+    # project permission and says nothing about "own tickets only" roles.
+    if handovers.any? && !@issue.visible?
+      render :json => { :success => false, :error => l(:notice_not_authorized) }, :status => :forbidden
       return
     end
     # A mail needs a To: with only Cc left, the Cc becomes the To. Only Bcc
@@ -96,21 +107,32 @@ class HelpdeskRepliesController < ApplicationController
                                  .select { |a| a.author_id == User.current.id }
 
     # The hand-over runs before the mail, so a failed mail can take it back
-    # (rescue below) instead of leaving a ticket nobody was told about.
+    # (rescue below) instead of leaving a ticket nobody was told about. Its
+    # notification waits until the mail is out (finish_handovers) - a mail
+    # already sent about a ticket that is then deleted cannot be taken back.
+    # Ticket images the note quotes go along like the checked files: the
+    # customer gets them embedded, the other team needs them just as much.
     created = []
-    handovers.each do |target|
-      created << RedmineExpertHelpdesk::Handover.new(
-        :source => @issue, :mailbox => target, :user => User.current, :mode => handover_mode,
-        :note => note, :attachments => Attachment.where(:id => valid_att_ids).to_a + inline_atts,
-        :contact => contact
-      ).call
+    if handovers.any?
+      quoted = RedmineExpertHelpdesk::ReplyImages.to_cid(
+        wiki_html, RedmineExpertHelpdesk::ReplyImages.candidates(@issue, inline_atts)
+      ).first.keys
+      handover_atts = (Attachment.where(:id => valid_att_ids).to_a + inline_atts + quoted).uniq
+      handovers.each do |target|
+        created << RedmineExpertHelpdesk::Handover.new(
+          :source => @issue, :mailbox => target, :user => User.current, :mode => handover_mode,
+          :note => note, :attachments => handover_atts, :contact => contact
+        ).call
+      end
     end
     handover_json = created.zip(handovers).map do |i, target|
       { :issue_id => i.id, :address => target.mailbox_address,
-        :project  => (i.project.visible? ? i.project.name : nil) }
+        :project  => (i.project.visible? ? i.project.name : nil),
+        :bcc      => bcc_only.include?(target.project_id) }
     end
 
     unless send_mail
+      finish_handovers(created, handovers)
       render :json => { :success => true, :helpdesk_message_id => nil, :handovers => handover_json }
       return
     end
@@ -149,6 +171,7 @@ class HelpdeskRepliesController < ApplicationController
       sent_filenames.concat(regular_atts.map(&:filename))
       sent_filenames.concat(cid_map.keys.map(&:filename))
     end
+    finish_handovers(created, handovers)
 
     hd_msg = HelpdeskMessage.create!(
       :issue             => @issue,
@@ -182,6 +205,7 @@ class HelpdeskRepliesController < ApplicationController
     # project's address out, so removing its ticket would leave the team with
     # nothing. Reported as sent - an error would invite a second, duplicate mail.
     if delivered
+      finish_handovers(created, handovers) unless @handovers_finished
       Rails.logger.error "Helpdesk reply on ##{@issue.id}: delivered, but recording it failed: #{e.class}: #{e.message}"
       render :json => { :success => true, :helpdesk_message_id => hd_msg&.id, :handovers => handover_json,
                         :warning => l(:warning_helpdesk_reply_not_recorded) }
@@ -192,6 +216,14 @@ class HelpdeskRepliesController < ApplicationController
   end
 
   private
+
+  # Notifies the target projects once the hand-overs are final.
+  def finish_handovers(issues, mailboxes)
+    @handovers_finished = true
+    Array(issues).zip(Array(mailboxes)).each do |issue, mailbox|
+      RedmineExpertHelpdesk::Handover.notify(issue, mailbox)
+    end
+  end
 
   # The agent sees an error and sends again, so a hand-over that went through
   # before the mail failed would otherwise be created twice.
