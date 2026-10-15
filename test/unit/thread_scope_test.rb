@@ -305,16 +305,52 @@ class ThreadScopeTest < ActiveSupport::TestCase
     assert_empty result.created_issues
   end
 
+  # The row MailProcessor writes for the mail that created a ticket.
+  def opened_through(issue, mailbox)
+    HelpdeskMessage.create!(:issue => issue, :helpdesk_mailbox => mailbox, :direction => 'in',
+                            :message_id => "opened-#{issue.id}@x", :created_at => issue.created_on)
+  end
+
   # A ticket opened through this mailbox and moved to another project since:
   # the customer's reply still belongs on it.
   def test_ticket_moved_away_keeps_receiving_replies
-    HelpdeskTicketInfo.where(:issue_id => @foreign.id).delete_all
-    HelpdeskTicketInfo.create!(:issue_id => @foreign.id, :helpdesk_mailbox_id => @mailbox.id)
+    opened_through(@foreign, @mailbox)
 
     assert_not scrub(mime(:subject => "Re: [##{@foreign.id}] Drucker", :message_id => 'a@x')).changed
     result = run_mail(mime(:subject => "Re: [##{@foreign.id}] Drucker", :message_id => 'moved@x',
                            :from => 'jsmith@somenet.foo'), 'moved@x')
     assert_equal [@foreign.id], result.updated_issues, result.errors.inspect
+  end
+
+  # Scoping off, a mail through our mailbox reached a foreign ticket and
+  # link! recorded our mailbox on it. Switched on, that ticket is still foreign.
+  def test_reply_recorded_before_switching_on_does_not_claim_the_ticket
+    Setting.plugin_redmine_expert_helpdesk = @settings_before.merge('thread_scope_enabled' => '0')
+    run_mail(mime(:subject => "[##{@foreign.id}] Vorher", :message_id => 'before@x',
+                  :from => 'jsmith@somenet.foo'), 'before@x')
+    assert_equal @mailbox, HelpdeskTicketInfo.find_by(:issue_id => @foreign.id)&.helpdesk_mailbox
+
+    Setting.plugin_redmine_expert_helpdesk = @settings_before.merge('thread_scope_enabled' => '1')
+    result = scrub(mime(:subject => "[##{@foreign.id}] Nachher", :message_id => 'after@x'))
+    assert result.changed
+    assert_equal [@foreign], result.foreign_issues
+  end
+
+  # A reply to a moved ticket reaching two mailboxes of the old project: one
+  # note, not two - the duplicate check also knows the receiving mailbox.
+  def test_moved_ticket_reply_to_two_mailboxes_is_one_note
+    opened_through(@foreign, @mailbox)
+    second = HelpdeskMailbox.create!(:project => @project, :mailbox_address => 'support-a3@expert.local',
+                                     :provider => 'imap', :imap_host => 'mail.example.com',
+                                     :unknown_user_mode => 'accept')
+    raw = mime(:subject => "Re: [##{@foreign.id}] Drucker", :message_id => 'twice-moved@x',
+               :from => 'jsmith@somenet.foo', :cc => 'support-a3@expert.local')
+    run_mail(raw, 'twice-moved@x')
+    journals = @foreign.reload.journals.count
+    result = run_mail(raw, 'twice-moved@x', second)
+
+    assert_equal 1, result.skipped, result.errors.inspect
+    assert_equal journals, @foreign.reload.journals.count
   end
 
   def test_message_id_variants

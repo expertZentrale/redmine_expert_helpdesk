@@ -170,7 +170,9 @@ that order is what makes `safe_to_stop` trustworthy across pods.
     `ThreadScope#scrub` (`thread_scope.rb`) first removes every thread
     marker (`[#id]` subject tags, Redmine/helpdesk Message-IDs) pointing at another project's ticket,
     subprojects included, and all ticket lookups after it are project-scoped. `ThreadScope#local?`
-    also counts a ticket opened through one of the project's mailboxes and moved away since. Removed tickets and
+    also counts a ticket opened through one of the project's mailboxes and moved away since
+    (provenance from the creating incoming `HelpdeskMessage`, not `HelpdeskTicketInfo#helpdesk_mailbox`,
+    which `link!` also fills on replies). Removed tickets and
     other projects' tickets from the same Message-ID are related (`relate_across_projects`);
     `HelpdeskMessage.received_in_project?` skips a mail the project already has. Message-IDs are
     stored in both spellings (incoming bare, outgoing `<id>`) — query via
