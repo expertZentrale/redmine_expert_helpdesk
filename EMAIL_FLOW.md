@@ -156,7 +156,8 @@ flowchart TD
   `MailHandler` follows a marker into any project, and anyone who knows a ticket number can write
   into that ticket — that is how it behaves while the switch is off. Markers of the own project are
   kept, so the customer's ordinary reply still finds its ticket. A ticket opened through this
-  mailbox and moved to another project since counts as the own project too. The `.eml` attached to
+  mailbox and moved to another project since counts as the own project too. A subject naming more
+  than 20 ticket numbers loses all of its tags. The `.eml` attached to
   the ticket keeps the subject and headers exactly as received.
 - **Max. age (days)** forces a new ticket for an answer to a ticket that was closed long ago. `0`
   or empty turns the limit off.
