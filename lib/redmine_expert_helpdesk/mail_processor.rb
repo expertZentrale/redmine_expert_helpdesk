@@ -426,7 +426,11 @@ module RedmineExpertHelpdesk
       # No init_journals: Redmine writes a history entry (and a notification)
       # only when the controller asks for it. The relation is meant as a quiet
       # pointer, not as news on a ticket of another team.
-      relation = IssueRelation.new(:issue_from => issue, :issue_to => other,
+      # By id, not by instance: Issue#relation_added writes the relation into
+      # whatever journal the passed instance still has open. On the reply path
+      # Redmine has closed it by now (test_relation_on_a_reply_adds_no_journal_detail),
+      # but fresh instances cannot carry one at all.
+      relation = IssueRelation.new(:issue_from_id => issue.id, :issue_to_id => other.id,
                                    :relation_type => IssueRelation::TYPE_RELATES)
       if relation.save
         Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): ##{issue.id} related to ##{other.id} (other project)"
