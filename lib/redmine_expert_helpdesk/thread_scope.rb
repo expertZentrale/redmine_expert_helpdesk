@@ -41,6 +41,7 @@ module RedmineExpertHelpdesk
       # One query for every id in both headers: a long conversation carries
       # dozens of References, and looking each up alone costs a round trip.
       preload_logged(irt + refs)
+      @redmine = load_redmine_refs((irt + refs).filter_map { |id| redmine_ref(id) })
 
       kept_irt  = keep_local_ids(irt, foreign)
       kept_refs = keep_local_ids(refs, foreign)
@@ -64,12 +65,11 @@ module RedmineExpertHelpdesk
     # helpdesk logged, in and out. Several helpdesk rows can share one id - the
     # same mail went to two projects - so the one of our project wins.
     def issue_for_message_id(id)
-      if "<#{id}>" =~ MailHandler::MESSAGE_ID_RE
-        klass, object_id = Regexp.last_match(1), Regexp.last_match(2).to_i
-        return case klass
-               when 'issue'   then Issue.find_by(:id => object_id)
-               when 'journal' then Journal.find_by(:id => object_id)&.journalized.then { |j| j.is_a?(Issue) ? j : nil }
-               end
+      if (ref = redmine_ref(id))
+        klass, object_id = ref
+        return @redmine ? @redmine[ref] : load_redmine_refs([ref])[ref] if %w[issue journal].include?(klass)
+
+        return nil
       end
 
       issues = logged_issues(id)
@@ -125,6 +125,25 @@ module RedmineExpertHelpdesk
 
       HelpdeskMessage.where(:message_id => HelpdeskMessage.message_id_variants(id))
                      .includes(:issue).filter_map(&:issue)
+    end
+
+    # ['issue', 12] for Redmine's own notification ids, nil otherwise.
+    def redmine_ref(id)
+      return nil unless "<#{id}>" =~ MailHandler::MESSAGE_ID_RE
+
+      [Regexp.last_match(1), Regexp.last_match(2).to_i]
+    end
+
+    # The issues behind Redmine notification ids, one query per kind instead of
+    # one per id. Keyed by the ref; a deleted object maps to nil.
+    def load_redmine_refs(refs)
+      ids_of   = ->(kind) { refs.select { |k, _| k == kind }.map(&:last).uniq }
+      issues   = Issue.where(:id => ids_of.call('issue')).index_by(&:id)
+      journals = Journal.where(:id => ids_of.call('journal'), :journalized_type => 'Issue')
+                        .includes(:journalized).index_by(&:id)
+      refs.uniq.to_h do |kind, oid|
+        [[kind, oid], kind == 'issue' ? issues[oid] : journals[oid]&.journalized]
+      end
     end
 
     def bare_id(id)
