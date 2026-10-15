@@ -39,8 +39,12 @@ module RedmineExpertHelpdesk
     def self.targets_for(project)
       return {} unless project_enabled?(project)
 
-      HelpdeskMailbox.enabled.includes(:project).where.not(:project_id => project.id).to_a
-                     .select { |mb| project_enabled?(mb.project) }
+      # One query: settings looked up per mailbox cost a query for every
+      # project with a helpdesk, on every ticket page and reply.
+      participating = Project.active.has_module(:helpdesk)
+                             .where(:id => HelpdeskProjectSetting.where(:handover_enabled => true).select(:project_id))
+      HelpdeskMailbox.enabled.includes(:project).where.not(:project_id => project.id)
+                     .where(:project_id => participating.select(:id)).to_a
                      .index_by { |mb| mb.mailbox_address.to_s.downcase }
     end
 
@@ -94,11 +98,13 @@ module RedmineExpertHelpdesk
           # other project must not swallow the hand-over.
           issue.save(:validate => false) || raise(Error, issue.errors.full_messages.to_sentence)
           relink_attachments(issue, copy_attachments(issue))
+          # Inside the transaction: an exception here rolls the ticket back.
+          # Committed already, it would be a ticket the caller never got to
+          # undo, and the agent's retry would create it twice.
+          link_contact(issue)
+          ThreadScope.relate(issue, @source, 'Helpdesk handover')
         end
       end
-
-      link_contact(issue)
-      ThreadScope.relate(issue, @source, 'Helpdesk handover')
       Rails.logger.info "Helpdesk handover: ##{@source.id} -> ##{issue.id} " \
                         "(#{project.identifier}, mode #{@mode}, by #{@user.login})"
       issue

@@ -67,6 +67,29 @@ class HandoverTest < ActiveSupport::TestCase
     assert_equal ['helpdesk-b@expert.local'], Handover.targets_for(@project_a).keys
   end
 
+  # The target list costs a fixed number of queries, not one per project.
+  def test_targets_do_not_look_up_settings_per_project
+    [3, 5, 6].each do |pid|
+      HelpdeskMailbox.create!(:project => Project.find(pid), :mailbox_address => "hd-#{pid}@expert.local",
+                              :provider => 'imap', :imap_host => 'mail.example.com')
+    end
+    queries = []
+    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql].include?('helpdesk_project_settings') }
+    ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { Handover.targets_for(@project_a) }
+
+    assert_operator queries.size, :<=, 2, queries.join("\n")
+  end
+
+  # A failing relation takes the ticket back with it - nothing is left that
+  # the caller could not undo.
+  def test_failing_relation_leaves_no_ticket
+    RedmineExpertHelpdesk::ThreadScope.stubs(:relate).raises(ActiveRecord::StatementInvalid, 'boom')
+    before = Issue.where(:project_id => @project_b.id).count
+
+    assert_raises(ActiveRecord::StatementInvalid) { hand_over('note') }
+    assert_equal before, Issue.where(:project_id => @project_b.id).count
+  end
+
   def test_split_takes_target_addresses_out_and_keeps_the_rest
     targets = Handover.targets_for(@project_a)
     kept, hits = Handover.split('kunde@example.com, "Team B" <Helpdesk-B@expert.local>', targets)
