@@ -226,8 +226,10 @@ nested registration would never fire in production.
   `:no_permission_check` any sender could write into any ticket. Every later step that looks up the
   referenced ticket (`find_referenced_issue`, reopen age, `ensure_thread_reference`) is scoped to the
   project as well, so none can reintroduce a foreign one. "Own project" is `ThreadScope#local?`: the
-  ticket's project, or a ticket opened through one of the project's mailboxes
-  (`HelpdeskTicketInfo#helpdesk_mailbox`) and moved away since — its customer keeps writing there. The removed tickets and the tickets other
+  ticket's project, or a ticket opened through one of the project's mailboxes and moved away since
+  (`opened_here?`: the first incoming `HelpdeskMessage`, without journal, stored within minutes of the
+  ticket — **not** `HelpdeskTicketInfo#helpdesk_mailbox`, which `link!` also fills on replies).
+  `received_in_project?` matches the receiving mailbox's project as well as the ticket's. The removed tickets and the tickets other
   projects made from the same Message-ID are related (`relate_across_projects`, respects
   `Setting.cross_project_issue_relations`); `HelpdeskMessage.received_in_project?` skips a mail the
   project already has. **Message-IDs are stored in both spellings** (incoming bare, outgoing

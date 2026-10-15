@@ -99,8 +99,26 @@ module RedmineExpertHelpdesk
     def local?(issue)
       return true if issue.project_id == @project.id
 
-      HelpdeskTicketInfo.find_by(:issue_id => issue.id)&.helpdesk_mailbox&.project_id == @project.id
+      opened_here?(issue)
     end
+
+    # Whether the mail that created the ticket came in through this project.
+    # HelpdeskTicketInfo#helpdesk_mailbox proves nothing: link! fills it on a
+    # reply too, so a mail that once reached a foreign ticket through our
+    # mailbox (before scoping was switched on) would claim that ticket. The
+    # creating mail is the ticket's first incoming message, carries no journal
+    # and was stored right after the ticket - the time bound keeps rows from
+    # before migration 021, where replies have no journal_id either, out.
+    def opened_here?(issue)
+      first = HelpdeskMessage.incoming.where(:issue_id => issue.id).order(:id).first
+      return false unless first && first.journal_id.nil? && first.helpdesk_mailbox&.project_id == @project.id
+      return false unless first.created_at && issue.created_on
+
+      (first.created_at - issue.created_on).abs <= CREATION_WINDOW
+    end
+
+    # How long after the ticket the creating mail's row may be stored.
+    CREATION_WINDOW = 10.minutes
 
     private
 

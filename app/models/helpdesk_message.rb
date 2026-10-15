@@ -95,12 +95,18 @@ class HelpdeskMessage < HelpdeskApplicationRecord
   # same project got it too (To + Cc), or a fetch is repeated after a failed
   # move. Scoped to the project on purpose: the same mail sent to two projects
   # is two tickets, one in each.
+  #
+  # "Received" means through one of the project's mailboxes *or* into one of
+  # its tickets: a reply on a ticket moved to another project lands there
+  # (ThreadScope#local?), and only the receiving mailbox still names us.
   def self.received_in_project?(message_id, project)
     variants = message_id_variants(message_id)
     return false if variants.empty? || project.nil?
 
-    incoming.joins(:issue).where(:message_id => variants)
-            .where(Issue.table_name => { :project_id => project.id }).exists?
+    mailbox_ids = HelpdeskMailbox.where(:project_id => project.id).select(:id)
+    rows = incoming.where(:message_id => variants)
+    rows.where(:helpdesk_mailbox_id => mailbox_ids).exists? ||
+      rows.joins(:issue).where(Issue.table_name => { :project_id => project.id }).exists?
   end
 
   # The other helpdesk mailboxes a mail of this ticket was addressed to, i.e.
