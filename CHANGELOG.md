@@ -29,7 +29,9 @@
   exist is removed too — the mail used to be rejected and land in the skipped folder. Message-IDs
   written without angle brackets, nested tags such as `[#[#4]4]` and forum reply tags
   (`[Board - msg45]`, which let a mail post into a forum topic) are covered as well. The `.eml`
-  attached to the ticket keeps the headers as received. A ticket opened through a mailbox and moved
+  attached to the ticket keeps the headers as received. A subject naming more than 20 ticket numbers
+  loses all of its tags without any lookup, so a crafted subject cannot keep the fetch busy. A
+  ticket opened through a mailbox and moved
   to another project since keeps receiving the customer's replies. **Off by default**, because it
   changes which ticket a mail lands in: switch it on under *Administration → Plugins → Redmine expert
   Helpdesk → Configure → Experimental → Match replies only within the mailbox's project*; while it

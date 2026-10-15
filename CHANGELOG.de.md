@@ -30,6 +30,8 @@
   Skipped-Ordner. Message-IDs ohne spitze Klammern, verschachtelte Tags wie `[#[#4]4]` und
   Forum-Antwort-Tags (`[Forum - msg45]`, über die eine Mail in ein Forenthema schreiben konnte) sind
   ebenfalls abgedeckt. Die am Ticket angehängte `.eml` behält die Header so, wie sie angekommen sind.
+  Ein Betreff mit mehr als 20 Ticketnummern verliert alle Tags ohne Nachschlagen, ein präparierter
+  Betreff kann den Abruf also nicht aufhalten.
   Ein Ticket, das über ein Postfach eröffnet und später in ein anderes Projekt verschoben wurde,
   erhält die Antworten des Kunden weiterhin. **Standardmäßig aus**, weil es ändert, in welchem Ticket
   eine Mail landet: einschalten unter *Administration → Plugins → Redmine expert Helpdesk →
