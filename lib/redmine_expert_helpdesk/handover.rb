@@ -199,12 +199,16 @@ module RedmineExpertHelpdesk
       issue.reload
     end
 
-    # An attachment path of this Redmine: relative, or under its own host. The
-    # lookbehind keeps paths inside other sites' URLs out - a vendor's
+    # An attachment path of this Redmine: relative, or under its own host,
+    # with or without the relative URL root a sub-path install runs under
+    # (InlineImages.target writes /redmine/attachments/...). The lookbehind
+    # keeps paths inside other sites' URLs out - a vendor's
     # .../attachments/download/42/manual.pdf is not our attachment 42.
     def local_attachment_path
-      own = Regexp.escape("#{Setting.protocol}://#{Setting.host_name}")
-      %r{(?<![\w.\-:/])((?:#{own})?/attachments/(?:download/|thumbnail/)?)(\d+)(?!\d)}
+      own  = Regexp.escape("#{Setting.protocol}://#{Setting.host_name}")
+      root = Regexp.escape(Redmine::Utils.relative_url_root.to_s.chomp('/'))
+      root = root.empty? ? '' : "(?:#{root})?"
+      %r{(?<![\w.\-:/])((?:#{own})?#{root}/attachments/(?:download/|thumbnail/)?)(\d+)(?!\d)}
     end
 
     # Where the hand-over arrived, for ThreadScope#opened_here?: a handed-over

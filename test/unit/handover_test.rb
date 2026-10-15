@@ -228,6 +228,21 @@ class HandoverTest < ActiveSupport::TestCase
     assert_includes issue.description, external
   end
 
+  # A sub-path install: InlineImages writes /redmine/attachments/..., which
+  # is local too; another site's URL with the same path still is not.
+  def test_relative_url_root_paths_are_remapped
+    Redmine::Utils.stubs(:relative_url_root).returns('/redmine')
+    image = attach(@source, 'shot.txt')
+    external = "https://vendor.example/redmine/attachments/download/#{image.id}/manual.pdf"
+    @source.update_column(:description,
+                          "Bild: !/redmine/attachments/download/#{image.id}/shot.txt! Handbuch: #{external}")
+    issue = hand_over('history')
+    copy  = issue.attachments.detect { |a| a.filename == 'shot.txt' }
+
+    assert_includes issue.reload.description, "/redmine/attachments/download/#{copy.id}/shot.txt"
+    assert_includes issue.description, external
+  end
+
   # A contact's history hides tickets the viewer may not see - a handed-over
   # ticket sits in project 2, which is private.
   def test_contact_history_respects_visibility
