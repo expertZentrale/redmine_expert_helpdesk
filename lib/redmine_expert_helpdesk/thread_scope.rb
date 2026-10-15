@@ -42,7 +42,11 @@ module RedmineExpertHelpdesk
       return true if IssueRelation.where(:issue_from_id => [issue.id, other.id],
                                          :issue_to_id => [issue.id, other.id]).exists?
 
-      relation = IssueRelation.new(:issue_from => issue, :issue_to => other,
+      # By id, not by instance: Issue#relation_added writes the relation into
+      # whatever journal the passed instance still has open. On the reply path
+      # Redmine has closed it by now (test_relation_on_a_reply_adds_no_journal_detail),
+      # but fresh instances cannot carry one at all.
+      relation = IssueRelation.new(:issue_from_id => issue.id, :issue_to_id => other.id,
                                    :relation_type => IssueRelation::TYPE_RELATES)
       if relation.save
         Rails.logger.info "#{log_prefix}: ##{issue.id} related to ##{other.id} (other project)"

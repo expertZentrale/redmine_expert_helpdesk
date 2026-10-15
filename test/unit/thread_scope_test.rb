@@ -338,6 +338,20 @@ class ThreadScopeTest < ActiveSupport::TestCase
     assert_empty HelpdeskMessage.co_recipient_mailboxes(@foreign)
   end
 
+  # A reply to our ticket that also names a foreign one: the relation is
+  # added quietly, not as a detail of the reply's journal.
+  def test_relation_on_a_reply_adds_no_journal_detail
+    result = run_mail(mime(:subject => "Re: [##{@local.id}] Drucker", :message_id => 'both@x',
+                           :from => 'jsmith@somenet.foo',
+                           :references => "<redmine.issue-#{@foreign.id}.20260101000000@example.net>"),
+                      'both@x')
+
+    assert_equal [@local.id], result.updated_issues, result.errors.inspect
+    assert related?(@local, @foreign)
+    journal = @local.reload.journals.order(:id).last
+    assert_empty journal.details.where(:property => 'relation')
+  end
+
   # --- switch and moved tickets ----------------------------------------------
 
   # Off (the default for existing installs): a foreign marker still wins, as
