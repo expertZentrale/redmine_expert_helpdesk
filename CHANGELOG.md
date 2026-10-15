@@ -60,7 +60,8 @@
   cleared on purpose stays empty, so a hand-over to a Cc address mails nobody. Ticket images the
   note quotes go along, and image references in the copied text point at the copies. The target
   team's notification goes out only once the hand-over is final. A target reached by Bcc only is
-  left out of a public note. The agent has to be able to see the source ticket.
+  left out of a public note. The agent has to be able to see the source ticket. The customer's
+  contact in the target project lists the ticket right away, before any mail of theirs reaches it.
   Each participating project gets one ticket however many of its mailboxes are named; a reply that
   would leave only Bcc recipients is refused before anything is handed over.
 - **Cross-project references for a mail that went to several projects** (with project-scoped

@@ -36,8 +36,12 @@ class HelpdeskContact < HelpdeskApplicationRecord
     name.presence || email
   end
 
-  # Tickets, zu denen Nachrichten dieses Kontakts existieren
+  # Tickets of this contact: those with a mail of theirs, and those linked to
+  # them without one yet - a hand-over creates the ticket and the contact link
+  # directly, and the customer only writes later, if at all.
   def issues
-    Issue.where(:id => helpdesk_messages.select(:issue_id)).distinct
+    Issue.where(:id => helpdesk_messages.select(:issue_id))
+         .or(Issue.where(:id => helpdesk_ticket_infos.select(:issue_id)))
+         .distinct
   end
 end

@@ -11,8 +11,15 @@ class HelpdeskContactsController < ApplicationController
   # Sortable columns of the customer list. Ticket count and last ticket are
   # derived from the contact's messages (same definition as the list cells), so
   # they sort through correlated subqueries.
-  TICKET_COUNT_SQL = "(SELECT COUNT(DISTINCT hm.issue_id) FROM helpdesk_messages hm" \
-                     " WHERE hm.helpdesk_contact_id = helpdesk_contacts.id)".freeze
+  # Linked tickets without a mail of the contact count as well (HelpdeskContact#issues);
+  # added as a second term rather than a UNION in a derived table, which MariaDB
+  # cannot correlate with the outer row.
+  TICKET_COUNT_SQL = "((SELECT COUNT(DISTINCT hm.issue_id) FROM helpdesk_messages hm" \
+                     " WHERE hm.helpdesk_contact_id = helpdesk_contacts.id)" \
+                     " + (SELECT COUNT(*) FROM helpdesk_ticket_infos ti" \
+                     " WHERE ti.helpdesk_contact_id = helpdesk_contacts.id AND NOT EXISTS" \
+                     " (SELECT 1 FROM helpdesk_messages hm2 WHERE hm2.helpdesk_contact_id = helpdesk_contacts.id" \
+                     " AND hm2.issue_id = ti.issue_id)))".freeze
   LAST_TICKET_SQL  = "(SELECT MAX(hm.sent_at) FROM helpdesk_messages hm" \
                      " WHERE hm.helpdesk_contact_id = helpdesk_contacts.id)".freeze
   SORT_COLUMNS = {
@@ -49,7 +56,7 @@ class HelpdeskContactsController < ApplicationController
     order = (Array(sort_clause) + ['helpdesk_contacts.email ASC']).join(', ')
     @contacts = scope
                   .order(Arel.sql(order))
-                  .includes(:helpdesk_messages)
+                  .includes(:helpdesk_messages, :helpdesk_ticket_infos)
                   .limit(@per_page)
                   .offset(@contact_pages.offset)
   end

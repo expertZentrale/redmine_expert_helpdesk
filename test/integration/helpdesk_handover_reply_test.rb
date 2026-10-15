@@ -244,6 +244,20 @@ class HelpdeskHandoverReplyTest < Redmine::IntegrationTest
     assert_response :success
   end
 
+  # The customer's contact in the target project lists the handed-over
+  # ticket before any mail of theirs reached it.
+  def test_handed_over_ticket_is_in_the_target_contact_history
+    data = reply(:reply_to => 'helpdesk-b@expert.local', :handover_mode => 'note')
+    created = Issue.find(data['handovers'].first['issue_id'])
+    contact = HelpdeskContact.find_by(:project_id => @other.id, :email => 'kunde@example.com')
+
+    assert_includes contact.issues.to_a, created
+    # The list's sortable ticket count counts it too.
+    count = HelpdeskContact.where(:id => contact.id)
+                           .pick(Arel.sql(HelpdeskContactsController::TICKET_COUNT_SQL))
+    assert_equal contact.issues.count, count.to_i
+  end
+
   # --- several recipients -----------------------------------------------------
 
   def third_project

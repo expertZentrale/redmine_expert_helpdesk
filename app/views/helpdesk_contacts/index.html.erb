@@ -38,7 +38,7 @@
       <% @contacts.each do |contact| %>
         <%
           msgs      = contact.helpdesk_messages
-          issue_ids = msgs.map(&:issue_id).uniq
+          issue_ids = (msgs.map(&:issue_id) + contact.helpdesk_ticket_infos.map(&:issue_id)).uniq
           last_msg  = msgs.max_by(&:sent_at)
         %>
         <tr>
