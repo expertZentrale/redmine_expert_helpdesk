@@ -376,7 +376,7 @@ flowchart TD
 | Send via | Mailbox | Outgoing route: *Mailbox backend*, *Microsoft Graph API* or *SMTP (Redmine default)* | [7](#7-outgoing-mail) |
 | Sender override (From), Set Reply-To to the mailbox address | Mailbox (SMTP route) | Sender address when sending via *SMTP (Redmine default)* | [7](#7-outgoing-mail) |
 | Enable hand-over to other projects | Central, *Experimental* | Experimental: hand-over instead of mail becomes available | [7](#hand-over-instead-of-mail-experimental) |
-| Take part in hand-overs (experimental) | Project | This project hands over and accepts hand-overs | [7](#hand-over-instead-of-mail-experimental) |
+| Take part in hand-overs | Project, *Experimental* | This project hands over and accepts hand-overs | [7](#hand-over-instead-of-mail-experimental) |
 | Sent folder | Mailbox (IMAP) | Where the copy of a sent mail is filed | [7](#7-outgoing-mail) |
 | Subject template | Project | Subject of agent replies | [7](#7-outgoing-mail) |
 | Header, Footer, Footer mode | Mailbox (+ central footer) | Frame around the reply text | [7](#7-outgoing-mail) |

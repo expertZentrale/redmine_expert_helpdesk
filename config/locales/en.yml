@@ -490,8 +490,8 @@ en:
   label_helpdesk_original_mail: Original Email
   label_helpdesk_also_received_by: Also received by
   field_helpdesk_handover_enabled: 'Enable hand-over to other projects'
-  text_helpdesk_handover_enabled_info: 'Experimental. When a reply names the helpdesk address of another project, the ticket is created there directly instead of being mailed. Each project has to opt in as well (project settings, Helpdesk tab).'
-  field_helpdesk_project_handover_enabled: 'Take part in hand-overs (experimental)'
+  text_helpdesk_handover_enabled_info: 'When a reply names the helpdesk address of another project, the ticket is created there directly instead of being mailed. Each project has to opt in as well (project settings, Helpdesk tab).'
+  field_helpdesk_project_handover_enabled: 'Take part in hand-overs'
   text_helpdesk_project_handover_enabled_info: 'Tickets can be handed over from and to this project without a mail. Works only between projects that both take part.'
   label_helpdesk_handover_title: 'Hand-over'
   text_helpdesk_handover_intro: 'These recipients belong to projects that take part in hand-overs. They get no mail; the ticket is created there directly:'

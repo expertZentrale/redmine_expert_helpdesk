@@ -385,7 +385,7 @@ flowchart TD
 | Versandweg | Postfach | *Backend des Postfachs*, *Microsoft Graph API* oder *SMTP (Redmine-Standard)* | [7](#7-ausgehende-mails) |
 | Abweichender Absender (From), Reply-To auf die Postfach-Adresse setzen | Postfach (SMTP-Weg) | Absenderadresse beim Versand über *SMTP (Redmine-Standard)* | [7](#7-ausgehende-mails) |
 | Übergabe an andere Projekte aktivieren | Zentral, *Experimentell* | Experimentell: Übergabe statt Mail wird verfügbar | [7](#übergabe-statt-mail-experimentell) |
-| An Übergaben teilnehmen (experimentell) | Projekt | Dieses Projekt übergibt und nimmt Übergaben an | [7](#übergabe-statt-mail-experimentell) |
+| An Übergaben teilnehmen | Projekt, *Experimentell* | Dieses Projekt übergibt und nimmt Übergaben an | [7](#übergabe-statt-mail-experimentell) |
 | Ordner für gesendete Mails | Postfach (IMAP) | Wo die Kopie einer gesendeten Mail abgelegt wird | [7](#7-ausgehende-mails) |
 | Betreff-Vorlage | Projekt | Betreff von Bearbeiterantworten | [7](#7-ausgehende-mails) |
 | Kopfzeile, Fußzeile, Fußzeilen-Modus | Postfach (+ zentrale Fußzeile) | Rahmen um den Antworttext | [7](#7-ausgehende-mails) |

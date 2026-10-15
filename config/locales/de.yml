@@ -490,8 +490,8 @@ de:
   label_helpdesk_original_mail: Original E-Mail
   label_helpdesk_also_received_by: Auch zugestellt an
   field_helpdesk_handover_enabled: 'Übergabe an andere Projekte aktivieren'
-  text_helpdesk_handover_enabled_info: 'Experimentell. Nennt eine Antwort die Helpdesk-Adresse eines anderen Projekts, wird das Ticket dort direkt angelegt statt per Mail zugestellt. Jedes Projekt muss zusätzlich zustimmen (Projekteinstellungen, Reiter Helpdesk).'
-  field_helpdesk_project_handover_enabled: 'An Übergaben teilnehmen (experimentell)'
+  text_helpdesk_handover_enabled_info: 'Nennt eine Antwort die Helpdesk-Adresse eines anderen Projekts, wird das Ticket dort direkt angelegt statt per Mail zugestellt. Jedes Projekt muss zusätzlich zustimmen (Projekteinstellungen, Reiter Helpdesk).'
+  field_helpdesk_project_handover_enabled: 'An Übergaben teilnehmen'
   text_helpdesk_project_handover_enabled_info: 'Tickets können ohne Mail aus diesem und an dieses Projekt übergeben werden. Funktioniert nur zwischen Projekten, die beide teilnehmen.'
   label_helpdesk_handover_title: 'Übergabe'
   text_helpdesk_handover_intro: 'Diese Empfänger gehören zu Projekten, die an Übergaben teilnehmen. Sie erhalten keine Mail; das Ticket wird dort direkt angelegt:'
