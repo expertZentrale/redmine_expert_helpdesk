@@ -17,7 +17,7 @@
 
 ### Fixed
 
-- **A mailbox only continues tickets of its own project.** Redmine's `MailHandler` follows a
+- **A mailbox only continues tickets of its own project** — opt-in, experimental. Redmine's `MailHandler` follows a
   `[#id]` subject tag or a Redmine/helpdesk Message-ID in `In-Reply-To`/`References` into any
   project, and the plugin's own thread lookup searched all projects as well. A mail sent to project
   B's address about a ticket of project A was therefore appended to A's ticket instead of becoming
@@ -29,10 +29,14 @@
   exist is removed too — the mail used to be rejected and land in the skipped folder. Message-IDs
   written without angle brackets, nested tags such as `[#[#4]4]` and forum reply tags
   (`[Board - msg45]`, which let a mail post into a forum topic) are covered as well. The `.eml`
-  attached to the ticket keeps the headers as received.
+  attached to the ticket keeps the headers as received. A ticket opened through a mailbox and moved
+  to another project since keeps receiving the customer's replies. **Off by default**, because it
+  changes which ticket a mail lands in: switch it on under *Administration → Plugins → Redmine expert
+  Helpdesk → Configure → Experimental → Match replies only within the mailbox's project*; while it
+  is off, mail is matched as before.
 - **The same mail no longer lands twice in one project.** A mail addressed to two mailboxes of one
   project, or to two projects of which one followed the other's thread, was added once per mailbox.
-  A Message-ID the project already received is now skipped; another project receiving the same mail
+  With project-scoped matching on, a Message-ID the project already received is skipped; another project receiving the same mail
   is not a duplicate and gets its own ticket.
 - **Replies to agent replies are found by Message-ID again.** Outgoing messages store their
   Message-ID with angle brackets, incoming ones without; the thread lookup only searched the bare
@@ -41,6 +45,9 @@
 
 ### Added
 
+- **Experimental settings, framed.** The plugin settings get an *Experimental* section with an
+  amber warning frame, holding the switches that change how mail is matched or delivered —
+  project-scoped matching and the hand-over; the project's hand-over switch carries the same frame.
 - **Hand-over to another project instead of a mail (experimental).** Central switch *Enable
   hand-over to other projects* plus *Take part in hand-overs* per project (migration 067); both
   projects have to take part. A reply naming a participating project's helpdesk address takes that
@@ -51,7 +58,8 @@
   names it. Remaining recipients are mailed as before; if that mail fails, the hand-over is undone.
   Each participating project gets one ticket however many of its mailboxes are named; a reply that
   would leave only Bcc recipients is refused before anything is handed over.
-- **Cross-project references for a mail that went to several projects.** The ticket is related
+- **Cross-project references for a mail that went to several projects** (with project-scoped
+  matching on). The ticket is related
   (*related to*) to the other project's ticket — the one its removed markers pointed at, and the
   one another project created from the same mail. A removed marker is only followed into a project
   with the helpdesk module, since anyone can write a ticket number into a subject. The relation is

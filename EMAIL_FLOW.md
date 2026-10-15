@@ -134,7 +134,9 @@ belongs to:
 
 ```mermaid
 flowchart TD
-  IN["Mail after the filters"] --> SC["Remove markers that point at a ticket<br/>of ANOTHER project, or at no ticket<br/>(subprojects count as other projects)"]
+  IN["Mail after the filters"] --> SW{"<i>Match replies only within<br/>the mailbox's project</i> on?"}
+  SW -- yes --> SC["Remove markers that point at a ticket<br/>of ANOTHER project, or at no ticket<br/>(subprojects count as other projects)"]
+  SW -- "no (default)" --> AGE
   SC --> AGE{"Referenced ticket of this project<br/>is closed and older than the limit?<br/><i>Max. age (days)</i>"}
   AGE -- yes --> STRIP["Remove all markers"]
   AGE -- no --> TAG{"Mail answers a logged helpdesk mail<br/>but the subject has no ticket tag?"}
@@ -150,10 +152,12 @@ flowchart TD
   classDef skip fill:#f6ead6,stroke:#9a6412,color:#3d2806
 ```
 
-- **Only the mailbox's own project.** Without the first step, `MailHandler` would follow a marker
-  into any project, and anyone who knows a ticket number could write into that ticket. Markers of
-  the own project are kept, so the customer's ordinary reply still finds its ticket. The `.eml`
-  attached to the ticket keeps the subject and headers exactly as received.
+- **Only the mailbox's own project** (experimental, off by default). Without this step,
+  `MailHandler` follows a marker into any project, and anyone who knows a ticket number can write
+  into that ticket — that is how it behaves while the switch is off. Markers of the own project are
+  kept, so the customer's ordinary reply still finds its ticket. A ticket opened through this
+  mailbox and moved to another project since counts as the own project too. The `.eml` attached to
+  the ticket keeps the subject and headers exactly as received.
 - **Max. age (days)** forces a new ticket for an answer to a ticket that was closed long ago. `0`
   or empty turns the limit off.
 - **Unknown senders** decides what `MailHandler` does with an address that has no Redmine account:
@@ -207,8 +211,10 @@ flowchart TD
 ## 6. One mail, several projects
 
 Customers often write to several helpdesk addresses at once (To, Cc or Bcc), and colleagues in one
-project may not know that another project is involved. Each mailbox handles its copy for its own
-project only.
+project may not know that another project is involved. With *Match replies only within the
+mailbox's project* on, each mailbox handles its copy for its own project only. Everything in this
+section applies only then; while it is off, every copy follows its markers into the referenced
+ticket, as before.
 
 ```mermaid
 flowchart LR
@@ -365,10 +371,11 @@ flowchart TD
 | Autoresponder enabled, subject, body | Mailbox | Confirmation mail for a new ticket | [5](#5-what-happens-to-the-ticket), [7](#7-outgoing-mail) |
 | Enable AI summaries, Generate AI summaries for this project | Central + project | Summary note in the background | [5](#5-what-happens-to-the-ticket) |
 | Enable completeness check, Mode | Central + project | Follow-up mail when the first mail lacks information | [5](#5-what-happens-to-the-ticket), [7](#7-outgoing-mail) |
+| Match replies only within the mailbox's project | Central, *Experimental* | A mail only continues tickets of the receiving mailbox's project; foreign markers are removed, the tickets related | [4](#4-reply-or-new-ticket), [6](#6-one-mail-several-projects) |
 | Allow cross-project issue relations | Redmine, *Issue tracking* | Tickets of different projects can be related | [6](#6-one-mail-several-projects) |
 | Send via | Mailbox | Outgoing route: *Mailbox backend*, *Microsoft Graph API* or *SMTP (Redmine default)* | [7](#7-outgoing-mail) |
 | Sender override (From), Set Reply-To to the mailbox address | Mailbox (SMTP route) | Sender address when sending via *SMTP (Redmine default)* | [7](#7-outgoing-mail) |
-| Enable hand-over to other projects | Central | Experimental: hand-over instead of mail becomes available | [7](#hand-over-instead-of-mail-experimental) |
+| Enable hand-over to other projects | Central, *Experimental* | Experimental: hand-over instead of mail becomes available | [7](#hand-over-instead-of-mail-experimental) |
 | Take part in hand-overs (experimental) | Project | This project hands over and accepts hand-overs | [7](#hand-over-instead-of-mail-experimental) |
 | Sent folder | Mailbox (IMAP) | Where the copy of a sent mail is filed | [7](#7-outgoing-mail) |
 | Subject template | Project | Subject of agent replies | [7](#7-outgoing-mail) |

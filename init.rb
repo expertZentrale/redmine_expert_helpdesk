@@ -119,6 +119,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'default_smtp_port'     => '587',
              'default_smtp_security' => 'starttls',
              'awaiting_agent_enabled'   => '1',
+             'thread_scope_enabled'     => '0',
              'inline_images_enabled'    => '1',
              # Experimental: hand a ticket over to another project instead of mailing it.
              'handover_enabled'         => '0',

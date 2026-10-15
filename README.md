@@ -500,13 +500,20 @@ written to project B's address about a ticket of project A ends up in A's ticket
 helpdesk hands mail over without a permission check, anyone who knows a ticket number can write
 into it, private projects included.
 
-The plugin therefore keeps every mailbox inside its own project. Before `MailHandler` sees a mail,
+The plugin can keep every mailbox inside its own project. This is **experimental and off by
+default**, because it changes which ticket an incoming mail lands in: switch it on under
+*Administration → Plugins → Redmine expert Helpdesk → Configure → Experimental → Match replies only
+within the mailbox's project*, ideally after trying it on a test project. While it is off, mail is
+matched as before and the rest of this section does not apply.
+
+With the switch on, before `MailHandler` sees a mail,
 every thread marker that points at a ticket of **another** project is removed — `[#id]` and
 `[Project - Tracker #id]` in the subject, Redmine notification IDs and logged helpdesk Message-IDs
 in `In-Reply-To`/`References`. A tag naming a ticket that does not exist is removed as well, so the
 mail becomes a ticket instead of being rejected. Markers pointing at a ticket of the mailbox's own
 project stay untouched, so ordinary customer replies keep working. Subprojects count as other
-projects.
+projects. A ticket opened through a mailbox and moved to another project since still counts as the
+mailbox's own, so the customer's replies follow it.
 
 What that means in practice:
 

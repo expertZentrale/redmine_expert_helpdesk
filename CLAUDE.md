@@ -216,14 +216,18 @@ nested registration would never fire in production.
   → ignore rules → hand raw MIME to **Redmine's own `MailHandler`** (which does ticket
   creation, reply matching via `In-Reply-To`/`[#id]`, attachments, user creation) → apply
   new-ticket defaults → link contact → autoresponder → phishing check → attach `.eml` → move
-  to target folder. Reply-vs-new-ticket matching is done by `MailHandler`, but **only within the
+  to target folder. Reply-vs-new-ticket matching is done by `MailHandler`; with the experimental, opt-in plugin
+  setting `thread_scope_enabled` (`ThreadScope.enabled?`, default off — off keeps the old global
+  matching, every scoped step is gated through `MailProcessor#thread_scope?`) it happens **only within the
   mailbox's project**: `ThreadScope#scrub` (`thread_scope.rb`) runs first and removes every
   thread marker (`[#id]`/`[Project - Tracker #id]` subject tags via `MailHandler::ISSUE_REPLY_SUBJECT_RE`,
   Redmine and helpdesk Message-IDs in `In-Reply-To`/`References`) that points at a ticket of another
   project, subprojects included — `MailHandler` would follow it anywhere, and with
   `:no_permission_check` any sender could write into any ticket. Every later step that looks up the
   referenced ticket (`find_referenced_issue`, reopen age, `ensure_thread_reference`) is scoped to the
-  project as well, so none can reintroduce a foreign one. The removed tickets and the tickets other
+  project as well, so none can reintroduce a foreign one. "Own project" is `ThreadScope#local?`: the
+  ticket's project, or a ticket opened through one of the project's mailboxes
+  (`HelpdeskTicketInfo#helpdesk_mailbox`) and moved away since — its customer keeps writing there. The removed tickets and the tickets other
   projects made from the same Message-ID are related (`relate_across_projects`, respects
   `Setting.cross_project_issue_relations`); `HelpdeskMessage.received_in_project?` skips a mail the
   project already has. **Message-IDs are stored in both spellings** (incoming bare, outgoing

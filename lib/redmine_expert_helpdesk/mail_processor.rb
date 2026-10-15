@@ -119,7 +119,9 @@ module RedmineExpertHelpdesk
       # The project already has this mail (it was addressed to two of its
       # mailboxes, or a fetch repeats after a failed move). Another project
       # receiving it is no duplicate - each project gets its own ticket.
-      if HelpdeskMessage.received_in_project?(meta.internet_message_id, @mailbox.project)
+      # Part of the project-scoped matching: without it the second copy
+      # threads into the same ticket anyway, as it always did.
+      if thread_scope? && HelpdeskMessage.received_in_project?(meta.internet_message_id, @mailbox.project)
         Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): Message-ID #{meta.internet_message_id} " \
                           "already received in project #{@mailbox.project.identifier} - skipped"
         move_skipped(meta.id)
@@ -170,7 +172,7 @@ module RedmineExpertHelpdesk
       # and references to follow the conversation. Only MailHandler sees the
       # rewritten copy.
       archive_mime = mime
-      scope = ThreadScope.new(@mailbox.project).scrub(mime)
+      scope = thread_scope? ? ThreadScope.new(@mailbox.project).scrub(mime) : ThreadScope::Result.new(mime, [], false)
       if scope.changed
         Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): thread markers of other projects removed " \
                           "(#{scope.foreign_issues.map { |i| "##{i.id}" }.join(', ').presence || 'unknown tickets'})"
@@ -254,7 +256,7 @@ module RedmineExpertHelpdesk
           # Badge im h4.note-header per Timestamp-Matching).
         end
 
-        relate_across_projects(issue, scope.foreign_issues, meta.internet_message_id)
+        relate_across_projects(issue, scope.foreign_issues, meta.internet_message_id) if thread_scope?
 
         send_autoresponder(issue, contact, meta.internet_message_id) if new_issue && @mailbox.autoresponder_enabled?
         if phishing_hits.any? || phishing_suspicions.any?
@@ -354,28 +356,35 @@ module RedmineExpertHelpdesk
       mime
     end
 
-    # The ticket of this mailbox's project the mail refers to: the [#ID] tag in
-    # the subject, else a logged helpdesk message named in In-Reply-To/References.
-    # Never a ticket of another project - ThreadScope has removed those markers
-    # already, and the lookup is scoped as well so it cannot reintroduce one.
+    # The ticket the mail refers to: the [#ID] tag in the subject, else a logged
+    # helpdesk message named in In-Reply-To/References. With the project-scoped
+    # matching on, never a ticket of another project - ThreadScope has removed
+    # those markers already, and the lookup applies the same rule so it cannot
+    # reintroduce one.
     def find_referenced_issue(msg)
-      project_issues = Issue.where(:project_id => @mailbox.project_id)
+      scope = ThreadScope.new(@mailbox.project) if thread_scope?
+      ours  = ->(issue) { issue && (scope.nil? || scope.local?(issue)) }
 
       if msg.subject.to_s =~ /\[#(\d+)\]/
-        issue = project_issues.find_by(:id => $1.to_i)
-        return issue if issue
+        issue = Issue.find_by(:id => $1.to_i)
+        return issue if ours.call(issue)
       end
 
       ref_ids = [msg['in-reply-to']&.value.to_s, msg['references']&.value.to_s]
                 .join(' ').scan(/<([^>]+)>/).flatten
       if ref_ids.any?
         variants = ref_ids.flat_map { |id| HelpdeskMessage.message_id_variants(id) }
-        hm = HelpdeskMessage.joins(:issue).where(:message_id => variants)
-                            .where(Issue.table_name => { :project_id => @mailbox.project_id }).first
-        return hm.issue if hm&.issue
+        issue = HelpdeskMessage.includes(:issue).where(:message_id => variants)
+                               .filter_map(&:issue).find(&ours)
+        return issue if issue
       end
 
       nil
+    end
+
+    def thread_scope?
+      @thread_scope = ThreadScope.enabled? if @thread_scope.nil?
+      @thread_scope
     end
 
     # --- Cross-project references ---------------------------------------------
