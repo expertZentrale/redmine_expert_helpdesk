@@ -352,6 +352,41 @@ class ThreadScopeTest < ActiveSupport::TestCase
     assert_empty journal.details.where(:property => 'relation')
   end
 
+  # A subject full of ticket numbers costs one lookup per pass, and above the
+  # limit none: every tag is removed, the mail becomes a new ticket.
+  def test_many_subject_tags_are_removed_without_lookups
+    tags    = (1..200).map { |i| "[##{900_000 + i}]" }.join(' ')
+    queries = []
+    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql] =~ /FROM [`"]?issues[`"]?/ }
+    result  = nil
+    ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
+      result = scrub(mime(:subject => "#{tags} Hallo", :message_id => 'tags@x'))
+    end
+
+    assert_equal 'Hallo', Mail.read_from_string(result.mime).subject
+    assert_empty queries, queries.first(3).join("\n")
+  end
+
+  def test_deeply_nested_subject_tags_are_removed_completely
+    nested = ('[#' * 60) + @foreign.id.to_s + (']' * 60)
+    result = scrub(mime(:subject => "#{nested} Hallo", :message_id => 'nested-deep@x'))
+
+    assert_no_match(/#\d/, Mail.read_from_string(result.mime).subject.to_s)
+  end
+
+  def test_a_few_subject_tags_are_looked_up_together
+    tags    = [@local.id, @foreign.id, 900_001].map { |id| "[##{id}]" }.join(' ')
+    queries = []
+    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql] =~ /FROM [`"]?issues[`"]? WHERE/ }
+    result  = nil
+    ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
+      result = scrub(mime(:subject => "#{tags} Hallo", :message_id => 'few@x'))
+    end
+
+    assert_equal "[##{@local.id}] Hallo", Mail.read_from_string(result.mime).subject
+    assert_operator queries.size, :<=, 2, queries.join("\n")
+  end
+
   # --- switch and moved tickets ----------------------------------------------
 
   # Off (the default for existing installs): a foreign marker still wins, as
