@@ -30,7 +30,8 @@
   Skipped-Ordner. Message-IDs ohne spitze Klammern, verschachtelte Tags wie `[#[#4]4]` und
   Forum-Antwort-Tags (`[Forum - msg45]`, über die eine Mail in ein Forenthema schreiben konnte) sind
   ebenfalls abgedeckt. Die am Ticket angehängte `.eml` behält die Header so, wie sie angekommen sind.
-  Ein Betreff mit mehr als 20 Ticketnummern verliert alle Tags ohne Nachschlagen, ein präparierter
+  Ein Betreff mit mehr als 20 Ticketnummern, mehr als fünf Ebenen Verschachtelung oder mehr als 998
+  Zeichen verliert alle Tags (und eckigen Klammern) ohne Nachschlagen, ein präparierter
   Betreff kann den Abruf also nicht aufhalten; ebenso werden `In-Reply-To`/`References` mit mehr als
   50 Message-IDs ungeprüft verworfen.
   Ein Ticket, das über ein Postfach eröffnet und später in ein anderes Projekt verschoben wurde,

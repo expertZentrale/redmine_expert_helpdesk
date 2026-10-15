@@ -266,6 +266,13 @@ module RedmineExpertHelpdesk
     # looking at. A real reply carries one or two.
     MAX_SUBJECT_TAGS = 20
 
+    # Bounds for the string work itself, independent of the ids: one id
+    # nested a thousand times is one lookup but a thousand passes. RFC 5322
+    # caps a header line at 998 characters; nesting deeper than a few levels
+    # does not come out of any mail client.
+    MAX_SUBJECT_LENGTH = 998
+    MAX_SUBJECT_PASSES = 5
+
     # MailHandler's own pattern, so "[Projekt - Ticket #12]" is caught as well
     # as "[#12]". A tag naming a ticket that does not exist is removed for the
     # same reason as above. Repeated until nothing changes: removing an inner
@@ -273,14 +280,17 @@ module RedmineExpertHelpdesk
     #
     # The subject is the sender's to write, so its tags are looked up in one
     # query per pass, and only MAX_SUBJECT_TAGS distinct numbers in total.
-    # Beyond that every tag goes without a lookup: the mail becomes a new
-    # ticket, but no marker of another project can survive.
+    # Beyond that, or past MAX_SUBJECT_LENGTH or MAX_SUBJECT_PASSES, the
+    # subject is defanged instead: the mail becomes a new ticket, but no
+    # marker of another project can survive.
     def scrub_subject(subject, foreign)
+      return defang(subject, :strip_tags => false) if subject.length > MAX_SUBJECT_LENGTH
+
       issues = {}
-      loop do
+      MAX_SUBJECT_PASSES.times do
         subject = subject.gsub(MESSAGE_REPLY_SUBJECT_RE, '')
         ids     = subject.scan(MailHandler::ISSUE_REPLY_SUBJECT_RE).map { |m| m.first.to_i }.uniq - issues.keys
-        return strip_all_tags(subject) if issues.size + ids.size > MAX_SUBJECT_TAGS
+        return defang(subject) if issues.size + ids.size > MAX_SUBJECT_TAGS
 
         found = Issue.where(:id => ids).index_by(&:id)
         ids.each { |id| issues[id] = found[id] }
@@ -293,20 +303,23 @@ module RedmineExpertHelpdesk
             ''
           end
         end
-        break subject.gsub(/\s{2,}/, ' ').strip if cleaned == subject
+        return subject.gsub(/\s{2,}/, ' ').strip if cleaned == subject
 
         subject = cleaned
       end
+      defang(subject)
     end
 
-    # Pure string work, no lookups; every pass shortens the subject.
-    def strip_all_tags(subject)
-      loop do
-        cleaned = subject.gsub(MESSAGE_REPLY_SUBJECT_RE, '').gsub(MailHandler::ISSUE_REPLY_SUBJECT_RE, '')
-        return cleaned.gsub(/\s{2,}/, ' ').strip if cleaned == subject
-
-        subject = cleaned
+    # No lookups, no loop: every thread marker MailHandler knows - ticket tags
+    # and forum tags alike - needs square brackets, so without them nothing in
+    # the subject can thread anywhere. Within MAX_SUBJECT_LENGTH the tags are
+    # first removed in a single pass, so the subject stays readable; an
+    # overlong one only loses its brackets, keeping the regexes off it.
+    def defang(subject, strip_tags: true)
+      if strip_tags
+        subject = subject.gsub(MESSAGE_REPLY_SUBJECT_RE, '').gsub(MailHandler::ISSUE_REPLY_SUBJECT_RE, '')
       end
+      subject.delete('[]').gsub(/\s{2,}/, ' ').strip
     end
   end
 end

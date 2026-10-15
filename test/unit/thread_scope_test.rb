@@ -355,7 +355,7 @@ class ThreadScopeTest < ActiveSupport::TestCase
   # A subject full of ticket numbers costs one lookup per pass, and above the
   # limit none: every tag is removed, the mail becomes a new ticket.
   def test_many_subject_tags_are_removed_without_lookups
-    tags    = (1..200).map { |i| "[##{900_000 + i}]" }.join(' ')
+    tags    = (1..30).map { |i| "[##{900_000 + i}]" }.join(' ')
     queries = []
     counter = ->(*, payload) { queries << payload[:sql] if payload[:sql] =~ /FROM [`"]?issues[`"]?/ }
     result  = nil
@@ -371,7 +371,49 @@ class ThreadScopeTest < ActiveSupport::TestCase
     nested = ('[#' * 60) + @foreign.id.to_s + (']' * 60)
     result = scrub(mime(:subject => "#{nested} Hallo", :message_id => 'nested-deep@x'))
 
-    assert_no_match(/#\d/, Mail.read_from_string(result.mime).subject.to_s)
+    assert_no_marker Mail.read_from_string(result.mime).subject.to_s
+  end
+
+  def assert_no_marker(subject)
+    assert_no_match MailHandler::ISSUE_REPLY_SUBJECT_RE, subject
+    assert_no_match RedmineExpertHelpdesk::ThreadScope::MESSAGE_REPLY_SUBJECT_RE, subject
+  end
+
+  # One id nested many times: a single lookup, but every pass would expose
+  # the next tag. The pass limit stops it; no marker survives, nothing is
+  # related or written into the foreign ticket.
+  def test_repeated_id_nesting_is_bounded
+    # Short enough to stay under MAX_SUBJECT_LENGTH, so the pass limit is
+    # what stops it.
+    nested = ('[#' * 100) + ("#{@foreign.id}]" * 100)
+    assert_operator nested.length, :<, RedmineExpertHelpdesk::ThreadScope::MAX_SUBJECT_LENGTH
+    result = nil
+    elapsed = Benchmark.realtime { result = scrub(mime(:subject => "#{nested} Hallo", :message_id => 'rep@x')) }
+
+    assert_no_marker Mail.read_from_string(result.mime).subject.to_s
+    assert_operator elapsed, :<, 2.0
+  end
+
+  # Longer than a header line may be: defanged without looking at it, and
+  # without a single issue query.
+  def test_overlong_subject_is_defanged
+    tags    = (1..200).map { |i| "[##{900_000 + i}]" }.join(' ') + " [##{@foreign.id}] Hallo"
+    queries = []
+    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql] =~ /FROM [`"]?issues[`"]?/ }
+    result  = nil
+    ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
+      result = scrub(mime(:subject => tags, :message_id => 'long@x'))
+    end
+
+    assert_no_marker Mail.read_from_string(result.mime).subject.to_s
+    assert_empty result.foreign_issues
+    assert_empty queries
+  end
+
+  def test_defang_removes_forum_markers_too
+    out = RedmineExpertHelpdesk::ThreadScope.new(@project).send(:defang, '[Board - msg45] [#1] Hallo')
+
+    assert_no_marker out
   end
 
   def test_a_few_subject_tags_are_looked_up_together
