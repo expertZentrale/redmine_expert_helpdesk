@@ -137,7 +137,9 @@ sagen, zu welchem Ticket sie gehört:
 
 ```mermaid
 flowchart TD
-  IN["Mail nach den Filtern"] --> SC["Marker entfernen, die auf ein Ticket eines<br/>ANDEREN Projekts oder auf kein Ticket zeigen<br/>(Unterprojekte zählen als andere Projekte)"]
+  IN["Mail nach den Filtern"] --> SW{"<i>Antworten nur im Projekt<br/>des Postfachs zuordnen</i> an?"}
+  SW -- ja --> SC["Marker entfernen, die auf ein Ticket eines<br/>ANDEREN Projekts oder auf kein Ticket zeigen<br/>(Unterprojekte zählen als andere Projekte)"]
+  SW -- "nein (Standard)" --> AGE
   SC --> AGE{"Referenziertes Ticket dieses Projekts<br/>geschlossen und älter als das Limit?<br/><i>Max. Alter (Tage)</i>"}
   AGE -- ja --> STRIP["Alle Marker entfernen"]
   AGE -- nein --> TAG{"Mail antwortet auf eine protokollierte<br/>Helpdesk-Mail, Betreff ohne Ticket-Tag?"}
@@ -153,10 +155,12 @@ flowchart TD
   classDef skip fill:#f6ead6,stroke:#9a6412,color:#3d2806
 ```
 
-- **Nur das eigene Projekt des Postfachs.** Ohne den ersten Schritt würde der `MailHandler` einem
-  Marker in jedes Projekt folgen, und jeder, der eine Ticketnummer kennt, könnte in dieses Ticket
-  schreiben. Marker des eigenen Projekts bleiben erhalten, die normale Antwort des Kunden findet
-  ihr Ticket also weiterhin. Die am Ticket angehängte `.eml` behält Betreff und Header genau so, wie
+- **Nur das eigene Projekt des Postfachs** (experimentell, standardmäßig aus). Ohne diesen Schritt
+  folgt der `MailHandler` einem Marker in jedes Projekt, und jeder, der eine Ticketnummer kennt, kann
+  in dieses Ticket schreiben – so verhält es sich, solange der Schalter aus ist. Marker des eigenen
+  Projekts bleiben erhalten, die normale Antwort des Kunden findet ihr Ticket also weiterhin. Ein
+  Ticket, das über dieses Postfach eröffnet und später in ein anderes Projekt verschoben wurde, zählt
+  ebenfalls als eigenes Projekt. Die am Ticket angehängte `.eml` behält Betreff und Header genau so, wie
   sie angekommen sind.
 - **Max. Alter (Tage)** erzwingt ein neues Ticket für eine Antwort auf ein seit Langem
   geschlossenes Ticket. `0` oder leer schaltet das Limit ab.
@@ -212,8 +216,10 @@ flowchart TD
 ## 6. Eine Mail, mehrere Projekte
 
 Kunden schreiben oft an mehrere Helpdesk-Adressen gleichzeitig (An, CC oder BCC), und Kollegen in
-einem Projekt wissen nicht unbedingt, dass ein anderes Projekt beteiligt ist. Jedes Postfach
-behandelt seine Kopie nur für sein eigenes Projekt.
+einem Projekt wissen nicht unbedingt, dass ein anderes Projekt beteiligt ist. Mit *Antworten nur
+im Projekt des Postfachs zuordnen* behandelt jedes Postfach seine Kopie nur für sein eigenes
+Projekt. Alles in diesem Abschnitt gilt nur dann; solange der Schalter aus ist, folgt jede Kopie
+ihren Markern in das referenzierte Ticket, wie bisher.
 
 ```mermaid
 flowchart LR
@@ -339,6 +345,7 @@ flowchart LR
 | Autoresponder aktiv, Betreff, Text | Postfach | Bestätigungsmail für ein neues Ticket | [5](#5-was-mit-dem-ticket-passiert), [7](#7-ausgehende-mails) |
 | KI-Zusammenfassungen aktivieren, KI-Zusammenfassungen für dieses Projekt erzeugen | Zentral + Projekt | Zusammenfassung als Notiz im Hintergrund | [5](#5-was-mit-dem-ticket-passiert) |
 | Vollständigkeitsprüfung aktivieren, Modus | Zentral + Projekt | Rückfrage, wenn der Erstmail Informationen fehlen | [5](#5-was-mit-dem-ticket-passiert), [7](#7-ausgehende-mails) |
+| Antworten nur im Projekt des Postfachs zuordnen | Zentral, *Experimentell* | Eine Mail setzt nur Tickets im Projekt des empfangenden Postfachs fort; fremde Marker werden entfernt, die Tickets verknüpft | [4](#4-antwort-oder-neues-ticket), [6](#6-eine-mail-mehrere-projekte) |
 | Ticket-Beziehungen zwischen Projekten erlauben | Redmine, *Tickets* | Tickets verschiedener Projekte können verknüpft werden | [6](#6-eine-mail-mehrere-projekte) |
 | Versandweg | Postfach | *Backend des Postfachs*, *Microsoft Graph API* oder *SMTP (Redmine-Standard)* | [7](#7-ausgehende-mails) |
 | Abweichender Absender (From), Reply-To auf die Postfach-Adresse setzen | Postfach (SMTP-Weg) | Absenderadresse beim Versand über *SMTP (Redmine-Standard)* | [7](#7-ausgehende-mails) |

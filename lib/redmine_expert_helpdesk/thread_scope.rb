@@ -16,9 +16,17 @@
 #
 # The tickets whose markers were removed are returned, so the caller can relate
 # the resulting ticket to them.
+#
+# Opt-in (plugin setting thread_scope_enabled, experimental): it changes which
+# ticket an incoming mail lands in, so an existing installation keeps the old
+# matching until an admin switches it on.
 module RedmineExpertHelpdesk
   class ThreadScope
     Result = Struct.new(:mime, :foreign_issues, :changed)
+
+    def self.enabled?(settings = Setting.plugin_redmine_expert_helpdesk)
+      settings['thread_scope_enabled'].to_s == '1'
+    end
 
     def initialize(project)
       @project = project
@@ -63,11 +71,17 @@ module RedmineExpertHelpdesk
       issues.find { |i| local?(i) } || issues.first
     end
 
-    private
-
+    # A ticket of this project, or one that was opened through a mailbox of
+    # this project and moved elsewhere since. The customer keeps answering the
+    # address they wrote to; their reply belongs on the moved ticket, not in a
+    # new one left behind in the old project.
     def local?(issue)
-      issue.project_id == @project.id
+      return true if issue.project_id == @project.id
+
+      HelpdeskTicketInfo.find_by(:issue_id => issue.id)&.helpdesk_mailbox&.project_id == @project.id
     end
+
+    private
 
     # Read through the mail gem's parsed accessors, exactly as MailHandler does:
     # they also return an id written without angle brackets, which Redmine's

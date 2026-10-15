@@ -520,13 +520,20 @@ Mail an die Adresse von Projekt B zu einem Ticket aus Projekt A landet im Ticket
 Helpdesk Mails ohne Berechtigungsprüfung übergibt, kann jeder, der eine Ticketnummer kennt, in dieses
 Ticket schreiben, auch in privaten Projekten.
 
-Das Plugin hält deshalb jedes Postfach in seinem eigenen Projekt. Bevor der `MailHandler` eine Mail
-sieht, wird jeder Thread-Marker entfernt, der auf ein Ticket eines **anderen** Projekts zeigt –
+Das Plugin kann jedes Postfach in seinem eigenen Projekt halten. Das ist **experimentell und
+standardmäßig aus**, weil es ändert, in welchem Ticket eine eingehende Mail landet: einschalten unter
+*Administration → Plugins → Redmine expert Helpdesk → Konfigurieren → Experimentell → Antworten nur
+im Projekt des Postfachs zuordnen*, am besten nach einem Versuch in einem Testprojekt. Solange der
+Schalter aus ist, werden Mails zugeordnet wie bisher, und der Rest dieses Abschnitts gilt nicht.
+
+Mit eingeschaltetem Schalter wird, bevor der `MailHandler` eine Mail sieht, jeder Thread-Marker entfernt, der auf ein Ticket eines **anderen** Projekts zeigt –
 `[#id]` und `[Projekt - Tracker #id]` im Betreff, Redmine-Benachrichtigungs-IDs und protokollierte
 Helpdesk-Message-IDs in `In-Reply-To`/`References`. Ein Tag auf ein nicht existierendes Ticket wird
 ebenfalls entfernt, damit die Mail zum Ticket wird statt abgelehnt zu werden. Marker auf ein Ticket
 des eigenen Projekts bleiben unverändert, normale Kundenantworten funktionieren also weiter.
-Unterprojekte zählen als andere Projekte.
+Unterprojekte zählen als andere Projekte. Ein Ticket, das über ein Postfach eröffnet und später in
+ein anderes Projekt verschoben wurde, zählt weiterhin als eigenes, die Antworten des Kunden folgen
+ihm also.
 
 In der Praxis:
 

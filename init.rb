@@ -118,6 +118,7 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'default_smtp_port'     => '587',
              'default_smtp_security' => 'starttls',
              'awaiting_agent_enabled'   => '1',
+             'thread_scope_enabled'     => '0',
              'inline_images_enabled'    => '1',
              # Colours of the customer-facing block in the edit form. The constants
              # behind them are the real fallback — see ReplyBox::DEFAULT_BOX_COLOR.

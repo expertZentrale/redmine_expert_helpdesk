@@ -16,7 +16,7 @@
 
 ### Behoben
 
-- **Ein Postfach führt nur noch Tickets seines eigenen Projekts fort.** Redmines `MailHandler`
+- **Ein Postfach führt nur noch Tickets seines eigenen Projekts fort** – zuschaltbar, experimentell. Redmines `MailHandler`
   folgt einem `[#id]`-Betrefftag oder einer Redmine-/Helpdesk-Message-ID in
   `In-Reply-To`/`References` in jedes Projekt, und die Thread-Suche des Plugins durchsuchte ebenfalls
   alle Projekte. Eine Mail an die Adresse von Projekt B zu einem Ticket aus Projekt A wurde deshalb
@@ -30,9 +30,15 @@
   Skipped-Ordner. Message-IDs ohne spitze Klammern, verschachtelte Tags wie `[#[#4]4]` und
   Forum-Antwort-Tags (`[Forum - msg45]`, über die eine Mail in ein Forenthema schreiben konnte) sind
   ebenfalls abgedeckt. Die am Ticket angehängte `.eml` behält die Header so, wie sie angekommen sind.
+  Ein Ticket, das über ein Postfach eröffnet und später in ein anderes Projekt verschoben wurde,
+  erhält die Antworten des Kunden weiterhin. **Standardmäßig aus**, weil es ändert, in welchem Ticket
+  eine Mail landet: einschalten unter *Administration → Plugins → Redmine expert Helpdesk →
+  Konfigurieren → Experimentell → Antworten nur im Projekt des Postfachs zuordnen*; solange es aus
+  ist, werden Mails zugeordnet wie bisher.
 - **Dieselbe Mail landet nicht mehr doppelt in einem Projekt.** Eine Mail an zwei Postfächer eines
   Projekts, oder an zwei Projekte, von denen eines dem Thread des anderen folgte, wurde je Postfach
-  einmal ergänzt. Eine Message-ID, die das Projekt schon erhalten hat, wird jetzt übersprungen; ein
+  einmal ergänzt. Mit projektbezogener Zuordnung wird eine Message-ID, die das Projekt schon
+  erhalten hat, übersprungen; ein
   anderes Projekt, das dieselbe Mail erhält, ist kein Duplikat und bekommt sein eigenes Ticket.
 - **Antworten auf Agentenantworten werden wieder per Message-ID gefunden.** Ausgehende Nachrichten
   speichern ihre Message-ID mit spitzen Klammern, eingehende ohne; die Thread-Suche suchte nur die
@@ -41,7 +47,11 @@
 
 ### Hinzugefügt
 
-- **Projektübergreifende Verweise für eine Mail an mehrere Projekte.** Das Ticket wird mit dem
+- **Experimentelle Einstellungen, gerahmt.** Die Plugin-Einstellungen erhalten einen Abschnitt
+  *Experimentell* mit gelbem Warnrahmen für die Schalter, die ändern, wie Mails zugeordnet oder
+  zugestellt werden.
+- **Projektübergreifende Verweise für eine Mail an mehrere Projekte** (bei eingeschalteter
+  projektbezogener Zuordnung). Das Ticket wird mit dem
   Ticket des anderen Projekts in Beziehung gesetzt (*verwandt mit*) – mit dem, auf das die
   entfernten Marker zeigten, und mit dem, das ein anderes Projekt aus derselben Mail angelegt hat. Einem entfernten Marker wird nur
   in ein Projekt mit Helpdesk-Modul gefolgt, da jeder eine Ticketnummer in einen Betreff schreiben

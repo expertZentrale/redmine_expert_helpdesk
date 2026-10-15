@@ -43,11 +43,14 @@ class ThreadScopeTest < ActiveSupport::TestCase
                                        :unknown_user_mode => 'accept')
     @with_cross = Setting.cross_project_issue_relations
     Setting.cross_project_issue_relations = '1'
+    @settings_before = Setting.plugin_redmine_expert_helpdesk
+    Setting.plugin_redmine_expert_helpdesk = @settings_before.merge('thread_scope_enabled' => '1')
     @foreign.project.enable_module!(:helpdesk)
   end
 
   def teardown
     Setting.cross_project_issue_relations = @with_cross
+    Setting.plugin_redmine_expert_helpdesk = @settings_before
   end
 
   def mime(subject:, message_id:, in_reply_to: nil, references: nil, from: 'stranger@example.org',
@@ -287,6 +290,31 @@ class ThreadScopeTest < ActiveSupport::TestCase
     assert eml, 'no .eml attached'
     assert_equal "[##{@foreign.id}] Bitte an Team A", Mail.read_from_string(File.binread(eml.diskfile)).subject
     assert_equal "[##{@foreign.id}] Bitte an Team A", HelpdeskMessage.find_by(:issue_id => created.id).subject
+  end
+
+  # --- switch and moved tickets ----------------------------------------------
+
+  # Off (the default for existing installs): a foreign marker still wins, as
+  # it always did - the mail is a note on the other project's ticket.
+  def test_switched_off_foreign_tag_continues_the_foreign_ticket
+    Setting.plugin_redmine_expert_helpdesk = @settings_before.merge('thread_scope_enabled' => '0')
+    result = run_mail(mime(:subject => "[##{@foreign.id}] Bitte an Team A", :message_id => 'off@x',
+                           :from => 'jsmith@somenet.foo'), 'off@x')
+
+    assert_equal [@foreign.id], result.updated_issues, result.errors.inspect
+    assert_empty result.created_issues
+  end
+
+  # A ticket opened through this mailbox and moved to another project since:
+  # the customer's reply still belongs on it.
+  def test_ticket_moved_away_keeps_receiving_replies
+    HelpdeskTicketInfo.where(:issue_id => @foreign.id).delete_all
+    HelpdeskTicketInfo.create!(:issue_id => @foreign.id, :helpdesk_mailbox_id => @mailbox.id)
+
+    assert_not scrub(mime(:subject => "Re: [##{@foreign.id}] Drucker", :message_id => 'a@x')).changed
+    result = run_mail(mime(:subject => "Re: [##{@foreign.id}] Drucker", :message_id => 'moved@x',
+                           :from => 'jsmith@somenet.foo'), 'moved@x')
+    assert_equal [@foreign.id], result.updated_issues, result.errors.inspect
   end
 
   def test_message_id_variants
