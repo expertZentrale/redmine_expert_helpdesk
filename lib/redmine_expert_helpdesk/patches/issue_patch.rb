@@ -116,8 +116,9 @@ module RedmineExpertHelpdesk
       # Am Modell (after_save), damit auch Sammel-Aenderungen (Bulk-Update) und
       # API-/Skript-Aenderungen erfasst werden, nicht nur Einzel-Updates ueber den
       # Controller. Fehler duerfen das Speichern nicht abbrechen.
-      # Set by Handover#call on a ticket that is not final yet.
-      attr_accessor :helpdesk_skip_kb_ingest
+      # Set by Handover#call on a ticket that is not final yet: no knowledge-base
+      # ingest, and the notes it had when committed (Handover.undo).
+      attr_accessor :helpdesk_skip_kb_ingest, :helpdesk_handover_journal_ids
 
       def helpdesk_enqueue_kb_ingest
         return unless saved_change_to_status_id? && closed?

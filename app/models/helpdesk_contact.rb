@@ -52,10 +52,14 @@ class HelpdeskContact < HelpdeskApplicationRecord
 
   # "Last ticket" in the customer list: the later of the contact's last mail
   # and the creation of the newest ticket linked to them - a hand-over ticket
-  # has no mail yet. Reads the list's preloaded associations;
+  # has no mail yet. The list passes +newest_linked+ from one grouped query
+  # for the whole page instead of loading every linked ticket;
   # HelpdeskContactsController::LAST_TICKET_SQL sorts by the same rule.
-  def last_ticket_at
-    [helpdesk_messages.map(&:sent_at).compact.max,
-     helpdesk_ticket_infos.map { |ti| ti.issue&.created_on }.compact.max].compact.max
+  def last_ticket_at(newest_linked = newest_linked_ticket_at)
+    [helpdesk_messages.map(&:sent_at).compact.max, newest_linked].compact.max
+  end
+
+  def newest_linked_ticket_at
+    Issue.where(:id => helpdesk_ticket_infos.select(:issue_id)).maximum(:created_on)
   end
 end

@@ -207,8 +207,8 @@ class HelpdeskRepliesController < ApplicationController
 
     render :json => { :success => true, :helpdesk_message_id => hd_msg.id, :handovers => handover_json }
   rescue RedmineExpertHelpdesk::MailProvider::ProviderError => e
-    undo_handovers(created)
-    render :json => { :success => false, :error => e.message }, :status => :unprocessable_entity
+    render :json => { :success => false, :error => failed_with(e, undo_handovers(created, handovers)) },
+           :status => :unprocessable_entity
   rescue StandardError => e
     # Once the mail is out, the hand-over stays: that mail left the other
     # project's address out, so removing its ticket would leave the team with
@@ -220,8 +220,8 @@ class HelpdeskRepliesController < ApplicationController
                         :warning => l(:warning_helpdesk_reply_not_recorded) }
       return
     end
-    undo_handovers(created)
-    render :json => { :success => false, :error => e.message }, :status => :unprocessable_entity
+    render :json => { :success => false, :error => failed_with(e, undo_handovers(created, handovers)) },
+           :status => :unprocessable_entity
   end
 
   private
@@ -235,13 +235,27 @@ class HelpdeskRepliesController < ApplicationController
   end
 
   # The agent sees an error and sends again, so a hand-over that went through
-  # before the mail failed would otherwise be created twice.
-  def undo_handovers(issues)
-    Array(issues).each do |issue|
-      issue.destroy
+  # before the mail failed would otherwise be created twice. A ticket the
+  # other team has already worked on stays (Handover.undo) and is final now;
+  # returns those as [ticket, mailbox] pairs for the error message.
+  def undo_handovers(issues, mailboxes)
+    kept = Array(issues).zip(Array(mailboxes)).reject do |issue, _|
+      RedmineExpertHelpdesk::Handover.undo(issue)
     rescue StandardError => e
       Rails.logger.error "Helpdesk handover: ##{issue.id} could not be removed after a failed send: #{e.message}"
+      false
     end
+    finish_handovers(kept.map(&:first), kept.map(&:last)) if kept.any?
+    kept
+  end
+
+  # The error, and the hand-overs that stay - so the agent leaves their
+  # addresses out when sending again.
+  def failed_with(error, kept)
+    return error.message if kept.empty?
+
+    "#{error.message} #{l(:text_helpdesk_handover_kept_after_failure,
+                          :targets => RedmineExpertHelpdesk::InitMailer.handover_list(kept))}"
   end
 
   def build_recipients(addresses_str)

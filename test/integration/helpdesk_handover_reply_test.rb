@@ -12,12 +12,14 @@ class HelpdeskHandoverReplyTest < Redmine::IntegrationTest
   class FakeTransport
     attr_reader :sent
 
-    def initialize(fail_with: nil)
+    def initialize(fail_with: nil, before_fail: nil)
       @sent = []
       @fail_with = fail_with
+      @before_fail = before_fail
     end
 
     def send_mail_mime(mime)
+      @before_fail&.call
       raise @fail_with if @fail_with
 
       @sent << mime
@@ -125,6 +127,31 @@ class HelpdeskHandoverReplyTest < Redmine::IntegrationTest
     assert_includes transport.sent.first, 'kunde@example.com'
     assert_not_includes transport.sent.first, 'helpdesk-b@expert.local'
     assert_equal 1, data['handovers'].size
+  end
+
+  # The other team answered on the new ticket while the mail was still being
+  # sent: taking the hand-over back would delete their answer. It stays, is
+  # final, and the agent is told to leave its address out next time.
+  def test_failed_mail_keeps_a_handover_someone_worked_on
+    worked_on = lambda do
+      ticket = other_project_tickets.order(:id).last
+      ticket.init_journal(User.find(3), 'Wir kuemmern uns')
+      ticket.save(:validate => false)
+    end
+    RedmineExpertHelpdesk::MailProvider.stubs(:outgoing_for).returns(
+      FakeTransport.new(:fail_with => RedmineExpertHelpdesk::MailProvider::ProviderError.new('SMTP down'),
+                        :before_fail => worked_on)
+    )
+    RedmineExpertHelpdesk::Handover.expects(:finalize).once
+    before = other_project_tickets.count
+    data = reply(:reply_to => 'kunde@example.com', :reply_cc => 'helpdesk-b@expert.local', :handover_mode => 'note')
+
+    assert_response :unprocessable_entity
+    kept = other_project_tickets.order(:id).last
+    assert_equal before + 1, other_project_tickets.count
+    assert_includes kept.journals.map(&:notes), 'Wir kuemmern uns'
+    assert_includes data['error'], 'SMTP down'
+    assert_includes data['error'], "##{kept.id}"
   end
 
   # A failed mail takes the hand-over back, so sending again creates no twin.
@@ -276,6 +303,17 @@ class HelpdeskHandoverReplyTest < Redmine::IntegrationTest
 
     assert_equal created.created_on.to_i, cell.to_i
     assert_equal created.created_on.to_i, sorted.to_time.to_i
+  end
+
+  def test_customer_list_shows_the_date_of_a_handover_only_contact
+    reply(:reply_to => 'helpdesk-b@expert.local', :handover_mode => 'note')
+    Role.find(2).add_permission!(:manage_helpdesk_contacts)
+    get "/projects/#{@other.identifier}/helpdesk_contacts"
+
+    assert_response :success
+    assert_select 'table.list tbody tr', :text => /kunde@example.com/ do
+      assert_select 'td:nth-child(6)', :text => /\d/
+    end
   end
 
   # The customer's contact in the target project lists the handed-over

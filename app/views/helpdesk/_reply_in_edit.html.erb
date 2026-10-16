@@ -757,9 +757,10 @@ function hdParseList(value) {
         });
         var errBox = document.getElementById('hd-send-error');
         errBox.innerHTML = '<span class="hd-err-icon">&#9888;</span>' +
-                           '<span class="hd-err-text"><strong><%= j(l(:error_helpdesk_reply_failed, :message => "")) %></strong>' +
-                           err.message + '</span>' +
+                           '<span class="hd-err-text"><strong><%= j(l(:error_helpdesk_reply_failed, :message => "")) %></strong></span>' +
                            '<button class="hd-err-close" onclick="this.parentNode.style.display=\'none\'" title="Schlie&szlig;en">&times;</button>';
+        // As text: the message carries a mail server's answer and project names.
+        errBox.querySelector('.hd-err-text').appendChild(document.createTextNode(err.message));
         errBox.style.display = 'flex';
         errBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });

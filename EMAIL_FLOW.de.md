@@ -347,7 +347,9 @@ flowchart TD
   bevor etwas übergeben wird. Ein bewusst geleertes An bleibt leer: Steht nur die Adresse von B in
   CC, wird nichts gemailt, auch nicht an den Kunden.
 - **Schlägt die Mail an die übrigen Empfänger fehl**, wird das Ticket in B wieder entfernt, ein
-  erneutes Senden legt es also nicht doppelt an. Ist die Mail einmal raus, bleibt das Ticket, auch
+  erneutes Senden legt es also nicht doppelt an – es sei denn, in B hat schon jemand daran
+  gearbeitet (eine Änderung, eine Notiz, gebuchte Zeit): Dann bleibt es, und die Fehlermeldung nennt
+  es, damit der Bearbeiter beim erneuten Senden die Adresse von B weglässt. Ist die Mail einmal raus, bleibt das Ticket, auch
   wenn das Protokollieren der Antwort danach fehlschlägt; der Bearbeiter wird gewarnt, nicht erneut
   zu senden. Die Benachrichtigung von B über das neue Ticket geht erst dann raus, nie für eine
   zurückgenommene Übergabe.

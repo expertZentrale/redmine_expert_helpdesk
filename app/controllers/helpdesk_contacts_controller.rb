@@ -64,9 +64,16 @@ class HelpdeskContactsController < ApplicationController
     order = (Array(sort_clause) + ['helpdesk_contacts.email ASC']).join(', ')
     @contacts = scope
                   .order(Arel.sql(order))
-                  .includes(:helpdesk_messages, :helpdesk_ticket_infos => :issue)
+                  .includes(:helpdesk_messages, :helpdesk_ticket_infos)
                   .limit(@per_page)
                   .offset(@contact_pages.offset)
+                  .to_a
+    # Creation date of each contact's newest linked ticket, for "Last ticket":
+    # one grouped query instead of loading their tickets.
+    @newest_linked = HelpdeskTicketInfo.joins(:issue)
+                                       .where(:helpdesk_contact_id => @contacts.map(&:id))
+                                       .group(:helpdesk_contact_id)
+                                       .maximum('issues.created_on')
   end
 
   def edit

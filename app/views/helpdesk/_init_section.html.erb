@@ -346,16 +346,41 @@
   };
 
   // Same split as InitMailer#split_addresses.
-  function addresses(id) {
-    var el = document.getElementById(id);
-    if (!el) return [];
-    return el.value.split(/[,;]/).map(function(a) { return a.trim().toLowerCase(); })
-             .filter(function(a, i, all) { return a && all.indexOf(a) === i; });
+  // Client twin of HelpdeskMessage.scan_tokens, like hdParseList in the
+  // reply form: a comma inside quotes or angle brackets separates nothing,
+  // so "Doe, Jane" <jane@doe.com> stays one recipient.
+  function tokens(value) {
+    var list = [], current = '', quoted = false, angled = false, escaped = false;
+    for (var i = 0; i < value.length; i++) {
+      var ch = value[i];
+      if (escaped) { current += ch; escaped = false; continue; }
+      if (ch === '\\') { escaped = true; }
+      else if (ch === '"') { quoted = !quoted; }
+      else if (ch === '<') { angled = true; }
+      else if (ch === '>') { angled = false; }
+      else if ((ch === ',' || ch === ';') && !quoted && !angled) { list.push(current); current = ''; continue; }
+      current += ch;
+    }
+    list.push(current);
+    return list.map(function(t) { return t.trim(); }).filter(function(t) { return t.length > 0; });
   }
 
   function bare(address) {
     var m = address.match(/<([^>]*)>/);
-    return (m ? m[1] : address).trim();
+    return (m ? m[1] : address).trim().toLowerCase();
+  }
+
+  // One recipient field as InitMailer#split_addresses sees it: unique by address.
+  function addresses(id) {
+    var el = document.getElementById(id);
+    if (!el) return [];
+    var seen = {};
+    return tokens(el.value).filter(function(t) {
+      var key = bare(t);
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
   }
 
   // What InitMailer will do with the recipients as they stand: hand-over
@@ -427,7 +452,7 @@
     warn.className = 'hd-init-box ' + (plan.blocked ? 'hd-init-box-warn' : 'hd-init-box-info');
 
     var customer = document.getElementById('hd-init-customer');
-    customer.textContent   = plan.customer ? T.customer.replace('%{address}', plan.customer) : '';
+    customer.textContent   = plan.customer ? T.customer.replace('%{address}', bare(plan.customer)) : '';
     // After a move the box above says it already.
     customer.style.display = plan.customer && plan.handovers.length && !plan.moved ? '' : 'none';
   }

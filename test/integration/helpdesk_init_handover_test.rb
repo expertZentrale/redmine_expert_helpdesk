@@ -175,6 +175,27 @@ class HelpdeskInitHandoverTest < Redmine::IntegrationTest
     assert_match(/^Cc: chef@example.com\r?$/, t.sent.first)
   end
 
+  # A comma inside a quoted display name or local part separates nothing.
+  def test_quoted_display_name_of_the_other_project_is_one_recipient
+    RedmineExpertHelpdesk::MailProvider.expects(:outgoing_for).never
+    before = other_count
+    create_ticket(:contact_email => '"Team, B" <helpdesk-b@expert.local>')
+
+    assert_equal before + 1, other_count
+    assert_nil flash[:error]
+  end
+
+  def test_quoted_display_name_of_the_customer_is_one_recipient
+    t = transport
+    issue = create_ticket(:contact_email => '"Mustermann, Max" <kunde@example.com>, "a,b"@example.com',
+                          :cc => 'helpdesk-b@expert.local')
+
+    assert_equal 'kunde@example.com', customer_of(issue)
+    assert_includes t.sent.first, '"Mustermann, Max" <kunde@example.com>'
+    assert_includes t.sent.first, '"a,b"@example.com'
+    assert_nil flash[:error]
+  end
+
   # Only Bcc left besides the hand-over: no mail without a To recipient.
   def test_only_bcc_left_sends_nothing
     RedmineExpertHelpdesk::MailProvider.expects(:outgoing_for).never

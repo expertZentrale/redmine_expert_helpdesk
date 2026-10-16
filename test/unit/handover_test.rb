@@ -330,6 +330,37 @@ class HandoverTest < ActiveSupport::TestCase
     assert_not_includes contact.issues(User.anonymous).to_a, issue
   end
 
+  # --- taking a hand-over back ----------------------------------------------
+
+  def test_undo_removes_an_untouched_ticket
+    issue = hand_over('note')
+
+    assert Handover.undo(issue)
+    assert_not Issue.exists?(issue.id)
+  end
+
+  # Visible in the target project the moment it is committed: someone there
+  # may already have answered, and deleting would take that with it.
+  def test_undo_keeps_a_ticket_someone_worked_on
+    issue = hand_over('note')
+    other = Issue.find(issue.id)
+    other.init_journal(User.find(3), 'Schon dran')
+    assert other.save(:validate => false)
+
+    assert_not Handover.undo(issue)
+    assert Issue.exists?(issue.id)
+  end
+
+  def test_undo_keeps_a_ticket_with_booked_time
+    issue = hand_over('note')
+    # Without validation: who may log time where is not under test.
+    TimeEntry.new(:project => @project_b, :issue => issue, :user => @agent, :author => @agent, :hours => 1,
+                  :spent_on => Date.today, :activity => TimeEntryActivity.first).save(:validate => false)
+
+    assert_not Handover.undo(issue)
+    assert Issue.exists?(issue.id)
+  end
+
   def test_unknown_mode_is_rejected
     assert_raises(Handover::Error) { hand_over('everything') }
   end

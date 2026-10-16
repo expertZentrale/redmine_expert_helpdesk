@@ -123,10 +123,46 @@ module RedmineExpertHelpdesk
         record_ai_drafted(issue, copies)
         ThreadScope.relate(issue, @source, 'Helpdesk handover') unless @bcc
       end
+      # The row and its notes as committed, for Handover.undo: a save callback
+      # (Redmine's or another plugin's) can write the new ticket once more and
+      # move lock_version past this instance. Anything later counts as
+      # someone's work, which keeps the ticket - the safe side.
+      issue.reload
+      issue.helpdesk_handover_journal_ids = issue.journals.pluck(:id)
       Rails.logger.info "Helpdesk handover: ##{@source.id} -> ##{issue.id} " \
                         "(#{project.identifier}, mode #{@mode}, by #{@user.login})"
       issue
     end
+
+    # Takes back a hand-over whose mail failed - unless the ticket has been
+    # worked on meanwhile. It is visible in the target project from the moment
+    # it is committed, and deleting it then would take another agent's notes
+    # or booked time with it. An edit moves lock_version; a note need not -
+    # within the second of creation Redmine's updated_on does not change and
+    # nothing is written to the row - so new notes are checked on their own.
+    # The row lock makes check and delete one step. Returns whether the ticket
+    # is gone.
+    def self.undo(issue)
+      removed = false
+      Issue.transaction do
+        current = Issue.lock.find_by(:id => issue.id)
+        if current.nil?
+          removed = true
+        elsif untouched?(current, issue)
+          current.destroy
+          removed = true
+        end
+      end
+      removed
+    end
+
+    def self.untouched?(current, issue)
+      current.lock_version == issue.lock_version &&
+        !Journal.where(:journalized_type => 'Issue', :journalized_id => issue.id)
+                .where.not(:id => Array(issue.helpdesk_handover_journal_ids)).exists? &&
+        !TimeEntry.where(:issue_id => issue.id).exists?
+    end
+    private_class_method :untouched?
 
     # The hand-over is final: what Handover#call held back happens now.
     def self.finalize(issue, mailbox)

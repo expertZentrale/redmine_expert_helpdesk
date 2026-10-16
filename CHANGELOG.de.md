@@ -16,6 +16,9 @@
 
 ### Behoben
 
+- **Anzeigenamen in Anführungszeichen in der Initialmail.** *Neues Helpdesk-Ticket* und *Kontakt
+  zuordnen* trennten die Empfängerfelder an jedem Komma, `"Doe, Jane" <jane@doe.com>` zerfiel also,
+  und die erste An-Adresse war nie gültig. Sie trennen jetzt wie das Antwortformular.
 - **Eine interne Notiz lässt sich speichern, nachdem eine Antwort angehalten wurde.** Schlug das
   Senden fehl oder hielt das Formular die Antwort wegen einer fehlenden Auswahl an, bewirkte das
   Abwählen der Mail, um nur die Notiz zu speichern, nichts: Redmines Schutz vor doppeltem Absenden
@@ -110,7 +113,9 @@
   Prozess abzuschalten (was Mails anderer Anfragen verschlucken konnte), und es kommt erst in die
   Wissensbasis, wenn die Übergabe endgültig ist. *Letztes Ticket* in der Kundenliste berücksichtigt
   auch verknüpfte Tickets: Ein Kontakt, der nur eine Übergabe erhalten hat, zeigt deren Datum statt
-  „–“, und die Sortierung folgt demselben Datum.
+  „–“, und die Sortierung folgt demselben Datum. Eine nach einer fehlgeschlagenen Mail
+  zurückgenommene Übergabe wird nur gelöscht, solange niemand daran gearbeitet hat; eine mit
+  Änderung, Notiz oder gebuchter Zeit bleibt, und die Fehlermeldung nennt sie.
 - **Projektübergreifende Verweise für eine Mail an mehrere Projekte** (bei eingeschalteter
   projektbezogener Zuordnung). Das Ticket wird mit dem
   Ticket des anderen Projekts in Beziehung gesetzt (*verwandt mit*) – mit dem, auf das die

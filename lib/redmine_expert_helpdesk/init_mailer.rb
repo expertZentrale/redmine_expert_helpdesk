@@ -84,9 +84,12 @@ module RedmineExpertHelpdesk
 
     private
 
-    # Kommagetrennte Adressliste in normalisierte Einzeladressen zerlegen
+    # One recipient field, split like the reply form's (HelpdeskMessage.scan_tokens):
+    # a comma inside quotes or angle brackets separates nothing, so
+    # "Doe, Jane" <jane@doe.com> stays one recipient. Unique by address.
     def split_addresses(value)
-      value.to_s.split(/[,;]/).map { |a| a.strip.downcase }.reject(&:blank?).uniq
+      HelpdeskMessage.scan_tokens(value).map(&:strip).reject(&:blank?)
+                     .uniq { |token| HelpdeskMessage.bare_address(token).downcase }
     end
 
     def take_out_handovers
@@ -122,11 +125,16 @@ module RedmineExpertHelpdesk
         raise Error, I18n.t(:error_helpdesk_init_no_to) if @send_mail && (@cc_list.any? || @bcc_list.any?)
         raise Error, I18n.t(@send_mail ? :error_helpdesk_init_no_recipient : :error_helpdesk_invalid_email)
       end
-      raise Error, I18n.t(:error_helpdesk_invalid_email) unless @to_list.first.match?(EMAIL_RE)
+      raise Error, I18n.t(:error_helpdesk_invalid_email) unless customer_address.match?(EMAIL_RE)
+    end
+
+    # The first To recipient, without a display name.
+    def customer_address
+      HelpdeskMessage.bare_address(@to_list.first).downcase
     end
 
     def link_contact
-      contact = HelpdeskContact.find_or_create_for(@to_list.first, @contact_name, @issue.project)
+      contact = HelpdeskContact.find_or_create_for(customer_address, @contact_name, @issue.project)
       HelpdeskTicketInfo.link!(@issue, contact, @mailbox)
       contact
     end
@@ -144,13 +152,20 @@ module RedmineExpertHelpdesk
       end
       created
     rescue StandardError => e
-      created.each do |issue, _|
-        issue.destroy
+      # Handover.undo keeps one the other team has worked on already; that one
+      # is final then, and the message names it.
+      kept = created.reject do |issue, _|
+        Handover.undo(issue)
       rescue StandardError => undo_error
         Rails.logger.error "Helpdesk handover: ##{issue.id} could not be removed: #{undo_error.message}"
+        false
       end
+      kept.each { |issue, mailbox| Handover.finalize(issue, mailbox) }
       Rails.logger.error "Helpdesk handover (initial mail) failed: #{e.class}: #{e.message}"
-      raise Error, I18n.t(:error_helpdesk_init_handover_failed, :message => e.message)
+      raise Error, I18n.t(:error_helpdesk_init_handover_failed, :message => e.message) if kept.empty?
+
+      raise Error, "#{I18n.t(:error_helpdesk_init_handover_failed_kept, :message => e.message)} " \
+                   "#{I18n.t(:text_helpdesk_handover_kept_after_failure, :targets => self.class.handover_list(kept))}"
     end
 
     # The source ticket records where the topic went, as a reply's note does.

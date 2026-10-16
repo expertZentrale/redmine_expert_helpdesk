@@ -240,7 +240,11 @@ nested registration would never fire in production.
   addresses out of To/Cc/Bcc (`Handover.split`, same parser as the recipient pill), requires
   `handover_mode` (`note`|`history`, nothing preselected in the form), creates the target tickets
   **before** the mail and destroys them again if the mail raises — the agent re-sends after an
-  error, and a surviving hand-over would then exist twice. Only failures *before* delivery undo it;
+  error, and a surviving hand-over would then exist twice. `Handover.undo` deletes only an
+  untouched ticket (row lock; `lock_version` as re-read after creation — a save callback may bump
+  it — **plus** no journals beyond `helpdesk_handover_journal_ids`, because a note within the
+  creation second writes nothing to the row on whole-second columns, plus no time entries);
+  a kept one is finalized and named in the error. Only failures *before* delivery undo it;
   until then the ticket is provisional: `issue.notify = false` (per issue — **not**
   `Mailer.with_deliveries`, which flips a process-wide flag and swallows other requests' mail) and
   `helpdesk_skip_kb_ingest` (a closed default status would put it into the knowledge base, where it
