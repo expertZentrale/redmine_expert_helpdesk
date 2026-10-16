@@ -181,7 +181,7 @@ that order is what makes `safe_to_stop` trustworthy across pods.
     controller takes participating helpdesk addresses out of the mail and creates the ticket there
     (`note` or `history` mode, chosen by the agent; private notes never go over), before the mail,
     undone only if the mail fails before delivery, and only while untouched (`Handover.undo`:
-    `lock_version` re-read after creation, no new journals, no time entries; kept ones are
+    `lock_version` and journals read inside the creation transaction, no new journals, no time entries; kept ones are
     finalized and named in the error). Until final the ticket is provisional
     (`issue.notify = false` — never `Mailer.with_deliveries`, a process-wide flag — and
     `helpdesk_skip_kb_ingest`); `Handover.finalize` notifies and enqueues the KB ingest. Bcc-only

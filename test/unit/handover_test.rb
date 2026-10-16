@@ -351,6 +351,24 @@ class HandoverTest < ActiveSupport::TestCase
     assert Issue.exists?(issue.id)
   end
 
+  # Work saved right as the creation commits - before Handover#call has
+  # returned - is someone's work, not part of the untouched baseline.
+  # Redmine's own after_create_commit callback stands in for that request.
+  def test_undo_baseline_is_taken_before_the_commit
+    project_b = @project_b
+    Issue.any_instance.stubs(:add_auto_watcher).with do
+      ticket = Issue.where(:project_id => project_b.id).order(:id).last
+      ticket.init_journal(User.find(3), 'Gleich nach dem Commit')
+      ticket.save(:validate => false)
+      true
+    end
+    issue = hand_over('note')
+
+    assert_includes issue.journals.reload.map(&:notes), 'Gleich nach dem Commit', 'the stand-in did not run'
+    assert_not Handover.undo(issue)
+    assert Issue.exists?(issue.id)
+  end
+
   def test_undo_keeps_a_ticket_with_booked_time
     issue = hand_over('note')
     # Without validation: who may log time where is not under test.

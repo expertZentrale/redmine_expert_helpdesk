@@ -122,13 +122,16 @@ module RedmineExpertHelpdesk
         link_contact(issue)
         record_ai_drafted(issue, copies)
         ThreadScope.relate(issue, @source, 'Helpdesk handover') unless @bcc
+        # The baseline for Handover.undo: the row and its notes as this
+        # transaction leaves them. Read here, not after the commit - another
+        # request may save its work the moment the ticket is visible, and
+        # read afterwards that work would count as untouched. Re-read rather
+        # than taken from this instance: a save callback (Redmine's or another
+        # plugin's) can write the new ticket once more and move lock_version
+        # past it.
+        issue.reload
+        issue.helpdesk_handover_journal_ids = issue.journals.pluck(:id)
       end
-      # The row and its notes as committed, for Handover.undo: a save callback
-      # (Redmine's or another plugin's) can write the new ticket once more and
-      # move lock_version past this instance. Anything later counts as
-      # someone's work, which keeps the ticket - the safe side.
-      issue.reload
-      issue.helpdesk_handover_journal_ids = issue.journals.pluck(:id)
       Rails.logger.info "Helpdesk handover: ##{@source.id} -> ##{issue.id} " \
                         "(#{project.identifier}, mode #{@mode}, by #{@user.login})"
       issue
