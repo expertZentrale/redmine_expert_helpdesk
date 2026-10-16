@@ -16,6 +16,10 @@
 
 ### Behoben
 
+- **Eine interne Notiz lässt sich speichern, nachdem eine Antwort angehalten wurde.** Schlug das
+  Senden fehl oder hielt das Formular die Antwort wegen einer fehlenden Auswahl an, bewirkte das
+  Abwählen der Mail, um nur die Notiz zu speichern, nichts: Redmines Schutz vor doppeltem Absenden
+  hatte den angehaltenen Versuch mitgezählt.
 - **Kontakt zuordnen prüft, ob der Bearbeiter das Ticket sehen darf.** Das Formular prüfte nur die
   Projektberechtigung; ein Bearbeiter, der nur eigene Tickets sehen darf, konnte so Beschreibung und
   Anhänge eines fremden Tickets per Mail verschicken – und mit der Übergabe kopieren –, indem er
@@ -102,7 +106,7 @@
   verknüpft – die Beziehung zeigte den Lesern des Ausgangstickets, wer das Thema noch erhalten hat.
   Text aus einem KI-Entwurf geht als eigene, entsprechend markierte Notiz über, mit einem Platzhalter
   in der Beschreibung, damit Wissensbasis und Antwortvorschläge des Zielprojekts ihn nicht als
-  Eingabe nehmen. Das vorläufige Ticket wird an sich selbst stummgeschaltet statt Mails für den ganzen
+  Eingabe nehmen; seine Bilder zeigen ebenfalls auf die Kopien. Das vorläufige Ticket wird an sich selbst stummgeschaltet statt Mails für den ganzen
   Prozess abzuschalten (was Mails anderer Anfragen verschlucken konnte), und es kommt erst in die
   Wissensbasis, wenn die Übergabe endgültig ist.
 - **Projektübergreifende Verweise für eine Mail an mehrere Projekte** (bei eingeschalteter

@@ -113,13 +113,14 @@ module RedmineExpertHelpdesk
         # Without validation like the mail path: a mandatory field of the
         # other project must not swallow the hand-over.
         issue.save(:validate => false) || raise(Error, issue.errors.full_messages.to_sentence)
-        relink_attachments(issue, copy_attachments(issue))
+        copies = copy_attachments(issue)
+        relink_attachments(issue, copies)
         # Inside the transaction: an exception here rolls the ticket back.
         # Committed already, it would be a ticket the caller never got to
         # undo, and the agent's retry would create it twice.
         record_origin(issue)
         link_contact(issue)
-        record_ai_drafted(issue)
+        record_ai_drafted(issue, copies)
         ThreadScope.relate(issue, @source, 'Helpdesk handover') unless @bcc
       end
       Rails.logger.info "Helpdesk handover: ##{@source.id} -> ##{issue.id} " \
@@ -188,9 +189,10 @@ module RedmineExpertHelpdesk
     # reads the description unconditionally, so inside it the model's own
     # prose would come back as input for the knowledge base and answer drafts.
     # Visible all the same, as notes of their own.
-    def record_ai_drafted(issue)
+    # Their images move to the copies like the description's.
+    def record_ai_drafted(issue, copies)
       @drafted.each do |text|
-        journal = Journal.new(:journalized => issue, :user => @user, :notes => text)
+        journal = Journal.new(:journalized => issue, :user => @user, :notes => remap(text, copies))
         journal.notify = false
         journal.save!
         HelpdeskAiDraftedJournal.create!(:journal_id => journal.id, :issue_id => issue.id, :user_id => @user.id)
@@ -221,12 +223,9 @@ module RedmineExpertHelpdesk
     # team may not see the source ticket, and the copies outlive it, so the
     # references move to the copies. (?!\d) keeps id 65 out of 653.
     def relink_attachments(issue, copies)
-      return if copies.empty? || issue.description.blank?
+      return if issue.description.blank?
 
-      text = issue.description.gsub(local_attachment_path) do
-        copy = copies[Regexp.last_match(2).to_i]
-        copy ? "#{Regexp.last_match(1)}#{copy.id}" : Regexp.last_match(0)
-      end
+      text = remap(issue.description, copies)
       return if text == issue.description
 
       # update_all, not update_column: inside the reply request update_column
@@ -237,6 +236,15 @@ module RedmineExpertHelpdesk
       # StaleObjectError - but nothing else that touches it later does.)
       Issue.where(:id => issue.id).update_all(:description => text)
       issue.reload
+    end
+
+    def remap(text, copies)
+      return text if copies.empty? || text.blank?
+
+      text.gsub(local_attachment_path) do
+        copy = copies[Regexp.last_match(2).to_i]
+        copy ? "#{Regexp.last_match(1)}#{copy.id}" : Regexp.last_match(0)
+      end
     end
 
     # An attachment path of this Redmine: relative, or under its own host,

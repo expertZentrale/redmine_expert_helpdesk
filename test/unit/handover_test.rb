@@ -176,6 +176,25 @@ class HandoverTest < ActiveSupport::TestCase
     assert_includes text, 'Eigene Notiz'
   end
 
+  # Images in a drafted note move to the copies too, in both modes.
+  def test_ai_drafted_notes_point_images_at_the_copies
+    image = attach(@source, 'shot.txt')
+    ref   = "!/attachments/download/#{image.id}/shot.txt!"
+    drafted = Journal.create!(:journalized => @source, :user => @agent, :notes => "Alt #{ref}")
+    HelpdeskAiDraftedJournal.create!(:journal_id => drafted.id, :issue_id => @source.id, :user_id => @agent.id)
+
+    [['history', 'Alt'], ['note', 'Neu']].each do |mode, marker|
+      issue = Handover.new(:source => @source, :mailbox => @target, :user => @agent, :mode => mode,
+                           :note => "Neu #{ref}", :attachments => [image], :contact => @contact,
+                           :ai_drafted => true).call
+      copy = issue.attachments.detect { |a| a.filename == 'shot.txt' }
+      note = issue.journals.detect { |j| j.notes.to_s.include?(marker) }
+
+      assert_includes note.notes, "/attachments/download/#{copy.id}/shot.txt", mode
+      assert_not_includes note.notes, "/attachments/download/#{image.id}/", mode
+    end
+  end
+
   def test_ai_drafted_note_goes_over_marked
     issue = Handover.new(:source => @source, :mailbox => @target, :user => @agent, :mode => 'note',
                          :note => 'Entwurf aus der KI', :contact => @contact, :ai_drafted => true).call

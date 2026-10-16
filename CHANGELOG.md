@@ -17,6 +17,9 @@
 
 ### Fixed
 
+- **An internal note can be saved after a reply was stopped.** When sending the reply failed, or
+  the form stopped it for a missing choice, unticking the mail to save the note alone did nothing:
+  Redmine's double-submit guard had counted the stopped attempt.
 - **Assign Contact checks that the agent may see the ticket.** The form checked the project
   permission only, so an agent restricted to their own tickets could mail out — and, with the
   hand-over, copy — another ticket's description and attachments by posting its id.
@@ -96,7 +99,7 @@
 - **Hand-over details.** A target reached by Bcc only is no longer related to the source ticket —
   the relation showed the source's readers who else got the topic. Text an AI draft wrote goes
   over as a note of its own, marked as such, with a placeholder in the description, so the target's
-  knowledge base and answer drafts do not take it as input. The provisional ticket is silenced on
+  knowledge base and answer drafts do not take it as input; its images point at the copies as well. The provisional ticket is silenced on
   itself instead of switching mail off for the whole process (which could swallow other requests'
   mail), and it enters the knowledge base only once the hand-over is final.
 - **Cross-project references for a mail that went to several projects** (with project-scoped
