@@ -16,6 +16,11 @@
 
 ### Behoben
 
+- **Eine fehlgeschlagene Initialmail eines neuen Tickets wird gemeldet.** Sie landete nur im Log,
+  und der Bearbeiter hielt sie für zugestellt; die Ticketseite zeigt den Fehler jetzt an.
+- **Die Helpdesk-Felder im Formular für neue Tickets überstehen ein Neuladen.** Ein Trackerwechsel
+  oder ein nicht speicherbares Ticket leerte sie, und der Haken *Als E-Mail an Kunden senden* blieb
+  danach wirkungslos.
 - **Ein Postfach führt nur noch Tickets seines eigenen Projekts fort** – zuschaltbar, experimentell. Redmines `MailHandler`
   folgt einem `[#id]`-Betrefftag oder einer Redmine-/Helpdesk-Message-ID in
   `In-Reply-To`/`References` in jedes Projekt, und die Thread-Suche des Plugins durchsuchte ebenfalls
@@ -77,6 +82,18 @@
   zuweisbar. Kontaktverläufe zeigen nur Tickets, die der Betrachter sehen darf. Jedes teilnehmende Projekt erhält ein
   Ticket, egal wie viele seiner Postfächer genannt sind; eine Antwort, nach der nur BCC-Empfänger übrig
   blieben, wird abgelehnt, bevor etwas übergeben wird.
+- **Übergabe aus einem neuen Ticket und aus *Kontakt zuordnen* (experimentell).** Die Initialmail
+  (*Neues Helpdesk-Ticket* und *Kontakt zuordnen* an einem Ticket ohne Kontakt) übergibt wie eine
+  Antwort: Die Helpdesk-Adresse eines teilnehmenden Projekts verlässt An/CC/BCC, und das Ticket wird
+  dort direkt angelegt. Zu wählen gibt es nichts – das andere Projekt erhält, was die Mail enthalten
+  hätte: Betreff, Text und alle Anhänge des Tickets. Die erste verbleibende An-Adresse wird Kunde,
+  das Postfach eines anderen Teams wird also nicht mehr Kunde des Tickets. Das Formular zeigt schon
+  beim Tippen, was passieren wird: welche Projekte das Ticket erhalten, wer Kunde wird, und eine
+  Warnung, wenn niemand in An übrig ist. Ein Haken verschiebt dann den ersten CC-Empfänger nach An;
+  ohne ihn wird das Speichern blockiert, weil weder gemailt noch übergeben würde. Stehen in An nur
+  Übergabe-Adressen, gibt es keine Mail und keinen Kunden, und das Formular sagt das. Schlägt die
+  Mail fehl, bleibt die Übergabe bestehen, und der Bearbeiter erfährt beides. Das Ausgangsticket
+  erhält eine Notiz mit den neuen Tickets (privat, wenn ein Ziel nur per BCC erreicht wurde).
 - **Projektübergreifende Verweise für eine Mail an mehrere Projekte** (bei eingeschalteter
   projektbezogener Zuordnung). Das Ticket wird mit dem
   Ticket des anderen Projekts in Beziehung gesetzt (*verwandt mit*) – mit dem, auf das die

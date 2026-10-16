@@ -1,19 +1,40 @@
 # Verknuepft einen Kundenkontakt mit einem Ticket und sendet optional eine initiale Mail.
 # Wird beim manuellen Zuordnen an bestehende Tickets und beim Erstellen neuer Tickets verwendet.
+#
+# Experimental hand-over (see Handover): with the mail switched on, the helpdesk
+# address of a participating project is taken out of To/Cc/Bcc and the ticket is
+# created there directly. It carries what the mail would have carried - the
+# mail text and every attachment of the ticket - so unlike a reply there is
+# nothing to choose. The first remaining To address is the customer.
 module RedmineExpertHelpdesk
   class InitMailer
+    EMAIL_RE = /\A[^@\s]+@[^@\s]+\z/.freeze
+
+    # The message is shown to the agent as it is.
+    class Error < StandardError; end
+
+    # What happened, for the caller's message. contact is nil when only
+    # hand-overs were left in To; handovers are [ticket, mailbox] pairs.
+    Result = Struct.new(:contact, :mailed, :handovers)
+
     def self.call(**kwargs)
       new(**kwargs).call
     end
 
+    # "Project B: #123, Project C: #124" for the agent's messages.
+    def self.handover_list(handovers)
+      handovers.map { |issue, mailbox| "#{mailbox.project.name}: ##{issue.id}" }.join(', ')
+    end
+
+    # move_cc: the agent ticked "move the first Cc recipient to To" - the form
+    # offers it when To is empty after the hand-over addresses left it.
     def initialize(issue:, contact_email:, mailbox:, user:,
                    contact_name: nil, send_mail: true, mail_body: nil,
-                   cc: nil, bcc: nil)
+                   cc: nil, bcc: nil, move_cc: false)
       @issue         = issue
       # contact_email darf eine kommagetrennte Liste sein; der erste Empfaenger
       # wird als Kundenkontakt verknuepft, alle erhalten die Mail.
       @to_list       = split_addresses(contact_email)
-      @contact_email = @to_list.first.to_s
       @cc_list       = split_addresses(cc)
       @bcc_list      = split_addresses(bcc)
       @contact_name  = contact_name.to_s.strip.presence
@@ -21,48 +42,44 @@ module RedmineExpertHelpdesk
       @user          = user
       @send_mail     = send_mail
       @mail_body     = mail_body.to_s.strip
+      @move_cc       = move_cc
+      @handovers     = []
+      @bcc_only      = []
     end
 
     def call
-      contact = HelpdeskContact.find_or_create_for(@contact_email, @contact_name, @issue.project)
-      HelpdeskTicketInfo.link!(@issue, contact, @mailbox)
-
       if @send_mail && @mailbox
-        message_id = generate_message_id(@mailbox.mailbox_address)
-        subject    = rendered_subject(contact)
-        body_html  = rendered_body(contact)
+        take_out_handovers
+        @to_list << @cc_list.shift if @move_cc && @to_list.empty? && @cc_list.any?
+      end
+      check_recipients!
 
-        sent_filenames =
-          if @mailbox.outgoing_route == 'smtp'
-            send_smtp(subject, body_html, message_id)
-          else
-            send_provider_mime(subject, body_html, message_id)
-          end
-
-        HelpdeskMessage.create!(
-          :issue            => @issue,
-          :helpdesk_contact => contact,
-          :helpdesk_mailbox => @mailbox,
-          :direction        => 'out',
-          :message_id       => message_id,
-          :subject          => subject,
-          :sent_at          => Time.current,
-          :recipient_to     => @to_list.join(', '),
-          :recipient_cc     => @cc_list.join(', ').presence,
-          :recipient_bcc    => @bcc_list.join(', ').presence,
-          :sent_attachments => Array(sent_filenames).uniq.join(', ').presence
-        )
-      else
-        HelpdeskMessage.create!(
-          :issue            => @issue,
-          :helpdesk_contact => contact,
-          :helpdesk_mailbox => @mailbox,
-          :direction        => 'init',
-          :sent_at          => Time.current
-        )
+      contact = link_contact if @to_list.any?
+      created = hand_over(contact)
+      mailed  = false
+      begin
+        if @send_mail && @mailbox && @to_list.any?
+          send_and_record(contact)
+          mailed = true
+        elsif !@send_mail
+          HelpdeskMessage.create!(
+            :issue            => @issue,
+            :helpdesk_contact => contact,
+            :helpdesk_mailbox => @mailbox,
+            :direction        => 'init',
+            :sent_at          => Time.current
+          )
+        end
+      rescue StandardError => e
+        # The hand-over is not taken back: this ticket exists either way, and
+        # nobody is asked to send it again.
+        Rails.logger.error "Helpdesk initial mail for ##{@issue.id} failed: #{e.class}: #{e.message}"
+        raise Error, failure_message(e, created)
+      ensure
+        finish_handovers(created)
       end
 
-      contact
+      Result.new(contact, mailed, created)
     end
 
     private
@@ -70,6 +87,125 @@ module RedmineExpertHelpdesk
     # Kommagetrennte Adressliste in normalisierte Einzeladressen zerlegen
     def split_addresses(value)
       value.to_s.split(/[,;]/).map { |a| a.strip.downcase }.reject(&:blank?).uniq
+    end
+
+    def take_out_handovers
+      targets = Handover.targets_for(@issue.project, @user)
+      return if targets.empty?
+
+      hits = {}
+      @to_list, @cc_list, @bcc_list = [@to_list, @cc_list, @bcc_list].map.with_index do |list, field|
+        list.reject do |address|
+          mailbox = targets[HelpdeskMessage.bare_address(address).downcase]
+          (hits[field] ||= []) << mailbox if mailbox
+          mailbox
+        end
+      end
+      open = Array(hits[0]) + Array(hits[1])
+      @handovers = (open + Array(hits[2])).uniq(&:project_id)
+      @bcc_only  = Array(hits[2]).map(&:project_id) - open.map(&:project_id)
+    end
+
+    # Nothing is done when the mail cannot go out as asked: a mail without a To
+    # recipient has no customer, and quietly sending it to Cc alone would not
+    # be what the agent saw in the form.
+    def check_recipients!
+      if @to_list.empty?
+        if @send_mail && @handovers.any? && @cc_list.empty? && @bcc_list.empty?
+          return # hand-over only, no mail
+        end
+        raise Error, I18n.t(:error_helpdesk_init_no_to) if @send_mail && (@cc_list.any? || @bcc_list.any?)
+        raise Error, I18n.t(@send_mail ? :error_helpdesk_init_no_recipient : :error_helpdesk_invalid_email)
+      end
+      raise Error, I18n.t(:error_helpdesk_invalid_email) unless @to_list.first.match?(EMAIL_RE)
+    end
+
+    def link_contact
+      contact = HelpdeskContact.find_or_create_for(@to_list.first, @contact_name, @issue.project)
+      HelpdeskTicketInfo.link!(@issue, contact, @mailbox)
+      contact
+    end
+
+    # All or nothing: a hand-over that fails takes the ones before it back, so
+    # the agent can simply try again.
+    def hand_over(contact)
+      created = []
+      @handovers.each do |mailbox|
+        issue = Handover.new(:source => @issue, :mailbox => mailbox, :user => @user, :mode => 'note',
+                             :note => @mail_body.presence || @issue.description.to_s,
+                             :attachments => @issue.attachments.reload.to_a, :contact => contact).call
+        created << [issue, mailbox]
+      end
+      created
+    rescue StandardError => e
+      created.each do |issue, _|
+        issue.destroy
+      rescue StandardError => undo_error
+        Rails.logger.error "Helpdesk handover: ##{issue.id} could not be removed: #{undo_error.message}"
+      end
+      Rails.logger.error "Helpdesk handover (initial mail) failed: #{e.class}: #{e.message}"
+      raise Error, I18n.t(:error_helpdesk_init_handover_failed, :message => e.message)
+    end
+
+    # The source ticket records where the topic went, as a reply's note does.
+    # A target reached by Bcc only makes the note private: its readers would
+    # learn about a recipient the mail kept blind. The note is a record, not
+    # news - no notification. The targets get theirs (Handover.notify).
+    def finish_handovers(created)
+      return if created.empty?
+
+      lines = created.map do |issue, mailbox|
+        I18n.t(:text_helpdesk_handover_note_line, :issue => "##{issue.id}",
+                                                  :target => "#{mailbox.project.name} (#{mailbox.mailbox_address})")
+      end
+      private_note = created.any? { |_, mailbox| @bcc_only.include?(mailbox.project_id) }
+      Mailer.with_deliveries(false) do
+        Journal.create!(:journalized => @issue, :user => @user, :notes => lines.join("\n"),
+                        :private_notes => private_note)
+      end
+      created.each { |issue, mailbox| Handover.notify(issue, mailbox) }
+    rescue StandardError => e
+      Rails.logger.error "Helpdesk handover (initial mail): recording on ##{@issue.id} failed: #{e.message}"
+    end
+
+    # Says what did happen: once delivered, sending again would mail twice.
+    def failure_message(error, created)
+      message = if @delivered
+                  I18n.t(:warning_helpdesk_reply_not_recorded)
+                else
+                  I18n.t(:error_helpdesk_init_mail_failed, :message => error.message)
+                end
+      return message if created.empty?
+
+      "#{message} #{I18n.t(:text_helpdesk_init_handover_kept, :targets => self.class.handover_list(created))}"
+    end
+
+    def send_and_record(contact)
+      message_id = generate_message_id(@mailbox.mailbox_address)
+      subject    = rendered_subject(contact)
+      body_html  = rendered_body(contact)
+
+      sent_filenames =
+        if @mailbox.outgoing_route == 'smtp'
+          send_smtp(subject, body_html, message_id)
+        else
+          send_provider_mime(subject, body_html, message_id)
+        end
+      @delivered = true
+
+      HelpdeskMessage.create!(
+        :issue            => @issue,
+        :helpdesk_contact => contact,
+        :helpdesk_mailbox => @mailbox,
+        :direction        => 'out',
+        :message_id       => message_id,
+        :subject          => subject,
+        :sent_at          => Time.current,
+        :recipient_to     => @to_list.join(', '),
+        :recipient_cc     => @cc_list.join(', ').presence,
+        :recipient_bcc    => @bcc_list.join(', ').presence,
+        :sent_attachments => Array(sent_filenames).uniq.join(', ').presence
+      )
     end
 
     def rendered_subject(contact)

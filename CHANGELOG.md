@@ -17,6 +17,11 @@
 
 ### Fixed
 
+- **A failed initial mail of a new ticket is reported.** It used to end up in the log only, and the
+  agent believed the customer had it; the ticket page now shows the error.
+- **The helpdesk fields of the new-ticket form survive a re-render.** Changing the tracker, or a
+  ticket that did not validate, emptied them and left the *Send as e-mail to customer* checkbox
+  without effect.
 - **A mailbox only continues tickets of its own project** — opt-in, experimental. Redmine's `MailHandler` follows a
   `[#id]` subject tag or a Redmine/helpdesk Message-ID in `In-Reply-To`/`References` into any
   project, and the plugin's own thread lookup searched all projects as well. A mail sent to project
@@ -73,6 +78,18 @@
   histories list only tickets the viewer may see.
   Each participating project gets one ticket however many of its mailboxes are named; a reply that
   would leave only Bcc recipients is refused before anything is handed over.
+- **Hand-over from a new ticket and from *Assign Contact* (experimental).** The initial mail
+  (*New Helpdesk Ticket*, and *Assign Contact* on a ticket without one) hands over as a reply does:
+  a participating project's helpdesk address leaves To/Cc/Bcc and the ticket is created there
+  directly. There is nothing to choose — the other project gets what the mail would have carried:
+  subject, text and every attachment of the ticket. The first remaining To address becomes the
+  customer, so another team's mailbox no longer turns into the customer of the ticket. The form
+  shows, while the agent types, what will happen: which projects get the ticket, who becomes the
+  customer, and a warning when nobody is left in To. A checkbox then moves the first Cc recipient
+  to To; without it, saving is blocked, since nothing would be mailed or handed over. Only
+  hand-over addresses in To means no mail and no customer, and the form says so. A failed mail
+  leaves the hand-over in place, and the agent is told both. The source ticket gets a note naming
+  the new tickets (private when a target was reached by Bcc only).
 - **Cross-project references for a mail that went to several projects** (with project-scoped
   matching on). The ticket is related
   (*related to*) to the other project's ticket — the one its removed markers pointed at, and the

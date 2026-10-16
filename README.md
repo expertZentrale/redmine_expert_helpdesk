@@ -538,7 +538,10 @@ added quietly — no history entry, no notification to the other team.
 **Hand-over (experimental)**: with *Enable hand-over to other projects* (central) and *Take part in
 hand-overs* (in both projects), a reply that names the other project's helpdesk address does not mail
 it. The agent chooses whether only the note with its attachments or the complete history (description,
-public notes, all attachments) goes over, and the ticket is created there directly. See
+public notes, all attachments) goes over, and the ticket is created there directly. The initial
+mail (*New Helpdesk Ticket*, *Assign Contact*) hands over too, without a choice: the other project
+gets subject, text and all attachments, and the form shows who becomes the customer and warns when
+nobody is left in To. See
 [EMAIL_FLOW.md](EMAIL_FLOW.md#hand-over-instead-of-mail-experimental).
 
 Outgoing replies keep their `[#id]` tag and thread headers: the customer's answer still finds its

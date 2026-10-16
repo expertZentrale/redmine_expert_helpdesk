@@ -223,7 +223,13 @@ that order is what makes `safe_to_stop` trustworthy across pods.
     resolve project → central → constant and are **validated as hex, otherwise discarded**: they
     become CSS custom properties on `:root`, so an unchecked value is a style injection. The
     `.jstBlock` lookup must stay scoped to `#add_notes`. Migration 059.
-  - `init_mailer.rb` — outbound "initial" mail (contact-assign / "New Helpdesk Ticket" flow).
+  - `init_mailer.rb` — outbound "initial" mail (contact-assign / "New Helpdesk Ticket" flow). With
+    the mail ticked it hands over like a reply, but without a mode: the target gets the mail text and
+    every ticket attachment. The form's `hdInitPlan()` mirrors its rules: first remaining To is the
+    customer, `move_cc` moves the first Cc up, no To but Cc/Bcc raises `InitMailer::Error` before
+    anything happens, only hand-overs = no mail and no contact. A failed mail keeps the hand-over.
+    The new-ticket hook reports errors in `flash[:error]`; the form takes its values from
+    `params[:helpdesk_init]` because Redmine re-renders it on tracker change.
   - `mail_logger.rb` — one log line per outgoing mail incl. the transport used. Every send site
     wraps its send in `MailLogger.track` (replies, init mail, autoresponder, info request, SLA
     mail); success at

@@ -355,6 +355,39 @@ flowchart TD
   Text zeigen auf die Kopien. Ein nur per BCC erreichtes Projekt wird in der Notiz des
   Ausgangstickets nur genannt, wenn die Notiz privat ist.
 
+#### In der Initialmail
+
+Die Initialmail – *Neues Helpdesk-Ticket* und *Kontakt zuordnen* an einem Ticket ohne Kunden –
+übergibt genauso, nur gibt es nichts zu wählen: Ein neues Ticket hat noch keine Notizen, also
+erhält das andere Projekt, was die Mail enthalten hätte.
+
+```mermaid
+flowchart TD
+  I["Bearbeiter setzt <i>Als E-Mail an Kunden senden</i><br/>An / CC / BCC enthält helpdesk-b@…"] --> E{"Übergabe für beide Projekte aktiv?"}
+  E -- nein --> MAIL["Normaler Empfänger: wird gemailt"]
+  E -- ja --> OUT["Adresse von B verlässt die Mail"]
+  OUT --> TO{"Noch jemand in An?"}
+  TO -- ja --> OK["Erste An-Adresse wird Kunde"]
+  TO -- "nein, aber CC" --> MOVE{"<i>Ersten CC-Empfänger nach An verschieben</i> gesetzt?"}
+  MOVE -- ja --> OK
+  MOVE -- nein --> STOP["Formular blockiert das Speichern:<br/>nichts gemailt, nichts übergeben"]
+  TO -- "nein, nur BCC" --> STOP
+  TO -- "niemand" --> ONLY["Keine Mail, kein Kunde"]
+  OK --> N(["Neues Ticket in B:<br/>Betreff, Text, alle Anhänge"]):::new
+  ONLY --> N
+  N --> SEND["Mail an die übrigen Empfänger;<br/>Notiz in A nennt das Ticket in B"]
+  classDef new fill:#d8efe1,stroke:#1f7a4d,color:#10301f
+```
+
+- **Das Formular sagt, was passieren wird**, schon beim Tippen: welche Projekte das Ticket
+  erhalten, wer Kunde wird, und eine Warnung, sobald niemand in An übrig ist. Blockiert wird das
+  Speichern nur, wenn die Mail nicht wie angezeigt hinausgehen könnte.
+- **Schlägt die Mail fehl**, bleibt die Übergabe bestehen – das Ticket existiert ohnehin, und
+  niemand wird gebeten, erneut zu senden. Die Ticketseite nennt beides: den Mailfehler und die
+  angelegten Tickets.
+- Ohne Mail (*Als E-Mail an Kunden senden* nicht gesetzt) wird nichts übergeben; die An-Adresse
+  wird wie bisher nur als Kunde verknüpft.
+
 ---
 
 ## 8. Einstellungsübersicht

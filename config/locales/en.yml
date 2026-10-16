@@ -503,6 +503,22 @@ en:
   error_helpdesk_handover_bcc_only: 'Only Bcc recipients would be left after the hand-over. Put at least one of them into To or Cc.'
   warning_helpdesk_reply_not_recorded: 'The mail was sent, but recording it on the ticket failed. Please do not send it again.'
   error_helpdesk_handover_mode_missing: 'Choose what to hand over: only this note or the complete history.'
+  error_helpdesk_init_no_to: 'No customer in To: nothing was mailed or handed over. Put a customer into To, or move the first Cc recipient there.'
+  error_helpdesk_init_no_recipient: 'No recipient in To: no mail was sent.'
+  error_helpdesk_init_mail_failed: 'The helpdesk mail was not sent: %{message}'
+  error_helpdesk_init_handover_failed: 'The hand-over failed (%{message}). Nothing was mailed or handed over.'
+  text_helpdesk_init_handover_kept: 'The hand-over took place all the same: %{targets}.'
+  notice_helpdesk_init_handed_over: 'Handed over to %{targets}.'
+  notice_helpdesk_init_handover_only: 'Handed over to %{targets}. No mail was sent and no customer was assigned.'
+  text_helpdesk_init_handover_content: 'What the mail would have carried goes over: subject, text and every attachment of the ticket.'
+  text_helpdesk_init_customer: 'Customer of this ticket: %{address}'
+  text_helpdesk_init_no_to: 'No customer in To.'
+  label_helpdesk_init_move_cc: 'Move the first Cc recipient to To (%{address})'
+  text_helpdesk_init_move_cc_on: '%{address} gets the mail in To and becomes the customer of this ticket.'
+  text_helpdesk_init_move_cc_off: 'As it stands, nothing is mailed or handed over. Put a customer into To, move the first Cc recipient, or untick "%{send}".'
+  text_helpdesk_init_bcc_only: 'No customer in To, only Bcc recipients: as it stands, nothing is mailed or handed over. Put a customer into To.'
+  text_helpdesk_init_handover_only: 'No customer in To: no mail is sent. The ticket is only handed over and gets no customer.'
+  text_helpdesk_init_no_recipient: 'No recipient in To: no mail would be sent. Put a customer into To, or untick "%{send}".'
   label_helpdesk_previous_tickets: Previous tickets
   label_helpdesk_reply_to_customer: Reply to customer
   label_helpdesk_send_as_mail: Send as email to customer

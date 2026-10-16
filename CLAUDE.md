@@ -313,7 +313,17 @@ nested registration would never fire in production.
   custom properties on `:root`, where an unchecked string is a style injection, not a colour.
   Migration 059.
 - **`init_mailer.rb`** — outbound "initial" mail when an agent assigns a contact to a ticket
-  and opts to email them (also used by the "New Helpdesk Ticket" flow).
+  and opts to email them (also used by the "New Helpdesk Ticket" flow). With the mail ticked it
+  hands over like a reply (`take_out_handovers`), but without a mode: the target gets the mail text
+  and **every** ticket attachment (`Handover` mode `note`). Rules, mirrored by the form's
+  `hdInitPlan()` (`_init_section`/`_init_status`) so the form never promises what the server
+  refuses: the first remaining To is the customer; `move_cc` moves the first Cc up; no To but
+  Cc/Bcc raises `InitMailer::Error` **before anything happens**; only hand-overs = no mail, no
+  contact. A failed mail keeps the hand-over (no undo, unlike replies — nobody re-sends). Errors are
+  `InitMailer::Error` with the agent-facing message; the new-ticket hook puts them in
+  `flash[:error]` (IssuesController overwrites `:notice` after the hook). The new-ticket form is
+  re-rendered by Redmine on tracker change (`replaceIssueFormWith`), so its values come from
+  `params[:helpdesk_init]` and its script runs immediately when the page is already loaded.
 - **`mail_logger.rb`** — one log line per outgoing mail, naming the transport it took.
   **Every send site wraps its send in `MailLogger.track`** (reply controller, `init_mailer`,
   autoresponder in `mail_processor`, `info_request_mailer`, `HelpdeskSlaMailer`) — three

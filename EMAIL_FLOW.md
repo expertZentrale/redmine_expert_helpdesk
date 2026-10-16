@@ -345,6 +345,38 @@ flowchart TD
   in the copied text point at the copies. A project reached by Bcc only is named in the source
   note only when that note is private.
 
+#### In the initial mail
+
+The initial mail — *New Helpdesk Ticket*, and *Assign Contact* on a ticket without a customer —
+hands over the same way, but there is nothing to choose: a new ticket has no notes yet, so the
+other project gets what the mail would have carried.
+
+```mermaid
+flowchart TD
+  I["Agent ticks <i>Send as e-mail to customer</i><br/>To / Cc / Bcc contains helpdesk-b@…"] --> E{"Hand-over active for both projects?"}
+  E -- no --> MAIL["Ordinary recipient: mailed"]
+  E -- yes --> OUT["B's address leaves the mail"]
+  OUT --> TO{"Anybody left in To?"}
+  TO -- yes --> OK["First To address becomes the customer"]
+  TO -- "no, but Cc" --> MOVE{"<i>Move the first Cc recipient to To</i> ticked?"}
+  MOVE -- yes --> OK
+  MOVE -- no --> STOP["Form blocks saving:<br/>nothing mailed, nothing handed over"]
+  TO -- "no, only Bcc" --> STOP
+  TO -- "nobody at all" --> ONLY["No mail, no customer"]
+  OK --> N(["New ticket in B:<br/>subject, text, all attachments"]):::new
+  ONLY --> N
+  N --> SEND["Mail to the remaining recipients;<br/>note in A names B's ticket"]
+  classDef new fill:#d8efe1,stroke:#1f7a4d,color:#10301f
+```
+
+- **The form says what will happen** while the agent types: which projects get the ticket, who
+  becomes the customer, and a warning as soon as nobody is left in To. Saving is blocked only where
+  the mail could not go out as shown.
+- **If the mail fails**, the hand-over stays — the ticket exists either way, and nobody is asked to
+  send again. The ticket page names both: the mail error and the tickets that were created.
+- Without the mail (*Send as e-mail to customer* unticked) nothing is handed over; the To address
+  is only linked as the customer, as before.
+
 ---
 
 ## 8. Settings reference
