@@ -298,6 +298,20 @@ class HelpdeskInitHandoverTest < Redmine::IntegrationTest
     assert_nil customer_of(issue)
   end
 
+  # The source note fails: the committed hand-over is finalized all the same.
+  def test_failed_source_note_still_finalizes_the_handover
+    transport
+    issue = existing_ticket
+    Journal.any_instance.stubs(:save!).raises(ActiveRecord::ActiveRecordError, 'note failed')
+    RedmineExpertHelpdesk::Handover.expects(:finalize).once
+
+    result = RedmineExpertHelpdesk::InitMailer.call(:issue => issue, :contact_email => 'kunde@example.com',
+                                                    :cc => 'helpdesk-b@expert.local', :mailbox => @mailbox,
+                                                    :user => User.find(2))
+    assert_equal 1, result.handovers.size
+    assert result.mailed
+  end
+
   def test_contact_form_without_customer_in_to_reports_it
     RedmineExpertHelpdesk::MailProvider.expects(:outgoing_for).never
     issue = existing_ticket

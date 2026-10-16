@@ -160,6 +160,14 @@ module RedmineExpertHelpdesk
     def finish_handovers(created)
       return if created.empty?
 
+      # First, and on its own: the hand-overs are committed either way, and a
+      # note that fails must not cost them their notification. finalize never
+      # raises.
+      created.each { |issue, mailbox| Handover.finalize(issue, mailbox) }
+      record_handover_note(created)
+    end
+
+    def record_handover_note(created)
       lines = created.map do |issue, mailbox|
         I18n.t(:text_helpdesk_handover_note_line, :issue => "##{issue.id}",
                                                   :target => "#{mailbox.project.name} (#{mailbox.mailbox_address})")
@@ -169,7 +177,6 @@ module RedmineExpertHelpdesk
                             :private_notes => private_note)
       journal.notify = false
       journal.save!
-      created.each { |issue, mailbox| Handover.finalize(issue, mailbox) }
     rescue StandardError => e
       Rails.logger.error "Helpdesk handover (initial mail): recording on ##{@issue.id} failed: #{e.message}"
     end
