@@ -110,6 +110,11 @@ module RedmineExpertHelpdesk
     # recipient has no customer, and quietly sending it to Cc alone would not
     # be what the agent saw in the form.
     def check_recipients!
+      # A hand-over copies the ticket into another project; the callers check
+      # this as well (HelpdeskInitController#find_issue, the author of a new
+      # ticket).
+      raise Error, I18n.t(:notice_not_authorized) if @handovers.any? && !@issue.visible?(@user)
+
       if @to_list.empty?
         if @send_mail && @handovers.any? && @cc_list.empty? && @bcc_list.empty?
           return # hand-over only, no mail
@@ -133,7 +138,8 @@ module RedmineExpertHelpdesk
       @handovers.each do |mailbox|
         issue = Handover.new(:source => @issue, :mailbox => mailbox, :user => @user, :mode => 'note',
                              :note => @mail_body.presence || @issue.description.to_s,
-                             :attachments => @issue.attachments.reload.to_a, :contact => contact).call
+                             :attachments => @issue.attachments.reload.to_a, :contact => contact,
+                             :bcc => @bcc_only.include?(mailbox.project_id)).call
         created << [issue, mailbox]
       end
       created
@@ -150,7 +156,7 @@ module RedmineExpertHelpdesk
     # The source ticket records where the topic went, as a reply's note does.
     # A target reached by Bcc only makes the note private: its readers would
     # learn about a recipient the mail kept blind. The note is a record, not
-    # news - no notification. The targets get theirs (Handover.notify).
+    # news - no notification. The targets get theirs (Handover.finalize).
     def finish_handovers(created)
       return if created.empty?
 
@@ -159,11 +165,11 @@ module RedmineExpertHelpdesk
                                                   :target => "#{mailbox.project.name} (#{mailbox.mailbox_address})")
       end
       private_note = created.any? { |_, mailbox| @bcc_only.include?(mailbox.project_id) }
-      Mailer.with_deliveries(false) do
-        Journal.create!(:journalized => @issue, :user => @user, :notes => lines.join("\n"),
-                        :private_notes => private_note)
-      end
-      created.each { |issue, mailbox| Handover.notify(issue, mailbox) }
+      journal = Journal.new(:journalized => @issue, :user => @user, :notes => lines.join("\n"),
+                            :private_notes => private_note)
+      journal.notify = false
+      journal.save!
+      created.each { |issue, mailbox| Handover.finalize(issue, mailbox) }
     rescue StandardError => e
       Rails.logger.error "Helpdesk handover (initial mail): recording on ##{@issue.id} failed: #{e.message}"
     end

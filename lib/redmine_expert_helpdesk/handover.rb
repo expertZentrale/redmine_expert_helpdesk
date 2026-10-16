@@ -65,8 +65,11 @@ module RedmineExpertHelpdesk
     end
 
     # +attachments+ are the ones the agent sent with the reply (selected ticket
-    # attachments and freshly pasted images).
-    def initialize(source:, mailbox:, user:, mode:, note:, attachments: [], contact: nil)
+    # attachments and freshly pasted images). +bcc+: the target was reached by
+    # Bcc only - no relation then, it would show the source ticket's readers
+    # who else got the topic. +ai_drafted+: the note came from an AI draft.
+    def initialize(source:, mailbox:, user:, mode:, note:, attachments: [], contact: nil, bcc: false,
+                   ai_drafted: false)
       raise Error, "unknown hand-over mode #{mode.inspect}" unless MODES.include?(mode.to_s)
 
       @source      = source
@@ -76,6 +79,9 @@ module RedmineExpertHelpdesk
       @note        = note.to_s
       @attachments = Array(attachments)
       @contact     = contact
+      @bcc         = bcc ? true : false
+      @ai_drafted  = ai_drafted ? true : false
+      @drafted     = []
     end
 
     def call
@@ -96,26 +102,37 @@ module RedmineExpertHelpdesk
       fallback = project.default_assigned_to
       issue.assigned_to ||= fallback if fallback && issue.assignable_users.include?(fallback)
 
-      # Silent for now: the caller may still take the hand-over back when its
-      # mail fails, and a notification about a deleted ticket cannot be
-      # recalled. Handover.notify sends it once the hand-over is final.
-      Mailer.with_deliveries(false) do
-        Issue.transaction do
-          # Without validation like the mail path: a mandatory field of the
-          # other project must not swallow the hand-over.
-          issue.save(:validate => false) || raise(Error, issue.errors.full_messages.to_sentence)
-          relink_attachments(issue, copy_attachments(issue))
-          # Inside the transaction: an exception here rolls the ticket back.
-          # Committed already, it would be a ticket the caller never got to
-          # undo, and the agent's retry would create it twice.
-          record_origin(issue)
-          link_contact(issue)
-          ThreadScope.relate(issue, @source, 'Helpdesk handover')
-        end
+      # Provisional until the caller finalizes it: its mail may still fail and
+      # take the hand-over back. A notification about a deleted ticket cannot
+      # be recalled, and a knowledge-base entry would outlive it - both wait
+      # for Handover.finalize. Per issue, not Mailer.with_deliveries: that flag
+      # is process-wide and would swallow other requests' mail meanwhile.
+      issue.notify = false
+      issue.helpdesk_skip_kb_ingest = true
+      Issue.transaction do
+        # Without validation like the mail path: a mandatory field of the
+        # other project must not swallow the hand-over.
+        issue.save(:validate => false) || raise(Error, issue.errors.full_messages.to_sentence)
+        relink_attachments(issue, copy_attachments(issue))
+        # Inside the transaction: an exception here rolls the ticket back.
+        # Committed already, it would be a ticket the caller never got to
+        # undo, and the agent's retry would create it twice.
+        record_origin(issue)
+        link_contact(issue)
+        record_ai_drafted(issue)
+        ThreadScope.relate(issue, @source, 'Helpdesk handover') unless @bcc
       end
       Rails.logger.info "Helpdesk handover: ##{@source.id} -> ##{issue.id} " \
                         "(#{project.identifier}, mode #{@mode}, by #{@user.login})"
       issue
+    end
+
+    # The hand-over is final: what Handover#call held back happens now.
+    def self.finalize(issue, mailbox)
+      notify(issue, mailbox)
+      issue.helpdesk_kb_ingest! if issue.closed?
+    rescue StandardError => e
+      Rails.logger.error "Helpdesk handover: finalizing ##{issue&.id} failed: #{e.message}"
     end
 
     # Redmine's "issue added" notification for a hand-over ticket, sent once
@@ -135,26 +152,49 @@ module RedmineExpertHelpdesk
     def description
       parts = [I18n.t(:text_helpdesk_handover_header, :issue => "##{@source.id}",
                       :project => @source.project.name, :user => @user.name)]
-      parts << @note if @note.strip.present?
+      parts << (@ai_drafted ? I18n.t(:text_helpdesk_handover_ai_drafted) : @note) if @note.strip.present?
       if @mode == 'history'
         parts << I18n.t(:label_helpdesk_handover_history, :issue => "##{@source.id}")
         parts.concat(history_entries)
       end
+      @drafted << @note if @ai_drafted && @note.strip.present?
       parts.join("\n\n")
     end
 
     # The description first, then every public note, oldest first - quoted, so
-    # the other team sees at a glance what was written where.
+    # the other team sees at a glance what was written where. Notes a model
+    # wrote leave a placeholder and go over as notes of their own
+    # (record_ai_drafted).
     def history_entries
       entries = []
       if @source.description.present?
         entries << entry(@source.author, @source.created_on, @source.description)
       end
+      ai = KnowledgeExtractor.ai_journal_ids(@source)
       @source.journals.where(:private_notes => false).where.not(:notes => [nil, ''])
              .includes(:user).order(:created_on, :id).each do |j|
-        entries << entry(j.user, j.created_on, j.notes)
+        if ai.include?(j.id)
+          entries << entry(j.user, j.created_on, I18n.t(:text_helpdesk_handover_ai_drafted))
+          @drafted << entry(j.user, j.created_on, j.notes)
+        else
+          entries << entry(j.user, j.created_on, j.notes)
+        end
       end
       entries
+    end
+
+    # Text from an AI draft stays marked as such on the target, as it was on
+    # the source (HelpdeskAiDraftedJournal): KnowledgeExtractor.ticket_text
+    # reads the description unconditionally, so inside it the model's own
+    # prose would come back as input for the knowledge base and answer drafts.
+    # Visible all the same, as notes of their own.
+    def record_ai_drafted(issue)
+      @drafted.each do |text|
+        journal = Journal.new(:journalized => issue, :user => @user, :notes => text)
+        journal.notify = false
+        journal.save!
+        HelpdeskAiDraftedJournal.create!(:journal_id => journal.id, :issue_id => issue.id, :user_id => @user.id)
+      end
     end
 
     def entry(author, at, text)

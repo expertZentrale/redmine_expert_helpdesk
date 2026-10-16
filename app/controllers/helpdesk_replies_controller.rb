@@ -129,7 +129,8 @@ class HelpdeskRepliesController < ApplicationController
       handovers.each do |target|
         created << RedmineExpertHelpdesk::Handover.new(
           :source => @issue, :mailbox => target, :user => User.current, :mode => handover_mode,
-          :note => note, :attachments => handover_atts, :contact => contact
+          :note => note, :attachments => handover_atts, :contact => contact,
+          :bcc => bcc_only.include?(target.project_id), :ai_drafted => params[:hd_ai_drafted].to_s == '1'
         ).call
       end
     end
@@ -229,7 +230,7 @@ class HelpdeskRepliesController < ApplicationController
   def finish_handovers(issues, mailboxes)
     @handovers_finished = true
     Array(issues).zip(Array(mailboxes)).each do |issue, mailbox|
-      RedmineExpertHelpdesk::Handover.notify(issue, mailbox)
+      RedmineExpertHelpdesk::Handover.finalize(issue, mailbox)
     end
   end
 

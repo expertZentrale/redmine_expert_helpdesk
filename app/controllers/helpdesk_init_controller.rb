@@ -49,9 +49,14 @@ class HelpdeskInitController < ApplicationController
       @project.helpdesk_mailboxes.enabled.first
   end
 
+  # The project permission alone is not enough: the initial mail sends the
+  # ticket's description and attachments out, and a hand-over copies them into
+  # another project - neither may start from a ticket the agent cannot see.
   def find_issue
     @issue = Issue.find(params[:issue_id])
-    render_404 unless @issue.project == @project
+    return render_404 unless @issue.project == @project
+
+    render_403 unless @issue.visible?
   rescue ActiveRecord::RecordNotFound
     render_404
   end

@@ -17,6 +17,9 @@
 
 ### Fixed
 
+- **Assign Contact checks that the agent may see the ticket.** The form checked the project
+  permission only, so an agent restricted to their own tickets could mail out — and, with the
+  hand-over, copy — another ticket's description and attachments by posting its id.
 - **A failed initial mail of a new ticket is reported.** It used to end up in the log only, and the
   agent believed the customer had it; the ticket page now shows the error.
 - **The helpdesk fields of the new-ticket form survive a re-render.** Changing the tracker, or a
@@ -90,6 +93,12 @@
   hand-over addresses in To means no mail and no customer, and the form says so. A failed mail
   leaves the hand-over in place, and the agent is told both. The source ticket gets a note naming
   the new tickets (private when a target was reached by Bcc only).
+- **Hand-over details.** A target reached by Bcc only is no longer related to the source ticket —
+  the relation showed the source's readers who else got the topic. Text an AI draft wrote goes
+  over as a note of its own, marked as such, with a placeholder in the description, so the target's
+  knowledge base and answer drafts do not take it as input. The provisional ticket is silenced on
+  itself instead of switching mail off for the whole process (which could swallow other requests'
+  mail), and it enters the knowledge base only once the hand-over is final.
 - **Cross-project references for a mail that went to several projects** (with project-scoped
   matching on). The ticket is related
   (*related to*) to the other project's ticket — the one its removed markers pointed at, and the

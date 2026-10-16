@@ -180,8 +180,11 @@ that order is what makes `safe_to_stop` trustworthy across pods.
     `handover_enabled` and both projects' `HelpdeskProjectSetting#handover_enabled` on, the reply
     controller takes participating helpdesk addresses out of the mail and creates the ticket there
     (`note` or `history` mode, chosen by the agent; private notes never go over), before the mail,
-    undone only if the mail fails before delivery. The target's notification is held back and sent
-    by `Handover.notify` once final; `relink_attachments` points image references at the copies
+    undone only if the mail fails before delivery. Until final the ticket is provisional
+    (`issue.notify = false` — never `Mailer.with_deliveries`, a process-wide flag — and
+    `helpdesk_skip_kb_ingest`); `Handover.finalize` notifies and enqueues the KB ingest. Bcc-only
+    targets get no relation; AI-drafted text (`KnowledgeExtractor.ai_journal_ids`) goes over as
+    flagged notes of its own, not inside the description; `relink_attachments` points image references at the copies
     (`update_all` — `update_column` did not persist inside the reply request); `HelpdeskTicketInfo#handover_mailbox_id` (migration
     068, written only by `Handover`) lets `ThreadScope` keep a moved hand-over ticket local; the source ticket
     must be visible; Bcc-only targets are flagged `bcc: true` and kept out of public notes.

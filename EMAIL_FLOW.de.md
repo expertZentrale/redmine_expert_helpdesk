@@ -325,7 +325,7 @@ flowchart TD
   E -- ja --> ASK{"Bearbeiter wählt<br/>(nichts vorausgewählt)"}
   ASK -- "Nur diese Notiz" --> N1(["Neues Ticket in B:<br/>Notiz + mitgesendete Anhänge"]):::new
   ASK -- "Komplette Historie" --> N2(["Neues Ticket in B:<br/>Notiz + Beschreibung + öffentliche Notizen<br/>+ alle Anhänge"]):::new
-  N1 --> LINK["Beziehung zum A-Ticket, Kunde als Kontakt<br/>in B, Zeile in der Notiz von A"]
+  N1 --> LINK["Beziehung zum A-Ticket (nicht bei nur BCC),<br/>Kunde als Kontakt in B, Zeile in der Notiz von A"]
   N2 --> LINK
   LINK --> REST{"Weitere Empfänger übrig?"}
   REST -- ja --> SEND["Mail an sie, ohne die Adresse von B"]
@@ -353,7 +353,13 @@ flowchart TD
   zurückgenommene Übergabe.
 - Bilder des Tickets, die die Notiz zitiert, gehen mit, auch ohne Haken; Bildverweise im kopierten
   Text zeigen auf die Kopien. Ein nur per BCC erreichtes Projekt wird in der Notiz des
-  Ausgangstickets nur genannt, wenn die Notiz privat ist.
+  Ausgangstickets nur genannt, wenn die Notiz privat ist, und sein Ticket wird nicht mit dem
+  Ausgangsticket verknüpft.
+- **Text aus einem KI-Entwurf** (die Antwortnotiz oder Notizen der kompletten Historie) geht als
+  eigene, als KI-Entwurf markierte Notiz über, mit einem Platzhalter in der Beschreibung:
+  Wissensbasis und Antwortvorschläge des Zielprojekts lassen ihn aus, wie im Ausgangsprojekt.
+- Vor dem Abschluss der Übergabe wird nichts über das neue Ticket verkündet: keine
+  Benachrichtigung und bei geschlossenem Standardstatus kein Eintrag in der Wissensbasis.
 
 #### In der Initialmail
 

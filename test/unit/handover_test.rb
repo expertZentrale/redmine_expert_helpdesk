@@ -32,9 +32,9 @@ class HandoverTest < ActiveSupport::TestCase
     User.current = nil
   end
 
-  def hand_over(mode, attachments: [], note: 'Bitte uebernehmen')
+  def hand_over(mode, attachments: [], note: 'Bitte uebernehmen', bcc: false)
     Handover.new(:source => @source, :mailbox => @target, :user => @agent, :mode => mode,
-                 :note => note, :attachments => attachments, :contact => @contact).call
+                 :note => note, :attachments => attachments, :contact => @contact, :bcc => bcc).call
   end
 
   def attach(issue, name)
@@ -133,6 +133,16 @@ class HandoverTest < ActiveSupport::TestCase
     assert_equal @target, info.helpdesk_mailbox
   end
 
+  # Reached by Bcc only: a relation would show the source ticket's readers
+  # who else got the topic.
+  def test_bcc_only_target_gets_no_relation
+    issue = hand_over('note', :bcc => true)
+
+    assert_not IssueRelation.where(:issue_from_id => [issue.id, @source.id],
+                                   :issue_to_id => [issue.id, @source.id]).exists?
+    assert_equal 'kunde@example.com', HelpdeskTicketInfo.for_issue(issue).helpdesk_contact.email
+  end
+
   # --- history mode -----------------------------------------------------------
 
   def test_history_mode_carries_description_and_public_notes_only
@@ -145,6 +155,36 @@ class HandoverTest < ActiveSupport::TestCase
     assert_includes issue.description, '> Oeffentliche Notiz'
     assert_not_includes issue.description, 'Interne Notiz'
     assert issue.description.index('Urspruengliche') < issue.description.index('Oeffentliche'), 'oldest first'
+  end
+
+  # A note a model wrote stays marked on the target: visible as a note of its
+  # own, kept out of what the knowledge base and answer drafts read.
+  def test_history_mode_keeps_ai_drafted_notes_marked
+    drafted = Journal.create!(:journalized => @source, :user => @agent, :notes => 'Vorschlag der KI')
+    HelpdeskAiDraftedJournal.create!(:journal_id => drafted.id, :issue_id => @source.id, :user_id => @agent.id)
+    Journal.create!(:journalized => @source, :user => @agent, :notes => 'Eigene Notiz')
+    issue = hand_over('history')
+
+    assert_not_includes issue.description, 'Vorschlag der KI'
+    assert_includes issue.description, I18n.t(:text_helpdesk_handover_ai_drafted)
+    assert_includes issue.description, '> Eigene Notiz'
+    note = issue.journals.detect { |j| j.notes.to_s.include?('Vorschlag der KI') }
+    assert note, 'the drafted text is still there, as a note'
+    assert_includes HelpdeskAiDraftedJournal.journal_ids_for(issue.id), note.id
+    text = RedmineExpertHelpdesk::KnowledgeExtractor.ticket_text(issue)
+    assert_not_includes text, 'Vorschlag der KI'
+    assert_includes text, 'Eigene Notiz'
+  end
+
+  def test_ai_drafted_note_goes_over_marked
+    issue = Handover.new(:source => @source, :mailbox => @target, :user => @agent, :mode => 'note',
+                         :note => 'Entwurf aus der KI', :contact => @contact, :ai_drafted => true).call
+
+    assert_not_includes issue.description, 'Entwurf aus der KI'
+    note = issue.journals.detect { |j| j.notes == 'Entwurf aus der KI' }
+    assert note
+    assert_includes HelpdeskAiDraftedJournal.journal_ids_for(issue.id), note.id
+    assert_not_includes RedmineExpertHelpdesk::KnowledgeExtractor.ticket_text(issue), 'Entwurf aus der KI'
   end
 
   def test_history_mode_copies_all_attachments
@@ -167,18 +207,36 @@ class HandoverTest < ActiveSupport::TestCase
     assert_not_includes issue.description, "/attachments/download/#{image.id}/"
   end
 
-  # Creating the ticket mails nobody (Redmine still calls the mailer, the
-  # deliveries are switched off); notify does, once the hand-over is final.
-  def test_notification_waits_for_notify
-    issue = nil
+  # Creating the ticket does not even reach the mailer - nothing to enqueue,
+  # and no process-wide switch that other requests' mail would run into.
+  # Finalizing notifies, once the hand-over is final.
+  def test_notification_waits_for_finalize
     with_settings :notified_events => ['issue_added'] do
-      ActionMailer::Base.deliveries.clear
+      Mailer.expects(:deliver_issue_add).never
       issue = hand_over('note')
-      assert_empty ActionMailer::Base.deliveries
+      assert ActionMailer::Base.perform_deliveries, 'deliveries stay on for everybody else'
 
+      Mailer.unstub(:deliver_issue_add)
       Mailer.expects(:deliver_issue_add).with(issue).once
-      Handover.notify(issue, @target)
+      Handover.finalize(issue, @target)
     end
+  end
+
+  # A closed default status would put the provisional ticket into the
+  # knowledge base, where it outlives a hand-over that is taken back.
+  def test_knowledge_base_waits_for_finalize
+    closed = IssueStatus.where(:is_closed => true).first
+    @target.update_column(:default_status_id, closed.id)
+    RedmineExpertHelpdesk::AiFeatures.stubs(:kb_enabled?).returns(true)
+    HelpdeskProjectSetting.for_project(@project_b).update_column(:kb_ingest_mode, 'auto')
+
+    HelpdeskKnowledgeIngestJob.expects(:perform_later).never
+    issue = hand_over('note')
+    assert issue.closed?
+
+    HelpdeskKnowledgeIngestJob.unstub(:perform_later)
+    HelpdeskKnowledgeIngestJob.expects(:perform_later).with(issue.id).once
+    Handover.finalize(issue, @target.reload)
   end
 
   def test_notify_respects_suppressed_notifications

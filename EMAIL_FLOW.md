@@ -318,7 +318,7 @@ flowchart TD
   E -- yes --> ASK{"Agent chooses<br/>(nothing preselected)"}
   ASK -- "Only this note" --> N1(["New ticket in B:<br/>note + attachments sent with it"]):::new
   ASK -- "Complete history" --> N2(["New ticket in B:<br/>note + description + public notes<br/>+ all attachments"]):::new
-  N1 --> LINK["Related to A's ticket, customer linked as<br/>B's contact, line added to A's note"]
+  N1 --> LINK["Related to A's ticket (not when Bcc only), customer<br/>linked as B's contact, line added to A's note"]
   N2 --> LINK
   LINK --> REST{"Other recipients left?"}
   REST -- yes --> SEND["Mail to them, without B's address"]
@@ -343,7 +343,12 @@ flowchart TD
   ticket goes out only then, never for a hand-over that is taken back.
 - Ticket images the note quotes go along even when their checkbox is not ticked; image references
   in the copied text point at the copies. A project reached by Bcc only is named in the source
-  note only when that note is private.
+  note only when that note is private, and its ticket is not related to the source ticket.
+- **Text from an AI draft** (the reply note, or notes in the complete history) goes over as a note
+  of its own, marked as AI-drafted, with a placeholder in the description: the target's knowledge
+  base and answer drafts leave it out, as they do on the source.
+- Nothing about the new ticket is announced before the hand-over is final: no notification, and
+  with a closed default status no knowledge-base entry.
 
 #### In the initial mail
 

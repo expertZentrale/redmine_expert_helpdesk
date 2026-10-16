@@ -16,6 +16,10 @@
 
 ### Behoben
 
+- **Kontakt zuordnen prüft, ob der Bearbeiter das Ticket sehen darf.** Das Formular prüfte nur die
+  Projektberechtigung; ein Bearbeiter, der nur eigene Tickets sehen darf, konnte so Beschreibung und
+  Anhänge eines fremden Tickets per Mail verschicken – und mit der Übergabe kopieren –, indem er
+  dessen Nummer absendete.
 - **Eine fehlgeschlagene Initialmail eines neuen Tickets wird gemeldet.** Sie landete nur im Log,
   und der Bearbeiter hielt sie für zugestellt; die Ticketseite zeigt den Fehler jetzt an.
 - **Die Helpdesk-Felder im Formular für neue Tickets überstehen ein Neuladen.** Ein Trackerwechsel
@@ -94,6 +98,13 @@
   Übergabe-Adressen, gibt es keine Mail und keinen Kunden, und das Formular sagt das. Schlägt die
   Mail fehl, bleibt die Übergabe bestehen, und der Bearbeiter erfährt beides. Das Ausgangsticket
   erhält eine Notiz mit den neuen Tickets (privat, wenn ein Ziel nur per BCC erreicht wurde).
+- **Details der Übergabe.** Ein nur per BCC erreichtes Ziel wird nicht mehr mit dem Ausgangsticket
+  verknüpft – die Beziehung zeigte den Lesern des Ausgangstickets, wer das Thema noch erhalten hat.
+  Text aus einem KI-Entwurf geht als eigene, entsprechend markierte Notiz über, mit einem Platzhalter
+  in der Beschreibung, damit Wissensbasis und Antwortvorschläge des Zielprojekts ihn nicht als
+  Eingabe nehmen. Das vorläufige Ticket wird an sich selbst stummgeschaltet statt Mails für den ganzen
+  Prozess abzuschalten (was Mails anderer Anfragen verschlucken konnte), und es kommt erst in die
+  Wissensbasis, wenn die Übergabe endgültig ist.
 - **Projektübergreifende Verweise für eine Mail an mehrere Projekte** (bei eingeschalteter
   projektbezogener Zuordnung). Das Ticket wird mit dem
   Ticket des anderen Projekts in Beziehung gesetzt (*verwandt mit*) – mit dem, auf das die

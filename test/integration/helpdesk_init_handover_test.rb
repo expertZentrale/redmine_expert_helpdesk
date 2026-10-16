@@ -193,6 +193,8 @@ class HelpdeskInitHandoverTest < Redmine::IntegrationTest
     note = issue.journals.where.not(:notes => [nil, '']).last
     assert_includes note.notes, "##{handed_over.id}"
     assert note.private_notes
+    assert_not IssueRelation.where(:issue_from_id => [handed_over.id, issue.id],
+                                   :issue_to_id => [handed_over.id, issue.id]).exists?
   end
 
   # The mail fails after the hand-over: the hand-over stays, and the agent
@@ -265,6 +267,35 @@ class HelpdeskInitHandoverTest < Redmine::IntegrationTest
     assert created.attachments.any? { |a| a.digest == file.digest }, 'attachment not handed over'
     assert_includes flash[:notice], "##{created.id}"
     assert_nil flash[:error]
+  end
+
+  # The initial mail sends the ticket out and a hand-over copies it: neither
+  # may start from a ticket the agent cannot see.
+  def test_contact_form_needs_a_visible_ticket
+    Role.find(1).update!(:issues_visibility => 'own')
+    issue = existing_ticket
+    issue.update_columns(:author_id => 3, :assigned_to_id => nil)
+    before = other_count
+    assign(issue, :contact_email => 'helpdesk-b@expert.local')
+
+    assert_response :forbidden
+    assert_equal before, other_count
+    assert_nil customer_of(issue)
+  end
+
+  def test_initial_mail_refuses_an_invisible_ticket
+    Role.find(1).update!(:issues_visibility => 'own')
+    issue = existing_ticket
+    issue.update_columns(:author_id => 3, :assigned_to_id => nil)
+    before = other_count
+
+    error = assert_raises(RedmineExpertHelpdesk::InitMailer::Error) do
+      RedmineExpertHelpdesk::InitMailer.call(:issue => issue.reload, :contact_email => 'helpdesk-b@expert.local',
+                                             :mailbox => @mailbox, :user => User.find(2))
+    end
+    assert_equal I18n.t(:notice_not_authorized), error.message
+    assert_equal before, other_count
+    assert_nil customer_of(issue)
   end
 
   def test_contact_form_without_customer_in_to_reports_it

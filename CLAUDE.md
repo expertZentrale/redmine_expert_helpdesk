@@ -241,12 +241,19 @@ nested registration would never fire in production.
   `handover_mode` (`note`|`history`, nothing preselected in the form), creates the target tickets
   **before** the mail and destroys them again if the mail raises — the agent re-sends after an
   error, and a surviving hand-over would then exist twice. Only failures *before* delivery undo it;
-  the target's "issue added" notification is held back (`with_deliveries(false)`) and sent by
-  `Handover.notify` once final. `relink_attachments` points `/attachments/…/<id>` references in the
+  until then the ticket is provisional: `issue.notify = false` (per issue — **not**
+  `Mailer.with_deliveries`, which flips a process-wide flag and swallows other requests' mail) and
+  `helpdesk_skip_kb_ingest` (a closed default status would put it into the knowledge base, where it
+  outlives an undo); `Handover.finalize` sends the "issue added" notification and enqueues the
+  ingest. `relink_attachments` points `/attachments/…/<id>` references in the
   copied text at the copies — via `update_all`: `update_column` did not persist inside the reply
   request. `HelpdeskTicketInfo#handover_mailbox_id` (migration 068, written only by `Handover`) is the
-  provenance `ThreadScope#handed_over_here?` trusts for a moved hand-over ticket. Hand-over requires `@issue.visible?`; Bcc-only targets carry `bcc: true` so the form keeps
-  them out of public notes. History mode quotes the description and
+  provenance `ThreadScope#handed_over_here?` trusts for a moved hand-over ticket. Hand-over requires `@issue.visible?` (the initial-mail path too: `HelpdeskInitController#find_issue`,
+  `InitMailer#check_recipients!`); Bcc-only targets carry `bcc: true` so the form keeps
+  them out of public notes, and get **no relation** (it would show them to the source's readers).
+  Text a model wrote (`KnowledgeExtractor.ai_journal_ids`, and the reply note when `hd_ai_drafted`)
+  goes over as notes of its own, flagged in `HelpdeskAiDraftedJournal`, with a placeholder in the
+  description — `ticket_text` reads the description unconditionally. History mode quotes the description and
   **public** notes only and copies all attachments via `Attachment#copy` (shared disk file). The
   reply form re-enables its submit button on a 50 ms timer: jquery-ujs disables
   `data-disable-with` buttons on a 13 ms timer *after* the submit handler, so a synchronous or

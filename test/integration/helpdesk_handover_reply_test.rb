@@ -187,6 +187,9 @@ class HelpdeskHandoverReplyTest < Redmine::IntegrationTest
 
     assert_response :success
     assert_equal true, data['handovers'].first['bcc']
+    created = data['handovers'].first['issue_id']
+    assert_not IssueRelation.where(:issue_from_id => [created, @issue.id], :issue_to_id => [created, @issue.id]).exists?,
+               'a relation would show who got it by Bcc'
   end
 
   def test_target_in_cc_is_not_flagged
@@ -195,6 +198,8 @@ class HelpdeskHandoverReplyTest < Redmine::IntegrationTest
                  :handover_mode => 'note')
 
     assert_equal false, data['handovers'].first['bcc']
+    created = data['handovers'].first['issue_id']
+    assert IssueRelation.where(:issue_from_id => [created, @issue.id], :issue_to_id => [created, @issue.id]).exists?
   end
 
   # A hand-over copies the ticket out; an agent who may not read it gets 403.
