@@ -20,8 +20,16 @@ class HelpdeskContactsController < ApplicationController
                      " WHERE ti.helpdesk_contact_id = helpdesk_contacts.id AND NOT EXISTS" \
                      " (SELECT 1 FROM helpdesk_messages hm2 WHERE hm2.helpdesk_contact_id = helpdesk_contacts.id" \
                      " AND hm2.issue_id = ti.issue_id)))".freeze
-  LAST_TICKET_SQL  = "(SELECT MAX(hm.sent_at) FROM helpdesk_messages hm" \
+  # The later of the last mail and the newest linked ticket's creation
+  # (HelpdeskContact#last_ticket_at). CASE rather than GREATEST: that is not
+  # in SQLite, and in MySQL it turns NULL as soon as one side is.
+  LAST_MAIL_SQL    = "(SELECT MAX(hm.sent_at) FROM helpdesk_messages hm" \
                      " WHERE hm.helpdesk_contact_id = helpdesk_contacts.id)".freeze
+  LAST_LINKED_SQL  = "(SELECT MAX(li.created_on) FROM helpdesk_ticket_infos ti" \
+                     " INNER JOIN issues li ON li.id = ti.issue_id" \
+                     " WHERE ti.helpdesk_contact_id = helpdesk_contacts.id)".freeze
+  LAST_TICKET_SQL  = "(CASE WHEN #{LAST_LINKED_SQL} IS NULL OR #{LAST_MAIL_SQL} >= #{LAST_LINKED_SQL}" \
+                     " THEN #{LAST_MAIL_SQL} ELSE #{LAST_LINKED_SQL} END)".freeze
   SORT_COLUMNS = {
     'name'         => 'helpdesk_contacts.name',
     'email'        => 'helpdesk_contacts.email',
@@ -56,7 +64,7 @@ class HelpdeskContactsController < ApplicationController
     order = (Array(sort_clause) + ['helpdesk_contacts.email ASC']).join(', ')
     @contacts = scope
                   .order(Arel.sql(order))
-                  .includes(:helpdesk_messages, :helpdesk_ticket_infos)
+                  .includes(:helpdesk_messages, :helpdesk_ticket_infos => :issue)
                   .limit(@per_page)
                   .offset(@contact_pages.offset)
   end

@@ -49,4 +49,13 @@ class HelpdeskContact < HelpdeskApplicationRecord
          .or(Issue.visible(user).where(:id => helpdesk_ticket_infos.select(:issue_id)))
          .distinct
   end
+
+  # "Last ticket" in the customer list: the later of the contact's last mail
+  # and the creation of the newest ticket linked to them - a hand-over ticket
+  # has no mail yet. Reads the list's preloaded associations;
+  # HelpdeskContactsController::LAST_TICKET_SQL sorts by the same rule.
+  def last_ticket_at
+    [helpdesk_messages.map(&:sent_at).compact.max,
+     helpdesk_ticket_infos.map { |ti| ti.issue&.created_on }.compact.max].compact.max
+  end
 end

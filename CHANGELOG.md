@@ -101,7 +101,9 @@
   over as a note of its own, marked as such, with a placeholder in the description, so the target's
   knowledge base and answer drafts do not take it as input; its images point at the copies as well. The provisional ticket is silenced on
   itself instead of switching mail off for the whole process (which could swallow other requests'
-  mail), and it enters the knowledge base only once the hand-over is final.
+  mail), and it enters the knowledge base only once the hand-over is final. The customer list's
+  *Last ticket* counts linked tickets too, so a contact who only got a hand-over shows its date
+  instead of "–", and sorting follows the same date.
 - **Cross-project references for a mail that went to several projects** (with project-scoped
   matching on). The ticket is related
   (*related to*) to the other project's ticket — the one its removed markers pointed at, and the

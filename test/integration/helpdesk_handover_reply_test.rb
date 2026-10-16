@@ -249,6 +249,35 @@ class HelpdeskHandoverReplyTest < Redmine::IntegrationTest
     assert_response :success
   end
 
+  # "Last ticket" in the customer list: cell and sort agree, and a hand-over
+  # counts although the contact has no mail in the target project yet.
+  def last_ticket(contact)
+    [contact.last_ticket_at,
+     HelpdeskContact.where(:id => contact.id).pick(Arel.sql(HelpdeskContactsController::LAST_TICKET_SQL))]
+  end
+
+  def test_handover_only_contact_has_a_last_ticket_date
+    data = reply(:reply_to => 'helpdesk-b@expert.local', :handover_mode => 'note')
+    created = Issue.find(data['handovers'].first['issue_id'])
+    contact = HelpdeskContact.find_by(:project_id => @other.id, :email => 'kunde@example.com')
+    cell, sorted = last_ticket(contact)
+
+    assert_equal created.created_on.to_i, cell.to_i
+    assert_equal created.created_on.to_i, sorted.to_time.to_i
+  end
+
+  def test_last_ticket_date_takes_a_newer_handover_over_an_older_mail
+    contact = HelpdeskContact.create!(:project_id => @other.id, :email => 'kunde@example.com', :name => 'Kunde')
+    HelpdeskMessage.create!(:issue => Issue.where(:project_id => @other.id).first, :helpdesk_contact => contact,
+                            :direction => 'in', :sent_at => 10.days.ago)
+    data = reply(:reply_to => 'helpdesk-b@expert.local', :handover_mode => 'note')
+    created = Issue.find(data['handovers'].first['issue_id'])
+    cell, sorted = last_ticket(contact.reload)
+
+    assert_equal created.created_on.to_i, cell.to_i
+    assert_equal created.created_on.to_i, sorted.to_time.to_i
+  end
+
   # The customer's contact in the target project lists the handed-over
   # ticket before any mail of theirs reached it.
   def test_handed_over_ticket_is_in_the_target_contact_history

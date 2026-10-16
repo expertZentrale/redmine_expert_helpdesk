@@ -108,7 +108,9 @@
   in der Beschreibung, damit Wissensbasis und Antwortvorschläge des Zielprojekts ihn nicht als
   Eingabe nehmen; seine Bilder zeigen ebenfalls auf die Kopien. Das vorläufige Ticket wird an sich selbst stummgeschaltet statt Mails für den ganzen
   Prozess abzuschalten (was Mails anderer Anfragen verschlucken konnte), und es kommt erst in die
-  Wissensbasis, wenn die Übergabe endgültig ist.
+  Wissensbasis, wenn die Übergabe endgültig ist. *Letztes Ticket* in der Kundenliste berücksichtigt
+  auch verknüpfte Tickets: Ein Kontakt, der nur eine Übergabe erhalten hat, zeigt deren Datum statt
+  „–“, und die Sortierung folgt demselben Datum.
 - **Projektübergreifende Verweise für eine Mail an mehrere Projekte** (bei eingeschalteter
   projektbezogener Zuordnung). Das Ticket wird mit dem
   Ticket des anderen Projekts in Beziehung gesetzt (*verwandt mit*) – mit dem, auf das die
