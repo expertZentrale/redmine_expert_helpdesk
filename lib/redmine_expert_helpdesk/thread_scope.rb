@@ -33,6 +33,31 @@ module RedmineExpertHelpdesk
       @local   = {}
     end
 
+    # Relates two tickets of different projects ("related to"), at most once.
+    # No init_journals: Redmine writes a history entry (and a notification) only
+    # when the controller asks for it. The relation is meant as a quiet pointer,
+    # not as news on a ticket of another team. Redmine's "Allow cross-project
+    # issue relations" is enforced by the relation's own validation.
+    def self.relate(issue, other, log_prefix = 'Helpdesk')
+      return true if IssueRelation.where(:issue_from_id => [issue.id, other.id],
+                                         :issue_to_id => [issue.id, other.id]).exists?
+
+      # By id, not by instance: Issue#relation_added writes the relation into
+      # whatever journal the passed instance still has open. On the reply path
+      # Redmine has closed it by now (test_relation_on_a_reply_adds_no_journal_detail),
+      # but fresh instances cannot carry one at all.
+      relation = IssueRelation.new(:issue_from_id => issue.id, :issue_to_id => other.id,
+                                   :relation_type => IssueRelation::TYPE_RELATES)
+      if relation.save
+        Rails.logger.info "#{log_prefix}: ##{issue.id} related to ##{other.id} (other project)"
+        true
+      else
+        Rails.logger.info "#{log_prefix}: ##{issue.id} not related to ##{other.id}: " \
+                          "#{relation.errors.full_messages.to_sentence}"
+        false
+      end
+    end
+
     def scrub(mime)
       msg     = Mail.read_from_string(mime)
       foreign = []
@@ -109,11 +134,27 @@ module RedmineExpertHelpdesk
     # +first+ is the ticket's first incoming message when the caller already
     # has it (prime_local), false for "has none".
     def opened_here?(issue, first = nil)
+      return true if handed_over_here?(issue)
+
       first = HelpdeskMessage.incoming.where(:issue_id => issue.id).order(:id).first if first.nil?
       return false unless first && first.journal_id.nil? && first.helpdesk_mailbox&.project_id == @project.id
       return false unless first.created_at && issue.created_on
 
       (first.created_at - issue.created_on).abs <= CREATION_WINDOW
+    end
+
+    # A ticket created by a hand-over to one of this project's mailboxes. Only
+    # Handover writes handover_mailbox_id, unlike helpdesk_mailbox_id.
+    def handed_over_here?(issue)
+      return false unless HelpdeskTicketInfo.column_names.include?('handover_mailbox_id')
+
+      mailbox_id = if @handover_mailboxes&.key?(issue.id)
+                     @handover_mailboxes[issue.id]
+                   else
+                     HelpdeskTicketInfo.where(:issue_id => issue.id).pick(:handover_mailbox_id)
+                   end
+      @own_mailbox_ids ||= HelpdeskMailbox.where(:project_id => @project.id).pluck(:id)
+      mailbox_id.present? && @own_mailbox_ids.include?(mailbox_id)
     end
 
     # How long after the ticket the creating mail's row may be stored.
@@ -139,6 +180,10 @@ module RedmineExpertHelpdesk
       candidates = issues.uniq(&:id).reject { |i| i.project_id == @project.id || @local.key?(i.id) }
       return if candidates.empty?
 
+      if HelpdeskTicketInfo.column_names.include?('handover_mailbox_id')
+        known = HelpdeskTicketInfo.where(:issue_id => candidates.map(&:id)).pluck(:issue_id, :handover_mailbox_id).to_h
+        @handover_mailboxes = candidates.to_h { |i| [i.id, known[i.id]] }
+      end
       first_ids = HelpdeskMessage.incoming.where(:issue_id => candidates.map(&:id))
                                  .group(:issue_id).minimum(:id).values
       firsts = HelpdeskMessage.where(:id => first_ids).includes(:helpdesk_mailbox).index_by(&:issue_id)

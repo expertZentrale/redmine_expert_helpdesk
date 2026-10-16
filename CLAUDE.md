@@ -234,6 +234,35 @@ nested registration would never fire in production.
   `Setting.cross_project_issue_relations`); `HelpdeskMessage.received_in_project?` skips a mail the
   project already has. **Message-IDs are stored in both spellings** (incoming bare, outgoing
   `<id>`) — always query through `HelpdeskMessage.message_id_variants`. Returns a `Result` struct.
+- **`handover.rb`** — experimental hand-over to another project instead of a mail. Active only when
+  the central `handover_enabled` **and** `HelpdeskProjectSetting#handover_enabled` of *both* projects
+  are on (migration 067). `HelpdeskRepliesController#create` splits participating helpdesk
+  addresses out of To/Cc/Bcc (`Handover.split`, same parser as the recipient pill), requires
+  `handover_mode` (`note`|`history`, nothing preselected in the form), creates the target tickets
+  **before** the mail and destroys them again if the mail raises — the agent re-sends after an
+  error, and a surviving hand-over would then exist twice. `Handover.undo` deletes only an
+  untouched ticket (row lock; `lock_version` as re-read at the end of the creation **transaction**
+  — a save callback may bump it, and read after the commit another request's work would count as
+  baseline — **plus** no journals beyond `helpdesk_handover_journal_ids`, because a note within the
+  creation second writes nothing to the row on whole-second columns, plus no time entries);
+  a kept one is finalized and named in the error. Only failures *before* delivery undo it;
+  until then the ticket is provisional: `issue.notify = false` (per issue — **not**
+  `Mailer.with_deliveries`, which flips a process-wide flag and swallows other requests' mail) and
+  `helpdesk_skip_kb_ingest` (a closed default status would put it into the knowledge base, where it
+  outlives an undo); `Handover.finalize` sends the "issue added" notification and enqueues the
+  ingest. `relink_attachments` points `/attachments/…/<id>` references in the
+  copied text at the copies — via `update_all`: `update_column` did not persist inside the reply
+  request. `HelpdeskTicketInfo#handover_mailbox_id` (migration 068, written only by `Handover`) is the
+  provenance `ThreadScope#handed_over_here?` trusts for a moved hand-over ticket. Hand-over requires `@issue.visible?` (the initial-mail path too: `HelpdeskInitController#find_issue`,
+  `InitMailer#check_recipients!`); Bcc-only targets carry `bcc: true` so the form keeps
+  them out of public notes, and get **no relation** (it would show them to the source's readers).
+  Text a model wrote (`KnowledgeExtractor.ai_journal_ids`, and the reply note when `hd_ai_drafted`)
+  goes over as notes of its own, flagged in `HelpdeskAiDraftedJournal`, with a placeholder in the
+  description — `ticket_text` reads the description unconditionally. History mode quotes the description and
+  **public** notes only and copies all attachments via `Attachment#copy` (shared disk file). The
+  reply form re-enables its submit button on a 50 ms timer: jquery-ujs disables
+  `data-disable-with` buttons on a 13 ms timer *after* the submit handler, so a synchronous or
+  0 ms re-enable is undone and the form stays stuck.
   `apply_new_issue_defaults` runs **for new tickets only** and in this order: the project's
   `default_assigned_to_id` (a `Principal`, so a user **or** a group — skipped when `MailHandler`
   already honoured an `Assigned to:` keyword), then the mailbox rules, which are the more
@@ -296,7 +325,17 @@ nested registration would never fire in production.
   custom properties on `:root`, where an unchecked string is a style injection, not a colour.
   Migration 059.
 - **`init_mailer.rb`** — outbound "initial" mail when an agent assigns a contact to a ticket
-  and opts to email them (also used by the "New Helpdesk Ticket" flow).
+  and opts to email them (also used by the "New Helpdesk Ticket" flow). With the mail ticked it
+  hands over like a reply (`take_out_handovers`), but without a mode: the target gets the mail text
+  and **every** ticket attachment (`Handover` mode `note`). Rules, mirrored by the form's
+  `hdInitPlan()` (`_init_section`/`_init_status`) so the form never promises what the server
+  refuses: the first remaining To is the customer; `move_cc` moves the first Cc up; no To but
+  Cc/Bcc raises `InitMailer::Error` **before anything happens**; only hand-overs = no mail, no
+  contact. A failed mail keeps the hand-over (no undo, unlike replies — nobody re-sends). Errors are
+  `InitMailer::Error` with the agent-facing message; the new-ticket hook puts them in
+  `flash[:error]` (IssuesController overwrites `:notice` after the hook). The new-ticket form is
+  re-rendered by Redmine on tracker change (`replaceIssueFormWith`), so its values come from
+  `params[:helpdesk_init]` and its script runs immediately when the page is already loaded.
 - **`mail_logger.rb`** — one log line per outgoing mail, naming the transport it took.
   **Every send site wraps its send in `MailLogger.track`** (reply controller, `init_mailer`,
   autoresponder in `mail_processor`, `info_request_mailer`, `HelpdeskSlaMailer`) — three

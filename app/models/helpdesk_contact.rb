@@ -36,8 +36,30 @@ class HelpdeskContact < HelpdeskApplicationRecord
     name.presence || email
   end
 
-  # Tickets, zu denen Nachrichten dieses Kontakts existieren
-  def issues
-    Issue.where(:id => helpdesk_messages.select(:issue_id)).distinct
+  # Tickets of this contact: those with a mail of theirs, and those linked to
+  # them without one yet - a hand-over creates the ticket and the contact link
+  # directly, and the customer only writes later, if at all.
+  #
+  # Only tickets +user+ may see: a handed-over ticket can move on to a project
+  # the viewer has no access to, and the history would otherwise show its
+  # subject and status.
+  def issues(user = User.current)
+    Issue.visible(user)
+         .where(:id => helpdesk_messages.select(:issue_id))
+         .or(Issue.visible(user).where(:id => helpdesk_ticket_infos.select(:issue_id)))
+         .distinct
+  end
+
+  # "Last ticket" in the customer list: the later of the contact's last mail
+  # and the creation of the newest ticket linked to them - a hand-over ticket
+  # has no mail yet. The list passes +newest_linked+ from one grouped query
+  # for the whole page instead of loading every linked ticket;
+  # HelpdeskContactsController::LAST_TICKET_SQL sorts by the same rule.
+  def last_ticket_at(newest_linked = newest_linked_ticket_at)
+    [helpdesk_messages.map(&:sent_at).compact.max, newest_linked].compact.max
+  end
+
+  def newest_linked_ticket_at
+    Issue.where(:id => helpdesk_ticket_infos.select(:issue_id)).maximum(:created_on)
   end
 end

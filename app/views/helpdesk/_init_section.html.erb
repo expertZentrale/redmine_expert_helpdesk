@@ -4,7 +4,13 @@
       project     – Project
       mailboxes   – Array<HelpdeskMailbox>
       in_new_form – true = innerhalb des Ticket-Erstellungsformulars,
-                    false = eigenes Formular fuer bestehende Tickets %>
+                    false = eigenes Formular fuer bestehende Tickets
+      values           – the agent's input when the new-ticket form is rendered
+                         again (tracker change, failed validation)
+      handover_targets – participating mailboxes of other projects (Handover) %>
+<% values = local_assigns[:values] || {}
+   handover_targets = local_assigns[:handover_targets] || []
+   send_checked = values['send_mail'] == '1' %>
 
 <style>
 /* CSS fuer das Helpdesk-Init-Formular, eigenstaendig ohne Abhaengigkeit von _reply_in_edit */
@@ -88,6 +94,15 @@
 }
 .hd-init-ac-drop li { padding: 4px 8px; cursor: pointer; font-size: 0.9em; white-space: nowrap; }
 .hd-init-ac-drop li.hd-ac-active, .hd-init-ac-drop li:hover { background: #e8f0fb; }
+/* What will happen to the recipients: hand-over (amber, like the experimental
+   settings) and anything that stops the mail (red, blocks saving). */
+#hd-init-status { margin: 6px 0; max-width: 480px; font-size: 0.9em; line-height: 1.4; }
+#hd-init-status .hd-init-box { padding: 6px 10px; margin-bottom: 6px; border-radius: 3px; }
+#hd-init-status .hd-init-box-info { background: #FFF8E6; border: 1px solid #FDBF3B; border-left-width: 4px; color: #805900; }
+#hd-init-status .hd-init-box-warn { background: #fdecea; border: 1px solid #e57373; border-left-width: 4px; color: #7f1313; }
+#hd-init-status ul { margin: 4px 0; padding-left: 18px; }
+#hd-init-status .hd-init-move-row { margin: 4px 0; }
+#hd-init-status .hd-init-blocked { outline: 2px solid #c0392b; }
 </style>
 
 <% ac_url = autocomplete_helpdesk_contacts_path(:project_id => project) %>
@@ -103,15 +118,15 @@
   <% if in_new_form %>
     <%#  Neue Tickets: Checkbox blendet die Felder ein (opt-in) %>
     <label>
-      <input type="checkbox" id="hd-init-send-cb" name="helpdesk_init[send_mail]" value="1" />
+      <input type="checkbox" id="hd-init-send-cb" name="helpdesk_init[send_mail]" value="1"<%= ' checked' if send_checked %> />
       <strong><%= l(:label_helpdesk_send_initial_mail) %></strong>
     </label>
-    <div id="hd-init-fields" style="display:none;">
+    <div id="hd-init-fields"<%= ' style="display:none;"'.html_safe unless send_checked %>>
       <div class="hd-init-row">
         <span class="hd-init-lbl"><%= l(:label_helpdesk_reply_to) %></span>
         <div class="hd-init-ac-wrap">
           <input type="text" id="hd-init-to" name="helpdesk_init[contact_email]"
-                 value="" class="hd-init-input" autocomplete="off"
+                 value="<%= values['contact_email'] %>" class="hd-init-input" autocomplete="off"
                  placeholder="<%= h(l(:text_helpdesk_multi_recipients_hint)) %>"
                  data-ac-url="<%= h(ac_url) %>" />
           <ul class="hd-init-ac-drop" id="hd-init-ac-drop"></ul>
@@ -121,7 +136,7 @@
         <span class="hd-init-lbl">CC</span>
         <div class="hd-init-ac-wrap">
           <input type="text" id="hd-init-cc" name="helpdesk_init[cc]"
-                 value="" class="hd-init-input" autocomplete="off"
+                 value="<%= values['cc'] %>" class="hd-init-input" autocomplete="off"
                  data-ac-url="<%= h(ac_url) %>" />
           <ul class="hd-init-ac-drop" id="hd-init-ac-drop-cc"></ul>
         </div>
@@ -130,22 +145,23 @@
         <span class="hd-init-lbl">BCC</span>
         <div class="hd-init-ac-wrap">
           <input type="text" id="hd-init-bcc" name="helpdesk_init[bcc]"
-                 value="" class="hd-init-input" autocomplete="off"
+                 value="<%= values['bcc'] %>" class="hd-init-input" autocomplete="off"
                  data-ac-url="<%= h(ac_url) %>" />
           <ul class="hd-init-ac-drop" id="hd-init-ac-drop-bcc"></ul>
         </div>
       </div>
+      <%= render :partial => 'helpdesk/init_status', :locals => { :handover_targets => handover_targets, :values => values } %>
       <div class="hd-init-row">
         <span class="hd-init-lbl"><%= l(:field_name) %></span>
         <input type="text" id="hd-init-name" name="helpdesk_init[contact_name]"
-               value="" class="hd-init-input"
+               value="<%= values['contact_name'] %>" class="hd-init-input"
                placeholder="<%= h(l(:label_helpdesk_contact_name_optional)) %>" />
       </div>
       <% if mailboxes.size > 1 %>
         <div class="hd-init-row">
           <span class="hd-init-lbl"><%= l(:label_helpdesk_mailbox) %></span>
           <%= select_tag 'helpdesk_init[mailbox_id]',
-              options_from_collection_for_select(mailboxes, :id, :mailbox_address),
+              options_from_collection_for_select(mailboxes, :id, :mailbox_address, values['mailbox_id'].to_i),
               :class => 'hd-init-input', :style => 'max-width:320px; flex:none;' %>
         </div>
       <% elsif mailboxes.first %>
@@ -210,6 +226,7 @@
       <input type="checkbox" id="hd-init-send-cb" name="helpdesk_init[send_mail]" value="1" />
       <strong><%= l(:label_helpdesk_send_initial_mail) %></strong>
     </div>
+    <%= render :partial => 'helpdesk/init_status', :locals => { :handover_targets => handover_targets, :values => values } %>
     <div id="hd-init-body-wrap" style="display:none; margin-top:4px;">
       <div class="hd-init-row" style="align-items:flex-start;">
         <span class="hd-init-lbl" style="padding-top:4px;"><%= l(:label_helpdesk_initial_mail_body) %></span>
@@ -259,6 +276,8 @@
       if (nameInput && !nameInput.value.trim() && parts.length === 1) nameInput.value = item.name;
       close();
       input.focus();
+      // Set by script, so no input event fires.
+      hdInitRender();
     }
 
     function setActive(idx) {
@@ -315,7 +334,133 @@
     input.addEventListener('blur', function() { setTimeout(close, 150); });
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
+  var T = {
+    noTo:         '<%= j(l(:text_helpdesk_init_no_to)) %>',
+    moveLabel:    '<%= j(l(:label_helpdesk_init_move_cc)) %>',
+    moveOn:       '<%= j(l(:text_helpdesk_init_move_cc_on)) %>',
+    moveOff:      '<%= j(l(:text_helpdesk_init_move_cc_off, :send => l(:label_helpdesk_send_initial_mail))) %>',
+    bccOnly:      '<%= j(l(:text_helpdesk_init_bcc_only)) %>',
+    handoverOnly: '<%= j(l(:text_helpdesk_init_handover_only)) %>',
+    noRecipient:  '<%= j(l(:text_helpdesk_init_no_recipient, :send => l(:label_helpdesk_send_initial_mail))) %>',
+    customer:     '<%= j(l(:text_helpdesk_init_customer)) %>'
+  };
+
+  // Same split as InitMailer#split_addresses.
+  // Client twin of HelpdeskMessage.scan_tokens, like hdParseList in the
+  // reply form: a comma inside quotes or angle brackets separates nothing,
+  // so "Doe, Jane" <jane@doe.com> stays one recipient.
+  function tokens(value) {
+    var list = [], current = '', quoted = false, angled = false, escaped = false;
+    for (var i = 0; i < value.length; i++) {
+      var ch = value[i];
+      if (escaped) { current += ch; escaped = false; continue; }
+      if (ch === '\\') { escaped = true; }
+      else if (ch === '"') { quoted = !quoted; }
+      else if (ch === '<') { angled = true; }
+      else if (ch === '>') { angled = false; }
+      else if ((ch === ',' || ch === ';') && !quoted && !angled) { list.push(current); current = ''; continue; }
+      current += ch;
+    }
+    list.push(current);
+    return list.map(function(t) { return t.trim(); }).filter(function(t) { return t.length > 0; });
+  }
+
+  function bare(address) {
+    var m = address.match(/<([^>]*)>/);
+    return (m ? m[1] : address).trim().toLowerCase();
+  }
+
+  // One recipient field as InitMailer#split_addresses sees it: unique by address.
+  function addresses(id) {
+    var el = document.getElementById(id);
+    if (!el) return [];
+    var seen = {};
+    return tokens(el.value).filter(function(t) {
+      var key = bare(t);
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+  }
+
+  // What InitMailer will do with the recipients as they stand: hand-over
+  // addresses leave the mail, the first Cc moves up when the agent says so,
+  // and without anybody in To nothing goes out. null while no mail is sent.
+  function hdInitPlan() {
+    var status = document.getElementById('hd-init-status');
+    var send   = document.getElementById('hd-init-send-cb');
+    if (!status || !send || !send.checked) return null;
+
+    var targets = {};
+    JSON.parse(status.getAttribute('data-hd-targets') || '[]').forEach(function(t) { targets[t.address] = t; });
+    var plan = { to: [], cc: [], bcc: [], handovers: [] };
+    var seen = {};
+    ['to', 'cc', 'bcc'].forEach(function(field) {
+      addresses('hd-init-' + field).forEach(function(address) {
+        var target = targets[bare(address)];
+        if (!target) { plan[field].push(address); return; }
+        if (!seen[target.project_id]) { seen[target.project_id] = true; plan.handovers.push(target); }
+      });
+    });
+    var moveCb = document.getElementById('hd-init-move-cc');
+    plan.canMove  = plan.to.length === 0 && plan.cc.length > 0;
+    plan.moved    = plan.canMove && !!(moveCb && moveCb.checked);
+    plan.customer = plan.to[0] || (plan.moved ? plan.cc[0] : null);
+    plan.state    = plan.customer ? 'ok' :
+                    plan.cc.length ? 'no_to' :
+                    plan.bcc.length ? 'bcc_only' :
+                    plan.handovers.length ? 'handover_only' : 'empty';
+    plan.blocked  = ['no_to', 'bcc_only', 'empty'].indexOf(plan.state) >= 0;
+    return plan;
+  }
+
+  function hdInitRender() {
+    var status = document.getElementById('hd-init-status');
+    if (!status) return;
+    var plan = hdInitPlan();
+    status.style.display = plan ? '' : 'none';
+    if (!plan) return;
+
+    var list = document.getElementById('hd-init-handover-list');
+    list.innerHTML = '';
+    plan.handovers.forEach(function(t) {
+      var li = document.createElement('li');
+      li.textContent = t.project + ' (' + t.address + ')';
+      list.appendChild(li);
+    });
+    document.getElementById('hd-init-handover').style.display = plan.handovers.length ? '' : 'none';
+
+    var message = '', hint = '';
+    if (plan.canMove) {
+      message = T.noTo;
+      hint    = plan.moved ? T.moveOn.replace('%{address}', plan.cc[0]) : T.moveOff;
+      document.getElementById('hd-init-move-label').textContent = T.moveLabel.replace('%{address}', plan.cc[0]);
+    } else if (plan.state === 'bcc_only') {
+      message = T.bccOnly;
+    } else if (plan.state === 'handover_only') {
+      message = T.handoverOnly;
+    } else if (plan.state === 'empty' && status.getAttribute('data-tried')) {
+      // Not before the first attempt: right after ticking "send" the fields
+      // are empty, and a red box there would scold the agent for nothing.
+      message = T.noRecipient;
+    }
+    var warn = document.getElementById('hd-init-warning');
+    document.getElementById('hd-init-warning-text').textContent = message;
+    document.getElementById('hd-init-warning-hint').textContent = hint;
+    document.getElementById('hd-init-move-row').style.display = plan.canMove ? '' : 'none';
+    warn.style.display = message ? '' : 'none';
+    warn.className = 'hd-init-box ' + (plan.blocked ? 'hd-init-box-warn' : 'hd-init-box-info');
+
+    var customer = document.getElementById('hd-init-customer');
+    customer.textContent   = plan.customer ? T.customer.replace('%{address}', bare(plan.customer)) : '';
+    // After a move the box above says it already.
+    customer.style.display = plan.customer && plan.handovers.length && !plan.moved ? '' : 'none';
+  }
+
+  // Runs again whenever Redmine renders the new-ticket form anew (tracker
+  // change): the inserted script finds the page loaded already, so waiting
+  // for DOMContentLoaded would leave the fresh fields without behaviour.
+  function setup() {
     // Checkbox: zeigt/versteckt Felder (neues Ticket) oder Nachrichtenfeld (bestehendes Ticket)
     var cb      = document.getElementById('hd-init-send-cb');
     var fields  = document.getElementById('hd-init-fields');    // nur neues Ticket
@@ -324,13 +469,57 @@
       cb.addEventListener('change', function() {
         if (fields)   fields.style.display   = this.checked ? '' : 'none';
         if (bodyWrap) bodyWrap.style.display = this.checked ? '' : 'none';
+        hdInitRender();
       });
+      if (bodyWrap && cb.checked) bodyWrap.style.display = '';
     }
 
     setupAc('hd-init-to',  'hd-init-ac-drop',     'hd-init-name');
     setupAc('hd-init-cc',  'hd-init-ac-drop-cc',  null);
     setupAc('hd-init-bcc', 'hd-init-ac-drop-bcc', null);
-  });
+
+    ['hd-init-to', 'hd-init-cc', 'hd-init-bcc', 'hd-init-move-cc'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', hdInitRender);
+      el.addEventListener('change', hdInitRender);
+    });
+
+    // Once per form: the new-ticket form outlives the re-rendered fields, so
+    // the handler looks them up when it runs instead of keeping these.
+    var section = document.getElementById('hd-init-section');
+    var form = section && section.closest('form');
+    if (form && !form.getAttribute('data-hd-init-bound')) {
+      form.setAttribute('data-hd-init-bound', '1');
+      form.addEventListener('submit', function(e) {
+        var plan = hdInitPlan();
+        if (!plan || !plan.blocked) return;
+        e.preventDefault();
+        var status = document.getElementById('hd-init-status');
+        status.setAttribute('data-tried', '1');
+        hdInitRender();
+        var warn = document.getElementById('hd-init-warning');
+        warn.classList.add('hd-init-blocked');
+        warn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // jquery-ujs disables the submit buttons 13 ms after this handler,
+        // and Redmine's double-submit guard (addFormObserversForDoubleSubmit)
+        // marks the form as submitted even though it was not - every later
+        // attempt would be swallowed. Undo both afterwards.
+        setTimeout(function() {
+          form.removeAttribute('data-submitted');
+          form.querySelectorAll('[type=submit]').forEach(function(btn) { btn.disabled = false; });
+        }, 50);
+      });
+    }
+
+    hdInitRender();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setup);
+  } else {
+    setup();
+  }
 })();
 //]]>
 </script>

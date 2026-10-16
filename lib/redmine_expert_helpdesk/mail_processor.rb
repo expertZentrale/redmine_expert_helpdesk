@@ -421,23 +421,7 @@ module RedmineExpertHelpdesk
     end
 
     def relate_issues(issue, other)
-      return if IssueRelation.where(:issue_from_id => [issue.id, other.id], :issue_to_id => [issue.id, other.id]).exists?
-
-      # No init_journals: Redmine writes a history entry (and a notification)
-      # only when the controller asks for it. The relation is meant as a quiet
-      # pointer, not as news on a ticket of another team.
-      # By id, not by instance: Issue#relation_added writes the relation into
-      # whatever journal the passed instance still has open. On the reply path
-      # Redmine has closed it by now (test_relation_on_a_reply_adds_no_journal_detail),
-      # but fresh instances cannot carry one at all.
-      relation = IssueRelation.new(:issue_from_id => issue.id, :issue_to_id => other.id,
-                                   :relation_type => IssueRelation::TYPE_RELATES)
-      if relation.save
-        Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): ##{issue.id} related to ##{other.id} (other project)"
-      else
-        Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): ##{issue.id} not related to ##{other.id}: " \
-                          "#{relation.errors.full_messages.to_sentence}"
-      end
+      ThreadScope.relate(issue, other, "Helpdesk (#{@mailbox.mailbox_address})")
     end
 
     # Injiziert [#id] in den Betreff, wenn die Mail als Antwort auf eine bekannte

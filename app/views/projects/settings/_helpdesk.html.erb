@@ -64,6 +64,17 @@
             :id => 'hd_phishing_action' %>
       </p>
     <% end %>
+    <% if RedmineExpertHelpdesk::Handover.enabled? && hd_setting.has_attribute?(:handover_enabled) %>
+      <%# Framed like the central Experimental section (helpdesk_activity.css). %>
+      <p class="hd-experimental-option">
+        <%= hidden_field_tag 'helpdesk_project_setting[handover_enabled]', '0', :id => nil %>
+        <%= check_box_tag 'helpdesk_project_setting[handover_enabled]', '1',
+              hd_setting.handover_enabled?, :id => 'hd_handover_enabled' %>
+        <%= label_tag 'hd_handover_enabled', l(:field_helpdesk_project_handover_enabled) %>
+        <span class="hd-experimental-badge"><%= l(:label_helpdesk_experimental) %></span>
+        <em class="info"><%= l(:text_helpdesk_project_handover_enabled_info) %></em>
+      </p>
+    <% end %>
     <p><%= submit_tag l(:button_save) %></p>
   <% end %>
 </fieldset>

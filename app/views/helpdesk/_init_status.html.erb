@@ -1,0 +1,23 @@
+<%# What will happen to the recipients of the initial mail, kept up to date by
+    the script in _init_section while "send" is ticked. It follows the rules of
+    InitMailer, so the form never promises what the server then refuses.
+    Locals: handover_targets, values %>
+<div id="hd-init-status" style="display:none;"
+     data-hd-targets="<%= h(handover_targets.to_json) %>">
+  <div id="hd-init-handover" class="hd-init-box hd-init-box-info" style="display:none;">
+    <div><strong><%= l(:label_helpdesk_handover_title) %>:</strong> <%= l(:text_helpdesk_handover_intro) %></div>
+    <ul id="hd-init-handover-list"></ul>
+    <div><%= l(:text_helpdesk_init_handover_content) %></div>
+  </div>
+  <div id="hd-init-warning" class="hd-init-box hd-init-box-warn" style="display:none;">
+    <div id="hd-init-warning-text"></div>
+    <div id="hd-init-move-row" class="hd-init-move-row" style="display:none;">
+      <label>
+        <input type="checkbox" id="hd-init-move-cc" name="helpdesk_init[move_cc]" value="1"<%= ' checked' if values['move_cc'] == '1' %> />
+        <span id="hd-init-move-label"></span>
+      </label>
+    </div>
+    <div id="hd-init-warning-hint"></div>
+  </div>
+  <div id="hd-init-customer" style="display:none;"></div>
+</div>

@@ -121,10 +121,12 @@ module RedmineExpertHelpdesk
         return context[:controller].send(:render_to_string, {
           :partial => 'helpdesk/init_section',
           :locals  => {
-            :issue       => issue,
-            :project     => project,
-            :mailboxes   => mailboxes,
-            :in_new_form => false
+            :issue            => issue,
+            :project          => project,
+            :mailboxes        => mailboxes,
+            :in_new_form      => false,
+            :values           => {},
+            :handover_targets => handover_targets(project)
           }
         })
       end
@@ -182,10 +184,12 @@ module RedmineExpertHelpdesk
       context[:controller].send(:render_to_string, {
         :partial => 'helpdesk/init_section',
         :locals  => {
-          :issue       => issue,
-          :project     => project,
-          :mailboxes   => mailboxes,
-          :in_new_form => true
+          :issue            => issue,
+          :project          => project,
+          :mailboxes        => mailboxes,
+          :in_new_form      => true,
+          :values           => init_values(context),
+          :handover_targets => handover_targets(project)
         }
       })
     end
@@ -201,8 +205,9 @@ module RedmineExpertHelpdesk
       return unless issue.project.module_enabled?(:helpdesk)
       return unless User.current.allowed_to?(:send_helpdesk_reply, issue.project)
 
-      to_list = hd[:contact_email].to_s.split(/[,;]/).map { |a| a.strip.downcase }.reject(&:blank?)
-      return unless to_list.first.to_s.match?(/\A[^@\s]+@[^@\s]+\z/)
+      send_mail = hd[:send_mail] == '1'
+      # Mail switched off and nobody named: nothing was asked for.
+      return if !send_mail && hd[:contact_email].to_s.strip.empty?
 
       mailbox = issue.project.helpdesk_mailboxes.enabled.find_by(:id => hd[:mailbox_id].to_i) ||
                 issue.project.helpdesk_mailboxes.enabled.first
@@ -210,16 +215,23 @@ module RedmineExpertHelpdesk
 
       RedmineExpertHelpdesk::InitMailer.call(
         :issue         => issue,
-        :contact_email => to_list.join(', '),
+        :contact_email => hd[:contact_email].to_s,
         :contact_name  => hd[:contact_name].to_s.strip.presence,
         :cc            => hd[:cc].to_s,
         :bcc           => hd[:bcc].to_s,
         :mailbox       => mailbox,
         :user          => User.current,
-        :send_mail     => hd[:send_mail] == '1'
+        :send_mail     => send_mail,
+        :move_cc       => hd[:move_cc] == '1'
       )
+    # The ticket is saved by now; the agent learns on the next page what did
+    # not happen. IssuesController sets its own :notice after this hook, so
+    # the message goes to :error, which it leaves alone.
+    rescue RedmineExpertHelpdesk::InitMailer::Error => e
+      init_failed(context, e.message)
     rescue StandardError => e
       Rails.logger.error("Helpdesk InitMailer (new issue): #{e.message}\n#{e.backtrace.first(3).join("\n")}")
+      init_failed(context, I18n.t(:error_helpdesk_init_mail_failed, :message => e.message))
     end
 
     # Controller-Hook: verknuepft das beim Issue-Update erstellte Journal mit der
@@ -299,6 +311,34 @@ module RedmineExpertHelpdesk
     end
 
     private
+
+    # Redmine renders flash messages as HTML; the message may carry a project
+    # name or a mail server's answer.
+    def init_failed(context, message)
+      flash = context[:controller]&.flash
+      flash[:error] = ERB::Util.h(message) if flash
+    end
+
+    # The helpdesk fields of the new-ticket form as the agent left them: the
+    # form is rendered again when the tracker changes or the ticket does not
+    # validate, and would otherwise come back empty. On the button's
+    # GET ?helpdesk_init=1 there is nothing to keep.
+    def init_values(context)
+      hd = context[:controller]&.params&.[](:helpdesk_init)
+      return {} unless hd.respond_to?(:to_unsafe_h)
+
+      # Only read back into the form (escaped), never assigned to a model.
+      hd.to_unsafe_h.slice('send_mail', 'contact_email', 'cc', 'bcc', 'contact_name', 'mailbox_id', 'move_cc')
+        .transform_values(&:to_s)
+    end
+
+    # The participating mailboxes the form recognises in its recipient fields.
+    def handover_targets(project)
+      RedmineExpertHelpdesk::Handover.targets_for(project).values.map do |mb|
+        { :address => mb.mailbox_address.to_s.downcase, :project => mb.project.name,
+          :project_id => mb.project_id }
+      end
+    end
 
     # Config island + script for the "blacklist this file" button on every
     # attachment row. Redmine's attachment partial has no view hook and its markup
@@ -394,7 +434,13 @@ module RedmineExpertHelpdesk
           :original_to            => original[:to],
           :original_cc            => original[:cc],
           :box_color              => project_setting.effective_reply_box_color,
-          :hazard_color           => project_setting.effective_reply_hazard_color
+          :hazard_color           => project_setting.effective_reply_hazard_color,
+          # Experimental hand-over: addresses the form offers to hand over to.
+          # The project name only for viewers who may see that project.
+          :handover_targets       => RedmineExpertHelpdesk::Handover.targets_for(project).values.map { |mb|
+            { :address => mb.mailbox_address.to_s.downcase,
+              :project => (mb.project.visible? ? mb.project.name : nil) }
+          }
         }
       })
     end

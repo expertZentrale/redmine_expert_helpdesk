@@ -312,6 +312,90 @@ flowchart LR
   Empfänger ist. Das Postfach jenes Projekts entfernt sie beim Eingang
   ([Abschnitt 6](#6-eine-mail-mehrere-projekte)).
 
+### Übergabe statt Mail (experimentell)
+
+Nennt ein Bearbeiter in einer Antwort das Helpdesk-Postfach eines anderen Projekts, würde die Mail
+per SMTP hinaus- und über dieses Postfach wieder hereinlaufen. Mit eingeschalteter Übergabe wird
+das Ticket im anderen Projekt direkt angelegt, und diese Adresse erhält keine Mail.
+
+```mermaid
+flowchart TD
+  R["Bearbeiter schreibt eine Antwort<br/>An / CC / BCC enthält helpdesk-b@…"] --> E{"Übergabe für beide Projekte aktiv?<br/><i>Übergabe an andere Projekte aktivieren</i> (zentral)<br/><i>An Übergaben teilnehmen</i> (Projekt A und B)"}
+  E -- nein --> MAIL["Normaler Empfänger:<br/>wird gemailt, beim Eingang Ticket in B"]
+  E -- ja --> ASK{"Bearbeiter wählt<br/>(nichts vorausgewählt)"}
+  ASK -- "Nur diese Notiz" --> N1(["Neues Ticket in B:<br/>Notiz + mitgesendete Anhänge"]):::new
+  ASK -- "Komplette Historie" --> N2(["Neues Ticket in B:<br/>Notiz + Beschreibung + öffentliche Notizen<br/>+ alle Anhänge"]):::new
+  N1 --> LINK["Beziehung zum A-Ticket (nicht bei nur BCC),<br/>Kunde als Kontakt in B, Zeile in der Notiz von A"]
+  N2 --> LINK
+  LINK --> REST{"Weitere Empfänger übrig?"}
+  REST -- ja --> SEND["Mail an sie, ohne die Adresse von B"]
+  REST -- nein --> DONE["Gar keine Mail"]
+  classDef new fill:#d8efe1,stroke:#1f7a4d,color:#10301f
+```
+
+- **Beide Projekte müssen teilnehmen.** Der zentrale Schalter macht die Option in den
+  Projekteinstellungen sichtbar; jedes Projekt entscheidet dann selbst, ob es übergibt und
+  Übergaben annimmt.
+- **Private Notizen bleiben zurück**, auch bei der kompletten Historie: Sie waren für das
+  Ausgangsteam geschrieben.
+- Autor des Tickets in B ist der Bearbeiter, es erhält die *Standardwerte für neue Tickets* des
+  Postfachs und *Neue Tickets zuweisen an* von B (sonst Redmines Projektstandard). Übergabeziele sind nur Projekte,
+  die der Bearbeiter sehen darf; die Adresse jedes anderen Projekts wird wie bisher gemailt. Derselbe Kunde wird Kontakt in B, damit B ihm aus seinem Ticket antworten kann.
+- **Mehrere Empfänger**: Jedes teilnehmende Projekt aus An, CC oder BCC erhält ein Ticket, auch
+  wenn zwei seiner Postfächer genannt sind. Alle anderen werden wie bisher gemailt; standen in An nur
+  Übergabe-Adressen, rückt CC nach An. Blieben nur BCC-Empfänger übrig, wird die Antwort abgelehnt,
+  bevor etwas übergeben wird. Ein bewusst geleertes An bleibt leer: Steht nur die Adresse von B in
+  CC, wird nichts gemailt, auch nicht an den Kunden.
+- **Schlägt die Mail an die übrigen Empfänger fehl**, wird das Ticket in B wieder entfernt, ein
+  erneutes Senden legt es also nicht doppelt an – es sei denn, in B hat schon jemand daran
+  gearbeitet (eine Änderung, eine Notiz, gebuchte Zeit): Dann bleibt es, und die Fehlermeldung nennt
+  es, damit der Bearbeiter beim erneuten Senden die Adresse von B weglässt. Ist die Mail einmal raus, bleibt das Ticket, auch
+  wenn das Protokollieren der Antwort danach fehlschlägt; der Bearbeiter wird gewarnt, nicht erneut
+  zu senden. Die Benachrichtigung von B über das neue Ticket geht erst dann raus, nie für eine
+  zurückgenommene Übergabe.
+- Bilder des Tickets, die die Notiz zitiert, gehen mit, auch ohne Haken; Bildverweise im kopierten
+  Text zeigen auf die Kopien. Ein nur per BCC erreichtes Projekt wird in der Notiz des
+  Ausgangstickets nur genannt, wenn die Notiz privat ist, und sein Ticket wird nicht mit dem
+  Ausgangsticket verknüpft.
+- **Text aus einem KI-Entwurf** (die Antwortnotiz oder Notizen der kompletten Historie) geht als
+  eigene, als KI-Entwurf markierte Notiz über, mit einem Platzhalter in der Beschreibung:
+  Wissensbasis und Antwortvorschläge des Zielprojekts lassen ihn aus, wie im Ausgangsprojekt.
+- Vor dem Abschluss der Übergabe wird nichts über das neue Ticket verkündet: keine
+  Benachrichtigung und bei geschlossenem Standardstatus kein Eintrag in der Wissensbasis.
+
+#### In der Initialmail
+
+Die Initialmail – *Neues Helpdesk-Ticket* und *Kontakt zuordnen* an einem Ticket ohne Kunden –
+übergibt genauso, nur gibt es nichts zu wählen: Ein neues Ticket hat noch keine Notizen, also
+erhält das andere Projekt, was die Mail enthalten hätte.
+
+```mermaid
+flowchart TD
+  I["Bearbeiter setzt <i>Als E-Mail an Kunden senden</i><br/>An / CC / BCC enthält helpdesk-b@…"] --> E{"Übergabe für beide Projekte aktiv?"}
+  E -- nein --> MAIL["Normaler Empfänger: wird gemailt"]
+  E -- ja --> OUT["Adresse von B verlässt die Mail"]
+  OUT --> TO{"Noch jemand in An?"}
+  TO -- ja --> OK["Erste An-Adresse wird Kunde"]
+  TO -- "nein, aber CC" --> MOVE{"<i>Ersten CC-Empfänger nach An verschieben</i> gesetzt?"}
+  MOVE -- ja --> OK
+  MOVE -- nein --> STOP["Formular blockiert das Speichern:<br/>nichts gemailt, nichts übergeben"]
+  TO -- "nein, nur BCC" --> STOP
+  TO -- "niemand" --> ONLY["Keine Mail, kein Kunde"]
+  OK --> N(["Neues Ticket in B:<br/>Betreff, Text, alle Anhänge"]):::new
+  ONLY --> N
+  N --> SEND["Mail an die übrigen Empfänger;<br/>Notiz in A nennt das Ticket in B"]
+  classDef new fill:#d8efe1,stroke:#1f7a4d,color:#10301f
+```
+
+- **Das Formular sagt, was passieren wird**, schon beim Tippen: welche Projekte das Ticket
+  erhalten, wer Kunde wird, und eine Warnung, sobald niemand in An übrig ist. Blockiert wird das
+  Speichern nur, wenn die Mail nicht wie angezeigt hinausgehen könnte.
+- **Schlägt die Mail fehl**, bleibt die Übergabe bestehen – das Ticket existiert ohnehin, und
+  niemand wird gebeten, erneut zu senden. Die Ticketseite nennt beides: den Mailfehler und die
+  angelegten Tickets.
+- Ohne Mail (*Als E-Mail an Kunden senden* nicht gesetzt) wird nichts übergeben; die An-Adresse
+  wird wie bisher nur als Kunde verknüpft.
+
 ---
 
 ## 8. Einstellungsübersicht
@@ -352,6 +436,8 @@ flowchart LR
 | Ticket-Beziehungen zwischen Projekten erlauben | Redmine, *Tickets* | Tickets verschiedener Projekte können verknüpft werden | [6](#6-eine-mail-mehrere-projekte) |
 | Versandweg | Postfach | *Backend des Postfachs*, *Microsoft Graph API* oder *SMTP (Redmine-Standard)* | [7](#7-ausgehende-mails) |
 | Abweichender Absender (From), Reply-To auf die Postfach-Adresse setzen | Postfach (SMTP-Weg) | Absenderadresse beim Versand über *SMTP (Redmine-Standard)* | [7](#7-ausgehende-mails) |
+| Übergabe an andere Projekte aktivieren | Zentral, *Experimentell* | Experimentell: Übergabe statt Mail wird verfügbar | [7](#übergabe-statt-mail-experimentell) |
+| An Übergaben teilnehmen | Projekt, *Experimentell* | Dieses Projekt übergibt und nimmt Übergaben an | [7](#übergabe-statt-mail-experimentell) |
 | Ordner für gesendete Mails | Postfach (IMAP) | Wo die Kopie einer gesendeten Mail abgelegt wird | [7](#7-ausgehende-mails) |
 | Betreff-Vorlage | Projekt | Betreff von Bearbeiterantworten | [7](#7-ausgehende-mails) |
 | Kopfzeile, Fußzeile, Fußzeilen-Modus | Postfach (+ zentrale Fußzeile) | Rahmen um den Antworttext | [7](#7-ausgehende-mails) |

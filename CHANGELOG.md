@@ -17,6 +17,20 @@
 
 ### Fixed
 
+- **Quoted display names in the initial mail.** *New Helpdesk Ticket* and *Assign Contact* split
+  the recipient fields at every comma, so `"Doe, Jane" <jane@doe.com>` fell apart and the first To
+  never validated. They now split like the reply form.
+- **An internal note can be saved after a reply was stopped.** When sending the reply failed, or
+  the form stopped it for a missing choice, unticking the mail to save the note alone did nothing:
+  Redmine's double-submit guard had counted the stopped attempt.
+- **Assign Contact checks that the agent may see the ticket.** The form checked the project
+  permission only, so an agent restricted to their own tickets could mail out — and, with the
+  hand-over, copy — another ticket's description and attachments by posting its id.
+- **A failed initial mail of a new ticket is reported.** It used to end up in the log only, and the
+  agent believed the customer had it; the ticket page now shows the error.
+- **The helpdesk fields of the new-ticket form survive a re-render.** Changing the tracker, or a
+  ticket that did not validate, emptied them and left the *Send as e-mail to customer* checkbox
+  without effect.
 - **A mailbox only continues tickets of its own project** — opt-in, experimental. Redmine's `MailHandler` follows a
   `[#id]` subject tag or a Redmine/helpdesk Message-ID in `In-Reply-To`/`References` into any
   project, and the plugin's own thread lookup searched all projects as well. A mail sent to project
@@ -50,7 +64,51 @@
 ### Added
 
 - **Experimental settings, framed.** The plugin settings get an *Experimental* section with an
-  amber warning frame, holding the switches that change how mail is matched or delivered.
+  amber warning frame, holding the switches that change how mail is matched or delivered —
+  project-scoped matching and the hand-over; the project's hand-over switch carries the same frame.
+- **Hand-over to another project instead of a mail (experimental).** Central switch *Enable
+  hand-over to other projects* plus *Take part in hand-overs* per project (migration 067); both
+  projects have to take part. A reply naming a participating project's helpdesk address takes that
+  address out of the mail and asks the agent what goes over — only the note with its attachments,
+  or the complete history (description, public notes, all attachments; private notes stay behind).
+  The ticket is created there directly: authored by the agent, the mailbox's defaults for new
+  tickets, the customer as contact, related to the source ticket, and a line in the source note
+  names it; the receiving project's *Assign new tickets to* applies. Remaining recipients are mailed
+  as before; if that mail fails, the hand-over is undone, but never once the mail is out. A To
+  cleared on purpose stays empty, so a hand-over to a Cc address mails nobody. Ticket images the
+  note quotes go along, and image references in the copied text point at the copies. The target
+  team's notification goes out only once the hand-over is final. A target reached by Bcc only is
+  left out of a public note. The agent has to be able to see the source ticket. The customer's
+  contact in the target project lists the ticket right away, before any mail of theirs reaches it.
+  A handed-over ticket moved on to a third project keeps receiving replies through the mailbox it
+  was handed over to (migration 068). Only projects the agent can see are offered as targets - the
+  address of any other project stays an ordinary recipient, and the form never learns it. Without a
+  helpdesk default assignee, Redmine's project default applies when it is assignable. Contact
+  histories list only tickets the viewer may see.
+  Each participating project gets one ticket however many of its mailboxes are named; a reply that
+  would leave only Bcc recipients is refused before anything is handed over.
+- **Hand-over from a new ticket and from *Assign Contact* (experimental).** The initial mail
+  (*New Helpdesk Ticket*, and *Assign Contact* on a ticket without one) hands over as a reply does:
+  a participating project's helpdesk address leaves To/Cc/Bcc and the ticket is created there
+  directly. There is nothing to choose — the other project gets what the mail would have carried:
+  subject, text and every attachment of the ticket. The first remaining To address becomes the
+  customer, so another team's mailbox no longer turns into the customer of the ticket. The form
+  shows, while the agent types, what will happen: which projects get the ticket, who becomes the
+  customer, and a warning when nobody is left in To. A checkbox then moves the first Cc recipient
+  to To; without it, saving is blocked, since nothing would be mailed or handed over. Only
+  hand-over addresses in To means no mail and no customer, and the form says so. A failed mail
+  leaves the hand-over in place, and the agent is told both. The source ticket gets a note naming
+  the new tickets (private when a target was reached by Bcc only).
+- **Hand-over details.** A target reached by Bcc only is no longer related to the source ticket —
+  the relation showed the source's readers who else got the topic. Text an AI draft wrote goes
+  over as a note of its own, marked as such, with a placeholder in the description, so the target's
+  knowledge base and answer drafts do not take it as input; its images point at the copies as well. The provisional ticket is silenced on
+  itself instead of switching mail off for the whole process (which could swallow other requests'
+  mail), and it enters the knowledge base only once the hand-over is final. The customer list's
+  *Last ticket* counts linked tickets too, so a contact who only got a hand-over shows its date
+  instead of "–", and sorting follows the same date. A hand-over taken back after a failed mail is
+  deleted only while nobody has worked on it; one with an edit, a note or booked time stays, and the
+  error names it.
 - **Cross-project references for a mail that went to several projects** (with project-scoped
   matching on). The ticket is related
   (*related to*) to the other project's ticket — the one its removed markers pointed at, and the

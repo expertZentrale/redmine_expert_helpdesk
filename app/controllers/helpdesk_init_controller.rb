@@ -7,46 +7,56 @@ class HelpdeskInitController < ApplicationController
 
   def create
     hd        = params[:helpdesk_init] || {}
-    to_list   = hd[:contact_email].to_s.split(/[,;]/).map { |a| a.strip.downcase }.reject(&:blank?)
-    name      = hd[:contact_name].to_s.strip
     send_mail = hd[:send_mail] == '1'
-    mail_body = hd[:mail_body].to_s.strip
-    mailbox   = resolve_mailbox(hd[:mailbox_id])
 
-    unless to_list.first.to_s.match?(/\A[^@\s]+@[^@\s]+\z/)
-      flash[:error] = l(:error_helpdesk_invalid_email)
-      return redirect_to issue_path(@issue)
-    end
-
-    RedmineExpertHelpdesk::InitMailer.call(
+    result = RedmineExpertHelpdesk::InitMailer.call(
       :issue         => @issue,
-      :contact_email => to_list.join(', '),
-      :contact_name  => name.presence,
+      :contact_email => hd[:contact_email].to_s,
+      :contact_name  => hd[:contact_name].to_s.strip.presence,
       :cc            => hd[:cc].to_s,
       :bcc           => hd[:bcc].to_s,
-      :mailbox       => mailbox,
+      :mailbox       => resolve_mailbox(hd[:mailbox_id]),
       :user          => User.current,
       :send_mail     => send_mail,
-      :mail_body     => mail_body.presence
+      :mail_body     => hd[:mail_body].to_s.strip.presence,
+      :move_cc       => hd[:move_cc] == '1'
     )
 
-    flash[:notice] = send_mail ? l(:notice_helpdesk_init_mail_sent) : l(:notice_helpdesk_contact_assigned)
+    flash[:notice] = ERB::Util.h(init_notice(result))
     redirect_to issue_path(@issue)
   rescue StandardError => e
-    flash[:error] = e.message
+    # Redmine renders flash messages as HTML; the message may carry a project
+    # name or a mail server's answer.
+    flash[:error] = ERB::Util.h(e.message)
     redirect_to issue_path(@issue)
   end
 
   private
+
+  def init_notice(result)
+    parts = []
+    parts << l(result.mailed ? :notice_helpdesk_init_mail_sent : :notice_helpdesk_contact_assigned) if result.contact
+    if result.handovers.any?
+      targets = RedmineExpertHelpdesk::InitMailer.handover_list(result.handovers)
+      parts << l(result.contact ? :notice_helpdesk_init_handed_over : :notice_helpdesk_init_handover_only,
+                 :targets => targets)
+    end
+    parts.join(' ')
+  end
 
   def resolve_mailbox(mailbox_id)
     @project.helpdesk_mailboxes.enabled.find_by(:id => mailbox_id.to_i) ||
       @project.helpdesk_mailboxes.enabled.first
   end
 
+  # The project permission alone is not enough: the initial mail sends the
+  # ticket's description and attachments out, and a hand-over copies them into
+  # another project - neither may start from a ticket the agent cannot see.
   def find_issue
     @issue = Issue.find(params[:issue_id])
-    render_404 unless @issue.project == @project
+    return render_404 unless @issue.project == @project
+
+    render_403 unless @issue.visible?
   rescue ActiveRecord::RecordNotFound
     render_404
   end

@@ -175,6 +175,13 @@
     <%= label_tag 'settings_thread_scope_enabled', l(:field_helpdesk_thread_scope_enabled) %>
     <em class="info"><%= l(:text_helpdesk_thread_scope_enabled_info) %></em>
   </p>
+  <p>
+    <%= hidden_field_tag 'settings[handover_enabled]', '0', :id => nil %>
+    <%= check_box_tag 'settings[handover_enabled]', '1',
+          @settings['handover_enabled'].to_s == '1', :id => 'settings_handover_enabled' %>
+    <%= label_tag 'settings_handover_enabled', l(:field_helpdesk_handover_enabled) %>
+    <em class="info"><%= l(:text_helpdesk_handover_enabled_info) %></em>
+  </p>
 </fieldset>
 
 <fieldset class="box tabular">

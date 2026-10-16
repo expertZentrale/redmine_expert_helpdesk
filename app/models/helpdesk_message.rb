@@ -180,6 +180,7 @@ class HelpdeskMessage < HelpdeskApplicationRecord
   end
   private_class_method :split_addresses
 
+  # Public, like bare_address: Handover splits reply recipient fields with it.
   # A comma or semicolon inside quotes or angle brackets separates nothing -
   # splitting on every one of them tears `"Doe, Jane" <jane@doe.com>` into two
   # fragments and offers both as recipients.
@@ -217,7 +218,6 @@ class HelpdeskMessage < HelpdeskApplicationRecord
 
     tokens << current
   end
-  private_class_method :scan_tokens
 
   # The address out of `Name <addr>`, or the token itself when it is bare.
   def self.bare_address(token)
@@ -225,7 +225,6 @@ class HelpdeskMessage < HelpdeskApplicationRecord
     match = text.match(/<([^>]*)>/)
     (match ? match[1] : text).strip
   end
-  private_class_method :bare_address
 
   # Every address that is us, for a mailbox that may be nil. from_address and
   # reply_to_address differ from mailbox_address only under an SMTP From

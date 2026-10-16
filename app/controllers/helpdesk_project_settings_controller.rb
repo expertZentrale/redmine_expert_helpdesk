@@ -59,6 +59,9 @@ class HelpdeskProjectSettingsController < ApplicationController
       params.dig(:helpdesk_project_setting, :phishing_check_enabled) == '1'
     action = params.dig(:helpdesk_project_setting, :phishing_action).to_s
     setting.phishing_action = action if HelpdeskProjectSetting::PHISHING_ACTIONS.include?(action)
+    # Only rendered while the central switch is on - absent means "leave it".
+    hand = params.dig(:helpdesk_project_setting, :handover_enabled)
+    setting.handover_enabled = hand == '1' if !hand.nil? && setting.has_attribute?(:handover_enabled)
   end
 
   # SLA-Einstellungen (zweites Formular im Tab) inkl. Prioritaets-Overrides

@@ -176,7 +176,21 @@ that order is what makes `safe_to_stop` trustworthy across pods.
     other projects' tickets from the same Message-ID are related (`relate_across_projects`);
     `HelpdeskMessage.received_in_project?` skips a mail the project already has. Message-IDs are
     stored in both spellings (incoming bare, outgoing `<id>`) — query via
-    `HelpdeskMessage.message_id_variants`. `apply_new_issue_defaults` runs for new tickets only: project
+    `HelpdeskMessage.message_id_variants`. Experimental `handover.rb`: with the central
+    `handover_enabled` and both projects' `HelpdeskProjectSetting#handover_enabled` on, the reply
+    controller takes participating helpdesk addresses out of the mail and creates the ticket there
+    (`note` or `history` mode, chosen by the agent; private notes never go over), before the mail,
+    undone only if the mail fails before delivery, and only while untouched (`Handover.undo`:
+    `lock_version` and journals read inside the creation transaction, no new journals, no time entries; kept ones are
+    finalized and named in the error). Until final the ticket is provisional
+    (`issue.notify = false` — never `Mailer.with_deliveries`, a process-wide flag — and
+    `helpdesk_skip_kb_ingest`); `Handover.finalize` notifies and enqueues the KB ingest. Bcc-only
+    targets get no relation; AI-drafted text (`KnowledgeExtractor.ai_journal_ids`) goes over as
+    flagged notes of its own, not inside the description; `relink_attachments` points image references at the copies
+    (`update_all` — `update_column` did not persist inside the reply request); `HelpdeskTicketInfo#handover_mailbox_id` (migration
+    068, written only by `Handover`) lets `ThreadScope` keep a moved hand-over ticket local; the source ticket
+    must be visible; Bcc-only targets are flagged `bcc: true` and kept out of public notes.
+    `apply_new_issue_defaults` runs for new tickets only: project
     `default_assigned_to_id` (a `Principal` — user **or** group) first, mailbox rules second
     (they win); an `Assigned to:` keyword already honoured by `MailHandler` beats both.
   - `inline_images.rb` — embedded images. `MailHandler` saves them as attachments but leaves the
@@ -214,7 +228,13 @@ that order is what makes `safe_to_stop` trustworthy across pods.
     resolve project → central → constant and are **validated as hex, otherwise discarded**: they
     become CSS custom properties on `:root`, so an unchecked value is a style injection. The
     `.jstBlock` lookup must stay scoped to `#add_notes`. Migration 059.
-  - `init_mailer.rb` — outbound "initial" mail (contact-assign / "New Helpdesk Ticket" flow).
+  - `init_mailer.rb` — outbound "initial" mail (contact-assign / "New Helpdesk Ticket" flow). With
+    the mail ticked it hands over like a reply, but without a mode: the target gets the mail text and
+    every ticket attachment. The form's `hdInitPlan()` mirrors its rules: first remaining To is the
+    customer, `move_cc` moves the first Cc up, no To but Cc/Bcc raises `InitMailer::Error` before
+    anything happens, only hand-overs = no mail and no contact. A failed mail keeps the hand-over.
+    The new-ticket hook reports errors in `flash[:error]`; the form takes its values from
+    `params[:helpdesk_init]` because Redmine re-renders it on tracker change.
   - `mail_logger.rb` — one log line per outgoing mail incl. the transport used. Every send site
     wraps its send in `MailLogger.track` (replies, init mail, autoresponder, info request, SLA
     mail); success at

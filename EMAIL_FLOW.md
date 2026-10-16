@@ -305,6 +305,85 @@ flowchart LR
 - Outgoing mails keep their markers even when another project's helpdesk address is a recipient.
   That project's mailbox removes them on arrival ([section 6](#6-one-mail-several-projects)).
 
+### Hand-over instead of mail (experimental)
+
+When an agent addresses another project's helpdesk mailbox in a reply, the mail would travel out
+through SMTP and come back in through that mailbox. With the hand-over switched on, the ticket is
+created in the other project directly and that address gets no mail.
+
+```mermaid
+flowchart TD
+  R["Agent writes a reply<br/>To / Cc / Bcc contains helpdesk-b@…"] --> E{"Hand-over active for both projects?<br/><i>Enable hand-over to other projects</i> (central)<br/><i>Take part in hand-overs</i> (project A and B)"}
+  E -- no --> MAIL["Ordinary recipient:<br/>mailed, becomes a ticket in B on arrival"]
+  E -- yes --> ASK{"Agent chooses<br/>(nothing preselected)"}
+  ASK -- "Only this note" --> N1(["New ticket in B:<br/>note + attachments sent with it"]):::new
+  ASK -- "Complete history" --> N2(["New ticket in B:<br/>note + description + public notes<br/>+ all attachments"]):::new
+  N1 --> LINK["Related to A's ticket (not when Bcc only), customer<br/>linked as B's contact, line added to A's note"]
+  N2 --> LINK
+  LINK --> REST{"Other recipients left?"}
+  REST -- yes --> SEND["Mail to them, without B's address"]
+  REST -- no --> DONE["No mail at all"]
+  classDef new fill:#d8efe1,stroke:#1f7a4d,color:#10301f
+```
+
+- **Both projects have to take part.** The central switch makes the option visible in the project
+  settings; each project then decides for itself whether it hands over and accepts hand-overs.
+- **Private notes stay behind** in the complete history: they were written for the source team.
+- The ticket in B is authored by the agent and gets the mailbox's *Defaults for new tickets* and B's
+  *Assign new tickets to* (else Redmine's project default). Only projects the agent can see are
+  hand-over targets; any other project's address is mailed as before. The same customer becomes B's contact, so B can answer them from its ticket.
+- **Several recipients**: every participating project named in To, Cc or Bcc gets one ticket,
+  even when two of its mailboxes are named. Everybody else is mailed as before; when only
+  hand-over addresses were in To, the Cc moves up to To. If only Bcc recipients would be left, the
+  reply is refused before anything is handed over. A To cleared on purpose stays empty: with only
+  B's address in Cc, nothing is mailed, not even to the customer.
+- **If the mail to the remaining recipients fails**, the ticket in B is removed again, so sending
+  once more does not create it twice — unless someone in B has already worked on it (an edit, a
+  note, booked time): then it stays, and the error names it, so the agent leaves B's address out
+  when sending again. Once the mail is out, the ticket stays even if recording the
+  reply fails afterwards; the agent is told not to send again. B's notification about the new
+  ticket goes out only then, never for a hand-over that is taken back.
+- Ticket images the note quotes go along even when their checkbox is not ticked; image references
+  in the copied text point at the copies. A project reached by Bcc only is named in the source
+  note only when that note is private, and its ticket is not related to the source ticket.
+- **Text from an AI draft** (the reply note, or notes in the complete history) goes over as a note
+  of its own, marked as AI-drafted, with a placeholder in the description: the target's knowledge
+  base and answer drafts leave it out, as they do on the source.
+- Nothing about the new ticket is announced before the hand-over is final: no notification, and
+  with a closed default status no knowledge-base entry.
+
+#### In the initial mail
+
+The initial mail — *New Helpdesk Ticket*, and *Assign Contact* on a ticket without a customer —
+hands over the same way, but there is nothing to choose: a new ticket has no notes yet, so the
+other project gets what the mail would have carried.
+
+```mermaid
+flowchart TD
+  I["Agent ticks <i>Send as e-mail to customer</i><br/>To / Cc / Bcc contains helpdesk-b@…"] --> E{"Hand-over active for both projects?"}
+  E -- no --> MAIL["Ordinary recipient: mailed"]
+  E -- yes --> OUT["B's address leaves the mail"]
+  OUT --> TO{"Anybody left in To?"}
+  TO -- yes --> OK["First To address becomes the customer"]
+  TO -- "no, but Cc" --> MOVE{"<i>Move the first Cc recipient to To</i> ticked?"}
+  MOVE -- yes --> OK
+  MOVE -- no --> STOP["Form blocks saving:<br/>nothing mailed, nothing handed over"]
+  TO -- "no, only Bcc" --> STOP
+  TO -- "nobody at all" --> ONLY["No mail, no customer"]
+  OK --> N(["New ticket in B:<br/>subject, text, all attachments"]):::new
+  ONLY --> N
+  N --> SEND["Mail to the remaining recipients;<br/>note in A names B's ticket"]
+  classDef new fill:#d8efe1,stroke:#1f7a4d,color:#10301f
+```
+
+- **The form says what will happen** while the agent types: which projects get the ticket, who
+  becomes the customer, and a warning as soon as nobody is left in To. Saving is blocked only where
+  the mail could not go out as shown.
+- **If the mail fails**, the hand-over stays — the ticket exists either way, and nobody is asked to
+  send again. The ticket page names both: the mail error and the tickets that were created.
+- Without the mail (*Send as e-mail to customer* unticked) nothing is handed over; the To address
+  is only linked as the customer, as before.
+
 ---
 
 ## 8. Settings reference
@@ -345,6 +424,8 @@ flowchart LR
 | Allow cross-project issue relations | Redmine, *Issue tracking* | Tickets of different projects can be related | [6](#6-one-mail-several-projects) |
 | Send via | Mailbox | Outgoing route: *Mailbox backend*, *Microsoft Graph API* or *SMTP (Redmine default)* | [7](#7-outgoing-mail) |
 | Sender override (From), Set Reply-To to the mailbox address | Mailbox (SMTP route) | Sender address when sending via *SMTP (Redmine default)* | [7](#7-outgoing-mail) |
+| Enable hand-over to other projects | Central, *Experimental* | Experimental: hand-over instead of mail becomes available | [7](#hand-over-instead-of-mail-experimental) |
+| Take part in hand-overs | Project, *Experimental* | This project hands over and accepts hand-overs | [7](#hand-over-instead-of-mail-experimental) |
 | Sent folder | Mailbox (IMAP) | Where the copy of a sent mail is filed | [7](#7-outgoing-mail) |
 | Subject template | Project | Subject of agent replies | [7](#7-outgoing-mail) |
 | Header, Footer, Footer mode | Mailbox (+ central footer) | Frame around the reply text | [7](#7-outgoing-mail) |

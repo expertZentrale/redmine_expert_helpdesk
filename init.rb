@@ -61,6 +61,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/reply_box', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/note_quoter', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/maintenance', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/thread_scope', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/handover', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/mail_processor', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/init_mailer', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/hooks', __FILE__)
@@ -120,6 +121,8 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
              'awaiting_agent_enabled'   => '1',
              'thread_scope_enabled'     => '0',
              'inline_images_enabled'    => '1',
+             # Experimental: hand a ticket over to another project instead of mailing it.
+             'handover_enabled'         => '0',
              # Colours of the customer-facing block in the edit form. The constants
              # behind them are the real fallback — see ReplyBox::DEFAULT_BOX_COLOR.
              'reply_box_color'          => RedmineExpertHelpdesk::ReplyBox::DEFAULT_BOX_COLOR,

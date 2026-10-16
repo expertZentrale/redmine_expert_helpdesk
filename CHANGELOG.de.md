@@ -16,6 +16,22 @@
 
 ### Behoben
 
+- **Anzeigenamen in Anführungszeichen in der Initialmail.** *Neues Helpdesk-Ticket* und *Kontakt
+  zuordnen* trennten die Empfängerfelder an jedem Komma, `"Doe, Jane" <jane@doe.com>` zerfiel also,
+  und die erste An-Adresse war nie gültig. Sie trennen jetzt wie das Antwortformular.
+- **Eine interne Notiz lässt sich speichern, nachdem eine Antwort angehalten wurde.** Schlug das
+  Senden fehl oder hielt das Formular die Antwort wegen einer fehlenden Auswahl an, bewirkte das
+  Abwählen der Mail, um nur die Notiz zu speichern, nichts: Redmines Schutz vor doppeltem Absenden
+  hatte den angehaltenen Versuch mitgezählt.
+- **Kontakt zuordnen prüft, ob der Bearbeiter das Ticket sehen darf.** Das Formular prüfte nur die
+  Projektberechtigung; ein Bearbeiter, der nur eigene Tickets sehen darf, konnte so Beschreibung und
+  Anhänge eines fremden Tickets per Mail verschicken – und mit der Übergabe kopieren –, indem er
+  dessen Nummer absendete.
+- **Eine fehlgeschlagene Initialmail eines neuen Tickets wird gemeldet.** Sie landete nur im Log,
+  und der Bearbeiter hielt sie für zugestellt; die Ticketseite zeigt den Fehler jetzt an.
+- **Die Helpdesk-Felder im Formular für neue Tickets überstehen ein Neuladen.** Ein Trackerwechsel
+  oder ein nicht speicherbares Ticket leerte sie, und der Haken *Als E-Mail an Kunden senden* blieb
+  danach wirkungslos.
 - **Ein Postfach führt nur noch Tickets seines eigenen Projekts fort** – zuschaltbar, experimentell. Redmines `MailHandler`
   folgt einem `[#id]`-Betrefftag oder einer Redmine-/Helpdesk-Message-ID in
   `In-Reply-To`/`References` in jedes Projekt, und die Thread-Suche des Plugins durchsuchte ebenfalls
@@ -53,7 +69,53 @@
 
 - **Experimentelle Einstellungen, gerahmt.** Die Plugin-Einstellungen erhalten einen Abschnitt
   *Experimentell* mit gelbem Warnrahmen für die Schalter, die ändern, wie Mails zugeordnet oder
-  zugestellt werden.
+  zugestellt werden – projektbezogene Zuordnung und Übergabe; der Übergabe-Schalter im Projekt trägt
+  denselben Rahmen.
+- **Übergabe an ein anderes Projekt statt einer Mail (experimentell).** Zentraler Schalter
+  *Übergabe an andere Projekte aktivieren* plus *An Übergaben teilnehmen* je Projekt (Migration 067);
+  beide Projekte müssen teilnehmen. Nennt eine Antwort die Helpdesk-Adresse eines teilnehmenden
+  Projekts, wird diese Adresse aus der Mail genommen und der Bearbeiter gefragt, was übergeben wird –
+  nur die Notiz mit ihren Anhängen oder die komplette Historie (Beschreibung, öffentliche Notizen, alle
+  Anhänge; private Notizen bleiben zurück). Das Ticket wird dort direkt angelegt: mit dem Bearbeiter als
+  Autor, den Standardwerten des Postfachs, dem Kunden als Kontakt, in Beziehung zum Ausgangsticket, und
+  eine Zeile in der Notiz des Ausgangstickets nennt es. Übrige Empfänger werden wie bisher gemailt;
+  schlägt diese Mail fehl, wird die Übergabe zurückgenommen, aber nie, nachdem die Mail
+  raus ist. *Neue Tickets zuweisen an* des Zielprojekts gilt. Ein bewusst geleertes An bleibt leer,
+  eine Übergabe an eine CC-Adresse mailt also niemanden. Bilder des Tickets, die die Notiz zitiert,
+  gehen mit, und Bildverweise im kopierten Text zeigen auf die Kopien. Die Benachrichtigung des
+  Zielteams geht erst raus, wenn die Übergabe endgültig ist. Ein nur per BCC erreichtes Ziel bleibt
+  aus einer öffentlichen Notiz heraus. Der Bearbeiter muss das Ausgangsticket sehen dürfen. Der Kontakt des Kunden im
+  Zielprojekt führt das Ticket sofort, schon bevor eine Mail von ihm dort ankommt. Ein übergebenes
+  Ticket, das in ein drittes Projekt weiterverschoben wird, erhält Antworten über das Postfach, an
+  das es übergeben wurde, weiterhin (Migration 068). Als Ziel werden nur Projekte angeboten, die der
+  Bearbeiter sehen darf – die Adresse jedes anderen Projekts bleibt ein normaler Empfänger, und das
+  Formular erfährt sie nie. Ohne Helpdesk-Standardzuweisung gilt Redmines Projektstandard, sofern
+  zuweisbar. Kontaktverläufe zeigen nur Tickets, die der Betrachter sehen darf. Jedes teilnehmende Projekt erhält ein
+  Ticket, egal wie viele seiner Postfächer genannt sind; eine Antwort, nach der nur BCC-Empfänger übrig
+  blieben, wird abgelehnt, bevor etwas übergeben wird.
+- **Übergabe aus einem neuen Ticket und aus *Kontakt zuordnen* (experimentell).** Die Initialmail
+  (*Neues Helpdesk-Ticket* und *Kontakt zuordnen* an einem Ticket ohne Kontakt) übergibt wie eine
+  Antwort: Die Helpdesk-Adresse eines teilnehmenden Projekts verlässt An/CC/BCC, und das Ticket wird
+  dort direkt angelegt. Zu wählen gibt es nichts – das andere Projekt erhält, was die Mail enthalten
+  hätte: Betreff, Text und alle Anhänge des Tickets. Die erste verbleibende An-Adresse wird Kunde,
+  das Postfach eines anderen Teams wird also nicht mehr Kunde des Tickets. Das Formular zeigt schon
+  beim Tippen, was passieren wird: welche Projekte das Ticket erhalten, wer Kunde wird, und eine
+  Warnung, wenn niemand in An übrig ist. Ein Haken verschiebt dann den ersten CC-Empfänger nach An;
+  ohne ihn wird das Speichern blockiert, weil weder gemailt noch übergeben würde. Stehen in An nur
+  Übergabe-Adressen, gibt es keine Mail und keinen Kunden, und das Formular sagt das. Schlägt die
+  Mail fehl, bleibt die Übergabe bestehen, und der Bearbeiter erfährt beides. Das Ausgangsticket
+  erhält eine Notiz mit den neuen Tickets (privat, wenn ein Ziel nur per BCC erreicht wurde).
+- **Details der Übergabe.** Ein nur per BCC erreichtes Ziel wird nicht mehr mit dem Ausgangsticket
+  verknüpft – die Beziehung zeigte den Lesern des Ausgangstickets, wer das Thema noch erhalten hat.
+  Text aus einem KI-Entwurf geht als eigene, entsprechend markierte Notiz über, mit einem Platzhalter
+  in der Beschreibung, damit Wissensbasis und Antwortvorschläge des Zielprojekts ihn nicht als
+  Eingabe nehmen; seine Bilder zeigen ebenfalls auf die Kopien. Das vorläufige Ticket wird an sich selbst stummgeschaltet statt Mails für den ganzen
+  Prozess abzuschalten (was Mails anderer Anfragen verschlucken konnte), und es kommt erst in die
+  Wissensbasis, wenn die Übergabe endgültig ist. *Letztes Ticket* in der Kundenliste berücksichtigt
+  auch verknüpfte Tickets: Ein Kontakt, der nur eine Übergabe erhalten hat, zeigt deren Datum statt
+  „–“, und die Sortierung folgt demselben Datum. Eine nach einer fehlgeschlagenen Mail
+  zurückgenommene Übergabe wird nur gelöscht, solange niemand daran gearbeitet hat; eine mit
+  Änderung, Notiz oder gebuchter Zeit bleibt, und die Fehlermeldung nennt sie.
 - **Projektübergreifende Verweise für eine Mail an mehrere Projekte** (bei eingeschalteter
   projektbezogener Zuordnung). Das Ticket wird mit dem
   Ticket des anderen Projekts in Beziehung gesetzt (*verwandt mit*) – mit dem, auf das die

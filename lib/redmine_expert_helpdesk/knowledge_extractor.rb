@@ -172,10 +172,7 @@ module RedmineExpertHelpdesk
     # the project. The answer drafter must not have them: its output is one
     # click away from a customer's inbox. One builder, two policies.
     def self.ticket_text(issue, max_chars: MAX_CHARS, include_private: true)
-      skip = HelpdeskAiSummary.where(:issue_id => issue.id).pluck(:journal_id).compact.to_set
-      skip.merge(ai_drafted_journal_ids(issue))
-      # Saved drafts that were never mailed - the second half of the same rule.
-      skip.merge(HelpdeskAiDraftedJournal.journal_ids_for(issue.id))
+      skip = ai_journal_ids(issue)
 
       parts = []
       # The subject often carries the device and the error that the body only
@@ -192,6 +189,15 @@ module RedmineExpertHelpdesk
       end
       text = parts.join("\n\n")
       text.length > max_chars ? text[0, max_chars] : text
+    end
+
+    # Journals whose text a model wrote: AI summaries, replies mailed from an
+    # AI draft, and saved drafts that were never mailed. Handover leaves them
+    # out of the description it copies, for the same reason.
+    def self.ai_journal_ids(issue)
+      ids = HelpdeskAiSummary.where(:issue_id => issue.id).pluck(:journal_id).compact.to_set
+      ids.merge(ai_drafted_journal_ids(issue))
+      ids.merge(HelpdeskAiDraftedJournal.journal_ids_for(issue.id))
     end
 
     # Journals of replies whose body came from an AI draft. Guarded: the column

@@ -555,6 +555,14 @@ zwischen Projekten erlauben* voraus (*Administration → Konfiguration → Ticke
 Einstellung werden die Tickets trotzdem angelegt, nur nicht verknüpft. Die Beziehung wird still
 angelegt – kein Historieneintrag, keine Benachrichtigung an das andere Team.
 
+**Übergabe (experimentell)**: Mit *Übergabe an andere Projekte aktivieren* (zentral) und *An Übergaben
+teilnehmen* (in beiden Projekten) wird die Helpdesk-Adresse des anderen Projekts in einer Antwort nicht
+gemailt. Der Bearbeiter wählt, ob nur die Notiz mit ihren Anhängen oder die komplette Historie
+(Beschreibung, öffentliche Notizen, alle Anhänge) übergeben wird, und das Ticket wird dort direkt
+angelegt. Auch die Initialmail (*Neues Helpdesk-Ticket*, *Kontakt zuordnen*) übergibt, ohne Auswahl:
+Das andere Projekt erhält Betreff, Text und alle Anhänge, und das Formular zeigt, wer Kunde wird, und
+warnt, wenn niemand in An übrig ist. Siehe [EMAIL_FLOW.de.md](EMAIL_FLOW.de.md#übergabe-statt-mail-experimentell).
+
 Ausgehende Antworten behalten ihr `[#id]`-Tag und die Thread-Header: Die Antwort des Kunden findet
 ihr Ticket weiterhin, und Postfächer anderer Projekte ignorieren die Marker einfach. Ein
 Interceptor für ausgehende Mails, der diese Marker entfernt (wie ihn manche Installationen für
