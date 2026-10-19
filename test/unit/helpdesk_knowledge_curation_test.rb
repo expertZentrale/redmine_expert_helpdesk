@@ -119,4 +119,60 @@ class HelpdeskKnowledgeCurationTest < ActiveSupport::TestCase
     assert_not foreign.valid?
     assert foreign.errors[:issue_id].any?
   end
+  # --- sync_vector! against a write that overlaps its embedding call ----------
+
+  # Runs `during` once, the moment the first upsert reaches the store, i.e. after
+  # the embedding call and before the post-upsert check.
+  def while_embedding(&during)
+    RedmineExpertHelpdesk::AiFeatures.stubs(:kb_ready?).returns(true)
+    fired = false
+    @store.stubs(:upsert).with do |*_args|
+      unless fired
+        fired = true
+        during.call
+      end
+      true
+    end
+  end
+
+  def test_sync_vector_rejected_during_embedding_is_removed_again
+    entry = curated_entry('approved')
+    while_embedding { HelpdeskKnowledgeEntry.where(:id => entry.id).update_all(:status => 'rejected') }
+    @store.expects(:delete).with(entry.project_id, entry.id).once
+
+    assert_equal :removed, entry.sync_vector!
+    assert_equal 'rejected', entry.status, 'reloaded: the result describes the stored row'
+    assert_nil entry.point_id
+  end
+
+  def test_sync_vector_edited_during_embedding_reembeds_the_newer_text
+    RedmineExpertHelpdesk::AiFeatures.stubs(:kb_ready?).returns(true)
+    entry = curated_entry('approved')
+    payloads = []
+    @store.stubs(:upsert).with do |*args|
+      HelpdeskKnowledgeEntry.where(:id => entry.id).update_all(:problem => 'neuer') if payloads.empty?
+      payloads << args.last['problem']
+      true
+    end
+
+    assert_equal :indexed, entry.sync_vector!
+    assert_equal %w[korrigiert neuer], payloads
+    assert_equal 'neuer', entry.problem
+  end
+
+  def test_sync_vector_deleted_during_embedding_removes_the_point
+    entry = curated_entry('approved')
+    while_embedding { HelpdeskKnowledgeEntry.where(:id => entry.id).delete_all }
+    @store.expects(:delete).with(entry.project_id, entry.id).once
+
+    assert_equal :removed, entry.sync_vector!
+  end
+
+  def test_sync_vector_reports_failed_unindex_after_overlapping_reject
+    entry = curated_entry('approved')
+    while_embedding { HelpdeskKnowledgeEntry.where(:id => entry.id).update_all(:status => 'rejected') }
+    @store.stubs(:delete).raises(StandardError, 'store down')
+
+    assert_equal :unindex_failed, entry.sync_vector!
+  end
 end

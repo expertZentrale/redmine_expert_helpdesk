@@ -57,6 +57,8 @@ class HelpdeskKnowledgeEntry < HelpdeskApplicationRecord
   # Brings the vector store in line with the row after a person changed it:
   # approved -> (re-)embed, any other status -> must not be searchable. Synchronous,
   # so the caller (tab or REST API) can report at once whether the store took it.
+  # Embedding is fenced against writes that overlapped the call (index_fenced), and
+  # the row is reloaded afterwards, so caller and result show what is stored now.
   # Returns one of SYNC_RESULTS.
   SYNC_RESULTS = %i[indexed not_configured problem_blank index_failed removed unindex_failed].freeze
 
@@ -66,10 +68,10 @@ class HelpdeskKnowledgeEntry < HelpdeskApplicationRecord
         :not_configured
       elsif problem.blank?
         :problem_blank
-      elsif HelpdeskKnowledgeIngestJob.index_entry(self)
-        :indexed
       else
-        :index_failed
+        result = HelpdeskKnowledgeIngestJob.index_fenced(self)
+        reload_if_present
+        result
       end
     elsif point_id.present? && !self.class.unindex(self)
       # point_id stays set, so the entry still shows as indexed and the next
@@ -96,6 +98,12 @@ class HelpdeskKnowledgeEntry < HelpdeskApplicationRecord
   end
 
   private
+
+  def reload_if_present
+    reload
+  rescue ActiveRecord::RecordNotFound
+    self
+  end
 
   # Entries are strictly per project; a manual entry must not reference a ticket
   # of another project (its text would leak into this project's retrieval).

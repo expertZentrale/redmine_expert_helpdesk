@@ -299,6 +299,8 @@ that order is what makes `safe_to_stop` trustworthy across pods.
     global by id) maps to the same three permissions in init.rb and shares the post-write logic via
     `HelpdeskKnowledgeEntry#sync_vector!`, whose result symbol the tab turns into a flash and the API
     returns as `vector_sync` — add a new outcome there, not in either controller.
+    Its embedding goes through `HelpdeskKnowledgeIngestJob.index_fenced` (index + `fence_index`), so a
+    reject, edit or delete that overlaps the embedding call cannot be undone by the stale upsert.
   **Detail levels** (`KnowledgeExtractor::DETAIL_LEVELS` = general/specific/most_specific, migration
   065): `prompt_for(level)` builds the built-in prompt; `general` keeps the old generalising
   wording, plus the privacy instruction every level (and, via `with_privacy`, every own prompt) gets. init.rb used to seed the then-current default into `kb_extract_prompt`, so

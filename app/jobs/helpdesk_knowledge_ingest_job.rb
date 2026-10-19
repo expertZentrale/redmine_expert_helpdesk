@@ -117,6 +117,16 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
     false
   end
 
+  # index_entry plus the post-upsert check the ingest uses (fence_index), for a
+  # person's write: two overlapping requests (tab or REST API) would otherwise let
+  # the slower embedding restore text the faster one rejected, edited or deleted.
+  # Returns the reconciled HelpdeskKnowledgeEntry::SYNC_RESULTS symbol.
+  def self.index_fenced(entry)
+    return :index_failed unless index_entry(entry)
+
+    new.send(:fence_index, entry)
+  end
+
   private
 
   # The claim moves updated_at strictly past requested_at - by at least a second,
@@ -141,25 +151,33 @@ class HelpdeskKnowledgeIngestJob < ActiveJob::Base
   # The embedding call runs after the row lock is gone. A person who rejected or
   # edited the entry meanwhile may have removed or re-embedded the point first;
   # this upsert would then bring back the stale machine text. Compare with the
-  # row as it is now and undo or redo accordingly.
+  # row as it is now and undo or redo accordingly. Returns the outcome as a
+  # HelpdeskKnowledgeEntry::SYNC_RESULTS symbol.
   def fence_index(entry, attempts = 3)
     indexed = entry
     attempts.times do
       current = HelpdeskKnowledgeEntry.find_by(:id => entry.id)
       # Deleted meanwhile: the destroy removed the point before this upsert.
-      return HelpdeskKnowledgeEntry.unindex(indexed) unless current
-      return HelpdeskKnowledgeEntry.unindex(current) unless current.approved?
-      return if current.problem == indexed.problem && current.solution == indexed.solution
+      return unindexed(indexed) unless current
+      return unindexed(current) unless current.approved?
+      return :indexed if current.problem == indexed.problem && current.solution == indexed.solution
 
       # The corrective re-embed takes as long as the first one, so the row can
       # change again under it: check once more afterwards (bounded).
       # A failed re-embed leaves the stale machine text in the store: remove it
       # rather than treat the attempt as indexed.
-      return HelpdeskKnowledgeEntry.unindex(current) unless self.class.index_entry(current)
+      unless self.class.index_entry(current)
+        return HelpdeskKnowledgeEntry.unindex(current) ? :index_failed : :unindex_failed
+      end
 
       indexed = current
     end
     Rails.logger.warn("[helpdesk][kb] Entry ##{entry.id} kept changing during re-indexing; left as last indexed")
+    :indexed
+  end
+
+  def unindexed(entry)
+    HelpdeskKnowledgeEntry.unindex(entry) ? :removed : :unindex_failed
   end
 
   def index!(store, client, entry)
