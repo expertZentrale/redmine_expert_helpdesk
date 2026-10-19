@@ -17,6 +17,16 @@
   (`vector_sync`) – ein freigegebener Eintrag, dessen Einbettung fehlschlug, wäre sonst unbemerkt
   nicht auffindbar. Siehe `API.md`.
 
+### Behoben
+
+- **Überlappende Änderungen an einem Wissensbasis-Eintrag** (Reiter, Ticket-Seitenleiste, Index-Neuaufbau
+  und jetzt die REST-API) konnten sich gegenseitig rückgängig machen: Ein Ablehnen oder Löschen während
+  der Einbettung eines anderen Requests ließ den Eintrag durchsuchbar oder einen verwaisten Vektor zurück,
+  ein spätes Ablehnen konnte den Vektor einer neueren Freigabe löschen. Abgleich und Löschen laufen jetzt
+  je Eintrag nacheinander und richten sich nach dem aktuellen Stand des Eintrags.
+- **Freigeben in der Ticket-Seitenleiste** meldet jetzt, wenn der Eintrag nicht eingebettet werden konnte,
+  statt immer Erfolg anzuzeigen.
+
 ## [0.22.0] - 2026-10-18
 
 ### Dokumentation

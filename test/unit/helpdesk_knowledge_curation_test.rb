@@ -234,4 +234,14 @@ class HelpdeskKnowledgeCurationTest < ActiveSupport::TestCase
     locks = sql.grep(/helpdesk_knowledge_entries.*FOR UPDATE/m)
     assert_equal 2, locks.size, sql.join("\n")
   end
+  # The rebuild embeds outside any request; a delete during its embedding call
+  # must not leave an orphan point behind.
+  def test_reindex_removes_point_of_an_entry_deleted_during_embedding
+    RedmineExpertHelpdesk::AiFeatures.stubs(:kb_ready?).returns(true)
+    entry = HelpdeskKnowledgeEntry.create!(:project_id => 1, :issue_id => 1, :problem => 'a', :status => 'approved')
+    while_embedding { HelpdeskKnowledgeEntry.where(:id => entry.id).delete_all }
+    @store.expects(:delete).with(1, entry.id).once
+
+    assert_equal 0, HelpdeskKnowledgeReindexJob.rebuild(1)
+  end
 end

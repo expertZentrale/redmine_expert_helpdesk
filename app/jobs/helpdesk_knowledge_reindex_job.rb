@@ -23,11 +23,11 @@ class HelpdeskKnowledgeReindexJob < ActiveJob::Base
 
     ok = 0
     HelpdeskKnowledgeEntry.approved.where(:project_id => project_id).find_each do |entry|
-      # Batches are loaded ahead; an edit or ingest may have changed the row since.
-      entry.reload
-      next unless entry.approved?
-
-      ok += 1 if HelpdeskKnowledgeIngestJob.index_entry(entry)
+      # Batches are loaded ahead, so the row may have been edited, rejected or
+      # deleted since: sync_vector! re-reads it under the row lock and only embeds
+      # what is still approved, so a delete during the embedding call cannot
+      # leave an orphan point.
+      ok += 1 if entry.sync_vector! == :indexed
     end
     Rails.logger.info("[helpdesk][kb] Project ##{project_id} re-indexed: #{ok} entries")
     ok

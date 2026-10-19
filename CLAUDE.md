@@ -425,7 +425,8 @@ nested registration would never fire in production.
   delete requests otherwise finish their store calls in either order and the slower undoes the
   faster (stale upsert of rejected text, late delete of a newer vector). The lock is held across the
   embedding call. `index_fenced` (index + `fence_index`) still covers the ingest job, which embeds
-  without the lock.
+  without the lock. **Every person-triggered or rebuild write to the store goes through `sync_vector!`**
+  (tab, API, sidebar approve, `HelpdeskKnowledgeReindexJob`) — never call `index_entry` directly there.
   **Detail levels** (`KnowledgeExtractor::DETAIL_LEVELS` = general/specific/most_specific, migration
   065): `prompt_for(level)` builds the built-in prompt; `general` keeps the old generalising
   wording, plus the privacy instruction every level (and, via `with_privacy`, every own prompt) gets. init.rb used to seed the then-current default into `kb_extract_prompt`, so

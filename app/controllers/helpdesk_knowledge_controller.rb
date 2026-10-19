@@ -22,8 +22,14 @@ class HelpdeskKnowledgeController < ApplicationController
     entry = HelpdeskKnowledgeEntry.find_by(:issue_id => @issue.id)
     if entry&.pending?
       entry.curate!(User.current, :status => 'approved')
-      HelpdeskKnowledgeIngestJob.index_entry(entry)
-      flash[:notice] = l(:notice_helpdesk_kb_approved)
+      # Row-locked like the tab, so an overlapping delete or reject cannot be
+      # undone by this embedding (HelpdeskKnowledgeEntry#sync_vector!).
+      case entry.sync_vector!
+      when :indexed       then flash[:notice]  = l(:notice_helpdesk_kb_approved)
+      when :problem_blank then flash[:warning] = l(:text_helpdesk_kb_problem_blank)
+      when :removed       then flash[:warning] = l(:text_helpdesk_kb_nothing_to_approve)
+      else                     flash[:warning] = l(:text_helpdesk_kb_saved_not_indexed)
+      end
     else
       flash[:warning] = l(:text_helpdesk_kb_nothing_to_approve)
     end

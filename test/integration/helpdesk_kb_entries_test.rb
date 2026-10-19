@@ -226,4 +226,36 @@ class HelpdeskKbEntriesTest < Redmine::IntegrationTest
     post "#{base}/reextract", :params => { :all => '1' }
     assert_redirected_to base
   end
+  # Ticket sidebar "Approve": same row-locked sync as the tab, so a delete during
+  # its embedding call removes the point again instead of leaving an orphan.
+  def test_sidebar_approve_removes_point_of_an_entry_deleted_during_embedding
+    @entry.update_columns(:status => 'pending')
+    grant!(:view_helpdesk_kb, :edit_helpdesk_kb)
+    store = stub(:configured? => true, :ensure_ready! => nil)
+    deleted = false
+    store.stubs(:upsert).with do |*_args|
+      HelpdeskKnowledgeEntry.where(:id => @entry.id).delete_all unless deleted
+      deleted = true
+    end
+    store.expects(:delete).with(@project.id, @entry.id).once
+    RedmineExpertHelpdesk::KnowledgeStore.stubs(:for).returns(store)
+    RedmineExpertHelpdesk::AiClient.any_instance.stubs(:embed_configured?).returns(true)
+    RedmineExpertHelpdesk::AiClient.any_instance.stubs(:embed).returns([0.1, 0.2])
+    RedmineExpertHelpdesk::AiClient.any_instance.stubs(:embed_model).returns('test-embed')
+
+    post "/issues/#{@entry.issue_id}/helpdesk_kb_approve"
+    assert_redirected_to "/issues/#{@entry.issue_id}"
+    assert_not HelpdeskKnowledgeEntry.exists?(@entry.id)
+    assert flash[:warning].present?, 'no success notice for an entry that is gone'
+  end
+
+  def test_sidebar_approve_indexes_pending_entry
+    @entry.update_columns(:status => 'pending')
+    grant!(:view_helpdesk_kb, :edit_helpdesk_kb)
+    HelpdeskKnowledgeIngestJob.expects(:index_entry).with { |e| e.id == @entry.id && e.approved? }.returns(true)
+
+    post "/issues/#{@entry.issue_id}/helpdesk_kb_approve"
+    assert_equal 'approved', @entry.reload.status
+    assert flash[:notice].present?
+  end
 end

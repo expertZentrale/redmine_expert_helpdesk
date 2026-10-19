@@ -18,6 +18,15 @@
   (`vector_sync`), since an approved entry that failed to embed is otherwise not searchable
   without anyone noticing. See `API.md`.
 
+### Fixed
+
+- **Overlapping changes to a knowledge base entry** (tab, ticket sidebar, index rebuild and now the REST
+  API) could undo each other: a reject or delete during another request's embedding call left the entry
+  searchable or an orphan vector behind, and a late reject could remove a newer approval's vector. Sync
+  and delete now run one after the other per entry and follow the entry as it is stored.
+- **Approve in the ticket sidebar** now says so when the entry could not be embedded, instead of always
+  reporting success.
+
 ## [0.22.0] - 2026-10-18
 
 ### Documentation
