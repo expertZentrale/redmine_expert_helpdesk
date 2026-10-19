@@ -88,13 +88,9 @@ class HelpdeskKbEntriesApiController < ApplicationController
   end
 
   def destroy
-    # Point first, as in the tab: once the row is gone nothing records which point
-    # to remove, and a point without a row would stay searchable.
-    if @entry.point_id.present? && !HelpdeskKnowledgeEntry.unindex(@entry)
-      return render_api_errors(l(:text_helpdesk_kb_unindex_failed))
-    end
+    # Point first, under the row lock (see HelpdeskKnowledgeEntry#destroy_with_vector!).
+    return render_api_errors(l(:text_helpdesk_kb_unindex_failed)) unless @entry.destroy_with_vector!
 
-    @entry.destroy
     render_api_ok
   end
 

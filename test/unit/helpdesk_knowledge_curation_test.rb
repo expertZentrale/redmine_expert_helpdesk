@@ -175,4 +175,63 @@ class HelpdeskKnowledgeCurationTest < ActiveSupport::TestCase
 
     assert_equal :unindex_failed, entry.sync_vector!
   end
+  # --- Overlapping requests: the last sync acts on the last write -------------
+
+  # An older rejection whose sync runs after a newer approval finished must not
+  # delete the newer vector: it acts on the row as it is now (approved).
+  def test_late_sync_of_an_older_rejection_keeps_the_newer_approval
+    RedmineExpertHelpdesk::AiFeatures.stubs(:kb_ready?).returns(true)
+    entry = curated_entry('rejected') # this request's copy
+    HelpdeskKnowledgeEntry.where(:id => entry.id).update_all(:status => 'approved', :point_id => entry.id.to_s)
+    @store.expects(:delete).never
+    @store.expects(:upsert).once
+
+    assert_equal :indexed, entry.sync_vector!
+    assert_equal 'approved', entry.status
+  end
+
+  # An approval whose sync runs after a delete finished must not re-embed the
+  # entry: the delete removed the point before the row, nothing would remove it.
+  def test_late_sync_after_a_delete_does_not_reembed
+    RedmineExpertHelpdesk::AiFeatures.stubs(:kb_ready?).returns(true)
+    entry = curated_entry('approved')
+    HelpdeskKnowledgeEntry.where(:id => entry.id).delete_all
+    @store.expects(:upsert).never
+
+    assert_equal :removed, entry.sync_vector!
+  end
+
+  def test_destroy_with_vector_removes_point_then_row
+    entry = curated_entry('approved')
+    entry.update_columns(:point_id => entry.id.to_s)
+    @store.expects(:delete).with(entry.project_id, entry.id).once
+
+    assert entry.destroy_with_vector!
+    assert_not HelpdeskKnowledgeEntry.exists?(entry.id)
+  end
+
+  def test_destroy_with_vector_keeps_row_when_point_removal_fails
+    entry = curated_entry('approved')
+    entry.update_columns(:point_id => entry.id.to_s)
+    @store.stubs(:delete).raises(StandardError, 'store down')
+
+    assert_not entry.destroy_with_vector!
+    assert HelpdeskKnowledgeEntry.exists?(entry.id)
+  end
+
+  # What serializes the two: both take the row lock before touching the store.
+  def test_sync_and_destroy_take_the_row_lock
+    skip 'adapter has no row locks' unless HelpdeskKnowledgeEntry.connection.adapter_name =~ /mysql|postg/i
+
+    RedmineExpertHelpdesk::AiFeatures.stubs(:kb_ready?).returns(true)
+    entry = curated_entry('approved')
+    sql = []
+    callback = ->(*, payload) { sql << payload[:sql] }
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+      entry.sync_vector!
+      entry.destroy_with_vector!
+    end
+    locks = sql.grep(/helpdesk_knowledge_entries.*FOR UPDATE/m)
+    assert_equal 2, locks.size, sql.join("\n")
+  end
 end
