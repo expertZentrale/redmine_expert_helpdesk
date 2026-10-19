@@ -964,7 +964,7 @@ from the vector store first; if that fails the row is kept and the request answe
 
 ### Reindex the project
 
-`POST /projects/:project_id/helpdesk/kb_entries/reindex.:format` → **202 Accepted**.
+`POST /projects/:project_id/helpdesk/kb_entries/reindex.:format` → **200** once the job is queued.
 Drops the project's vectors and re-embeds every approved entry in the background (no AI
 extraction, only embeddings). `count` is the number of approved entries.
 **422** when the knowledge base is not configured.
@@ -981,9 +981,10 @@ level; `all=1` takes every eligible entry (e.g. after the prompt changed). Curat
 rejected entries, and entries whose ticket has been reopened, are never re-extracted.
 **Each entry costs one AI call.**
 
-→ **202 Accepted** with `"queued": true` and the number of entries, or **200** with
-`"queued": false, "count": 0` when there is nothing to re-extract. **422** when the
-knowledge base is not configured.
+→ **200** with `"queued": true` and the number of entries, or `"queued": false,
+"count": 0` when there is nothing to re-extract. **422** when the knowledge base is not
+configured. Both jobs answer 200 rather than 202 Accepted, as Redmine-style clients
+treat anything but 200/201/204 as an error.
 
 ```bash
 curl -X POST -H "X-Redmine-API-Key: $KEY" \

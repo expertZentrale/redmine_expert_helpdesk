@@ -99,13 +99,15 @@ class HelpdeskKbEntriesApiController < ApplicationController
   end
 
   # Rebuilds the project's vector namespace in the background (no LLM call).
+  # 200, not 202: Redmine itself never answers 202, and clients built on its
+  # conventions (python-redmine among them) treat it as an unknown error.
   def reindex
     return render_api_errors(l(:text_helpdesk_kb_not_configured)) unless RedmineExpertHelpdesk::AiFeatures.kb_ready?
 
     HelpdeskKnowledgeReindexJob.perform_later(@project.id)
     @job = { :action => 'reindex', :queued => true,
              :count => HelpdeskKnowledgeEntry.approved.where(:project_id => @project.id).count }
-    respond_to { |format| format.api { render :action => 'kb_job', :status => :accepted } }
+    respond_to { |format| format.api { render :action => 'kb_job' } }
   end
 
   # Re-extracts entries at the project's current detail level; all=1 re-extracts
@@ -119,9 +121,7 @@ class HelpdeskKbEntriesApiController < ApplicationController
       HelpdeskKnowledgeReextractJob.perform_later(@project.id, :all => all, :requested_at => Time.current)
     end
     @job = { :action => 'reextract', :queued => count.positive?, :count => count }
-    respond_to do |format|
-      format.api { render :action => 'kb_job', :status => (count.positive? ? :accepted : :ok) }
-    end
+    respond_to { |format| format.api { render :action => 'kb_job' } }
   end
 
   private

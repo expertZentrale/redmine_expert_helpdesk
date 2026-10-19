@@ -228,7 +228,7 @@ class HelpdeskKbEntriesApiTest < Redmine::IntegrationTest
     grant!(:manage_helpdesk_kb)
     HelpdeskKnowledgeReindexJob.expects(:perform_later).with(@project.id)
     post "#{base}/reindex.json", :headers => auth
-    assert_response :accepted
+    assert_response :success
     assert_equal({ 'action' => 'reindex', 'queued' => true, 'count' => 1 }, json['kb_job'])
   end
 
@@ -249,7 +249,7 @@ class HelpdeskKbEntriesApiTest < Redmine::IntegrationTest
     HelpdeskKnowledgeReextractJob.expects(:perform_later)
                                  .with { |pid, opts| pid == @project.id && opts[:all] == true && opts[:requested_at] }
     post "#{base}/reextract.json", :params => { :all => '1' }, :headers => auth
-    assert_response :accepted
+    assert_response :success
     assert_equal({ 'action' => 'reextract', 'queued' => true, 'count' => 4 }, json['kb_job'])
 
     empty = mock('empty')
