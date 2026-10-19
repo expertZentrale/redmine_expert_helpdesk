@@ -1,0 +1,1 @@
+RedmineExpertHelpdesk::ApiSerializers.kb_entry(api, @entry, :vector_sync => @vector_sync)

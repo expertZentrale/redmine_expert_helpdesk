@@ -234,13 +234,16 @@ Redmine::Plugin.register :redmine_expert_helpdesk do
     # Knowledge base tab, three tiers (roles "KB viewer" / "KB editor" / "KB admin"):
     # read entries, correct/approve/reject them (re-embeds), delete + rebuild the index.
     permission :view_helpdesk_kb, {
-      :helpdesk_kb_entries => [:index, :show]
+      :helpdesk_kb_entries     => [:index, :show],
+      :helpdesk_kb_entries_api => [:index, :show]
     }, :read => true
     permission :edit_helpdesk_kb, {
-      :helpdesk_kb_entries => [:new, :create, :edit, :update, :approve, :reject]
+      :helpdesk_kb_entries     => [:new, :create, :edit, :update, :approve, :reject],
+      :helpdesk_kb_entries_api => [:create, :update, :approve, :reject]
     }, :require => :member
     permission :manage_helpdesk_kb, {
-      :helpdesk_kb_entries => [:destroy, :reindex, :reextract]
+      :helpdesk_kb_entries     => [:destroy, :reindex, :reextract],
+      :helpdesk_kb_entries_api => [:destroy, :reindex, :reextract]
     }, :require => :member
   end
 

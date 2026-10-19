@@ -1087,6 +1087,10 @@ and append `.json`/`.xml`. **Full reference with all parameters and examples:
 | GET / POST | `/projects/:id/helpdesk/mailboxes.{json,xml}` |
 | GET / PUT / DELETE | `/helpdesk/mailboxes/:id.{json,xml}` |
 | POST | `/helpdesk/mailboxes/:id/test_connection.{json,xml}` |
+| GET / POST | `/projects/:id/helpdesk/kb_entries.{json,xml}` |
+| GET / PUT / DELETE | `/helpdesk/kb_entries/:id.{json,xml}` |
+| POST | `/helpdesk/kb_entries/:id/{approve,reject}.{json,xml}` |
+| POST | `/projects/:id/helpdesk/kb_entries/{reindex,reextract}.{json,xml}` |
 
 Mailboxes require `manage_helpdesk` for reading as well as writing, since their
 configuration exposes mail hosts, usernames and OAuth client/tenant ids. Their secrets
@@ -1557,7 +1561,9 @@ Three permissions in the *Helpdesk* module map to suggested roles:
 | `edit_helpdesk_kb` | edit, new entry, approve, reject (also the ticket-sidebar KB buttons) | KB editor |
 | `manage_helpdesk_kb` | delete entries, rebuild the project index, re-extract entries | KB admin |
 
-The ticket-sidebar buttons keep working with `send_helpdesk_reply` as before.
+The ticket-sidebar buttons keep working with `send_helpdesk_reply` as before. The same
+permissions govern the knowledge base's REST API (`/projects/:id/helpdesk/kb_entries`, see
+[API.md](API.md#knowledge-base)), which offers everything the tab does.
 
 **Isolation:** each project has its own vector namespace (Qdrant collection / enforced
 `project_id` filter), so a project never retrieves another project's knowledge.

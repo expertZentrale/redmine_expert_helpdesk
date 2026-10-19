@@ -1131,6 +1131,10 @@ Parametern und Beispielen: [API.md](API.md).**
 | GET / POST | `/projects/:id/helpdesk/mailboxes.{json,xml}` |
 | GET / PUT / DELETE | `/helpdesk/mailboxes/:id.{json,xml}` |
 | POST | `/helpdesk/mailboxes/:id/test_connection.{json,xml}` |
+| GET / POST | `/projects/:id/helpdesk/kb_entries.{json,xml}` |
+| GET / PUT / DELETE | `/helpdesk/kb_entries/:id.{json,xml}` |
+| POST | `/helpdesk/kb_entries/:id/{approve,reject}.{json,xml}` |
+| POST | `/projects/:id/helpdesk/kb_entries/{reindex,reextract}.{json,xml}` |
 
 Postfächer erfordern zum Lesen wie zum Schreiben `manage_helpdesk`, denn ihre
 Konfiguration legt Mail-Hosts, Benutzernamen und OAuth-Client-/Tenant-IDs offen. Ihre
@@ -1634,6 +1638,8 @@ Drei Berechtigungen im Modul *Helpdesk*, passend zu vorgeschlagenen Rollen:
 | `manage_helpdesk_kb` | Einträge löschen, Projekt-Index neu aufbauen, Einträge neu extrahieren | KB-Admin |
 
 Die Buttons der Ticket-Seitenleiste funktionieren wie bisher auch mit `send_helpdesk_reply`.
+Dieselben Berechtigungen gelten für die REST-API der Wissensbasis (`/projects/:id/helpdesk/kb_entries`,
+siehe [API.md](API.md#knowledge-base)), die alles bietet, was der Reiter kann.
 
 **Isolation:** jedes Projekt hat einen eigenen Vektor-Namensraum (Qdrant-Collection / erzwungener
 `project_id`-Filter) – ein Projekt ruft nie das Wissen eines anderen ab.

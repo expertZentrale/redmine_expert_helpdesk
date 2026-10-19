@@ -6,6 +6,18 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Added
+
+- **REST API for the knowledge base.** Everything the *Knowledge base* tab does is now available
+  under `/projects/:id/helpdesk/kb_entries` and `/helpdesk/kb_entries/:id` (JSON and XML): list
+  with status/text/ticket filters, show, create, update, approve, reject, delete, and the
+  background *reindex* and *reextract* jobs. Same permissions as the tab
+  (`view/edit/manage_helpdesk_kb`). Each write reports whether the vector store took the change
+  (`vector_sync`), since an approved entry that failed to embed is otherwise not searchable
+  without anyone noticing. See `API.md`.
+
 ## [0.22.0] - 2026-10-18
 
 ### Documentation

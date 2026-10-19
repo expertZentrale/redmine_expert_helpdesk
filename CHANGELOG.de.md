@@ -5,6 +5,18 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **REST-API für die Wissensbasis.** Alles, was der Reiter *Wissensbasis* kann, steht jetzt unter
+  `/projects/:id/helpdesk/kb_entries` und `/helpdesk/kb_entries/:id` bereit (JSON und XML): Liste
+  mit Status-, Text- und Ticketfilter, Anzeigen, Anlegen, Bearbeiten, Freigeben, Ablehnen, Löschen
+  sowie die Hintergrundjobs *reindex* und *reextract*. Dieselben Berechtigungen wie im Reiter
+  (`view/edit/manage_helpdesk_kb`). Jede Änderung meldet, ob der Vektor-Store sie übernommen hat
+  (`vector_sync`) – ein freigegebener Eintrag, dessen Einbettung fehlschlug, wäre sonst unbemerkt
+  nicht auffindbar. Siehe `API.md`.
+
 ## [0.22.0] - 2026-10-18
 
 ### Dokumentation

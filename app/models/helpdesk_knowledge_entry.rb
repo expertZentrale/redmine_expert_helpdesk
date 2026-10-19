@@ -54,6 +54,32 @@ class HelpdeskKnowledgeEntry < HelpdeskApplicationRecord
     update(attrs.merge(:updated_by_id => user&.id, :curated_at => Time.current))
   end
 
+  # Brings the vector store in line with the row after a person changed it:
+  # approved -> (re-)embed, any other status -> must not be searchable. Synchronous,
+  # so the caller (tab or REST API) can report at once whether the store took it.
+  # Returns one of SYNC_RESULTS.
+  SYNC_RESULTS = %i[indexed not_configured problem_blank index_failed removed unindex_failed].freeze
+
+  def sync_vector!
+    if approved?
+      if !RedmineExpertHelpdesk::AiFeatures.kb_ready?
+        :not_configured
+      elsif problem.blank?
+        :problem_blank
+      elsif HelpdeskKnowledgeIngestJob.index_entry(self)
+        :indexed
+      else
+        :index_failed
+      end
+    elsif point_id.present? && !self.class.unindex(self)
+      # point_id stays set, so the entry still shows as indexed and the next
+      # "Rebuild index" removes the point.
+      :unindex_failed
+    else
+      :removed
+    end
+  end
+
   # Removes the entry's point from the vector store. Returns false (and logs) on
   # failure instead of raising: the SQL row is the system of record, and a stale
   # point is cleared by the next project reindex.

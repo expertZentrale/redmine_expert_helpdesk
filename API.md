@@ -16,6 +16,7 @@ and example requests/responses for each case.
 - [Tickets](#tickets)
 - [Project settings](#project-settings)
 - [Mailboxes](#mailboxes)
+- [Knowledge base](#knowledge-base)
 - [Data reference](#data-reference)
 
 ---
@@ -72,13 +73,14 @@ alongside the array.
 | Tickets | `view_issues` | `add_issues` / `edit_issues` / `delete_issues` |
 | Project settings | `view_helpdesk_info` or `manage_helpdesk` | `manage_helpdesk` |
 | Mailboxes | `manage_helpdesk` | `manage_helpdesk` |
+| Knowledge base | `view_helpdesk_kb` | `edit_helpdesk_kb` (create/update/approve/reject), `manage_helpdesk_kb` (delete/reindex/reextract) |
 
 **Mailboxes require `manage_helpdesk` for reading, too** — the configuration exposes
 mail hosts, usernames, OAuth client/tenant ids and the last connection error, which
 `view_helpdesk_info` (granted to everyone who may see customer data) has no business
 seeing.
 
-Tickets, project settings and mailboxes additionally require the **Helpdesk module**
+Tickets, project settings, mailboxes and the knowledge base additionally require the **Helpdesk module**
 to be enabled on the project (otherwise **403**). Contacts addressed globally by id (`/helpdesk/contacts/:id`)
 without a project resolve their project from the contact record; a contact with no
 project requires an admin.
@@ -112,7 +114,7 @@ Validation errors (422) use Redmine's standard envelope:
 
 ## Not yet available via REST
 
-Only **contacts**, **tickets**, **project settings** and **mailboxes** are exposed via
+Only **contacts**, **tickets**, **project settings**, **mailboxes** and the **knowledge base** are exposed via
 this REST API (see the sections below). The following helpdesk resources are **not** yet
 available — they can currently only be managed through the Redmine UI. Plan automations
 accordingly; these may be added later.
@@ -818,6 +820,176 @@ curl -X POST -H "X-Redmine-API-Key: $KEY" \
 Returns **422** with `"ok": false` and a `message` when the mailbox is not configured
 or the backend rejected the connection. `sent_folder` is only present for IMAP mailboxes.
 
+## Knowledge base
+
+The **knowledge base** holds one entry per resolved ticket: the extracted problem and
+solution that answer drafts and AI summaries retrieve from (see the plugin README,
+*Knowledge base*). These endpoints are the counterpart of the project tab
+*Knowledge base* and follow the same three permission tiers:
+
+| Permission | Allows |
+|------------|--------|
+| `view_helpdesk_kb` | list, show |
+| `edit_helpdesk_kb` | create, update, approve, reject |
+| `manage_helpdesk_kb` | delete, reindex, reextract |
+
+The database row is the system of record; the vector store only holds a copy. Every
+write therefore re-embeds the entry when it is `approved` and removes it from the
+vector store otherwise — synchronously, within the request. The responses of create,
+update, approve and reject carry the outcome as `vector_sync`:
+
+| `vector_sync` | Meaning |
+|---------------|---------|
+| `indexed` | approved and (re-)embedded — searchable with the new text |
+| `removed` | not approved, not (or no longer) in the vector store |
+| `not_configured` | approved, but the knowledge base is switched off or not configured; the next *reindex* picks it up |
+| `problem_blank` | approved, but there is no problem text to embed |
+| `index_failed` | approved, but embedding failed; retry or *reindex* |
+| `unindex_failed` | not approved, but removing it from the vector store failed — still searchable until the next *reindex* |
+
+Updates therefore answer **200 with the entry** rather than Redmine's usual 204.
+Reading and editing entries works even while the knowledge base is switched off or not
+configured; nothing is embedded then (`vector_sync: "not_configured"`), and *reindex* and
+*reextract* answer **422**. "Configured" means switched on (`kb_enabled`) with a vector
+store and an embeddings endpoint.
+
+### Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/projects/:project_id/helpdesk/kb_entries.:format` | List the project's entries |
+| `POST` | `/projects/:project_id/helpdesk/kb_entries.:format` | Create an entry |
+| `GET` | `/helpdesk/kb_entries/:id.:format` | Show one entry |
+| `PUT` | `/helpdesk/kb_entries/:id.:format` | Update an entry (partial) |
+| `DELETE` | `/helpdesk/kb_entries/:id.:format` | Delete an entry |
+| `POST` | `/helpdesk/kb_entries/:id/approve.:format` | Set status `approved` (embeds it) |
+| `POST` | `/helpdesk/kb_entries/:id/reject.:format` | Set status `rejected` (removes it from search) |
+| `POST` | `/projects/:project_id/helpdesk/kb_entries/reindex.:format` | Rebuild the project's vector index in the background |
+| `POST` | `/projects/:project_id/helpdesk/kb_entries/reextract.:format` | Re-extract entries with the AI in the background |
+
+### List entries
+
+`GET /projects/:project_id/helpdesk/kb_entries.:format`, newest change first.
+
+| Param | Notes |
+|-------|-------|
+| `status` | `pending`, `approved`, `skipped`, `rejected` (comma-separated for several), or `all`. **Default hides `skipped`** (the model found no solution), like the tab. |
+| `q` | Case-insensitive text search in problem and solution |
+| `issue_id` | Only entries of these tickets (comma-separated) |
+| `offset`, `limit` | See [Pagination](#pagination) |
+
+```bash
+curl -H "X-Redmine-API-Key: $KEY" \
+     "$URL/projects/1/helpdesk/kb_entries.json?status=pending&q=drucker"
+```
+
+```json
+{
+  "helpdesk_kb_entries": [
+    {
+      "id": 17,
+      "project": { "id": 1, "name": "Support" },
+      "issue": { "id": 4711, "subject": "Drucker druckt nicht" },
+      "status": "pending",
+      "problem": "Netzwerkdrucker druckt keine Aufträge",
+      "solution": "Druckertreiber neu installiert",
+      "extract_detail": "general",
+      "embed_model": null,
+      "indexed": false,
+      "input_tokens": 812,
+      "output_tokens": 96,
+      "curated": false,
+      "curated_at": null,
+      "created_on": "2026-10-12T09:14:03Z",
+      "updated_on": "2026-10-12T09:14:03Z"
+    }
+  ],
+  "total_count": 1,
+  "offset": 0,
+  "limit": 25
+}
+```
+
+### Show an entry
+
+`GET /helpdesk/kb_entries/:id.:format` → **200** with a `helpdesk_kb_entry` object,
+**404** if it does not exist, **403** without `view_helpdesk_kb`.
+
+### Create an entry
+
+`POST /projects/:project_id/helpdesk/kb_entries.:format` → **201** with the created
+entry (including `vector_sync`), **422** on validation errors.
+
+| Field | Notes |
+|-------|-------|
+| `issue_id` | **Required.** A ticket of this project (a leading `#` is accepted); one entry per ticket. |
+| `problem`, `solution` | Text |
+| `status` | `approved` or `pending` (default `pending`). Anything else answers **422**. |
+
+The entry counts as curated (`curated: true`), so closing the ticket again does not
+overwrite it with a fresh extraction.
+
+```bash
+curl -H "X-Redmine-API-Key: $KEY" -H "Content-Type: application/json" \
+     -d '{"helpdesk_kb_entry":{"issue_id":4711,"status":"approved",
+           "problem":"VPN-Verbindung bricht nach 10 Minuten ab",
+           "solution":"MTU am Client auf 1400 gesenkt"}}' \
+     "$URL/projects/1/helpdesk/kb_entries.json"
+```
+
+### Update an entry
+
+`PUT /helpdesk/kb_entries/:id.:format` → **200** with the entry (including
+`vector_sync`), **422** on validation errors. Partial: only `problem`, `solution` and
+`status` that are sent change anything. `status` accepts `approved` or `pending`; use
+the reject endpoint to reject. Like every write here it marks the entry curated.
+
+```bash
+curl -X PUT -H "X-Redmine-API-Key: $KEY" -H "Content-Type: application/json" \
+     -d '{"helpdesk_kb_entry":{"solution":"Treiber 4.2 installiert, Spooler neu gestartet"}}' \
+     "$URL/helpdesk/kb_entries/17.json"
+```
+
+### Approve / reject an entry
+
+`POST /helpdesk/kb_entries/:id/approve.:format` and `…/reject.:format` → **200** with
+the entry (including `vector_sync`). A rejected entry is kept, so closing its ticket
+again does not bring it back.
+
+### Delete an entry
+
+`DELETE /helpdesk/kb_entries/:id.:format` → **204 No Content**. The entry is removed
+from the vector store first; if that fails the row is kept and the request answers
+**422** — a vector without its row would stay searchable with nothing left to remove it.
+
+### Reindex the project
+
+`POST /projects/:project_id/helpdesk/kb_entries/reindex.:format` → **202 Accepted**.
+Drops the project's vectors and re-embeds every approved entry in the background (no AI
+extraction, only embeddings). `count` is the number of approved entries.
+**422** when the knowledge base is not configured.
+
+```json
+{ "kb_job": { "action": "reindex", "queued": true, "count": 42 } }
+```
+
+### Re-extract entries
+
+`POST /projects/:project_id/helpdesk/kb_entries/reextract.:format` re-runs the AI
+extraction in the background for entries that are not at the project's current detail
+level; `all=1` takes every eligible entry (e.g. after the prompt changed). Curated and
+rejected entries, and entries whose ticket has been reopened, are never re-extracted.
+**Each entry costs one AI call.**
+
+→ **202 Accepted** with `"queued": true` and the number of entries, or **200** with
+`"queued": false, "count": 0` when there is nothing to re-extract. **422** when the
+knowledge base is not configured.
+
+```bash
+curl -X POST -H "X-Redmine-API-Key: $KEY" \
+     "$URL/projects/1/helpdesk/kb_entries/reextract.json?all=1"
+```
+
 ## Data reference
 
 ### Contact object
@@ -899,3 +1071,25 @@ a closed ticket without a recorded response, the close time.
 
 `{ id, direction (in|out|init), subject, sent_at, recipient_to, recipient_cc,
 recipient_bcc, contact {id}?, mailbox {id}?, created_on }`.
+
+### Knowledge base entry object
+
+Returned by the [knowledge base endpoints](#knowledge-base) under the root key
+`helpdesk_kb_entry`.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | integer | |
+| `project` | object `{ id, name }` | |
+| `issue` | object `{ id, subject? }` | `subject` only when the caller may see the ticket |
+| `status` | string | `pending`, `approved`, `skipped`, `rejected`; only `approved` is searchable |
+| `problem`, `solution` | string \| null | |
+| `extract_detail` | string \| null | Detail level it was extracted at (`general`, `specific`, `most_specific`); `null` = before detail levels, treated as `general` |
+| `embed_model` | string \| null | Embeddings model of the stored vector |
+| `indexed` | boolean | Whether the entry currently has a vector in the store |
+| `input_tokens`, `output_tokens` | integer \| null | Token usage of the extraction |
+| `curated` | boolean | Edited, approved or rejected by a person; protected from re-extraction |
+| `curated_at` | datetime \| null | |
+| `updated_by` | object `{ id, name }` \| absent | Who curated it last |
+| `vector_sync` | string \| absent | Only in responses to a write, see [Knowledge base](#knowledge-base) |
+| `created_on` / `updated_on` | datetime (ISO 8601) | |

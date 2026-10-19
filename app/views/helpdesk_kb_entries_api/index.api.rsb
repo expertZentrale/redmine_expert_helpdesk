@@ -1,0 +1,6 @@
+api.array :helpdesk_kb_entries,
+          api_meta(:total_count => @entry_count, :offset => @offset, :limit => @limit) do
+  @entries.each do |entry|
+    RedmineExpertHelpdesk::ApiSerializers.kb_entry(api, entry)
+  end
+end

@@ -162,25 +162,14 @@ class HelpdeskKbEntriesController < ApplicationController
     FORM_STATUSES.include?(s) ? s : 'pending'
   end
 
-  # Approved -> (re-)embed; any other status -> must not be searchable. Synchronous,
-  # so the person sees at once whether the vector store took the change.
+  # See HelpdeskKnowledgeEntry#sync_vector! for what each result means.
   def sync_vector(entry)
-    if entry.approved?
-      if !RedmineExpertHelpdesk::AiFeatures.kb_ready?
-        flash[:warning] = l(:text_helpdesk_kb_saved_not_indexed)
-      elsif entry.problem.blank?
-        flash[:warning] = l(:text_helpdesk_kb_problem_blank)
-      elsif HelpdeskKnowledgeIngestJob.index_entry(entry)
-        flash[:notice] = l(:notice_helpdesk_kb_saved_indexed)
-      else
-        flash[:warning] = l(:text_helpdesk_kb_saved_not_indexed)
-      end
-    elsif entry.point_id.present? && !HelpdeskKnowledgeEntry.unindex(entry)
-      # point_id stays set, so the entry still shows as indexed and the next
-      # "Rebuild index" removes the point.
-      flash[:warning] = l(:text_helpdesk_kb_unindex_failed)
-    else
-      flash[:notice] = l(:notice_successful_update)
+    case entry.sync_vector!
+    when :indexed        then flash[:notice]  = l(:notice_helpdesk_kb_saved_indexed)
+    when :problem_blank  then flash[:warning] = l(:text_helpdesk_kb_problem_blank)
+    when :unindex_failed then flash[:warning] = l(:text_helpdesk_kb_unindex_failed)
+    when :removed        then flash[:notice]  = l(:notice_successful_update)
+    else                      flash[:warning] = l(:text_helpdesk_kb_saved_not_indexed)
     end
   end
 end

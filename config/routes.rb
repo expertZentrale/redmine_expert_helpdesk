@@ -104,6 +104,14 @@ RedmineApp::Application.routes.draw do
     # Projekt-Helpdesk-Einstellungen (Singleton je Projekt)
     resource :helpdesk_project_setting_api, :path => 'helpdesk/settings',
              :controller => 'helpdesk_project_settings_api', :only => [:show, :update]
+    # Knowledge base entries (list/create) and the per-project index jobs
+    resources :helpdesk_kb_entries_api, :path => 'helpdesk/kb_entries',
+              :controller => 'helpdesk_kb_entries_api', :only => [:index, :create] do
+      collection do
+        post :reindex
+        post :reextract
+      end
+    end
   end
 
   # REST-API (global per ID: Anzeigen/Aendern/Loeschen)
@@ -115,6 +123,13 @@ RedmineApp::Application.routes.draw do
             :controller => 'helpdesk_mailboxes_api', :only => [:show, :update, :destroy] do
     member do
       post :test_connection
+    end
+  end
+  resources :helpdesk_kb_entries_api, :path => 'helpdesk/kb_entries',
+            :controller => 'helpdesk_kb_entries_api', :only => [:show, :update, :destroy] do
+    member do
+      post :approve
+      post :reject
     end
   end
 

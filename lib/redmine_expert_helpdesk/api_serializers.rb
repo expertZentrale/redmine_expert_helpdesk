@@ -294,6 +294,46 @@ module RedmineExpertHelpdesk
       end
     end
 
+    # Knowledge base entry. The ticket subject only for a ticket the caller may see:
+    # view_helpdesk_kb alone does not grant view_issues. vector_sync is the result
+    # of HelpdeskKnowledgeEntry#sync_vector! and only present after a write.
+    def kb_entry(api, e, vector_sync: nil)
+      return if e.nil?
+
+      api.helpdesk_kb_entry do
+        api.id e.id
+        api.project(:id => e.project_id, :name => e.project&.name)
+        if e.issue&.visible?
+          api.issue(:id => e.issue_id, :subject => e.issue.subject)
+        else
+          api.issue(:id => e.issue_id)
+        end
+        api.status   e.status
+        api.problem  e.problem
+        api.solution e.solution
+        api.extract_detail e.extract_detail if e.has_attribute?(:extract_detail)
+        api.embed_model    e.embed_model
+        api.indexed        e.point_id.present?
+        api.input_tokens   e.input_tokens
+        api.output_tokens  e.output_tokens
+        api.curated        e.curated?
+        api.curated_at     e.curated_at
+        api.updated_by(:id => e.updated_by_id, :name => e.updated_by.name) if e.updated_by
+        api.vector_sync    vector_sync.to_s if vector_sync
+        api.created_on     e.created_at
+        api.updated_on     e.updated_at
+      end
+    end
+
+    # Result of a queued knowledge base job (reindex / reextract).
+    def kb_job(api, job)
+      api.kb_job do
+        api.action job[:action]
+        api.queued job[:queued]
+        api.count  job[:count]
+      end
+    end
+
     # Einzelne Helpdesk-Nachricht (Nachrichtenverlauf eines Tickets).
     def message(api, m)
       api.message do
