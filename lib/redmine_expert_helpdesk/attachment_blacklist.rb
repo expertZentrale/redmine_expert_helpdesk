@@ -71,11 +71,15 @@ module RedmineExpertHelpdesk
       rendered_attachments(issue).select { |a| eligible?(a, project, setting) }.map(&:id)
     end
 
+    # Two queries on purpose: written as one OR with a journal subquery, MariaDB
+    # cannot use the (container_id, container_type) index and scans the whole
+    # attachments table - half a second on 600k rows, on every ticket page.
     def rendered_attachments(issue)
-      Attachment.where(:container_type => 'Issue', :container_id => issue.id)
-                .or(Attachment.where(:container_type => 'Journal',
-                                     :container_id => issue.journals.select(:id)))
-                .to_a
+      journal_ids = issue.journals.pluck(:id)
+      attachments = Attachment.where(:container_type => 'Issue', :container_id => issue.id).to_a
+      return attachments if journal_ids.empty?
+
+      attachments + Attachment.where(:container_type => 'Journal', :container_id => journal_ids).to_a
     end
 
     def size_allowed?(attachment, setting)

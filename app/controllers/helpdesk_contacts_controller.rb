@@ -79,8 +79,9 @@ class HelpdeskContactsController < ApplicationController
   def edit
     ticket_limit = Setting.plugin_redmine_expert_helpdesk['contact_ticket_limit'].to_i
     @ticket_limit         = ticket_limit > 0 ? ticket_limit : 10
-    @contact_issues       = @contact.issues.includes(:status).order(:id => :desc).limit(@ticket_limit)
-    @contact_issues_total = @contact.issues.count
+    issues                = @contact.issues
+    @contact_issues       = issues.includes(:status).order(:id => :desc).limit(@ticket_limit)
+    @contact_issues_total = issues.count
   end
 
   # Gibt passende Kontakte als JSON zurueck (fuer Autocomplete in der Antwort-Maske).

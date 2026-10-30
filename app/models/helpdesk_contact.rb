@@ -44,10 +44,15 @@ class HelpdeskContact < HelpdeskApplicationRecord
   # the viewer has no access to, and the history would otherwise show its
   # subject and status.
   def issues(user = User.current)
-    Issue.visible(user)
-         .where(:id => helpdesk_messages.select(:issue_id))
-         .or(Issue.visible(user).where(:id => helpdesk_ticket_infos.select(:issue_id)))
-         .distinct
+    Issue.visible(user).where(:id => issue_ids)
+  end
+
+  # Ids of this contact's tickets, from two indexed lookups. MariaDB gets them
+  # as a literal list on purpose: an OR of two IN subqueries (or one IN over
+  # their UNION) cannot use a semi-join and walks the whole issues table -
+  # 0.2 s per call on 230k issues, on every ticket page with a customer.
+  def issue_ids
+    (helpdesk_messages.distinct.pluck(:issue_id) + helpdesk_ticket_infos.distinct.pluck(:issue_id)).compact.uniq
   end
 
   # "Last ticket" in the customer list: the later of the contact's last mail

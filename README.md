@@ -958,8 +958,10 @@ update](docs/screenshots/en/10-contact-profile.png)
   people, a pill `To +1 | CC +2` counts them (everyone besides the receiving
   mailbox); hovering or clicking it lists every To/CC address, with our own
   mailbox marked. Incoming replies carry the same pill in their journal header.
-- **Sidebar**: Customer card with full profile, link to the customer profile
-  and history of sent replies (To/CC/BCC, timestamp, attachments).
+- **Sidebar**: Customer card with full profile, link to the customer profile,
+  the customer's four most recent other tickets (only those you may see — a
+  ticket handed over to another project may not be), and history of sent
+  replies (To/CC/BCC, timestamp, attachments).
 
 ### Assigning a contact to an existing ticket
 

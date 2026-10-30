@@ -998,8 +998,9 @@ Aktualisierung](docs/screenshots/de/10-contact-profile.png)
   ist markiert. Eingehende Antworten tragen dieselbe Pille in ihrer
   Journal-Überschrift.
 - **Seitenleiste**: Kundenkarte mit vollständigem Profil, Link zum
-  Kundenprofil sowie Verlauf der gesendeten Antworten (To/CC/BCC, Zeitstempel,
-  Anhänge).
+  Kundenprofil, den vier neuesten anderen Tickets des Kunden (nur die, die man
+  sehen darf — ein an ein anderes Projekt übergebenes Ticket womöglich nicht)
+  sowie Verlauf der gesendeten Antworten (To/CC/BCC, Zeitstempel, Anhänge).
 
 ### Kunde einem bestehenden Ticket zuordnen
 

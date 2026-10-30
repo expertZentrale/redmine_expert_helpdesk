@@ -6,6 +6,31 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Fixed
+
+- **Ticket pages with a customer were slow, up to tens of seconds for frequent customers.** The
+  sidebar's *Previous tickets* (and the customer page) asked for "tickets with a mail of this
+  customer **or** linked to them" as one query with two subqueries, a shape MariaDB answers by
+  walking the whole `issues` table — on a production-sized database 0.2 s for a one-off customer and
+  25–30 s for a customer with a few hundred tickets, on every view of their tickets and for every
+  agent. The ticket ids are now collected with two indexed lookups first (`HelpdeskContact#issue_ids`)
+  and the issues fetched by id, and the sidebar runs the query once instead of twice
+  (`app/models/helpdesk_contact.rb`, `app/views/helpdesk/_issue_sidebar.html.erb`,
+  `app/controllers/helpdesk_contacts_controller.rb`). Introduced in 0.22.0 with hand-over tickets.
+- **Ticket pages were slow for helpdesk managers and administrators.** Deciding which attachments
+  get the *blacklist* button looked up the ticket's and its journals' attachments with one `OR`
+  query that scanned the whole `attachments` table (0.5–2.5 s on 600k attachments, on every ticket
+  page). It is now two indexed queries (`lib/redmine_expert_helpdesk/attachment_blacklist.rb`).
+  Introduced in 0.13.0.
+- **Issue lists ran one or two extra queries per row**: the *awaiting agent* highlight and the
+  customer and SLA columns looked up each row's ticket info (and customer) separately. The list now
+  loads them for the whole page in one query (two with a customer column)
+  (`lib/redmine_expert_helpdesk/patches/issue_query_preload_patch.rb`,
+  `lib/redmine_expert_helpdesk/patches/issue_patch.rb`). This covers the issue list, the *My page*
+  blocks and exports.
+
 ## [0.23.0] - 2026-10-19
 
 ### Added

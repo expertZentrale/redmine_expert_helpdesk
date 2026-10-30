@@ -545,6 +545,20 @@ calls the captured original explicitly), **not** prepend/super, so they coexist 
 same coexistence, our project-settings tab is named **`expert_helpdesk`** (not `helpdesk`, which
 RedmineUP also registers); the internal `:tab => 'expert_helpdesk'` redirects match.
 
+**Query shape on hot paths (ticket page, issue list).** Never combine two `IN (subquery)`
+conditions with `OR` (`where(id: a.select(..)).or(where(id: b.select(..)))`, or
+`container_id = x OR container_id IN (SELECT ..)`): MariaDB can use neither a semi-join nor an
+index merge there and scans the whole outer table — that is how `HelpdeskContact#issues` cost
+25–30 s per ticket page for frequent customers (0.22.0) and the blacklist eligibility 0.5 s on every
+ticket page (0.13.0). Pluck the ids with indexed lookups first and pass a literal list
+(`HelpdeskContact#issue_ids`), or run two queries. Anything a grid reads per row goes through a
+page-wide preload (`IssueQueryPreloadPatch` → `IssuePatch.preload_ticket_infos`; read it via
+`Issue#helpdesk_ticket_info_for_display`, not `HelpdeskTicketInfo.for_issue`). `IssueQuery#issues` is
+aliased by RedmineUP, so that patch uses UnboundMethod capture like `IssueCssClassesPatch` — a
+prepended `issues` recursed endlessly (`SystemStackError`). With
+redmine_expert_metrics 1.4.0's performance metrics on, *Slow requests* names the statement and the
+hook that cost the time; `test/unit/helpdesk_query_cost_test.rb` pins the shapes.
+
 **Controller and constant names must not collide with `redmine_contacts_helpdesk`.** Every
 plugin's `app/` is on the same Zeitwerk autoload path, so two plugins shipping
 `app/controllers/helpdesk_oauth_controller.rb` means only the first one on the path is ever

@@ -23,6 +23,58 @@ module RedmineExpertHelpdesk
         base.after_save :helpdesk_clear_awaiting_on_close
       end
 
+      PRELOAD_BATCH = 1000
+
+      # Loads the ticket info of a whole page of issues in one query, for lists
+      # that read it once per row (awaiting highlight via css_classes, the
+      # customer and SLA columns) - otherwise one query per row and column.
+      # With +contacts+ also each ticket's customer contact, including the
+      # first-mail fallback of helpdesk_customer_contact.
+      def self.preload_ticket_infos(issues, contacts = false)
+        issues = issues.select { |issue| issue.is_a?(Issue) && issue.id }
+        return if issues.empty?
+
+        # Exports go through here too and may carry thousands of rows; keep each
+        # IN list short.
+        infos = {}
+        issues.map(&:id).each_slice(PRELOAD_BATCH) do |ids|
+          scope = HelpdeskTicketInfo.where(:issue_id => ids)
+          scope = scope.preload(:helpdesk_contact) if contacts
+          scope.each { |info| infos[info.issue_id] = info }
+        end
+        issues.each { |issue| issue.helpdesk_preloaded_ticket_info = infos[issue.id] }
+        return unless contacts
+
+        missing = issues.reject { |issue| infos[issue.id]&.helpdesk_contact }
+        fallback = {}
+        missing.map(&:id).each_slice(PRELOAD_BATCH) do |ids|
+          HelpdeskMessage.joins(:helpdesk_contact)
+                         .where(:issue_id => ids, :direction => 'in')
+                         .order(:id => :asc)
+                         .preload(:helpdesk_contact)
+                         .each { |message| fallback[message.issue_id] ||= message.helpdesk_contact }
+        end
+        issues.each do |issue|
+          issue.helpdesk_preloaded_customer_contact = infos[issue.id]&.helpdesk_contact || fallback[issue.id]
+        end
+      end
+
+      def helpdesk_preloaded_ticket_info=(info)
+        @helpdesk_preloaded_ticket_info = [info]
+      end
+
+      def helpdesk_preloaded_customer_contact=(contact)
+        @helpdesk_customer_contact = [contact]
+      end
+
+      # The ticket's HelpdeskTicketInfo: from preload_ticket_infos when a list
+      # loaded it, otherwise looked up (and then served by the query cache).
+      def helpdesk_ticket_info_for_display
+        return @helpdesk_preloaded_ticket_info.first if @helpdesk_preloaded_ticket_info
+
+        HelpdeskTicketInfo.for_issue(self)
+      end
+
       # The ticket's customer contact: the authoritative HelpdeskTicketInfo link
       # first (set on mail ingest, manual init assignment and legacy import),
       # falling back to the sender of the first incoming mail for legacy tickets
@@ -32,7 +84,7 @@ module RedmineExpertHelpdesk
       # columns hit this once per row (mirrors helpdesk_awaiting_agent).
       def helpdesk_customer_contact
         @helpdesk_customer_contact ||= begin
-          contact = HelpdeskTicketInfo.for_issue(self)&.helpdesk_contact
+          contact = helpdesk_ticket_info_for_display&.helpdesk_contact
           contact ||= HelpdeskMessage
                         .joins(:helpdesk_contact)
                         .where(:issue_id => id, :direction => 'in')
@@ -58,7 +110,7 @@ module RedmineExpertHelpdesk
       # Erstreaktion gilt bei geschlossenen Tickets der Schliesszeitpunkt als
       # Abschluss (Reaktion laeuft nicht ueber das Loesen hinaus weiter).
       def helpdesk_sla_reaction
-        info = HelpdeskTicketInfo.for_issue(self)
+        info = helpdesk_ticket_info_for_display
         return nil unless info
 
         done = info.first_response_at || (closed? ? closed_on : nil)
@@ -68,7 +120,7 @@ module RedmineExpertHelpdesk
 
       # SLA-Status der Loesungsuhr (nil, wenn kein SLA greift).
       def helpdesk_sla_solution
-        info = HelpdeskTicketInfo.for_issue(self)
+        info = helpdesk_ticket_info_for_display
         return nil unless info
 
         done = closed? ? closed_on : nil
@@ -81,7 +133,7 @@ module RedmineExpertHelpdesk
       # grid row by both column_content and css_classes.
       def helpdesk_awaiting_agent
         @helpdesk_awaiting_agent ||= begin
-          info = HelpdeskTicketInfo.awaiting_agent_enabled? ? HelpdeskTicketInfo.for_issue(self) : nil
+          info = HelpdeskTicketInfo.awaiting_agent_enabled? ? helpdesk_ticket_info_for_display : nil
           [info&.awaiting_agent_since ? [info.awaiting_agent_since, info.awaiting_agent_reason] : nil]
         end
         @helpdesk_awaiting_agent.first
