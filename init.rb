@@ -84,6 +84,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/patches/issue_patch', _
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/issue_query_patch', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/queries_helper_patch', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/issue_css_classes_patch', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/patches/issue_query_preload_patch', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/journal_patch', __FILE__)
 
 Redmine::Plugin.register :redmine_expert_helpdesk do
@@ -357,6 +358,10 @@ RedmineExpertHelpdesk::Patches::QueriesHelperPatch.apply!(QueriesHelper)
 # css_classes ebenfalls per UnboundMethod-Capture (siehe issue_css_classes_patch.rb):
 # IssuePatch wird per include eingebunden und kann die Methode nicht ueberschreiben.
 RedmineExpertHelpdesk::Patches::IssueCssClassesPatch.apply!(Issue)
+
+# IssueQuery#issues likewise (see issue_query_preload_patch.rb): RedmineUP aliases
+# it, so a prepend here would recurse.
+RedmineExpertHelpdesk::Patches::IssueQueryPreloadPatch.apply!(IssueQuery)
 
 unless Journal.included_modules.include?(RedmineExpertHelpdesk::Patches::JournalPatch)
   Journal.include(RedmineExpertHelpdesk::Patches::JournalPatch)

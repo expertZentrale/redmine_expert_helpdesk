@@ -7,7 +7,9 @@
   origin_mailbox = HelpdeskTicketInfo.for_issue(issue)&.helpdesk_mailbox
   eml_links      = inbound_msgs.select { |m| m.eml_attachment_id.present? }
   ai_summaries   = HelpdeskAiSummary.where(:issue_id => issue.id).where.not(:journal_id => nil)
+  # Loaded once: any? and each on the relation were two queries.
   previous       = contact.issues.where.not(:id => issue.id).order(:id => :desc).limit(4)
+                          .preload(:tracker, :status, :project).to_a
 
   # KI-Assistent-Bereich (eigene Karte unter der Kundenkarte): nur anzeigen, wenn
   # KI oder Wissensbasis fuer das Projekt tatsaechlich aktiv ist. Jede Zeile hat

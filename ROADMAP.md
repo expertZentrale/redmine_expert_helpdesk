@@ -5,6 +5,17 @@ Phishing-Abwehr im Helpdesk-Plugin. Bereits umgesetzt: PhishTank-Integration
 (lokaler Datenbank-Spiegel, Link-Neutralisierung, Quarantäne) sowie der
 Phishing.Database-Feed als zweite Quelle.
 
+## Vor dem nächsten Feed: Speicherbedarf des Feed-Imports
+
+`PhishingDatabaseSync#run` hält beim Import den ganzen Feed (~790.000 URLs) gleichzeitig im
+Speicher: Rohtext, Zeilen-Array, `seen`-Hash und einen Ruby-Hash pro URL, und
+`HelpdeskPhishingUrl.replace_source!` ersetzt alle Zeilen in einer einzigen Transaktion. Der
+Import läuft im Web-Request von `fetch_all`, also im Speicher eines Redmine-Pods, den Ruby danach
+kaum zurückgibt, und die große Transaktion verdrängt heiße Seiten aus dem InnoDB-Buffer-Pool. In
+Produktion ist die Phishing-Prüfung derzeit aus (Stand 2026-10-30); bevor sie oder ein weiterer
+Feed eingeschaltet wird, den Import streamen (zeilenweise lesen, in Batches schreiben, Batches
+einzeln committen) und aus dem Request in einen Job verlegen.
+
 ## Kurzfristig
 
 ### 1. Zusätzliche Threat-Intelligence-Feeds

@@ -5,6 +5,35 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Behoben
+
+- **Ticketseiten mit Kunde waren langsam, bei häufigen Kunden bis zu einige zehn Sekunden.** Die
+  *Bisherigen Tickets* in der Seitenleiste (und die Kundenseite) fragten „Tickets mit einer Mail
+  dieses Kunden **oder** mit ihm verknüpft“ als eine Abfrage mit zwei Unterabfragen ab — eine Form,
+  die MariaDB mit einem Durchlauf über die ganze Tabelle `issues` beantwortet: auf einer Datenbank in
+  Produktionsgröße 0,2 s bei einem einmaligen Kunden und 25–30 s bei einem Kunden mit einigen hundert
+  Tickets, bei jedem Aufruf ihrer Tickets und für jeden Bearbeiter. Die Ticket-IDs werden jetzt
+  zuerst mit zwei indizierten Abfragen gesammelt (`HelpdeskContact#issue_ids`) und die Tickets über
+  ihre ID geladen, und die Seitenleiste führt die Abfrage einmal statt zweimal aus
+  (`app/models/helpdesk_contact.rb`, `app/views/helpdesk/_issue_sidebar.html.erb`,
+  `app/controllers/helpdesk_contacts_controller.rb`). Eingeführt in 0.22.0 mit den Übergabe-Tickets.
+- **Ticketseiten waren für Helpdesk-Manager und Administratoren langsam.** Die Entscheidung, welche
+  Anhänge die *Sperrlisten*-Schaltfläche bekommen, suchte die Anhänge des Tickets und seiner
+  Journale mit einer `OR`-Abfrage, die die ganze Tabelle `attachments` durchlief (0,5–2,5 s bei
+  600.000 Anhängen, auf jeder Ticketseite). Jetzt sind es zwei indizierte Abfragen
+  (`lib/redmine_expert_helpdesk/attachment_blacklist.rb`). Eingeführt in 0.13.0.
+- **Ticketlisten führten pro Zeile ein bis zwei zusätzliche Abfragen aus**: die Hervorhebung
+  *Wartet auf Bearbeiter* sowie die Kunden- und SLA-Spalten lasen die Ticket-Infos (und den Kunden)
+  jeder Zeile einzeln. Die Liste lädt sie jetzt für die ganze Seite mit einer Abfrage (zwei mit einer
+  Kundenspalte) (`lib/redmine_expert_helpdesk/patches/issue_query_preload_patch.rb`,
+  `lib/redmine_expert_helpdesk/patches/issue_patch.rb`). Das gilt für die Ticketliste, die
+  Ticket-Blöcke auf *Meine Seite*, Gantt, Kalender und Exporte. Geladen wird bei der ersten Zeile,
+  die die Daten liest; wer sie nie liest (die REST-API), führt dafür keine Abfrage aus. Der Block *Wartet auf Bearbeiter* auf *Meine Seite* lädt seine Zeilen selbst und lädt
+  sie jetzt ebenso vor, und seine Liste einmal statt zweimal
+  (`app/views/my/blocks/_helpdesk_awaiting_agent.html.erb`).
+
 ## [0.23.0] - 2026-10-19
 
 ### Hinzugefügt

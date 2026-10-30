@@ -35,6 +35,13 @@ Redmine is supplied by a Docker image; the app only exists inside the running co
 - **Never edit a shipped migration.** When changing schema, add the next sequential number in
   `db/migrate/` (`001_...` onward).
 - Don't hard-code secrets/API keys. Local dev credentials live in `.dev.env` (git-ignored).
+- **Query shape on hot paths (ticket page, issue list):** never `OR` two `IN (subquery)` conditions —
+  MariaDB then scans the whole outer table (`HelpdeskContact#issues` cost 25–30 s per ticket page for
+  frequent customers in 0.22.0). Pluck ids with indexed lookups and pass a literal list
+  (`HelpdeskContact#issue_ids`), or run two queries; per-row grid data goes through
+  `IssuePatch.defer_ticket_infos` / `Issue#helpdesk_ticket_info_for_display` (`IssueQueryPreloadPatch`,
+  UnboundMethod capture — RedmineUP aliases `IssueQuery#issues`, a prepend recurses). Pinned by
+  `test/unit/helpdesk_query_cost_test.rb`.
 - **Don't develop features on `main`.** Every feature, bugfix or schema change goes on a
   `type/short-desc` branch and reaches `main` via a squash-merged PR (see *Git workflow* below).
 
