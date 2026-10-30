@@ -12,7 +12,10 @@
                 .includes(:project, :status, :tracker)
                 .order(Arel.sql('hti.awaiting_agent_since ASC'))
   total = issues.count
-  issues = issues.limit(10)
+  # Loaded once, with each row's ticket info in one query: css_classes and the
+  # awaiting chip read it per row.
+  issues = issues.limit(10).to_a
+  RedmineExpertHelpdesk::Patches::IssuePatch.preload_ticket_infos(issues)
 %>
 
 <h3><%= l(:'my.blocks.helpdesk_awaiting_agent') %> (<%= total %>)</h3>

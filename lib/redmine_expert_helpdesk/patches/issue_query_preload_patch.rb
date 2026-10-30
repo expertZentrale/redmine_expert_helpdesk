@@ -22,8 +22,14 @@ module RedmineExpertHelpdesk
         base.send(:define_method, :issues) do |*args|
           issues = original.bind(self).call(*args)
           begin
-            contacts = columns.any? { |c| CONTACT_COLUMNS.include?(c.name) }
-            RedmineExpertHelpdesk::Patches::IssuePatch.preload_ticket_infos(issues, contacts)
+            # Only when something on the page reads it: the awaiting highlight
+            # (css_classes) or one of our columns. Gantt, calendar and the REST
+            # API call #issues too and need neither.
+            names = columns.map(&:name)
+            if HelpdeskTicketInfo.awaiting_agent_enabled? || names.any? { |n| n.to_s.start_with?('helpdesk_') }
+              contacts = names.any? { |n| CONTACT_COLUMNS.include?(n) }
+              RedmineExpertHelpdesk::Patches::IssuePatch.preload_ticket_infos(issues, contacts)
+            end
           rescue StandardError => e
             # The rows then look their data up one by one, as before.
             Rails.logger.warn "Helpdesk: ticket info preload failed: #{e.message}"

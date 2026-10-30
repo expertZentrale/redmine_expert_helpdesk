@@ -114,6 +114,17 @@ class HelpdeskQueryCostTest < ActiveSupport::TestCase
     assert_nil issues[3].helpdesk_kunde
   end
 
+  def test_issue_list_skips_the_preload_when_nothing_reads_it
+    previous = Setting.plugin_redmine_expert_helpdesk
+    Setting.plugin_redmine_expert_helpdesk = previous.merge('awaiting_agent_enabled' => '0')
+    query = IssueQuery.new(:name => '_', :column_names => [:subject, :status])
+
+    sql = capture_sql { query.issues(:limit => 25) }
+    assert_empty sql.grep(/helpdesk_ticket_infos/), sql.join("\n")
+  ensure
+    Setting.plugin_redmine_expert_helpdesk = previous
+  end
+
   def test_single_issue_still_looks_its_data_up
     HelpdeskTicketInfo.mark_awaiting_agent!(Issue.find(1), 'reply', Time.current)
     assert_includes Issue.find(1).css_classes.split, 'hd-awaiting'
