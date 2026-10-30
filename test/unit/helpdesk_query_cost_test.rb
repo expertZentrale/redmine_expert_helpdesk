@@ -83,7 +83,7 @@ class HelpdeskQueryCostTest < ActiveSupport::TestCase
     query = IssueQuery.new(:name => '_', :column_names => [:subject, :helpdesk_awaiting_agent, :helpdesk_sla_reaction])
 
     issues = query.issues(:limit => 25)
-    assert_operator issues.size, :>=, 3
+    assert_operator issues.size, :>, 3
     sql = capture_sql do
       issues.each do |issue|
         issue.css_classes
@@ -93,7 +93,7 @@ class HelpdeskQueryCostTest < ActiveSupport::TestCase
       end
     end
 
-    assert_empty sql.grep(/helpdesk_ticket_infos/), sql.join("\n")
+    assert_equal 1, sql.grep(/helpdesk_ticket_infos/).size, sql.join("\n")
     assert issues.select { |issue| [1, 2, 3].include?(issue.id) }.all? { |issue| issue.css_classes.include?('hd-awaiting') }
   end
 
@@ -106,23 +106,24 @@ class HelpdeskQueryCostTest < ActiveSupport::TestCase
 
     query = IssueQuery.new(:name => '_', :column_names => [:subject, :helpdesk_kunde, :helpdesk_kunde_email])
     issues = query.issues(:limit => 25).index_by(&:id)
+    assert_operator issues.size, :>, 3
     sql = capture_sql { issues.each_value { |issue| issue.helpdesk_kunde; issue.helpdesk_kunde_email } }
 
-    assert_empty sql.grep(/helpdesk_(ticket_infos|messages|contacts)/), sql.join("\n")
+    # Ticket infos and their contacts, the first-mail fallback and its contacts:
+    # four queries for the page, not one per row.
+    assert_operator sql.grep(/helpdesk_(ticket_infos|messages|contacts)/).size, :<=, 4, sql.join("\n")
     assert_equal 'Linked', issues[1].helpdesk_kunde
     assert_equal 'mail@example.org', issues[2].helpdesk_kunde_email
     assert_nil issues[3].helpdesk_kunde
   end
 
-  def test_issue_list_skips_the_preload_when_nothing_reads_it
-    previous = Setting.plugin_redmine_expert_helpdesk
-    Setting.plugin_redmine_expert_helpdesk = previous.merge('awaiting_agent_enabled' => '0')
+  # The REST API and other callers that never read helpdesk data run no query
+  # for it, even with the awaiting highlight switched on (the default).
+  def test_issue_list_runs_no_helpdesk_query_until_a_row_reads_it
     query = IssueQuery.new(:name => '_', :column_names => [:subject, :status])
 
-    sql = capture_sql { query.issues(:limit => 25) }
-    assert_empty sql.grep(/helpdesk_ticket_infos/), sql.join("\n")
-  ensure
-    Setting.plugin_redmine_expert_helpdesk = previous
+    sql = capture_sql { query.issues(:limit => 25).each(&:subject) }
+    assert_empty sql.grep(/helpdesk_/), sql.join("\n")
   end
 
   def test_single_issue_still_looks_its_data_up

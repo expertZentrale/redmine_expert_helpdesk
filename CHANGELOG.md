@@ -29,8 +29,8 @@
   loads them for the whole page in one query (two with a customer column)
   (`lib/redmine_expert_helpdesk/patches/issue_query_preload_patch.rb`,
   `lib/redmine_expert_helpdesk/patches/issue_patch.rb`). This covers the issue list, the *My page*
-  issue blocks and exports, and is skipped where nothing reads it (awaiting highlight off and no
-  helpdesk column, e.g. Gantt, calendar, REST API). The *My page* block *Awaiting agent* loads its
+  issue blocks, Gantt, calendar and exports. The load happens on the first row that reads the data,
+  so callers that never do (the REST API) run no query for it. The *My page* block *Awaiting agent* loads its
   own rows and now preloads them the same way, and loads its list once instead of twice
   (`app/views/my/blocks/_helpdesk_awaiting_agent.html.erb`).
 

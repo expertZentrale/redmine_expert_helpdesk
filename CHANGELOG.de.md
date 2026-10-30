@@ -29,9 +29,8 @@
   jeder Zeile einzeln. Die Liste lädt sie jetzt für die ganze Seite mit einer Abfrage (zwei mit einer
   Kundenspalte) (`lib/redmine_expert_helpdesk/patches/issue_query_preload_patch.rb`,
   `lib/redmine_expert_helpdesk/patches/issue_patch.rb`). Das gilt für die Ticketliste, die
-  Ticket-Blöcke auf *Meine Seite* und Exporte und entfällt, wo nichts davon gelesen wird
-  (Hervorhebung *Wartet auf Bearbeiter* aus und keine Helpdesk-Spalte, z. B. Gantt, Kalender,
-  REST-API). Der Block *Wartet auf Bearbeiter* auf *Meine Seite* lädt seine Zeilen selbst und lädt
+  Ticket-Blöcke auf *Meine Seite*, Gantt, Kalender und Exporte. Geladen wird bei der ersten Zeile,
+  die die Daten liest; wer sie nie liest (die REST-API), führt dafür keine Abfrage aus. Der Block *Wartet auf Bearbeiter* auf *Meine Seite* lädt seine Zeilen selbst und lädt
   sie jetzt ebenso vor, und seine Liste einmal statt zweimal
   (`app/views/my/blocks/_helpdesk_awaiting_agent.html.erb`).
 

@@ -552,7 +552,8 @@ index merge there and scans the whole outer table — that is how `HelpdeskConta
 25–30 s per ticket page for frequent customers (0.22.0) and the blacklist eligibility 0.5 s on every
 ticket page (0.13.0). Pluck the ids with indexed lookups first and pass a literal list
 (`HelpdeskContact#issue_ids`), or run two queries. Anything a grid reads per row goes through a
-page-wide preload (`IssueQueryPreloadPatch` → `IssuePatch.preload_ticket_infos`; read it via
+page-wide deferred preload (`IssueQueryPreloadPatch` → `IssuePatch.defer_ticket_infos`, loaded on the
+first read; read it via
 `Issue#helpdesk_ticket_info_for_display`, not `HelpdeskTicketInfo.for_issue`). `IssueQuery#issues` is
 aliased by RedmineUP, so that patch uses UnboundMethod capture like `IssueCssClassesPatch` — a
 prepended `issues` recursed endlessly (`SystemStackError`). With

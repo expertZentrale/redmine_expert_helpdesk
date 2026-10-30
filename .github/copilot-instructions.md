@@ -39,7 +39,7 @@ Redmine is supplied by a Docker image; the app only exists inside the running co
   MariaDB then scans the whole outer table (`HelpdeskContact#issues` cost 25–30 s per ticket page for
   frequent customers in 0.22.0). Pluck ids with indexed lookups and pass a literal list
   (`HelpdeskContact#issue_ids`), or run two queries; per-row grid data goes through
-  `IssuePatch.preload_ticket_infos` / `Issue#helpdesk_ticket_info_for_display` (`IssueQueryPreloadPatch`,
+  `IssuePatch.defer_ticket_infos` / `Issue#helpdesk_ticket_info_for_display` (`IssueQueryPreloadPatch`,
   UnboundMethod capture — RedmineUP aliases `IssueQuery#issues`, a prepend recurses). Pinned by
   `test/unit/helpdesk_query_cost_test.rb`.
 - **Don't develop features on `main`.** Every feature, bugfix or schema change goes on a

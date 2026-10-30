@@ -25,6 +25,37 @@ module RedmineExpertHelpdesk
 
       PRELOAD_BATCH = 1000
 
+      # A page of issues whose ticket infos are loaded together, on the first
+      # read of any of them (see defer_ticket_infos).
+      class TicketInfoBatch
+        def initialize(issues, contacts)
+          @issues = issues
+          @contacts = contacts
+        end
+
+        def load!
+          return if @loaded
+
+          @loaded = true
+          IssuePatch.preload_ticket_infos(@issues, @contacts)
+        rescue StandardError => e
+          # Rows that got nothing look their data up one by one, as before.
+          Rails.logger.warn "Helpdesk: ticket info preload failed: #{e.message}"
+        end
+      end
+
+      # Ties a page of issues to one deferred batch: the first row that reads
+      # its ticket info (awaiting highlight, customer or SLA column) loads it for
+      # all of them in one query. Callers that never read it - the REST API, a
+      # Gantt or calendar with the highlight switched off - run no query at all.
+      def self.defer_ticket_infos(issues, contacts = false)
+        issues = issues.select { |issue| issue.is_a?(Issue) && issue.id }
+        return if issues.empty?
+
+        batch = TicketInfoBatch.new(issues, contacts)
+        issues.each { |issue| issue.helpdesk_ticket_info_batch = batch }
+      end
+
       # Loads the ticket info of a whole page of issues in one query, for lists
       # that read it once per row (awaiting highlight via css_classes, the
       # customer and SLA columns) - otherwise one query per row and column.
@@ -59,6 +90,10 @@ module RedmineExpertHelpdesk
         end
       end
 
+      def helpdesk_ticket_info_batch=(batch)
+        @helpdesk_ticket_info_batch = batch
+      end
+
       def helpdesk_preloaded_ticket_info=(info)
         @helpdesk_preloaded_ticket_info = [info]
       end
@@ -70,9 +105,18 @@ module RedmineExpertHelpdesk
       # The ticket's HelpdeskTicketInfo: from preload_ticket_infos when a list
       # loaded it, otherwise looked up (and then served by the query cache).
       def helpdesk_ticket_info_for_display
+        helpdesk_load_ticket_info_batch
         return @helpdesk_preloaded_ticket_info.first if @helpdesk_preloaded_ticket_info
 
         HelpdeskTicketInfo.for_issue(self)
+      end
+
+      def helpdesk_load_ticket_info_batch
+        batch = @helpdesk_ticket_info_batch
+        return if batch.nil?
+
+        @helpdesk_ticket_info_batch = nil
+        batch.load!
       end
 
       # The ticket's customer contact: the authoritative HelpdeskTicketInfo link
@@ -83,6 +127,8 @@ module RedmineExpertHelpdesk
       # Wrapped in an array so a nil result is memoized too; both customer grid
       # columns hit this once per row (mirrors helpdesk_awaiting_agent).
       def helpdesk_customer_contact
+        # A deferred batch with the customer column fills it for every row.
+        helpdesk_load_ticket_info_batch
         @helpdesk_customer_contact ||= begin
           contact = helpdesk_ticket_info_for_display&.helpdesk_contact
           contact ||= HelpdeskMessage
