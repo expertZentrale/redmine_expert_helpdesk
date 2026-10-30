@@ -1,0 +1,9 @@
+h3. Fixed
+
+* *Ticket pages with a customer were slow - up to tens of seconds for frequent customers.* The sidebar's _Previous tickets_ (and the customer page) asked the database for "tickets with a mail of this customer or linked to them" in a form MariaDB answers by reading the whole issues table, on every ticket page and for every agent. On a database with 230,000 issues that cost 0.2 s for a one-off customer and 25-30 s for a customer with a few hundred tickets. The tickets are now found through two indexed lookups. Introduced in 0.22.0.
+* *Ticket pages were slow for helpdesk managers and administrators.* Deciding which attachments get the blacklist button read the whole attachments table on every ticket page (0.5-2.5 s with 600,000 attachments). It now uses two indexed queries. Introduced in 0.13.0.
+* *Issue lists ran one or two extra queries per row* for the _Awaiting agent_ highlight and the customer and SLA columns. The list, the My page issue blocks, the _Awaiting agent_ block and exports now load this data once per page.
+
+h3. Upgrade notes
+
+No migrations. Replace the plugin directory and restart.
