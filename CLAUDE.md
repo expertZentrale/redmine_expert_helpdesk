@@ -559,6 +559,10 @@ aliased by RedmineUP, so that patch uses UnboundMethod capture like `IssueCssCla
 prepended `issues` recursed endlessly (`SystemStackError`). With
 redmine_expert_metrics 1.4.0's performance metrics on, *Slow requests* names the statement and the
 hook that cost the time; `test/unit/helpdesk_query_cost_test.rb` pins the shapes.
+Looking attachments up by content means `digest` (+ `filesize`): core Redmine has no index there,
+migration 069 adds `attachments (digest, filesize)` (own name, skipped if one exists), pinned by
+`test/unit/attachment_digest_index_test.rb`. Without it Redmine's own duplicate-file check after
+every new attachment scanned all 600k rows (1.6 s per upload or imported mail).
 
 **Controller and constant names must not collide with `redmine_contacts_helpdesk`.** Every
 plugin's `app/` is on the same Zeitwerk autoload path, so two plugins shipping

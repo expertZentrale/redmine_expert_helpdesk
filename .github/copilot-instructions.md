@@ -41,7 +41,9 @@ Redmine is supplied by a Docker image; the app only exists inside the running co
   (`HelpdeskContact#issue_ids`), or run two queries; per-row grid data goes through
   `IssuePatch.defer_ticket_infos` / `Issue#helpdesk_ticket_info_for_display` (`IssueQueryPreloadPatch`,
   UnboundMethod capture — RedmineUP aliases `IssueQuery#issues`, a prepend recurses). Pinned by
-  `test/unit/helpdesk_query_cost_test.rb`.
+  `test/unit/helpdesk_query_cost_test.rb`. Attachment lookups by content use `digest` (+ `filesize`),
+  covered by migration 069's index `attachments (digest, filesize)` — core has none
+  (`test/unit/attachment_digest_index_test.rb`).
 - **Don't develop features on `main`.** Every feature, bugfix or schema change goes on a
   `type/short-desc` branch and reaches `main` via a squash-merged PR (see *Git workflow* below).
 

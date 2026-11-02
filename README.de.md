@@ -736,6 +736,12 @@ angehängt) wird zusätzlich ein Download-Link am Anfang des Journalkommentars
 eingefügt, sodass die originale Mail direkt aus dem Ticket-Verlauf geöffnet
 werden kann.
 
+Nach jedem neuen Anhang sucht Redmine eine gleiche, bereits gespeicherte Datei
+(gleicher Digest und gleiche Größe). Weil jede Mail mindestens einen Anhang
+anlegt, ergänzt das Plugin dafür einen Index auf `attachments (digest, filesize)`
+in Redmines eigener Tabelle (Migration 069; entfällt, wenn es einen solchen Index
+schon gibt). Ohne ihn durchläuft jeder neue Anhang die ganze Tabelle.
+
 ### Kundenantworten aus Redmine heraus
 
 Eine Antwort wird in Redmines gewöhnlichem Notizfeld geschrieben. Mailfelder, dieses Feld und die

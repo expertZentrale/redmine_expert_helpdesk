@@ -707,6 +707,12 @@ ticket), a download link is additionally inserted at the beginning of the
 journal comment so the original mail can be opened directly from the ticket
 history.
 
+After every new attachment Redmine looks for an identical stored file (same
+digest and file size). Since every mail creates at least one attachment, the
+plugin adds an index on `attachments (digest, filesize)` to Redmine's own table
+for that (migration 069; skipped when such an index already exists). Without it
+every new attachment scans the whole table.
+
 ### Customer replies from Redmine
 
 A reply is written in Redmine's ordinary note field, so the mail fields, that field and the
