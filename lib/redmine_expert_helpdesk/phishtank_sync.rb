@@ -59,7 +59,7 @@ module RedmineExpertHelpdesk
     end
 
     def fetch_entries(redirect_limit = 3)
-      raise SyncError, 'Zu viele Redirects beim PhishTank-Download' if redirect_limit.zero?
+      raise SyncError, I18n.t(:error_helpdesk_phishing_too_many_redirects, :feed => 'PhishTank') if redirect_limit.zero?
 
       uri = URI.parse(@redirect_url || feed_url)
       http = Net::HTTP.new(uri.host, uri.port)
@@ -79,7 +79,7 @@ module RedmineExpertHelpdesk
         @redirect_url = response['location']
         fetch_entries(redirect_limit - 1)
       when Net::HTTPTooManyRequests
-        raise SyncError, 'PhishTank-Rate-Limit erreicht (HTTP 429) – Intervall erhoehen'
+        raise SyncError, I18n.t(:error_helpdesk_phishing_rate_limited, :feed => 'PhishTank')
       else
         raise SyncError, I18n.t(:error_helpdesk_phishing_download_failed, :feed => 'PhishTank', :code => response.code)
       end

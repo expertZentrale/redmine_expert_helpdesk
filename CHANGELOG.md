@@ -16,9 +16,9 @@
   falls back to English for any other. Texts sent to customers are unchanged: the default
   autoresponder and follow-up texts and the AI answer drafts stay German, and the quote header keeps
   following the replying agent's language.
-- **The locale files are tested.** `test/unit/locale_files_test.rb` fails when a language lacks a key
-  of `en.yml`, has one `en.yml` does not, orders them differently, or loses a `%{…}` placeholder or
-  a `{{macro}}` name.
+- **The locale files are tested.** `test/unit/locale_files_test.rb` fails when a language lacks a
+  key of `en.yml`, has one that `en.yml` does not, orders them differently, or loses a `%{…}`
+  placeholder or a `{{macro}}` name.
 
 ### Changed
 

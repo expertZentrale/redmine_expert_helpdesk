@@ -12,11 +12,12 @@ class HelpdeskLocaleFilesTest < ActiveSupport::TestCase
     assert_equal LOCALES.sort, shipped.sort
   end
 
-  # Redmine only offers locales core has a file for; any other code
-  # (pt_BR, es-MX) would never be picked.
-  def test_every_locale_is_one_redmine_offers
-    available = ::I18n.available_locales.map(&:to_s)
-    LOCALES.each { |code| assert_includes available, code }
+  # Redmine offers only the languages core ships a file for, so any other
+  # code (pt_BR, es-MX) would never be picked. Core's files are the list:
+  # I18n.available_locales would also count this plugin's own files.
+  def test_every_locale_is_one_redmine_core_ships
+    core = Dir.glob(Rails.root.join('config', 'locales', '*.yml').to_s).map { |path| File.basename(path, '.yml') }
+    LOCALES.each { |code| assert_includes core, code }
   end
 
   def test_every_locale_has_the_english_keys_in_the_same_order

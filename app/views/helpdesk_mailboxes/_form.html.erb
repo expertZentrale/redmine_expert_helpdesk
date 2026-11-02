@@ -523,6 +523,8 @@
   var connCopy     = document.getElementById('hd_conn_copy');
   var connCopyLabel   = <%= raw l(:button_helpdesk_copy_error).to_json %>;
   var connCopiedLabel = <%= raw l(:notice_helpdesk_error_copied).to_json %>;
+  // Texts called without values keep their %{name} placeholders (l() only
+  // interpolates when it is given values); i18n() below fills them in.
   var i18nTexts = <%= raw({
     :showFolders    => l(:label_helpdesk_show_folders),
     :noFoldersYet   => l(:text_helpdesk_no_folders_loaded, :button => l(:button_helpdesk_load_folders)),

@@ -918,6 +918,10 @@ en:
   error_helpdesk_phishing_feed_empty: "%{feed} feed is empty"
   error_helpdesk_phishing_download_failed: "%{feed} download failed (HTTP %{code})"
   error_helpdesk_phishing_feed_unreadable: "%{feed} feed not readable: %{message}"
+  error_helpdesk_ai_empty_embedding: "Empty embedding answer from the provider"
+  error_helpdesk_ai_empty_rerank: "Empty reranking answer from the provider"
+  error_helpdesk_phishing_too_many_redirects: "Too many redirects while downloading %{feed}"
+  error_helpdesk_phishing_rate_limited: "%{feed} rate limit reached (HTTP 429) – raise the interval"
 
   # Nested key, not the flat label_* convention: Redmine's My Page block selector
   # looks the block label up as my.blocks.<partial name>.

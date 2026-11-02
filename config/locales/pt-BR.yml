@@ -918,6 +918,10 @@ pt-BR:
   error_helpdesk_phishing_feed_empty: "O feed %{feed} está vazio"
   error_helpdesk_phishing_download_failed: "Falha no download de %{feed} (HTTP %{code})"
   error_helpdesk_phishing_feed_unreadable: "Feed %{feed} ilegível: %{message}"
+  error_helpdesk_ai_empty_embedding: "Resposta de embedding vazia do provedor"
+  error_helpdesk_ai_empty_rerank: "Resposta de reranking vazia do provedor"
+  error_helpdesk_phishing_too_many_redirects: "Redirecionamentos demais ao baixar %{feed}"
+  error_helpdesk_phishing_rate_limited: "Limite de requisições de %{feed} atingido (HTTP 429) – aumente o intervalo"
 
   # Nested key, not the flat label_* convention: Redmine's My Page block selector
   # looks the block label up as my.blocks.<partial name>.

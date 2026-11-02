@@ -918,6 +918,10 @@ de:
   error_helpdesk_phishing_feed_empty: "%{feed}-Feed ist leer"
   error_helpdesk_phishing_download_failed: "%{feed}-Download fehlgeschlagen (HTTP %{code})"
   error_helpdesk_phishing_feed_unreadable: "%{feed}-Feed nicht lesbar: %{message}"
+  error_helpdesk_ai_empty_embedding: "Leere Embedding-Antwort vom Provider"
+  error_helpdesk_ai_empty_rerank: "Leere Rerank-Antwort vom Provider"
+  error_helpdesk_phishing_too_many_redirects: "Zu viele Redirects beim %{feed}-Download"
+  error_helpdesk_phishing_rate_limited: "%{feed}-Rate-Limit erreicht (HTTP 429) – Intervall erhöhen"
 
   # Verschachtelter Key, nicht die flache label_*-Konvention: Redmines Blockauswahl
   # auf "Meine Seite" sucht das Label unter my.blocks.<Partial-Name>.

@@ -213,7 +213,7 @@ module RedmineExpertHelpdesk
                          { 'model' => embed_model, 'input' => text.to_s },
                          { 'Authorization' => "Bearer #{embed_api_key}" })
         vec = body.dig('data', 0, 'embedding')
-        raise AiError.new('Leere Embedding-Antwort vom Provider', nil, body.to_s) if vec.blank?
+        raise AiError.new(I18n.t(:error_helpdesk_ai_empty_embedding), nil, body.to_s) if vec.blank?
 
         # Embedding-Verbrauch (bislang verworfen) mitschreiben: nur Input-Tokens.
         usage = body['usage'] || {}
@@ -286,7 +286,7 @@ module RedmineExpertHelpdesk
                          { 'Authorization' => "Bearer #{rerank_api_key}" },
                          :read_timeout => rerank_timeout)
         rows = parse_rerank_rows(body, docs.size)
-        raise AiError.new('Leere Rerank-Antwort vom Provider', nil, body.to_s) if rows.empty?
+        raise AiError.new(I18n.t(:error_helpdesk_ai_empty_rerank), nil, body.to_s) if rows.empty?
 
         usage = (body.is_a?(Hash) ? body['usage'] : nil) || {}
         @last_usage = { :input => usage['total_tokens'] || usage['prompt_tokens'], :output => nil }
