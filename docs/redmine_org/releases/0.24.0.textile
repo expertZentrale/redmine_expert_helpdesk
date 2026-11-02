@@ -1,0 +1,12 @@
+h3. Added
+
+* *Spanish, French, Italian and Portuguese.* The user interface ships in seven languages: English, German, Spanish, French, Italian, Portuguese (Portugal) and Portuguese (Brazil). Redmine shows each user the language of their account; other languages fall back to English. The terms follow Redmine's own translations, so the helpdesk reads like the screens around it.
+
+h3. Changed
+
+* *The last German-only screen texts are translated.* The mailbox form's folder picker, the Azure permission hints in the plugin settings, the attachment count in the ticket header, the close button of a failed reply, and the error messages of the AI, Microsoft Graph, Qdrant and phishing-feed connections used to be German whatever the user's language.
+* Texts sent to customers are unchanged: the default autoresponder and follow-up texts and the AI answer drafts stay German, and the quote header follows the replying agent's language as before.
+
+h3. Upgrade notes
+
+No migrations and no new settings. Replace the plugin directory and restart.
