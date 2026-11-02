@@ -6,6 +6,28 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Added
+
+- **Spanish, French, Italian and Portuguese.** The UI ships in seven languages: `es`, `fr`, `it`,
+  `pt` (Portugal) and `pt-BR` (Brazil) next to English and German. Redmine shows each user the
+  language of their account (or the default language, when it is forced for logged-in users) and
+  falls back to English for any other. Texts sent to customers are unchanged: the default
+  autoresponder and follow-up texts and the AI answer drafts stay German, and the quote header keeps
+  following the replying agent's language.
+- **The locale files are tested.** `test/unit/locale_files_test.rb` fails when a language lacks a key
+  of `en.yml`, has one `en.yml` does not, orders them differently, or loses a `%{…}` placeholder or
+  a `{{macro}}` name.
+
+### Changed
+
+- **The last German-only UI texts come from the locale files.** The mailbox form's folder picker
+  (load, create, confirm and error messages), the Azure permission hints in the central settings, the
+  attachment count in the ticket header bar, the close button of a failed reply, and the error
+  messages of the AI, Microsoft Graph, Qdrant and phishing-feed clients were hard-coded German. An
+  error stored on a mailbox or a feed keeps the language of the run that recorded it.
+
 ## [0.23.2] - 2026-11-02
 
 ### Fixed

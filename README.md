@@ -40,6 +40,7 @@ see [Tests](#tests).
 - [Knowledge base (RAG)](#knowledge-base-rag)
 - [Tests](#tests) — what CI runs
 - [Azure App Registration (one-time setup)](#azure-app-registration-one-time-setup)
+- [Languages](#languages)
 - [Installation](#installation)
 - [Template Macros](#template-macros)
 - [Notes](#notes)
@@ -1987,6 +1988,22 @@ Test-ServicePrincipalAuthorization -Identity <object-id> -Resource "sales@exampl
 > registration for exactly this reason.
 
 ---
+
+## Languages
+
+The user interface ships in English, German, Spanish, French, Italian and Portuguese (`en`, `de`,
+`es`, `fr`, `it`, `pt`, `pt-BR`). Redmine shows each user the language set in their account, or the
+default language under *Administration » Settings » Display*; for any other language it falls back
+to English. This documentation is kept in English and German.
+
+Texts that go to customers are a separate matter. The quote header and the dates of template macros
+follow the language of the agent who replies, as before; the default autoresponder and follow-up
+texts and the AI answer drafts are German. Mailbox and project texts are free text, so write them in
+the language your customers expect.
+
+Corrections from native speakers are welcome as a pull request on `config/locales/<language>.yml`.
+`test/unit/locale_files_test.rb` checks that every language has every key of `en.yml`, in the same
+order and with the same `%{…}` placeholders.
 
 ## Installation
 

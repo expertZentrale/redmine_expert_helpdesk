@@ -88,9 +88,9 @@
   <div class="wiki" id="hd_s_azure_hints" style="margin-top:1em;">
     <strong><%= l(:label_helpdesk_azure_hints) %></strong>
     <ul>
-      <li>Graph-Postf&auml;cher: Application-Permissions <code>Mail.ReadWrite</code>, <code>Mail.Send</code> (Admin-Consent erforderlich)</li>
-      <li>IMAP/SMTP-Postf&auml;cher (nur Anwendung): <code>IMAP.AccessAsApp</code>, <code>SMTP.SendAsApp</code></li>
-      <li>Zugriff per <code>ApplicationAccessPolicy</code> auf die Helpdesk-Postf&auml;cher einschr&auml;nken</li>
+      <li><%= l(:text_helpdesk_azure_hint_graph) %>: <code>Mail.ReadWrite</code>, <code>Mail.Send</code></li>
+      <li><%= l(:text_helpdesk_azure_hint_imap) %>: <code>IMAP.AccessAsApp</code>, <code>SMTP.SendAsApp</code></li>
+      <li><%= l(:text_helpdesk_azure_hint_policy) %>: <code>ApplicationAccessPolicy</code></li>
     </ul>
   </div>
 
