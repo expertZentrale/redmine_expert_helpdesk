@@ -1,0 +1,7 @@
+h3. Fixed
+
+* *Uploads and mail fetches spent 1.5-2.5 s searching the attachments table.* After every new attachment Redmine looks for an identical stored file to share, and core has no index for that lookup, so every upload, every imported mail and every reply with a file read the whole attachments table (1.6 s per new file with 600,000 attachments). The plugin now adds that index to Redmine's @attachments@ table. Other plugins that create attachments, such as mail importers, get faster too.
+
+h3. Upgrade notes
+
+Migration 069 adds an index on @attachments (digest, filesize)@ under its own name - run the usual @redmine:plugins:migrate@ after replacing the plugin directory. It is skipped when such an index already exists. MariaDB/MySQL add the index while the table stays readable and writable; on 600,000 attachments it took about 4 seconds. Rolling back removes only this index.
