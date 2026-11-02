@@ -99,14 +99,20 @@ jobs:
               transaction_isolation: "READ-COMMITTED"
           YML
 
+      # Native gems (mysql2, rmagick) link against the runner's system libraries, so a
+      # bundle cached on an older runner image fails to load (libmysqlclient.so.21 was
+      # gone after the image update in 2026-11). Key the cache on the image as well.
+      - name: Runner image version
+        run: echo "RUNNER_IMAGE=${ImageOS:-unknown}-${ImageVersion:-unknown}" >> "$GITHUB_ENV"
+
       # 6. Gems cachen (Redmine committet keine Gemfile.lock, daher Key ueber Ref).
       - name: Cache gems
         uses: actions/cache@v4
         with:
           path: ${{ env.REDMINE_DIR }}/vendor/bundle
-          key: gems-${{ matrix.redmine }}-ruby${{ matrix.ruby }}-${{ hashFiles(format('{0}/Gemfile', env.REDMINE_DIR)) }}
+          key: gems-${{ env.RUNNER_IMAGE }}-${{ matrix.redmine }}-ruby${{ matrix.ruby }}-${{ hashFiles(format('{0}/Gemfile', env.REDMINE_DIR)) }}
           restore-keys: |
-            gems-${{ matrix.redmine }}-ruby${{ matrix.ruby }}-
+            gems-${{ env.RUNNER_IMAGE }}-${{ matrix.redmine }}-ruby${{ matrix.ruby }}-
 
       # 7. Gems installieren (ohne development-Gruppe; test-Gruppe wird gebraucht).
       - name: Install gems

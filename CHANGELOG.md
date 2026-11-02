@@ -6,6 +6,19 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Fixed
+
+- **Uploads and mail fetches spent 1.5–2.5 s searching the attachments table.** After every new
+  attachment Redmine looks for an identical stored file to share (same digest and file size), and
+  core has no index for that, so every upload, every imported mail (each keeps its `.eml`) and every
+  agent reply with a file scanned the whole `attachments` table: 1.6 s per new file on 600,000
+  attachments in production. Migration 069 adds an index on `attachments (digest, filesize)` under
+  its own name, and skips it when such an index already exists
+  (`db/migrate/069_add_digest_index_to_attachments.rb`). The AI summary's check for signature logos
+  that recur on other tickets looks attachments up by digest as well and uses the same index.
+
 ## [0.23.1] - 2026-10-30
 
 ### Fixed

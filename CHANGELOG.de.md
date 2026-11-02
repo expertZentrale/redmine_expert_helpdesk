@@ -5,6 +5,20 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Behoben
+
+- **Uploads und Mailabrufe suchten 1,5–2,5 s in der Tabelle der Anhänge.** Nach jedem neuen Anhang
+  sucht Redmine eine gleiche, bereits gespeicherte Datei, um sie mitzunutzen (gleicher Digest und
+  gleiche Größe), und der Kern hat dafür keinen Index. Jeder Upload, jede importierte Mail (jede
+  behält ihre `.eml`) und jede Bearbeiter-Antwort mit Datei durchlief deshalb die ganze Tabelle
+  `attachments`: 1,6 s pro neuer Datei bei 600.000 Anhängen in Produktion. Migration 069 legt einen
+  Index auf `attachments (digest, filesize)` unter eigenem Namen an und überspringt ihn, wenn es einen
+  solchen Index schon gibt (`db/migrate/069_add_digest_index_to_attachments.rb`). Die Prüfung der
+  KI-Zusammenfassung auf Signatur-Logos, die auf anderen Tickets wiederkehren, sucht Anhänge ebenfalls
+  über den Digest und nutzt denselben Index.
+
 ## [0.23.1] - 2026-10-30
 
 ### Behoben
