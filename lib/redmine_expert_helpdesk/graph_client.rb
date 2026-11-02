@@ -126,8 +126,8 @@ module RedmineExpertHelpdesk
       req.body = encoded
       response = http.request(req)
       unless response.is_a?(Net::HTTPSuccess)
-        raise GraphError.new("MIME-Mail-Versand fehlgeschlagen (#{response.code}): POST /sendMail" \
-                             "#{graph_error_detail(response.body)}",
+        raise GraphError.new(I18n.t(:error_helpdesk_graph_send_failed, :code => response.code,
+                                    :detail => graph_error_detail(response.body)),
                              response.code.to_i, response.body)
       end
       response
@@ -148,7 +148,7 @@ module RedmineExpertHelpdesk
       )
       response = get("/users/#{escape(mailbox)}/mailFolders?#{query}")
       entry = (response['value'] || []).first
-      raise GraphError.new("Ordner '#{folder}' im Postfach #{mailbox} nicht gefunden") unless entry
+      raise GraphError.new(I18n.t(:error_helpdesk_graph_folder_not_found, :folder => folder, :mailbox => mailbox)) unless entry
 
       Rails.cache.write(cache_key, entry['id'], :expires_in => 12.hours)
       entry['id']
@@ -161,7 +161,7 @@ module RedmineExpertHelpdesk
       cached = Rails.cache.read(cache_key)
       return cached if cached
 
-      raise ConfigurationError.new('Helpdesk: Tenant-ID, Client-ID oder Client-Secret nicht konfiguriert') unless configured?
+      raise ConfigurationError.new(I18n.t(:error_helpdesk_graph_not_configured)) unless configured?
 
       uri = URI("https://login.microsoftonline.com/#{@settings['tenant_id']}/oauth2/v2.0/token")
       response = Net::HTTP.post_form(uri,
@@ -172,7 +172,7 @@ module RedmineExpertHelpdesk
 
       body = JSON.parse(response.body) rescue {}
       unless response.is_a?(Net::HTTPSuccess) && body['access_token']
-        raise GraphError.new("Token-Abruf fehlgeschlagen: #{body['error_description'] || response.code}",
+        raise GraphError.new(I18n.t(:error_helpdesk_graph_token_failed, :error => body['error_description'] || response.code),
                              response.code.to_i, response.body)
       end
 
@@ -237,8 +237,9 @@ module RedmineExpertHelpdesk
 
       response = http.request(req)
       unless response.is_a?(Net::HTTPSuccess)
-        raise GraphError.new("Graph-Anfrage fehlgeschlagen (#{response.code}): #{method.to_s.upcase} #{path}" \
-                             "#{graph_error_detail(response.body)}",
+        raise GraphError.new(I18n.t(:error_helpdesk_graph_request_failed, :code => response.code,
+                                    :request => "#{method.to_s.upcase} #{path}",
+                                    :detail => graph_error_detail(response.body)),
                              response.code.to_i, response.body)
       end
       response

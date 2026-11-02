@@ -882,6 +882,47 @@ en:
   error_helpdesk_attachment_not_blacklistable: '"%{file}" is not one of the blockable file types, or exceeds the size limit.'
   error_helpdesk_attachment_unreadable: 'The file could not be read and can therefore not be blocked.'
 
+  # --- Texts the mailbox form, header bar, AI/Graph/Qdrant clients and phishing feeds used to hard-code ---
+  button_helpdesk_load_folders: "Load folders"
+  text_helpdesk_load_folders_title: "Load the folder list from the mailbox"
+  label_helpdesk_show_folders: "Show folder list"
+  text_helpdesk_no_folders_loaded: "No folders loaded yet – use “%{button}”"
+  label_helpdesk_no_folders: "No folders"
+  label_helpdesk_folder_quoted: "“%{name}”"
+  label_helpdesk_folder_create_option: "+ Create %{name}"
+  label_helpdesk_loading_folders: "Loading folders…"
+  label_helpdesk_creating_folders: "Creating folders…"
+  notice_helpdesk_folders_loaded: "%{count} folders loaded"
+  text_helpdesk_create_folders_confirm: "The folders %{names} do not exist yet. Create them in the mailbox now?"
+  error_helpdesk_folder_status: "Error: %{message}"
+  label_helpdesk_unknown_error: "unknown"
+  error_helpdesk_network: "Network error"
+  label_helpdesk_x_attachments: "%{count} attachments"
+  text_helpdesk_azure_hint_graph: "Graph mailboxes, application permissions (admin consent required)"
+  text_helpdesk_azure_hint_imap: "IMAP/SMTP mailboxes (application only)"
+  text_helpdesk_azure_hint_policy: "Restrict the app to the helpdesk mailboxes with an application access policy"
+  error_helpdesk_ai_not_configured: "AI is not configured (API key, model or endpoint missing)"
+  error_helpdesk_embeddings_not_configured: "Embeddings are not configured (key, model or endpoint missing)"
+  error_helpdesk_rerank_not_configured: "Reranking is not configured (key, model or endpoint missing)"
+  error_helpdesk_ai_empty_response: "Empty answer from the AI provider"
+  error_helpdesk_ai_request_failed: "AI request failed (HTTP %{code})"
+  error_helpdesk_ai_response_unreadable: "AI answer not readable: %{message}"
+  error_helpdesk_ai_unreachable: "AI service not reachable: %{error}"
+  error_helpdesk_qdrant_request_failed: "Qdrant request failed (HTTP %{code}): %{request} – %{body}"
+  error_helpdesk_qdrant_response_unreadable: "Qdrant answer not readable: %{message}"
+  error_helpdesk_graph_not_configured: "Helpdesk: tenant ID, client ID or client secret not configured"
+  error_helpdesk_graph_token_failed: "Token request failed: %{error}"
+  error_helpdesk_graph_request_failed: "Graph request failed (%{code}): %{request}%{detail}"
+  error_helpdesk_graph_send_failed: "MIME mail delivery failed (%{code}): POST /sendMail%{detail}"
+  error_helpdesk_graph_folder_not_found: "Folder '%{folder}' not found in mailbox %{mailbox}"
+  error_helpdesk_phishing_feed_empty: "%{feed} feed is empty"
+  error_helpdesk_phishing_download_failed: "%{feed} download failed (HTTP %{code})"
+  error_helpdesk_phishing_feed_unreadable: "%{feed} feed not readable: %{message}"
+  error_helpdesk_ai_empty_embedding: "Empty embedding answer from the provider"
+  error_helpdesk_ai_empty_rerank: "Empty reranking answer from the provider"
+  error_helpdesk_phishing_too_many_redirects: "Too many redirects while downloading %{feed}"
+  error_helpdesk_phishing_rate_limited: "%{feed} rate limit reached (HTTP 429) – raise the interval"
+
   # Nested key, not the flat label_* convention: Redmine's My Page block selector
   # looks the block label up as my.blocks.<partial name>.
   my:

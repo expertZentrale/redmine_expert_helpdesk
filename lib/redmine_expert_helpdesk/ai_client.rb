@@ -137,7 +137,7 @@ module RedmineExpertHelpdesk
     #   disable_thinking : ask the model to skip its reasoning phase. Only the
     #                 custom provider sends anything (see thinking_params).
     def summarize(system_prompt, user_text, image_parts = [], log_context: nil, disable_thinking: false)
-      raise ConfigurationError, 'KI ist nicht konfiguriert (API-Key, Modell oder Endpunkt fehlt)' unless configured?
+      raise ConfigurationError, I18n.t(:error_helpdesk_ai_not_configured) unless configured?
 
       # Zuruecksetzen, damit ein Aufruf nie den Abbruchgrund des vorherigen erbt.
       @last_finish_reason = nil
@@ -206,14 +206,14 @@ module RedmineExpertHelpdesk
     # Liefert den Embedding-Vektor (Array<Float>) fuer text oder wirft AiError.
     #   log_context : optional { :request_type, :project_id, :issue_id } – wie bei summarize.
     def embed(text, log_context: nil)
-      raise ConfigurationError, 'Embeddings sind nicht konfiguriert (Key/Modell/Endpunkt fehlt)' unless embed_configured?
+      raise ConfigurationError, I18n.t(:error_helpdesk_embeddings_not_configured) unless embed_configured?
 
       with_request_log(log_context, :provider => embed_provider, :model => embed_model, :default_type => 'kb_embed') do
         body = post_json("#{embed_endpoint}/embeddings",
                          { 'model' => embed_model, 'input' => text.to_s },
                          { 'Authorization' => "Bearer #{embed_api_key}" })
         vec = body.dig('data', 0, 'embedding')
-        raise AiError.new('Leere Embedding-Antwort vom Provider', nil, body.to_s) if vec.blank?
+        raise AiError.new(I18n.t(:error_helpdesk_ai_empty_embedding), nil, body.to_s) if vec.blank?
 
         # Embedding-Verbrauch (bislang verworfen) mitschreiben: nur Input-Tokens.
         usage = body['usage'] || {}
@@ -275,7 +275,7 @@ module RedmineExpertHelpdesk
     # documents array that was passed in.
     #   log_context : optional { :project_id, :issue_id, ... } - as for embed.
     def rerank(query, documents, log_context: nil)
-      raise ConfigurationError, 'Reranking ist nicht konfiguriert (Key/Modell/Endpunkt fehlt)' unless rerank_configured?
+      raise ConfigurationError, I18n.t(:error_helpdesk_rerank_not_configured) unless rerank_configured?
 
       docs = Array(documents).map(&:to_s)
       return [] if docs.empty?
@@ -286,7 +286,7 @@ module RedmineExpertHelpdesk
                          { 'Authorization' => "Bearer #{rerank_api_key}" },
                          :read_timeout => rerank_timeout)
         rows = parse_rerank_rows(body, docs.size)
-        raise AiError.new('Leere Rerank-Antwort vom Provider', nil, body.to_s) if rows.empty?
+        raise AiError.new(I18n.t(:error_helpdesk_ai_empty_rerank), nil, body.to_s) if rows.empty?
 
         usage = (body.is_a?(Hash) ? body['usage'] : nil) || {}
         @last_usage = { :input => usage['total_tokens'] || usage['prompt_tokens'], :output => nil }
@@ -396,7 +396,7 @@ module RedmineExpertHelpdesk
       @last_usage = { :input => usage['prompt_tokens'], :output => usage['completion_tokens'] }
       @last_finish_reason = body.dig('choices', 0, 'finish_reason').to_s.presence
       text = body.dig('choices', 0, 'message', 'content').to_s.strip
-      raise EmptyResponseError.new('Leere Antwort vom KI-Provider', nil, body.to_s) if text.blank?
+      raise EmptyResponseError.new(I18n.t(:error_helpdesk_ai_empty_response), nil, body.to_s) if text.blank?
 
       text
     end
@@ -430,7 +430,7 @@ module RedmineExpertHelpdesk
       raw_stop = body['stop_reason'].to_s
       @last_finish_reason = raw_stop == 'max_tokens' ? 'length' : raw_stop.presence
       text = Array(body['content']).map { |c| c['text'] }.compact.join.strip
-      raise EmptyResponseError.new('Leere Antwort vom KI-Provider', nil, body.to_s) if text.blank?
+      raise EmptyResponseError.new(I18n.t(:error_helpdesk_ai_empty_response), nil, body.to_s) if text.blank?
 
       text
     end
@@ -476,14 +476,14 @@ module RedmineExpertHelpdesk
 
       response = http.request(req)
       unless response.is_a?(Net::HTTPSuccess)
-        raise AiError.new("KI-Anfrage fehlgeschlagen (HTTP #{response.code})", response.code.to_i, response.body)
+        raise AiError.new(I18n.t(:error_helpdesk_ai_request_failed, :code => response.code), response.code.to_i, response.body)
       end
 
       JSON.parse(response.body)
     rescue JSON::ParserError => e
-      raise AiError.new("KI-Antwort nicht lesbar: #{e.message}")
+      raise AiError.new(I18n.t(:error_helpdesk_ai_response_unreadable, :message => e.message))
     rescue *NETWORK_ERRORS => e
-      raise TransportError.new("KI-Dienst nicht erreichbar: #{e.class}", nil, e.message)
+      raise TransportError.new(I18n.t(:error_helpdesk_ai_unreachable, :error => e.class), nil, e.message)
     end
 
     # Fuehrt den KI-Aufruf aus und protokolliert ihn (Erfolg wie Fehler) in

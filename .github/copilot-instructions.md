@@ -30,8 +30,12 @@ Redmine is supplied by a Docker image; the app only exists inside the running co
   setting that affects them must update both (diagram and settings table), using the exact UI labels
   from `config/locales/{en,de}.yml`.
 - **Language policy:** write **code comments in English** (legacy German comments may remain until
-  that code is next touched). **i18n stays bilingual** (`config/locales/en.yml` + `de.yml`) and the
-  plugin UI is German.
+  that code is next touched). **i18n covers seven languages** (`config/locales/{en,de,es,fr,it,pt,pt-BR}.yml`):
+  `en.yml` is the source, and every new or changed key goes into all seven files in the same change,
+  in the same order, with the same `%{…}` placeholders and `{{macro}}` names
+  (`test/unit/locale_files_test.rb` enforces it). Write en and de, then translate the rest from en
+  using the terms Redmine core uses in that language. No user-visible literal in views, JS or raised
+  errors: everything goes through `l()` / `I18n.t`. The production UI is German.
 - **Never edit a shipped migration.** When changing schema, add the next sequential number in
   `db/migrate/` (`001_...` onward).
 - Don't hard-code secrets/API keys. Local dev credentials live in `.dev.env` (git-ignored).

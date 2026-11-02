@@ -42,6 +42,12 @@ h3. Features
 * *Maintenance mode* — pauses every mail fetch for upgrades or scaling pods down; a running fetch stops before its next message, and a status endpoint lists the fetches still in progress on any replica, so an upgrade script can wait for @"safe_to_stop": true@ instead of reading logs.
 * *REST API* (JSON and XML) following Redmine's own conventions, authenticated with @X-Redmine-API-Key@ and scoped by the existing permissions: contacts, tickets, per-project settings, mailboxes and the knowledge base. Mailboxes are fully configurable over the API — backend, IMAP/SMTP hosts, OAuth2 credentials, folders — with a @test_connection@ call to verify one. Secrets can be written but are never returned. Knowledge base entries can be listed, corrected, approved, rejected and deleted, and the index rebuilt, with each change reporting whether the vector store took it.
 
+h3. Languages
+
+* User interface: English, German, Spanish, French, Italian and Portuguese (Portugal and Brazil); other languages fall back to English.
+* Texts sent to customers keep their own language: the default autoresponder and follow-up texts and the AI answer drafts are German, and mailbox and project texts are free text.
+* Documentation: English and German.
+
 h3. Requirements
 
 * Redmine 5.1.x, 6.0.x, 6.1.x or 7.0.x

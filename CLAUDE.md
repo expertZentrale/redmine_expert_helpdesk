@@ -17,7 +17,12 @@ container (`/usr/src/redmine`), so host-level `bundle exec rake` does not work.
 
 **Language policy:** **code comments are English** (write new comments in English; the surrounding
 codebase still has legacy German comments — leave them unless you're already editing that code).
-**i18n stays bilingual** (`config/locales/en.yml` + `de.yml`) and the plugin UI is German.
+**i18n covers seven languages** (`config/locales/{en,de,es,fr,it,pt,pt-BR}.yml`): `en.yml` is the
+source, and every new or changed key goes into all seven files in the same change, in the same
+order, with the same `%{…}` placeholders and `{{macro}}` names (`test/unit/locale_files_test.rb`
+enforces it). Write en and de, then translate the rest from en using the terms Redmine core uses in
+that language. No user-visible literal in views, JS or raised errors: everything goes through `l()`
+/ `I18n.t`. The production UI is German.
 Docs are **English-first with a German mirror kept in sync**: `README.md` (EN) / `README.de.md` (DE),
 and `CHANGELOG.md` (EN, authoritative — release notes are generated from it) / `CHANGELOG.de.md` (DE).
 Keep each EN/DE pair in sync for user-facing changes. **`EMAIL_FLOW.md` / `EMAIL_FLOW.de.md`** hold

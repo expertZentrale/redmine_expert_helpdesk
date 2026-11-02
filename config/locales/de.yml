@@ -882,6 +882,47 @@ de:
   error_helpdesk_attachment_not_blacklistable: '„%{file}“ gehört nicht zu den sperrbaren Dateitypen oder überschreitet die Größengrenze.'
   error_helpdesk_attachment_unreadable: 'Die Datei konnte nicht gelesen werden und kann daher nicht gesperrt werden.'
 
+  # --- Texte, die Postfach-Formular, Kopfleiste, KI-/Graph-/Qdrant-Clients und Phishing-Feeds fest im Code hatten ---
+  button_helpdesk_load_folders: "Ordner laden"
+  text_helpdesk_load_folders_title: "Ordnerliste vom Postfach laden"
+  label_helpdesk_show_folders: "Ordnerliste anzeigen"
+  text_helpdesk_no_folders_loaded: "Noch keine Ordner geladen – „%{button}“ verwenden"
+  label_helpdesk_no_folders: "Keine Ordner vorhanden"
+  label_helpdesk_folder_quoted: "„%{name}“"
+  label_helpdesk_folder_create_option: "+ %{name} anlegen"
+  label_helpdesk_loading_folders: "Lade Ordner…"
+  label_helpdesk_creating_folders: "Erstelle Ordner…"
+  notice_helpdesk_folders_loaded: "%{count} Ordner geladen"
+  text_helpdesk_create_folders_confirm: "Die Ordner %{names} existieren noch nicht. Jetzt im Postfach anlegen?"
+  error_helpdesk_folder_status: "Fehler: %{message}"
+  label_helpdesk_unknown_error: "unbekannt"
+  error_helpdesk_network: "Netzwerkfehler"
+  label_helpdesk_x_attachments: "%{count} Anhänge"
+  text_helpdesk_azure_hint_graph: "Graph-Postfächer, Application-Permissions (Admin-Consent erforderlich)"
+  text_helpdesk_azure_hint_imap: "IMAP/SMTP-Postfächer (nur Anwendung)"
+  text_helpdesk_azure_hint_policy: "Zugriff der App per Application Access Policy auf die Helpdesk-Postfächer einschränken"
+  error_helpdesk_ai_not_configured: "KI ist nicht konfiguriert (API-Key, Modell oder Endpunkt fehlt)"
+  error_helpdesk_embeddings_not_configured: "Embeddings sind nicht konfiguriert (Key, Modell oder Endpunkt fehlt)"
+  error_helpdesk_rerank_not_configured: "Reranking ist nicht konfiguriert (Key, Modell oder Endpunkt fehlt)"
+  error_helpdesk_ai_empty_response: "Leere Antwort vom KI-Provider"
+  error_helpdesk_ai_request_failed: "KI-Anfrage fehlgeschlagen (HTTP %{code})"
+  error_helpdesk_ai_response_unreadable: "KI-Antwort nicht lesbar: %{message}"
+  error_helpdesk_ai_unreachable: "KI-Dienst nicht erreichbar: %{error}"
+  error_helpdesk_qdrant_request_failed: "Qdrant-Anfrage fehlgeschlagen (HTTP %{code}): %{request} – %{body}"
+  error_helpdesk_qdrant_response_unreadable: "Qdrant-Antwort nicht lesbar: %{message}"
+  error_helpdesk_graph_not_configured: "Helpdesk: Tenant-ID, Client-ID oder Client-Secret nicht konfiguriert"
+  error_helpdesk_graph_token_failed: "Token-Abruf fehlgeschlagen: %{error}"
+  error_helpdesk_graph_request_failed: "Graph-Anfrage fehlgeschlagen (%{code}): %{request}%{detail}"
+  error_helpdesk_graph_send_failed: "MIME-Mail-Versand fehlgeschlagen (%{code}): POST /sendMail%{detail}"
+  error_helpdesk_graph_folder_not_found: "Ordner '%{folder}' im Postfach %{mailbox} nicht gefunden"
+  error_helpdesk_phishing_feed_empty: "%{feed}-Feed ist leer"
+  error_helpdesk_phishing_download_failed: "%{feed}-Download fehlgeschlagen (HTTP %{code})"
+  error_helpdesk_phishing_feed_unreadable: "%{feed}-Feed nicht lesbar: %{message}"
+  error_helpdesk_ai_empty_embedding: "Leere Embedding-Antwort vom Provider"
+  error_helpdesk_ai_empty_rerank: "Leere Rerank-Antwort vom Provider"
+  error_helpdesk_phishing_too_many_redirects: "Zu viele Redirects beim %{feed}-Download"
+  error_helpdesk_phishing_rate_limited: "%{feed}-Rate-Limit erreicht (HTTP 429) – Intervall erhöhen"
+
   # Verschachtelter Key, nicht die flache label_*-Konvention: Redmines Blockauswahl
   # auf "Meine Seite" sucht das Label unter my.blocks.<Partial-Name>.
   my:

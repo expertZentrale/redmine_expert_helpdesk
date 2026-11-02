@@ -5,6 +5,29 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **Spanisch, Französisch, Italienisch und Portugiesisch.** Die Oberfläche gibt es in sieben
+  Sprachen: `es`, `fr`, `it`, `pt` (Portugal) und `pt-BR` (Brasilien) neben Englisch und Deutsch.
+  Redmine zeigt jedem Benutzer die Sprache seines Kontos (oder die Standardsprache, wenn sie für
+  angemeldete Benutzer erzwungen ist) und fällt für jede andere auf Englisch zurück. Texte an Kunden
+  bleiben unverändert: Die Standardtexte für Autoresponder und Rückfrage sowie die KI-Antwortentwürfe
+  bleiben deutsch, und der Zitat-Kopf folgt weiter der Sprache des antwortenden Agenten.
+- **Die Sprachdateien werden getestet.** `test/unit/locale_files_test.rb` schlägt fehl, wenn einer
+  Sprache ein Schlüssel aus `en.yml` fehlt, sie einen hat, den `en.yml` nicht hat, die Reihenfolge
+  abweicht oder ein `%{…}`-Platzhalter oder ein `{{Makro}}`-Name verloren geht.
+
+### Geändert
+
+- **Die letzten nur deutschen Oberflächentexte kommen aus den Sprachdateien.** Die Ordnerauswahl im
+  Postfach-Formular (Laden, Anlegen, Rückfrage und Fehlermeldungen), die Azure-Berechtigungshinweise
+  in den zentralen Einstellungen, die Anhangzahl in der Kopfleiste des Tickets, der Schließen-Knopf
+  einer fehlgeschlagenen Antwort und die Fehlermeldungen der KI-, Microsoft-Graph-, Qdrant- und
+  Phishing-Feed-Clients waren fest deutsch im Code. Ein an einem Postfach oder Feed gespeicherter
+  Fehler behält die Sprache des Laufs, der ihn geschrieben hat.
+
 ## [0.23.2] - 2026-11-02
 
 ### Behoben

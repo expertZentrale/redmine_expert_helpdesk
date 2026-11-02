@@ -113,12 +113,13 @@ module RedmineExpertHelpdesk
         response = http.request(req)
         return nil if allow_404 && response.is_a?(Net::HTTPNotFound)
         unless response.is_a?(Net::HTTPSuccess)
-          raise StoreError, "Qdrant-Anfrage fehlgeschlagen (HTTP #{response.code}): #{method.to_s.upcase} #{path} – #{response.body}"
+          raise StoreError, I18n.t(:error_helpdesk_qdrant_request_failed, :code => response.code,
+                                   :request => "#{method.to_s.upcase} #{path}", :body => response.body)
         end
 
         response.body.present? ? JSON.parse(response.body) : {}
       rescue JSON::ParserError => e
-        raise StoreError, "Qdrant-Antwort nicht lesbar: #{e.message}"
+        raise StoreError, I18n.t(:error_helpdesk_qdrant_response_unreadable, :message => e.message)
       end
     end
 

@@ -29,7 +29,7 @@ module RedmineExpertHelpdesk
     def run
       body = fetch_body
       rows = build_rows(body, Time.current)
-      raise SyncError, 'Phishing.Database-Feed ist leer' if rows.empty?
+      raise SyncError, I18n.t(:error_helpdesk_phishing_feed_empty, :feed => 'Phishing.Database') if rows.empty?
 
       count = HelpdeskPhishingUrl.replace_source!(SOURCE, rows)
 
@@ -47,7 +47,7 @@ module RedmineExpertHelpdesk
     end
 
     def fetch_body(redirect_limit = 3)
-      raise SyncError, 'Zu viele Redirects beim Phishing.Database-Download' if redirect_limit.zero?
+      raise SyncError, I18n.t(:error_helpdesk_phishing_too_many_redirects, :feed => 'Phishing.Database') if redirect_limit.zero?
 
       uri = URI.parse(@redirect_url || feed_url)
       http = Net::HTTP.new(uri.host, uri.port)
@@ -67,9 +67,9 @@ module RedmineExpertHelpdesk
         @redirect_url = response['location']
         fetch_body(redirect_limit - 1)
       when Net::HTTPTooManyRequests
-        raise SyncError, 'Phishing.Database-Rate-Limit erreicht (HTTP 429) – Intervall erhoehen'
+        raise SyncError, I18n.t(:error_helpdesk_phishing_rate_limited, :feed => 'Phishing.Database')
       else
-        raise SyncError, "Phishing.Database-Download fehlgeschlagen (HTTP #{response.code})"
+        raise SyncError, I18n.t(:error_helpdesk_phishing_download_failed, :feed => 'Phishing.Database', :code => response.code)
       end
     end
 

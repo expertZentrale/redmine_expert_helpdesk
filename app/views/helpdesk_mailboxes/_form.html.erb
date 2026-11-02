@@ -85,7 +85,7 @@
     <input type="text" id="hd_source_folder" name="helpdesk_mailbox[source_folder]"
            value="<%= h(@mailbox.source_folder) %>" size="30"
            class="hd-folder-input" autocomplete="off">
-    <button type="button" id="hd_refresh_folders" title="Ordnerliste vom Postfach laden"><span class="icon icon-reload"><%= hd_icon_label('reload') %>Ordner laden</span></button>
+    <button type="button" id="hd_refresh_folders" title="<%= l(:text_helpdesk_load_folders_title) %>"><span class="icon icon-reload"><%= hd_icon_label('reload') %><%= l(:button_helpdesk_load_folders) %></span></button>
     <span id="hd_folder_status" style="font-size:0.9em;margin-left:6px;"></span>
   </p>
   <p>
@@ -523,6 +523,29 @@
   var connCopy     = document.getElementById('hd_conn_copy');
   var connCopyLabel   = <%= raw l(:button_helpdesk_copy_error).to_json %>;
   var connCopiedLabel = <%= raw l(:notice_helpdesk_error_copied).to_json %>;
+  // Texts called without values keep their %{name} placeholders (l() only
+  // interpolates when it is given values); i18n() below fills them in.
+  var i18nTexts = <%= raw({
+    :showFolders    => l(:label_helpdesk_show_folders),
+    :noFoldersYet   => l(:text_helpdesk_no_folders_loaded, :button => l(:button_helpdesk_load_folders)),
+    :noFolders      => l(:label_helpdesk_no_folders),
+    :quoted         => l(:label_helpdesk_folder_quoted),
+    :createOption   => l(:label_helpdesk_folder_create_option),
+    :loading        => l(:label_helpdesk_loading_folders),
+    :loaded         => l(:notice_helpdesk_folders_loaded),
+    :creating       => l(:label_helpdesk_creating_folders),
+    :createConfirm  => l(:text_helpdesk_create_folders_confirm),
+    :createFailed   => l(:warning_helpdesk_folder_create_failed),
+    :error          => l(:error_helpdesk_folder_status),
+    :unknown        => l(:label_helpdesk_unknown_error),
+    :network        => l(:error_helpdesk_network)
+  }.to_json) %>;
+  // Fills the %{name} placeholders of a translated text.
+  function i18n(key, vars) {
+    return i18nTexts[key].replace(/%\{(\w+)\}/g, function (all, name) {
+      return vars && name in vars ? vars[name] : all;
+    });
+  }
   var knownFolders = [];
 
   function setStatus(msg, color) {
@@ -557,7 +580,7 @@
     toggle.type = 'button';
     toggle.className = 'hd-combo-toggle';
     toggle.setAttribute('aria-expanded', 'false');
-    toggle.setAttribute('aria-label', 'Ordnerliste anzeigen');
+    toggle.setAttribute('aria-label', i18n('showFolders'));
     // No glyph: the chevron is painted by the input's background, exactly like
     // a Redmine <select>. This button is only the hit area over it.
     wrap.appendChild(toggle);
@@ -610,7 +633,7 @@
       div.setAttribute('role', 'option');
       div.setAttribute('aria-selected', 'false');
       div.textContent = label;
-      // The label is not the value ("+ \"x\" anlegen" vs "x"), so keep the
+      // The label is not the value ("+ Create \"x\"" vs "x"), so keep the
       // value with the element for the keyboard path.
       div.dataset.value = value;
       li.appendChild(div);
@@ -643,12 +666,12 @@
       if (!knownFolders.length) {
         var hint = document.createElement('li');
         hint.className = 'hd-combo-empty';
-        hint.textContent = 'Noch keine Ordner geladen – "Ordner laden" verwenden';
+        hint.textContent = i18n('noFoldersYet');
         list.appendChild(hint);
       } else if (!matches.length && !typed) {
         var none = document.createElement('li');
         none.className = 'hd-combo-empty';
-        none.textContent = 'Keine Ordner vorhanden';
+        none.textContent = i18n('noFolders');
         list.appendChild(none);
       }
 
@@ -656,7 +679,7 @@
       // compared against what is typed, not against the (possibly empty) filter.
       var exact = knownFolders.some(function (n) { return n.toLowerCase() === typed.toLowerCase(); });
       if (typed && !exact) {
-        addOption('+ "' + typed + '" anlegen', typed, 'hd-combo-create');
+        addOption(i18n('createOption', { name: i18n('quoted', { name: typed }) }), typed, 'hd-combo-create');
       }
     }
 
@@ -775,17 +798,17 @@
 
   function loadFolders(address) {
     if (!address) return;
-    setStatus('Lade Ordner\u2026', '#888');
+    setStatus(i18n('loading'), '#888');
     postJson(foldersUrl, formPayload())
       .then(function (res) {
         if (Array.isArray(res.data)) {
           populateDatalist(res.data);
-          setStatus(res.data.length + ' Ordner geladen', 'green');
+          setStatus(i18n('loaded', { count: res.data.length }), 'green');
         } else {
-          setStatus('Fehler: ' + (res.data.error || 'unbekannt'), 'red');
+          setStatus(i18n('error', { message: res.data.error || i18n('unknown') }), 'red');
         }
       })
-      .catch(function () { setStatus('Netzwerkfehler', 'red'); });
+      .catch(function () { setStatus(i18n('network'), 'red'); });
   }
 
   function createFolderRequest(address, name) {
@@ -988,7 +1011,7 @@
           if (res.data.ok && Array.isArray(res.data.folders)) populateDatalist(res.data.folders);
         })
         .catch(function () {
-          showConnStatus('Netzwerkfehler', 'red');
+          showConnStatus(i18n('network'), 'red');
         });
     });
   }
@@ -1029,17 +1052,17 @@
       if (toCreate.length === 0) return;
 
       e.preventDefault();
-      var names = toCreate.map(function (n) { return '\u201e' + n + '\u201c'; }).join(', ');
-      if (!confirm('Die Ordner ' + names + ' existieren noch nicht. Jetzt im Postfach anlegen?')) return;
+      var names = toCreate.map(function (n) { return i18n('quoted', { name: n }); }).join(', ');
+      if (!confirm(i18n('createConfirm', { names: names }))) return;
 
-      setStatus('Erstelle Ordner\u2026', '#888');
+      setStatus(i18n('creating'), '#888');
       toCreate.reduce(function (chain, name) {
         return chain.then(function () { return createFolderRequest(address, name); });
       }, Promise.resolve())
         .then(function () { form.submit(); })
         .catch(function (err) {
-          setStatus('Fehler: ' + err.message, 'red');
-          alert('Ordner konnte nicht erstellt werden:\n' + err.message);
+          setStatus(i18n('error', { message: err.message }), 'red');
+          alert(i18n('createFailed', { message: err.message }));
         });
     });
   }

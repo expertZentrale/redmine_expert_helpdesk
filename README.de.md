@@ -41,6 +41,7 @@ siehe [Tests](#tests).
 - [Wissensbasis (RAG)](#wissensbasis-rag)
 - [Tests](#tests) — was die CI ausführt
 - [Azure-App-Registrierung (einmalig)](#azure-app-registrierung-einmalig)
+- [Sprachen](#sprachen)
 - [Installation](#installation)
 - [Makros für Vorlagen](#makros-für-vorlagen)
 - [Hinweise](#hinweise)
@@ -2083,6 +2084,22 @@ Test-ServicePrincipalAuthorization -Identity <object-id> -Resource "sales@exampl
 > Skript Schritt 2 bei einer bereits vorhandenen App-Registrierung.
 
 ---
+
+## Sprachen
+
+Die Oberfläche gibt es auf Englisch, Deutsch, Spanisch, Französisch, Italienisch und Portugiesisch
+(`en`, `de`, `es`, `fr`, `it`, `pt`, `pt-BR`). Redmine zeigt jedem Benutzer die Sprache aus seinem
+Konto oder die Standardsprache unter *Administration » Konfiguration » Anzeige*; für jede andere
+Sprache fällt es auf Englisch zurück. Diese Dokumentation gibt es auf Englisch und Deutsch.
+
+Texte an Kunden sind davon getrennt. Der Zitat-Kopf und die Datumsangaben der Vorlagen-Makros folgen
+wie bisher der Sprache des antwortenden Agenten; die Standardtexte für Autoresponder und Rückfrage
+sowie die KI-Antwortentwürfe sind deutsch. Postfach- und Projekttexte sind Freitext, also in der
+Sprache schreiben, die die Kunden erwarten.
+
+Korrekturen von Muttersprachlern sind als Pull-Request auf `config/locales/<sprache>.yml`
+willkommen. `test/unit/locale_files_test.rb` prüft, dass jede Sprache jeden Schlüssel aus `en.yml`
+hat, in derselben Reihenfolge und mit denselben `%{…}`-Platzhaltern.
 
 ## Installation
 
