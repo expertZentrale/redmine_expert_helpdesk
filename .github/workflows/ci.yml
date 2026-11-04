@@ -73,15 +73,16 @@ jobs:
         run: |
           case "${{ matrix.db }}" in
             mariadb)
-              docker run -d --name db -p 3306:3306 -e MARIADB_ROOT_PASSWORD=root \
+              docker run -d --name db -p 3306:3306 -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=redmine_test \
                 mariadb:11.4
               ready() { docker exec db healthcheck.sh --connect --innodb_initialized; } ;;
             mysql)
-              docker run -d --name db -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root \
+              docker run -d --name db -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=redmine_test \
                 mysql:8.4
               ready() { docker exec db mysql -uroot -proot -h127.0.0.1 -e 'SELECT 1'; } ;;
             postgresql)
-              docker run -d --name db -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:17
+              docker run -d --name db -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=redmine_test \
+                postgres:17
               ready() { docker exec db pg_isready -h 127.0.0.1 -U postgres; } ;;
           esac
           for i in $(seq 60); do ready >/dev/null 2>&1 && exit 0; sleep 2; done
