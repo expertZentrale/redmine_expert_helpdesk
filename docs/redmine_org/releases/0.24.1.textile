@@ -1,0 +1,7 @@
+h3. Fixed
+
+* *The third-party notices are complete.* The README's list of bundled components now also names Bootstrap Icons and Tabler Icons, used for the icons in the sprite and the stylesheets, and the @kurkle/color@ library that ships inside Chart.js. Each entry carries its copyright line, and the README includes the MIT License text.
+
+h3. Upgrade notes
+
+No code changes, no migrations, no new settings. Replace the plugin directory and restart.
