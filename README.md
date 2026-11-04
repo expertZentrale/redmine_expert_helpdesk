@@ -2281,16 +2281,44 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 
 ## Third-party components
 
-The plugin bundles the following components under their own licenses. Their license banners are
-kept intact in the shipped files.
+The plugin bundles the following components under their own licenses. Their license banners and
+copyright lines are kept in the shipped files.
 
-| Component | Version | License | Path |
-|-----------|---------|---------|------|
-| [Chart.js](https://www.chartjs.org) | 4.4.6 | MIT | `assets/javascripts/chart.umd.min.js` |
-| [chartjs-plugin-datalabels](https://chartjs-plugin-datalabels.netlify.app) | 2.2.0 | MIT | `assets/javascripts/chartjs-plugin-datalabels.min.js` |
+| Component | Version | License | Copyright | Path |
+|-----------|---------|---------|-----------|------|
+| [Chart.js](https://www.chartjs.org) | 4.4.6 | MIT | © 2024 Chart.js Contributors | `assets/javascripts/chart.umd.min.js` |
+| [chartjs-plugin-datalabels](https://chartjs-plugin-datalabels.netlify.app) | 2.2.0 | MIT | © 2017–2022 chartjs-plugin-datalabels contributors | `assets/javascripts/chartjs-plugin-datalabels.min.js` |
+| [Bootstrap Icons](https://icons.getbootstrap.com) | 1.11 | MIT | © 2019–2024 The Bootstrap Authors | `assets/images/icons.svg` (message icons), `assets/stylesheets/helpdesk_activity.css` (note toolbar) |
+| [Tabler Icons](https://tabler.io/icons) | — | MIT | © 2020–2026 Paweł Kuna | `assets/images/icons.svg` (administration menu), `assets/stylesheets/helpdesk_mailbox_form.css` (folder picker chevron, as Redmine ships it) |
 
-Both are served locally from the plugin's assets — no CDN request is made at runtime. They are only
-loaded on the SLA, ticket and AI statistics pages.
+The two JavaScript libraries are served locally from the plugin's assets — no CDN request is made at
+runtime. They are only loaded on the SLA, ticket and AI statistics pages. The icons are embedded as
+SVG paths.
+
+<details>
+<summary>MIT License — applies to all four components, each with its copyright line above</summary>
+
+```text
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+</details>
 
 Two gems are declared in `PluginGemfile`:
 

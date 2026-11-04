@@ -2,6 +2,8 @@
  * Aktivitaets-Feed-Icons fuer Helpdesk-Nachrichten.
  * Redmine 5.x verwendet CSS-Klassen (icon-{event_type}) mit background-image.
  * Quellen: Bootstrap Icons v1.11 (MIT License, https://icons.getbootstrap.com/)
+ * Copyright (c) 2019-2024 The Bootstrap Authors - MIT License, full text in README.md,
+ * "Third-party components". Covers every Bootstrap icon in this file.
  * SVGs verwenden viewBox="0 0 16 18" (2 Einheiten Puffer unten), damit der
  * Pfeil-Kreis am unteren Rand nicht abgeschnitten wird.
  */
