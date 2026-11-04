@@ -6,6 +6,16 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Fixed
+
+- **Upgrading on MySQL no longer stops at migration 007.** The step that merges duplicate contacts
+  deleted from `helpdesk_contacts` with a subquery on the same table, which MySQL rejects
+  (error 1093, *You can't specify target table ... for update in FROM clause*); MariaDB accepts it.
+  The subquery now goes through a derived table, as migration 063 already does, so the migration
+  runs on MySQL 8 as well. Nothing changes on MariaDB.
+
 ## [0.24.1] - 2026-11-04
 
 ### Fixed
