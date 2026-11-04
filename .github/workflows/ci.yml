@@ -162,3 +162,12 @@ jobs:
       - name: Run plugin tests
         working-directory: ${{ env.REDMINE_DIR }}
         run: bundle exec rake redmine:plugins:test NAME=redmine_expert_helpdesk
+
+      # An integration test that gets a 500 only reports the status; the exception
+      # behind it is in the test log.
+      - name: Exceptions from the test log
+        if: failure()
+        working-directory: ${{ env.REDMINE_DIR }}
+        run: |
+          grep -n -A 12 -E '^[A-Z][A-Za-z]+(::[A-Z][A-Za-z]+)*(Error|Invalid|Exception)\b' \
+            log/test.log | head -n 400 || true
