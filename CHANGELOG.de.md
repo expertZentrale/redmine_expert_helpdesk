@@ -7,6 +7,12 @@
 
 ## [Unreleased]
 
+### Geändert
+
+- **Die Tests laufen auch auf MySQL und PostgreSQL.** Die CI führt die Suite für jede unterstützte
+  Redmine-Version auf MariaDB aus und für die älteste und die neueste (5.1 und 7.0) zusätzlich auf
+  MySQL 8.4 und PostgreSQL 17.
+
 ### Behoben
 
 - **Das Upgrade auf MySQL bleibt nicht mehr bei Migration 007 stehen.** Der Schritt, der doppelte

@@ -13,7 +13,8 @@ Benutzername und Passwort über TLS.
 
 Zwei CI-Workflows laufen bei jedem Push und Pull Request: die
 [Testsuite](.github/workflows/ci.yml) (MiniTest gegen den Redmine-Quellcode für alle
-unterstützten Versionen – 5.1, 6.0, 6.1, 7.0 – auf frischer MariaDB) und ein
+unterstützten Versionen – 5.1, 6.0, 6.1, 7.0 – auf frischer MariaDB, die älteste und die
+neueste zusätzlich auf MySQL und PostgreSQL) und ein
 [Docker-Image-Smoke-Test](.github/workflows/docker-image.yml), der das Plugin in den
 **offiziellen `redmine`-Docker-Images** startet, mit denen wir deployen (Tags 5.1, 6.0, 6.1, 7.0) –
 siehe [Tests](#tests).
@@ -1689,16 +1690,18 @@ bundle exec ruby -Itest plugins/redmine_expert_helpdesk/test/unit/sla_test.rb -n
 
 **Kontinuierliche Integration:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) führt die komplette Suite bei
 jedem Push und Pull Request aus. Eine Build-Matrix checkt jede unterstützte
-Redmine-Version frisch aus, kopiert das Plugin hinein, migriert eine leere MariaDB
+Redmine-Version frisch aus, kopiert das Plugin hinein, migriert eine leere Datenbank
 und startet die Tests – so werden alle Versionen in einem isolierten, reproduzierbaren
-Zustand geprüft:
+Zustand geprüft. MariaDB läuft auf jeder Version, MySQL und PostgreSQL auf der ältesten und
+der neuesten: Sie lehnen SQL ab, das MariaDB annimmt, etwa eine Unterabfrage auf die Tabelle,
+aus der eine Anweisung löscht.
 
-| Redmine | Ruby | Rails |
-|---------|------|-------|
-| 5.1-stable | 3.2 | 6.1 |
-| 6.0-stable | 3.3 | 7.2 |
-| 6.1-stable | 3.3 | 7.2 |
-| 7.0-stable | 3.4 | 8.1 |
+| Redmine | Ruby | Rails | Datenbank |
+|---------|------|-------|-----------|
+| 5.1-stable | 3.2 | 6.1 | MariaDB 11.4, MySQL 8.4, PostgreSQL 17 |
+| 6.0-stable | 3.3 | 7.2 | MariaDB 11.4 |
+| 6.1-stable | 3.3 | 7.2 | MariaDB 11.4 |
+| 7.0-stable | 3.4 | 8.1 | MariaDB 11.4, MySQL 8.4, PostgreSQL 17 |
 
 **Docker-Image-Smoke-Test:** [`.github/workflows/docker-image.yml`](.github/workflows/docker-image.yml)
 startet das Plugin zusätzlich in den **offiziellen `redmine`-Docker-Images**, mit denen wir

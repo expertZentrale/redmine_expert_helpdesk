@@ -12,7 +12,8 @@ where the server has no OAuth2, username and password over TLS.
 
 Two CI workflows run on every push and pull request: the
 [test suite](.github/workflows/ci.yml) (MiniTest against Redmine source for all
-supported versions — 5.1, 6.0, 6.1, 7.0 — on a clean MariaDB) and a
+supported versions — 5.1, 6.0, 6.1, 7.0 — on a clean MariaDB, the oldest and newest on MySQL
+and PostgreSQL as well) and a
 [Docker image smoke test](.github/workflows/docker-image.yml) that boots the plugin
 inside the **official `redmine` Docker images** we deploy with (tags 5.1, 6.0, 6.1, 7.0) —
 see [Tests](#tests).
@@ -1610,15 +1611,17 @@ bundle exec ruby -Itest plugins/redmine_expert_helpdesk/test/unit/sla_test.rb -n
 
 **Continuous integration:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 runs the full suite on every push and pull request. A build matrix checks out each
-supported Redmine version fresh, copies the plugin in, migrates a clean MariaDB and
-runs the tests — so all versions are covered in an isolated, reproducible state:
+supported Redmine version fresh, copies the plugin in, migrates a clean database and
+runs the tests — so all versions are covered in an isolated, reproducible state. MariaDB runs
+on every version, MySQL and PostgreSQL on the oldest and the newest: they disagree on SQL
+that MariaDB accepts, such as a subquery on the table a statement deletes from.
 
-| Redmine | Ruby | Rails |
-|---------|------|-------|
-| 5.1-stable | 3.2 | 6.1 |
-| 6.0-stable | 3.3 | 7.2 |
-| 6.1-stable | 3.3 | 7.2 |
-| 7.0-stable | 3.4 | 8.1 |
+| Redmine | Ruby | Rails | Database |
+|---------|------|-------|----------|
+| 5.1-stable | 3.2 | 6.1 | MariaDB 11.4, MySQL 8.4, PostgreSQL 17 |
+| 6.0-stable | 3.3 | 7.2 | MariaDB 11.4 |
+| 6.1-stable | 3.3 | 7.2 | MariaDB 11.4 |
+| 7.0-stable | 3.4 | 8.1 | MariaDB 11.4, MySQL 8.4, PostgreSQL 17 |
 
 **Docker image smoke test:** [`.github/workflows/docker-image.yml`](.github/workflows/docker-image.yml)
 additionally boots the plugin inside the **official `redmine` Docker images** used in
