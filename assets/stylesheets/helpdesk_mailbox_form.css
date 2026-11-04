@@ -23,7 +23,9 @@
 
 /* Same chevron, offset and reserved space as Redmine's select rule. The icon is
    inlined because Redmine's copy is digest-fingerprinted (/assets/chevron-down-
-   <hash>.svg), so a static path would break on every asset recompile. */
+   <hash>.svg), so a static path would break on every asset recompile.
+   Icon: Tabler Icons "chevron-down", Copyright (c) 2020-2026 Paweł Kuna, MIT License -
+   full text in README.md, "Third-party components". */
 .hd-combo input[type="text"] {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%23ccd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg>');
   background-repeat: no-repeat;
