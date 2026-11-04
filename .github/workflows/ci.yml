@@ -68,24 +68,28 @@ jobs:
             default-libmysqlclient-dev libpq-dev libmagickwand-dev imagemagick pkg-config
 
       # The database of this matrix entry, started here rather than as a service
-      # container so each entry gets only the one it tests.
+      # container so each entry gets only the one it tests. Docker runs the health
+      # check; the loop only reads its result.
       - name: Start ${{ matrix.db }}
         run: |
+          health='--health-interval=3s --health-timeout=5s --health-retries=60'
           case "${{ matrix.db }}" in
             mariadb)
               docker run -d --name db -p 3306:3306 -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=redmine_test \
-                mariadb:11.4
-              ready() { docker exec db healthcheck.sh --connect --innodb_initialized; } ;;
+                --health-cmd='healthcheck.sh --connect --innodb_initialized' $health mariadb:11.4 ;;
             mysql)
+              # Over TCP: the server of the image's init phase listens on the socket only.
               docker run -d --name db -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=redmine_test \
-                mysql:8.4
-              ready() { docker exec db mysql -uroot -proot -h127.0.0.1 -e 'SELECT 1'; } ;;
+                --health-cmd='mysqladmin ping -h 127.0.0.1 -uroot -proot --silent' $health mysql:8.4 ;;
             postgresql)
+              # Over TCP for the same reason.
               docker run -d --name db -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=redmine_test \
-                postgres:17
-              ready() { docker exec db pg_isready -h 127.0.0.1 -U postgres; } ;;
+                --health-cmd='pg_isready -h 127.0.0.1 -U postgres' $health postgres:17 ;;
           esac
-          for i in $(seq 60); do ready >/dev/null 2>&1 && exit 0; sleep 2; done
+          for i in $(seq 90); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' db)" = healthy ] && exit 0
+            sleep 2
+          done
           docker logs db; exit 1
 
       # 4. Ruby einrichten (Bundle-Cache haengt an Redmine-Ref + Ruby-Version).
