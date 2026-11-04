@@ -1,0 +1,8 @@
+h3. Fixed
+
+* *Installing or upgrading on MySQL no longer stops at migration 007.* The step that merges duplicate contacts deleted from @helpdesk_contacts@ with a subquery on the same table, which MySQL refuses (error 1093). It now goes through a derived table, so all migrations run on MySQL 8 as well. Nothing changes on MariaDB, and installations that already ran the migration are not affected.
+* *The plugin settings page no longer sends a failing query when RedmineUP Helpdesk is not installed.* The count of legacy mails to repair now checks for RedmineUP's table before querying it.
+
+h3. Upgrade notes
+
+No new migrations, no new settings. Replace the plugin directory and restart.
