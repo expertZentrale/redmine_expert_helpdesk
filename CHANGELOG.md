@@ -6,13 +6,15 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
-## [0.24.2] - 2026-11-04
+## [Unreleased]
 
 ### Changed
 
 - **The tests also run on MySQL and PostgreSQL.** CI runs the suite on MariaDB for every supported
   Redmine version and, for the oldest and the newest (5.1 and 7.0), on MySQL 8.4 and PostgreSQL 17
   as well.
+
+## [0.24.2] - 2026-11-04
 
 ### Fixed
 
