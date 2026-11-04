@@ -1,9 +1,10 @@
 name: CI
 
-# Fuehrt die Plugin-Tests (MiniTest, unit + integration) gegen alle aktuell
-# unterstuetzten Redmine-Versionen in einer sauberen Umgebung aus. Fuer jeden
-# Matrix-Eintrag wird Redmine frisch ausgecheckt, das Plugin einkopiert, eine
-# leere MariaDB migriert und danach `redmine:plugins:test` gestartet.
+# Runs the plugin tests (MiniTest, unit + integration) against every supported
+# Redmine version in a clean environment. Each matrix entry checks Redmine out
+# fresh, copies the plugin in, migrates an empty database and then starts
+# `redmine:plugins:test`. MariaDB runs on every version; MySQL and PostgreSQL
+# on the oldest and the newest, which catches SQL only one of them accepts.
 
 on:
   push:
@@ -21,37 +22,28 @@ permissions:
 
 jobs:
   test:
-    name: Redmine ${{ matrix.redmine }} · Ruby ${{ matrix.ruby }}
+    name: Redmine ${{ matrix.redmine }} · Ruby ${{ matrix.ruby }} · ${{ matrix.db }}
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { redmine: '5.1-stable', ruby: '3.2' }
-          - { redmine: '6.0-stable', ruby: '3.3' }
-          - { redmine: '6.1-stable', ruby: '3.3' }
-          - { redmine: '7.0-stable', ruby: '3.4' }
+          - { redmine: '5.1-stable', ruby: '3.2', db: 'mariadb' }
+          - { redmine: '6.0-stable', ruby: '3.3', db: 'mariadb' }
+          - { redmine: '6.1-stable', ruby: '3.3', db: 'mariadb' }
+          - { redmine: '7.0-stable', ruby: '3.4', db: 'mariadb' }
+          - { redmine: '5.1-stable', ruby: '3.2', db: 'mysql' }
+          - { redmine: '7.0-stable', ruby: '3.4', db: 'mysql' }
+          - { redmine: '5.1-stable', ruby: '3.2', db: 'postgresql' }
+          - { redmine: '7.0-stable', ruby: '3.4', db: 'postgresql' }
 
     env:
       RAILS_ENV: test
       # Redmine liest config/database.yml schon beim `bundle install`, um den
-      # DB-Adapter (mysql2) zu bestimmen — daher unten vor dem Bundle schreiben.
+      # DB-Adapter (mysql2 / pg) zu bestimmen — daher unten vor dem Bundle schreiben.
       REDMINE_DIR: redmine
 
-    services:
-      mariadb:
-        image: mariadb:11.4
-        env:
-          MARIADB_ROOT_PASSWORD: root
-          MARIADB_DATABASE: redmine_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="healthcheck.sh --connect --innodb_initialized"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=15
 
     steps:
       # 1. Redmine-Core in der passenden stabilen Version auschecken.
@@ -68,12 +60,32 @@ jobs:
         with:
           path: ${{ env.REDMINE_DIR }}/plugins/redmine_expert_helpdesk
 
-      # 3. Native Abhaengigkeiten fuer mysql2 (und rmagick, falls im Bundle).
+      # 3. Native Abhaengigkeiten fuer mysql2 / pg (und rmagick, falls im Bundle).
       - name: Install system packages
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            default-libmysqlclient-dev libmagickwand-dev imagemagick pkg-config
+            default-libmysqlclient-dev libpq-dev libmagickwand-dev imagemagick pkg-config
+
+      # The database of this matrix entry, started here rather than as a service
+      # container so each entry gets only the one it tests.
+      - name: Start ${{ matrix.db }}
+        run: |
+          case "${{ matrix.db }}" in
+            mariadb)
+              docker run -d --name db -p 3306:3306 -e MARIADB_ROOT_PASSWORD=root \
+                mariadb:11.4
+              ready() { docker exec db healthcheck.sh --connect --innodb_initialized; } ;;
+            mysql)
+              docker run -d --name db -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root \
+                mysql:8.4
+              ready() { docker exec db mysql -uroot -proot -h127.0.0.1 -e 'SELECT 1'; } ;;
+            postgresql)
+              docker run -d --name db -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:17
+              ready() { docker exec db pg_isready -h 127.0.0.1 -U postgres; } ;;
+          esac
+          for i in $(seq 60); do ready >/dev/null 2>&1 && exit 0; sleep 2; done
+          docker logs db; exit 1
 
       # 4. Ruby einrichten (Bundle-Cache haengt an Redmine-Ref + Ruby-Version).
       - name: Set up Ruby ${{ matrix.ruby }}
@@ -81,12 +93,25 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
 
-      # 5. Test-Datenbank konfigurieren (MariaDB, utf8mb4, READ-COMMITTED wie
-      #    von Redmine empfohlen). Muss vor `bundle install` existieren.
+      # 5. Test-Datenbank konfigurieren (MySQL/MariaDB mit utf8mb4 und READ-COMMITTED
+      #    wie von Redmine empfohlen, PostgreSQL mit utf8). Muss vor `bundle install`
+      #    existieren.
       - name: Write database.yml
         working-directory: ${{ env.REDMINE_DIR }}
         run: |
-          cat > config/database.yml <<'YML'
+          if [ "${{ matrix.db }}" = postgresql ]; then
+            cat > config/database.yml <<'YML'
+          test:
+            adapter: postgresql
+            database: redmine_test
+            host: 127.0.0.1
+            port: 5432
+            username: postgres
+            password: postgres
+            encoding: utf8
+          YML
+          else
+            cat > config/database.yml <<'YML'
           test:
             adapter: mysql2
             database: redmine_test
@@ -98,6 +123,7 @@ jobs:
             variables:
               transaction_isolation: "READ-COMMITTED"
           YML
+          fi
 
       # Native gems (mysql2, rmagick) link against the runner's system libraries, so a
       # bundle cached on an older runner image fails to load (libmysqlclient.so.21 was
@@ -110,9 +136,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.REDMINE_DIR }}/vendor/bundle
-          key: gems-${{ env.RUNNER_IMAGE }}-${{ matrix.redmine }}-ruby${{ matrix.ruby }}-${{ hashFiles(format('{0}/Gemfile', env.REDMINE_DIR)) }}
+          key: gems-${{ env.RUNNER_IMAGE }}-${{ matrix.redmine }}-ruby${{ matrix.ruby }}-${{ matrix.db }}-${{ hashFiles(format('{0}/Gemfile', env.REDMINE_DIR)) }}
           restore-keys: |
-            gems-${{ env.RUNNER_IMAGE }}-${{ matrix.redmine }}-ruby${{ matrix.ruby }}-
+            gems-${{ env.RUNNER_IMAGE }}-${{ matrix.redmine }}-ruby${{ matrix.ruby }}-${{ matrix.db }}-
 
       # 7. Gems installieren (ohne development-Gruppe; test-Gruppe wird gebraucht).
       - name: Install gems
