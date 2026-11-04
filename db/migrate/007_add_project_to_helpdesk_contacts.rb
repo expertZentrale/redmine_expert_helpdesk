@@ -33,9 +33,11 @@ class AddProjectToHelpdeskContacts < ActiveRecord::Migration[6.1]
     execute <<~SQL
       DELETE FROM helpdesk_contacts
       WHERE id NOT IN (
-        SELECT MIN(id) FROM helpdesk_contacts
-        WHERE  project_id IS NOT NULL
-        GROUP  BY LOWER(email), project_id
+        SELECT id FROM (
+          SELECT MIN(id) AS id FROM helpdesk_contacts
+          WHERE  project_id IS NOT NULL
+          GROUP  BY LOWER(email), project_id
+        ) AS kept_contacts
       )
       AND project_id IS NOT NULL
     SQL

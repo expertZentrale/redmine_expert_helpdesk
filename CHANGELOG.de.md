@@ -5,6 +5,17 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Behoben
+
+- **Das Upgrade auf MySQL bleibt nicht mehr bei Migration 007 stehen.** Der Schritt, der doppelte
+  Kontakte zusammenführt, löschte aus `helpdesk_contacts` mit einer Unterabfrage auf dieselbe
+  Tabelle, die MySQL ablehnt (Fehler 1093, *You can't specify target table ... for update in FROM
+  clause*); MariaDB akzeptiert sie. Die Unterabfrage läuft jetzt über eine abgeleitete Tabelle, wie
+  es Migration 063 bereits tut, sodass die Migration auch auf MySQL 8 durchläuft. Auf MariaDB ändert
+  sich nichts.
+
 ## [0.24.1] - 2026-11-04
 
 ### Behoben
