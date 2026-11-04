@@ -34,8 +34,14 @@ module RedmineExpertHelpdesk
       conn.table_exists?('contacts') && conn.select_value('SELECT COUNT(*) FROM contacts').to_i > 0
     end
 
+    # The table is checked first rather than the error rescued: on PostgreSQL a
+    # failed statement aborts the surrounding transaction, and every later query
+    # of the request then fails too.
     def self.legacy_contact_count
-      ActiveRecord::Base.connection.select_value('SELECT COUNT(*) FROM contacts').to_i
+      conn = ActiveRecord::Base.connection
+      return 0 unless conn.table_exists?('contacts')
+
+      conn.select_value('SELECT COUNT(*) FROM contacts').to_i
     rescue StandardError
       0
     end
@@ -91,9 +97,14 @@ module RedmineExpertHelpdesk
     # HelpdeskTicket and can be moved onto that ticket's issue. Rows whose HelpdeskTicket
     # is gone (container_id NULL or unknown) are not counted: nothing can repair them,
     # and counting them kept the repair button on screen forever.
+    # Rendered on the plugin settings page, so the table is checked first (see
+    # legacy_contact_count).
     def self.misplaced_attachment_count
       inst = new
-      inst.send(:conn).select_value("SELECT COUNT(*) FROM (#{inst.send(:fixable_sql)}) x").to_i
+      conn = inst.send(:conn)
+      return 0 unless conn.table_exists?('helpdesk_tickets')
+
+      conn.select_value("SELECT COUNT(*) FROM (#{inst.send(:fixable_sql)}) x").to_i
     rescue StandardError
       0
     end

@@ -32,4 +32,25 @@ class LegacyContactsImportTest < ActiveSupport::TestCase
     assert_not imp.selected?(5)
     assert_not imp.selected?(nil)
   end
+
+  # The plugin settings page reads these counts. Without RedmineUP's tables they
+  # must not query them at all: on PostgreSQL a failed statement aborts the
+  # surrounding transaction, and every later query of the page fails with it.
+  def test_counts_do_not_query_missing_legacy_tables
+    conn = ActiveRecord::Base.connection
+    skip 'RedmineUP tables present' if conn.table_exists?('helpdesk_tickets') || conn.table_exists?('contacts')
+
+    queried = []
+    callback = lambda do |*args|
+      payload = args.last
+      next if payload[:name] == 'SCHEMA'
+
+      queried << payload[:sql] if payload[:sql] =~ /\b(helpdesk_tickets|contacts)\b/
+    end
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+      assert_equal 0, Import.misplaced_attachment_count
+      assert_equal 0, Import.legacy_contact_count
+    end
+    assert_empty queried
+  end
 end
