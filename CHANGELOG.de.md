@@ -9,6 +9,13 @@
 
 ### Behoben
 
+- **Die Plugin-Einstellungsseite schickt ohne RedmineUP Helpdesk keine fehlschlagende Abfrage mehr.**
+  Die Zählung der zu reparierenden Alt-Mails fragte RedmineUPs Tabelle `helpdesk_tickets` auch dort
+  ab, wo es sie nicht gibt, und verschluckte den Fehler, sodass jeder Aufruf der Seite eine
+  fehlgeschlagene Anweisung im Datenbank-Log hinterließ. Innerhalb einer Transaktion, wie in den
+  Tests, lehnt PostgreSQL danach jede weitere Abfrage ab, und die Seite brach ab. Diese Zählung und
+  die der Alt-Kontakte prüfen jetzt zuerst, ob die Tabelle existiert.
+
 - **Das Upgrade auf MySQL bleibt nicht mehr bei Migration 007 stehen.** Der Schritt, der doppelte
   Kontakte zusammenführt, löschte aus `helpdesk_contacts` mit einer Unterabfrage auf dieselbe
   Tabelle, die MySQL ablehnt (Fehler 1093, *You can't specify target table ... for update in FROM

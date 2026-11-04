@@ -10,6 +10,12 @@
 
 ### Fixed
 
+- **The plugin settings page no longer sends a failing query without RedmineUP Helpdesk.** The
+  count of legacy mails to repair queried RedmineUP's `helpdesk_tickets` table even where it does
+  not exist and swallowed the error, so every view of the page logged a failed statement in the
+  database. Inside a transaction, as in the tests, PostgreSQL then refuses every later query and
+  the page failed. The count, and the one of legacy contacts, now check for the table first.
+
 - **Upgrading on MySQL no longer stops at migration 007.** The step that merges duplicate contacts
   deleted from `helpdesk_contacts` with a subquery on the same table, which MySQL rejects
   (error 1093, *You can't specify target table ... for update in FROM clause*); MariaDB accepts it.
