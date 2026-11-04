@@ -2287,6 +2287,7 @@ copyright lines are kept in the shipped files.
 | Component | Version | License | Copyright | Path |
 |-----------|---------|---------|-----------|------|
 | [Chart.js](https://www.chartjs.org) | 4.4.6 | MIT | © 2024 Chart.js Contributors | `assets/javascripts/chart.umd.min.js` |
+| [@kurkle/color](https://github.com/kurkle/color) | 0.3.2 | MIT | © 2023 Jukka Kurkela | bundled inside `assets/javascripts/chart.umd.min.js` |
 | [chartjs-plugin-datalabels](https://chartjs-plugin-datalabels.netlify.app) | 2.2.0 | MIT | © 2017–2022 chartjs-plugin-datalabels contributors | `assets/javascripts/chartjs-plugin-datalabels.min.js` |
 | [Bootstrap Icons](https://icons.getbootstrap.com) | 1.11 | MIT | © 2019–2024 The Bootstrap Authors | `assets/images/icons.svg` (message icons), `assets/stylesheets/helpdesk_activity.css` (note toolbar) |
 | [Tabler Icons](https://tabler.io/icons) | — | MIT | © 2020–2026 Paweł Kuna | `assets/images/icons.svg` (administration menu), `assets/stylesheets/helpdesk_mailbox_form.css` (folder picker chevron, as Redmine ships it) |
@@ -2296,7 +2297,7 @@ runtime. They are only loaded on the SLA, ticket and AI statistics pages. The ic
 SVG paths.
 
 <details>
-<summary>MIT License — applies to all four components, each with its copyright line above</summary>
+<summary>MIT License — applies to all five components, each with its copyright line above</summary>
 
 ```text
 Permission is hereby granted, free of charge, to any person obtaining a copy

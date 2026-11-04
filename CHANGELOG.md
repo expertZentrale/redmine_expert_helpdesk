@@ -11,9 +11,10 @@
 ### Fixed
 
 - **The third-party notices are complete.** *Third-party components* in the README lists the
-  bundled Bootstrap Icons and Tabler Icons next to Chart.js and chartjs-plugin-datalabels, each with
-  its copyright line, and carries the MIT License text. The icon sprite and the stylesheets carry the
-  copyright lines next to the icon paths they embed.
+  bundled Bootstrap Icons, Tabler Icons and the @kurkle/color library inside Chart.js next to
+  Chart.js and chartjs-plugin-datalabels, each with its copyright line, and carries the MIT License
+  text. The icon sprite and the stylesheets carry the copyright lines next to the icon paths they
+  embed.
 
 ## [0.24.0] - 2026-11-02
 

@@ -2389,6 +2389,7 @@ und Copyright-Zeilen bleiben in den ausgelieferten Dateien erhalten.
 | Komponente | Version | Lizenz | Copyright | Pfad |
 |------------|---------|--------|-----------|------|
 | [Chart.js](https://www.chartjs.org) | 4.4.6 | MIT | © 2024 Chart.js Contributors | `assets/javascripts/chart.umd.min.js` |
+| [@kurkle/color](https://github.com/kurkle/color) | 0.3.2 | MIT | © 2023 Jukka Kurkela | in `assets/javascripts/chart.umd.min.js` enthalten |
 | [chartjs-plugin-datalabels](https://chartjs-plugin-datalabels.netlify.app) | 2.2.0 | MIT | © 2017–2022 chartjs-plugin-datalabels contributors | `assets/javascripts/chartjs-plugin-datalabels.min.js` |
 | [Bootstrap Icons](https://icons.getbootstrap.com) | 1.11 | MIT | © 2019–2024 The Bootstrap Authors | `assets/images/icons.svg` (Nachrichten-Icons), `assets/stylesheets/helpdesk_activity.css` (Notiz-Toolbar) |
 | [Tabler Icons](https://tabler.io/icons) | — | MIT | © 2020–2026 Paweł Kuna | `assets/images/icons.svg` (Administrationsmenü), `assets/stylesheets/helpdesk_mailbox_form.css` (Pfeil der Ordnerauswahl, wie Redmine ihn mitbringt) |
@@ -2398,7 +2399,7 @@ erfolgt **kein** CDN-Aufruf. Geladen werden sie nur auf den Seiten der SLA-, der
 KI-Statistik. Die Icons sind als SVG-Pfade eingebettet.
 
 <details>
-<summary>MIT-Lizenz — gilt für alle vier Komponenten, jeweils mit ihrer Copyright-Zeile oben (Lizenztext im englischen Original)</summary>
+<summary>MIT-Lizenz — gilt für alle fünf Komponenten, jeweils mit ihrer Copyright-Zeile oben (Lizenztext im englischen Original)</summary>
 
 ```text
 Permission is hereby granted, free of charge, to any person obtaining a copy

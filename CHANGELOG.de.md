@@ -10,9 +10,10 @@
 ### Behoben
 
 - **Die Hinweise auf Fremdkomponenten sind vollständig.** *Komponenten von Drittanbietern* im README
-  nennt neben Chart.js und chartjs-plugin-datalabels auch die mitgelieferten Bootstrap Icons und
-  Tabler Icons, jeweils mit Copyright-Zeile, und enthält den Text der MIT-Lizenz. Icon-Sprite und
-  Stylesheets tragen die Copyright-Zeilen neben den eingebetteten Icon-Pfaden.
+  nennt neben Chart.js und chartjs-plugin-datalabels auch die mitgelieferten Bootstrap Icons, Tabler
+  Icons und die in Chart.js enthaltene Bibliothek @kurkle/color, jeweils mit Copyright-Zeile, und
+  enthält den Text der MIT-Lizenz. Icon-Sprite und Stylesheets tragen die Copyright-Zeilen neben den
+  eingebetteten Icon-Pfaden.
 
 ## [0.24.0] - 2026-11-02
 
