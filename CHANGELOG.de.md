@@ -7,6 +7,30 @@
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Antworten können die vorherige Nachricht mitschicken, wie ein Mailprogramm beim Antworten (#64).**
+  Das Antwortformular hat ein Kästchen *Vorherige Nachricht anhängen*, angehakt, sobald das Ticket
+  eine vorherige Mail hat. Unter der Signatur trägt die Mail dann die letzte Nachricht des Verlaufs
+  — die letzte Mail des Kunden oder unsere letzte Antwort — mit einem Kopf im Stil von Outlook
+  (Von, Gesendet, An, Cc, Betreff) und ihrem ursprünglichen HTML, kein mit `>` zitierter Text. Nur
+  diese eine Nachricht wird angehängt: Sie enthält den älteren Verlauf bereits. Die Notiz am Ticket
+  bleibt genau so, wie sie geschrieben wurde; der angehängte Teil steht nur in der Mail. Eingehende
+  Mails kommen aus der archivierten `.eml` (bevorzugt der HTML-Teil, sonst der Text), verlieren
+  Skripte, Frames, Formulare, Event-Handler und `javascript:`-Links und behalten Tabellen, Schriften
+  und Inline-Styles; ihre eingebetteten Bilder werden den Anhängen des Tickets zugeordnet und wie
+  jedes andere Antwortbild inline verschickt, ein Bild ohne Zuordnung entfällt. Autoresponder und
+  Rückfrage der Vollständigkeitsprüfung sind keine Mails des Verlaufs und werden übersprungen.
+  Kopfbeschriftungen und Datum folgen der Sprache des Bearbeiters. Ohne Haken bleibt die Mail wie
+  bisher.
+- **Antworten der Bearbeiter werden als `.eml` am Ticket archiviert.** Jede Antwort aus dem
+  Antwortformular und jede Initialmail wird als `sent_mail_<Zeitstempel>.eml` (Anhangsbeschreibung *Sent E-Mail*) ohne
+  ihren Bcc-Header abgelegt und mit dem Nachrichtenprotokoll der Antwort verknüpft — das ausgehende
+  Gegenstück zu *Original E-Mail*. Die nächste Antwort zitiert sie von dort. Antworten aus älteren
+  Versionen greifen auf ihre Journal-Notiz zurück. Das Ablegen der Kopie macht aus einer versendeten
+  Antwort nie einen Fehler. KI-Zusammenfassung und Vollständigkeitsprüfung überspringen diese Kopien
+  wie die Originalmails.
+
 ### Geändert
 
 - **Die Tests laufen auch auf MySQL und PostgreSQL.** Die CI führt die Suite für jede unterstützte

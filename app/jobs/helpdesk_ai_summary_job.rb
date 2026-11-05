@@ -226,7 +226,7 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
     nil
   end
 
-  # Anhaenge dieser Mail (ohne die von uns angehaengte Original-.eml).
+  # Anhaenge dieser Mail (ohne die von uns angehaengten .eml: Original und gesendete Kopien).
   def mail_attachments(issue, journal, exclude_id)
     list =
       if journal
@@ -235,7 +235,7 @@ class HelpdeskAiSummaryJob < ActiveJob::Base
       else
         issue.attachments.to_a
       end
-    list.reject { |a| a.id == exclude_id || a.description == 'Original E-Mail' }
+    list.reject { |a| a.id == exclude_id || RedmineExpertHelpdesk::SentMailArchive.archived_eml?(a) }
   end
 
   # Mail body below the configured threshold? Whitespace is normalized first, so
