@@ -922,6 +922,10 @@ durch eine Leerzeile — bereits Getipptes wird nicht überschrieben.
 | Kompletter Verlauf | Die Beschreibung sowie alle öffentlichen Journal-Notizen, älteste zuerst, jeweils mit Verfasser und Zeitstempel. |
 | Mail-Verlauf | Die Beschreibung sowie nur die Notizen, zu denen es eine tatsächlich vom oder an den Kunden gesendete Mail gibt. |
 
+Eine Mail eines Absenders ohne Redmine-Konto wird unter dem anonymen Benutzer abgelegt; ihr
+Zitatkopf nennt stattdessen den Helpdesk-Kontakt, von dem die Mail kam (Name, oder Adresse, wenn er
+keinen hat).
+
 Drei Regeln, die man kennen sollte:
 
 - **Private Notizen werden nie zitiert**, auch nicht für Bearbeiter mit

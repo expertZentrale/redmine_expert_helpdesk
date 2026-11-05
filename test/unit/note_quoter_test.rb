@@ -16,6 +16,10 @@ class NoteQuoterTest < ActiveSupport::TestCase
     User.current = nil
   end
 
+  def contact(name)
+    HelpdeskContact.create!(:project_id => @issue.project_id, :email => 'adolfo@example.es', :name => name)
+  end
+
   def add_note(notes, user, private_notes: false)
     Journal.create!(:journalized => @issue, :user => user,
                     :notes => notes, :private_notes => private_notes)
@@ -119,6 +123,48 @@ class NoteQuoterTest < ActiveSupport::TestCase
     content = RedmineExpertHelpdesk::NoteQuoter.conversation(@issue).content
 
     assert_include '> Kundenantwort per Mail', content
+  end
+
+  # --- sender names ------------------------------------------------------
+
+  # A mail from a sender without a Redmine account is filed under the
+  # anonymous user; the quote names the helpdesk contact instead.
+  def test_description_of_an_unknown_sender_names_the_contact
+    @issue.update_columns(:author_id => User.anonymous.id)
+    HelpdeskMessage.create!(:issue => @issue, :direction => 'in', :helpdesk_contact => contact('Adolfo Ortiz'))
+    header = RedmineExpertHelpdesk::NoteQuoter.description(@issue.reload).content.lines.first
+
+    assert_include 'Adolfo Ortiz', header
+    assert_not_include User.anonymous.name, header
+  end
+
+  def test_contact_without_a_name_is_named_by_address
+    @issue.update_columns(:author_id => User.anonymous.id)
+    HelpdeskMessage.create!(:issue => @issue, :direction => 'in', :helpdesk_contact => contact(nil))
+    header = RedmineExpertHelpdesk::NoteQuoter.description(@issue.reload).content.lines.first
+
+    assert_include 'adolfo@example.es', header
+  end
+
+  def test_customer_reply_filed_as_anonymous_names_the_contact
+    journal = add_note('Kundenantwort per Mail', User.anonymous)
+    HelpdeskMessage.create!(:issue => @issue, :direction => 'in', :journal_id => journal.id,
+                            :helpdesk_contact => contact('Adolfo Ortiz'))
+    content = RedmineExpertHelpdesk::NoteQuoter.conversation(@issue, :mail_only => true).content
+
+    assert_include 'Adolfo Ortiz', content
+    assert_not_include User.anonymous.name, content
+  end
+
+  # A sender who has a Redmine account keeps the name of that account.
+  def test_real_user_keeps_their_name
+    journal = add_note('Antwort eines Kunden mit Konto', User.find(2))
+    HelpdeskMessage.create!(:issue => @issue, :direction => 'in', :journal_id => journal.id,
+                            :helpdesk_contact => contact('Someone Else'))
+    content = RedmineExpertHelpdesk::NoteQuoter.conversation(@issue).content
+
+    assert_include User.find(2).name, content
+    assert_not_include 'Someone Else', content
   end
 
   # --- mail conversation -------------------------------------------------

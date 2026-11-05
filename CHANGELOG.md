@@ -29,6 +29,14 @@
   note. Storing the copy never turns a sent reply into an error. The AI summary and the
   completeness check skip these copies like the original mails.
 
+### Fixed
+
+- **Quotes no longer say "Anonymous wrote on" for customer mails.** A mail from a sender without
+  a Redmine account is filed under the anonymous user, and the *Quote* button named that user in
+  the header of the original mail and of every reply by mail. It now names the helpdesk contact the
+  mail came from (its name, or its address when it has none). Senders with a Redmine account keep
+  their account name.
+
 ### Changed
 
 - **The tests also run on MySQL and PostgreSQL.** CI runs the suite on MariaDB for every supported

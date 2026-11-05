@@ -31,6 +31,14 @@
   Antwort nie einen Fehler. KI-Zusammenfassung und Vollständigkeitsprüfung überspringen diese Kopien
   wie die Originalmails.
 
+### Behoben
+
+- **Zitate sagen bei Kundenmails nicht mehr „Anonym schrieb am".** Eine Mail eines Absenders ohne
+  Redmine-Konto wird unter dem anonymen Benutzer abgelegt, und der *Zitieren*-Button nannte diesen
+  Benutzer im Kopf der originalen Mail und jeder Antwort per Mail. Jetzt nennt er den
+  Helpdesk-Kontakt, von dem die Mail kam (seinen Namen, oder seine Adresse, wenn er keinen hat).
+  Absender mit Redmine-Konto behalten ihren Kontonamen.
+
 ### Geändert
 
 - **Die Tests laufen auch auf MySQL und PostgreSQL.** Die CI führt die Suite für jede unterstützte

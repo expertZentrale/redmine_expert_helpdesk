@@ -886,6 +886,9 @@ a blank line — nothing you already typed is overwritten.
 | Complete conversation | The description plus every public journal note, oldest first, each with its author and timestamp. |
 | Email conversation | The description plus only those notes that belong to a mail actually received from or sent to the customer. |
 
+A mail from a sender without a Redmine account is filed under the anonymous user; its quote header
+names the helpdesk contact the mail came from instead (name, or address when it has none).
+
 Three rules worth knowing:
 
 - **Private notes are never quoted**, not even for agents who hold
