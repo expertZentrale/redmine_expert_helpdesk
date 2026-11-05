@@ -41,9 +41,11 @@ module RedmineExpertHelpdesk
       # mail_only: keep only notes that correspond to a HelpdeskMessage, i.e.
       # mail actually received from or sent to the customer.
       def conversation(issue, mail_only: false)
-        entries = [description_entry(issue)]
+        entries  = [description_entry(issue)]
+        senders  = incoming_senders(issue)
         conversation_journals(issue, :mail_only => mail_only).each do |journal|
-          entries << quote(header_for(journal.user, journal.created_on), journal.notes)
+          author = author_name(journal.user, senders[journal.id])
+          entries << quote(header_for(author, journal.created_on), journal.notes)
         end
         assemble(entries)
       end
@@ -72,7 +74,8 @@ module RedmineExpertHelpdesk
       end
 
       def description_entry(issue)
-        quote(header_for(issue.author, issue.created_on), issue.description)
+        author = author_name(issue.author, opening_sender(issue))
+        quote(header_for(author, issue.created_on), issue.description)
       end
 
       def quote(header, text)
@@ -81,10 +84,34 @@ module RedmineExpertHelpdesk
         "#{header}\n> #{text.to_s.strip.gsub(/(\r?\n|\r\n?)/, "\n> ")}\n\n"
       end
 
-      def header_for(user, time)
+      def header_for(name, time)
         l(:text_helpdesk_quote_wrote_on,
-          :user => (user ? user.name : l(:label_user_anonymous)),
+          :user => name,
           :date => (time ? format_time(time) : ''))
+      end
+
+      # A mail from a sender without a Redmine account is filed under the
+      # anonymous user, so the quote said "Anonymous wrote on". The helpdesk
+      # contact of that mail knows who actually wrote it. A real user keeps
+      # their own name.
+      def author_name(user, contact)
+        return user.name if user && !user.anonymous?
+        return contact.name.presence || contact.email if contact
+
+        user ? user.name : l(:label_user_anonymous)
+      end
+
+      # The contact of the mail that opened the ticket (the description).
+      def opening_sender(issue)
+        HelpdeskMessage.incoming.where(:issue_id => issue.id, :journal_id => nil)
+                       .order(:id).includes(:helpdesk_contact).first&.helpdesk_contact
+      end
+
+      # journal_id => contact of the incoming mail that journal holds.
+      def incoming_senders(issue)
+        HelpdeskMessage.incoming.where(:issue_id => issue.id).where.not(:journal_id => nil)
+                       .includes(:helpdesk_contact).to_a
+                       .each_with_object({}) { |m, map| map[m.journal_id] ||= m.helpdesk_contact }
       end
 
       # Private notes are excluded unconditionally — deliberately NOT via

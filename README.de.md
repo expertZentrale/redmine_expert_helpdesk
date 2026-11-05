@@ -29,6 +29,7 @@ siehe [Tests](#tests).
   - [Rezept: selbst gehosteter Server (Dovecot, Zimbra, Hoster)](#rezept-selbst-gehosteter-server-dovecot-zimbra-hoster)
 - [E-Mail-Verarbeitung](#e-mail-verarbeitung) — Abrufablauf, Antwortzuordnung, Antwortversand
 - [Bisherigen Inhalt zitieren](#bisherigen-inhalt-zitieren)
+- [Vorherige Nachricht in der Mail](#vorherige-nachricht-in-der-mail)
 - [Antwortvorlagen](#antwortvorlagen)
 - [Kontakte / Kundenliste](#kontakte--kundenliste)
 - [Mailabruf auslösen](#mailabruf-auslösen)
@@ -97,6 +98,10 @@ siehe [Tests](#tests).
   **Antwortvorlagen**-Button fügt einen Textbaustein mit bereits ausgewerteten
   Makros ein. Siehe [Bisherigen Inhalt zitieren](#bisherigen-inhalt-zitieren)
   und [Antwortvorlagen](#antwortvorlagen).
+- **Vorherige Nachricht in der Mail**: Wie ein Mailprogramm beim *Antworten* kann
+  eine Antwort unter der Signatur die letzte Nachricht des Verlaufs mitschicken,
+  mit Kopf und ursprünglicher Formatierung. Siehe
+  [Vorherige Nachricht in der Mail](#vorherige-nachricht-in-der-mail).
 - **Autocomplete in Adressfeldern**: Beim Tippen in An/CC/BCC werden passende
   Kontakte des Projekts vorgeschlagen (ab 2 Zeichen, Dropdown mit Tastatur-
   und Mausnavigation, kommagetrennte Mehrfacheingabe). Display-Namen mit
@@ -733,6 +738,15 @@ Jede verarbeitete Mail wird als `.eml`-Datei am Ticket gespeichert (Anhang mit
 Beschreibung *Original E-Mail*). Die Datei ist über die Kundenkarte in der
 Ticket-Seitenleiste erreichbar.
 
+Jede Antwort aus dem Antwortformular und jede Initialmail wird ebenso abgelegt, als
+`sent_mail_<Zeitstempel>.eml` (Anhang mit Beschreibung *Sent E-Mail*). Die Kopie
+ist die MIME, die hinausging, ohne ihren `Bcc`-Header, damit ein Bcc-Empfänger
+auch für alle verborgen bleibt, die das Ticket öffnen können. Aus ihr zitiert
+[Vorherige Nachricht in der Mail](#vorherige-nachricht-in-der-mail), wenn die
+nächste Antwort auf unsere eigene folgt. Eine Kopie, die sich nicht speichern
+lässt (etwa über Redmines maximaler Anhangsgröße), wird protokolliert und
+übersprungen; die Antwort gilt trotzdem als versendet.
+
 Bei **Antwortmails** (d. h. die Mail wird als Journal an ein bestehendes Ticket
 angehängt) wird zusätzlich ein Download-Link am Anfang des Journalkommentars
 eingefügt, sodass die originale Mail direkt aus dem Ticket-Verlauf geöffnet
@@ -908,6 +922,10 @@ durch eine Leerzeile — bereits Getipptes wird nicht überschrieben.
 | Kompletter Verlauf | Die Beschreibung sowie alle öffentlichen Journal-Notizen, älteste zuerst, jeweils mit Verfasser und Zeitstempel. |
 | Mail-Verlauf | Die Beschreibung sowie nur die Notizen, zu denen es eine tatsächlich vom oder an den Kunden gesendete Mail gibt. |
 
+Eine Mail eines Absenders ohne Redmine-Konto wird unter dem anonymen Benutzer abgelegt; ihr
+Zitatkopf nennt stattdessen den Helpdesk-Kontakt, von dem die Mail kam (Name, oder Adresse, wenn er
+keinen hat).
+
 Drei Regeln, die man kennen sollte:
 
 - **Private Notizen werden nie zitiert**, auch nicht für Bearbeiter mit
@@ -932,6 +950,43 @@ Werkzeugleiste weist darauf hin.
 Im Text referenzierte Bilder – auch die, die ein Zitat aus der Ursprungsmail
 mitbringt – werden als Inline-Teile der Mail versendet, der Kunde sieht also die
 Bilder und kein leeres Kästchen.
+
+### Vorherige Nachricht in der Mail
+
+Unter den Feldern CC/BCC und den Anhängen hat das Antwortformular ein Kästchen
+**Vorherige Nachricht anhängen**, angehakt, sobald das Ticket eine vorherige
+Mail hat. Die Mail trägt dann unter der Signatur die letzte Nachricht des
+Verlaufs — das, was ein Mailprogramm unter eine Antwort setzt:
+
+```
+Von: Adolfo Ortiz <adolfo.ortiz@example.es>
+Gesendet: 4. November 2026 17:55
+An: support@example.com
+Cc: ...          (nur wenn es einen gab)
+Betreff: AW: Preislistenimport schlägt fehl
+<die ursprüngliche Mail mit ihrer Formatierung>
+```
+
+- **Nur die letzte Nachricht** — die letzte Mail des Kunden oder unsere letzte
+  Antwort, je nachdem, welche neuer ist. Sie trägt den älteren Verlauf bereits
+  unter sich, wie im Mailprogramm. Autoresponder und Rückfrage der
+  Vollständigkeitsprüfung gehören nicht zum Verlauf und werden übersprungen.
+- **Nur in der Mail.** Die Notiz am Ticket bleibt genau so, wie sie geschrieben
+  wurde.
+- **Das ursprüngliche HTML, kein `>`-Zitat.** Eine eingehende Mail kommt aus
+  ihrer archivierten `.eml` (dem HTML-Teil, oder dem Text, wenn es keinen gibt).
+  Skripte, Frames, Formulare, Event-Handler und `javascript:`-Links werden
+  entfernt; Tabellen, Schriften, Farben und Inline-Styles bleiben. Eingebettete
+  Bilder werden den Anhängen zugeordnet, die das Ticket für sie gespeichert hat,
+  und wie die Bilder der Notiz inline verschickt; ein Bild ohne Zuordnung
+  entfällt, statt kaputt verschickt zu werden.
+- **Unsere eigenen Antworten** werden aus ihrer archivierten Kopie zitiert
+  ([EML-Anhang](#eml-anhang-und-journalverlinkung)). Antworten von vor dieser
+  Kopie greifen auf ihre Journal-Notiz zurück.
+- Kopfbeschriftungen und Datum folgen Sprache und Zeitzone des Bearbeiters, wie
+  Kopf- und Fußzeile der Antwort.
+
+Ohne Haken ist die Mail genau so wie bisher.
 
 ### Antwortvorlagen
 

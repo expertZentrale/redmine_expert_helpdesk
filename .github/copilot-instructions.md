@@ -241,6 +241,13 @@ that order is what makes `safe_to_stop` trustworthy across pods.
     resolve project → central → constant and are **validated as hex, otherwise discarded**: they
     become CSS custom properties on `:root`, so an unchecked value is a style injection. The
     `.jstBlock` lookup must stay scoped to `#add_notes`. Migration 059.
+  - `previous_message.rb` / `sent_mail_archive.rb` — "Include previous message" (#64). The reply
+    controller appends `PreviousMessage.html_for` to `body_html` before the image pass; latest
+    message = incoming, or outgoing with a Message-ID (autoresponder/info request have none), body
+    from the `.eml` (sanitized, `cid:` mapped via `InlineImages.cid_index`, unmapped images removed),
+    else the linked journal note. `SentMailArchive.attach!` archives each sent reply and initial mail as
+    `sent_mail_*.eml` (*Sent E-Mail*, no Bcc) on the outgoing row; never raises. Jobs skip
+    `archived_eml?` attachments.
   - `init_mailer.rb` — outbound "initial" mail (contact-assign / "New Helpdesk Ticket" flow). With
     the mail ticked it hands over like a reply, but without a mode: the target gets the mail text and
     every ticket attachment. The form's `hdInitPlan()` mirrors its rules: first remaining To is the

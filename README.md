@@ -29,6 +29,7 @@ see [Tests](#tests).
 - [Email Processing](#email-processing) — fetch flow, reply matching, sending replies
 - [Contacts / Customer List](#contacts--customer-list)
 - [Quoting prior content](#quoting-prior-content)
+- [Previous message in the mail](#previous-message-in-the-mail)
 - [Answer templates](#answer-templates)
 - [Triggering a Mail Fetch](#triggering-a-mail-fetch)
   - [Maintenance mode (upgrades, scaling down)](#maintenance-mode-upgrades-scaling-down)
@@ -96,6 +97,9 @@ see [Tests](#tests).
   button inserts a canned response, macros already resolved. See
   [Quoting prior content](#quoting-prior-content) and
   [Answer templates](#answer-templates).
+- **Previous message in the mail**: Like a mail client on *Reply*, a reply can carry
+  the latest message of the conversation below the signature, with its header and
+  original formatting. See [Previous message in the mail](#previous-message-in-the-mail).
 - **Address field autocomplete**: Typing in To/CC/BCC fields suggests matching
   project contacts (from 2 characters, dropdown with keyboard and mouse
   navigation, comma-separated multi-value). Display names containing commas
@@ -704,6 +708,15 @@ Every processed mail is stored as a `.eml` file attached to the ticket
 (attachment description: *Original E-Mail*). The file is accessible via the
 customer card in the ticket sidebar.
 
+Every reply sent from the reply form, and every initial mail, is stored the same way, as
+`sent_mail_<timestamp>.eml` (attachment description: *Sent E-Mail*). The copy is
+the MIME that went out, without its `Bcc` header, so a blind recipient stays
+blind to everyone who can open the ticket. It is what
+[Previous message in the mail](#previous-message-in-the-mail) quotes when the
+next reply follows our own. A copy that cannot be stored (for instance one above
+Redmine's maximum attachment size) is logged and skipped; the reply counts as
+sent all the same.
+
 For **reply mails** (i.e. the mail is appended as a journal to an existing
 ticket), a download link is additionally inserted at the beginning of the
 journal comment so the original mail can be opened directly from the ticket
@@ -873,6 +886,9 @@ a blank line — nothing you already typed is overwritten.
 | Complete conversation | The description plus every public journal note, oldest first, each with its author and timestamp. |
 | Email conversation | The description plus only those notes that belong to a mail actually received from or sent to the customer. |
 
+A mail from a sender without a Redmine account is filed under the anonymous user; its quote header
+names the helpdesk contact the mail came from instead (name, or address when it has none).
+
 Three rules worth knowing:
 
 - **Private notes are never quoted**, not even for agents who hold
@@ -897,6 +913,41 @@ were left out.
 Images referenced in the note — including the ones a quote brings along from the
 original mail — are sent as inline parts, so the customer sees the pictures and
 not an empty box.
+
+### Previous message in the mail
+
+Below the CC/BCC fields and the attachments, the reply form has an **Include
+previous message** box, ticked by default whenever the ticket has a previous
+mail. The mail then carries, below the signature, the latest message of the
+conversation — what a mail client puts under a reply:
+
+```
+From: Adolfo Ortiz <adolfo.ortiz@example.es>
+Sent: 4 November 2026 17:55
+To: support@example.com
+Cc: ...          (only when there was one)
+Subject: RE: Price list import fails
+<the original mail, with its formatting>
+```
+
+- **Only the latest message** — the customer's last mail or our own last
+  reply, whichever is newer. It already carries the older history below
+  itself, as it does in a mail client. The autoresponder and the completeness
+  follow-up are not part of the conversation and are skipped.
+- **Only in the mail.** The note on the ticket stays exactly what you typed.
+- **The original HTML, not a `>` quote.** An incoming mail comes from its
+  archived `.eml` (the HTML part, or the text part when there is none). Scripts,
+  frames, forms, event handlers and `javascript:` links are removed; tables,
+  fonts, colours and inline styles stay. Embedded images are matched to the
+  attachments the ticket stored for them and sent inline like the images of the
+  note; an image that cannot be matched is left out rather than sent broken.
+- **Our own replies** are quoted from their archived copy
+  ([EML attachment](#eml-attachment-and-journal-link)). Replies sent before the
+  copy existed fall back to their journal note.
+- Header labels and the date follow your language and time zone, like the
+  header and footer of the reply.
+
+Untick the box and the mail is exactly what it was before.
 
 ### Answer templates
 

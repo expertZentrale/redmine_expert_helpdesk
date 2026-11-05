@@ -8,6 +8,35 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Replies can carry the previous message, as a mail client does on Reply (#64).** The reply form
+  has an *Include previous message* box, ticked by default whenever the ticket has a previous mail.
+  Below the signature the mail then carries the latest message of the conversation — the customer's
+  last mail or our own last reply — with an Outlook-style header (From, Sent, To, Cc, Subject) and
+  its original HTML body, not `>`-quoted text. Only that one message is appended: it already holds
+  the older history. The note on the ticket stays exactly as typed; the appended part is in the mail
+  only. Incoming bodies come from the archived `.eml` (HTML part preferred, text otherwise), are
+  stripped of scripts, frames, forms, event handlers and `javascript:` links, and keep their
+  tables, fonts and inline styles; their embedded images are matched to the ticket's attachments
+  and sent inline like any other reply image, and an image that cannot be matched is left out.
+  The autoresponder and the completeness follow-up are not conversation mails and are skipped.
+  Header labels and date follow the agent's language. Unticked, the mail is the same as before.
+- **Agent replies are archived as `.eml` on the ticket.** Every reply sent from the reply form,
+  and every initial mail, is stored as `sent_mail_<timestamp>.eml` (attachment description *Sent E-Mail*), without its Bcc
+  header, and linked to the reply's message log — the outgoing counterpart of *Original E-Mail*.
+  The next reply quotes it from there. Replies sent before this version fall back to their journal
+  note. Storing the copy never turns a sent reply into an error. The AI summary and the
+  completeness check skip these copies like the original mails.
+
+### Fixed
+
+- **Quotes no longer say "Anonymous wrote on" for customer mails.** A mail from a sender without
+  a Redmine account is filed under the anonymous user, and the *Quote* button named that user in
+  the header of the original mail and of every reply by mail. It now names the helpdesk contact the
+  mail came from (its name, or its address when it has none). Senders with a Redmine account keep
+  their account name.
+
 ### Changed
 
 - **The tests also run on MySQL and PostgreSQL.** CI runs the suite on MariaDB for every supported

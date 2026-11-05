@@ -302,6 +302,12 @@ flowchart LR
   on the ticket as well.
 - **Header** and **footer** of the mailbox frame the reply text. *Footer mode* decides between the
   mailbox footer and the central footer.
+- **Include previous message** (reply form, ticked by default) appends the latest mail of the
+  conversation below the footer: the customer's last mail or our last reply, with a From/Sent/To/
+  Cc/Subject header and its original HTML. Autoresponder and completeness follow-up are skipped.
+  The ticket note stays as typed.
+- Every agent reply and initial mail is archived on the ticket as `sent_mail_<timestamp>.eml` (*Sent E-Mail*),
+  without its Bcc header, on every route. The next reply quotes it from there.
 - Outgoing mails keep their markers even when another project's helpdesk address is a recipient.
   That project's mailbox removes them on arrival ([section 6](#6-one-mail-several-projects)).
 

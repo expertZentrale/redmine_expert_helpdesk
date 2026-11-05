@@ -90,6 +90,20 @@
         </td>
       </tr>
       <% end %>
+      <% if local_assigns[:previous_message] %>
+      <%# Appends the latest mail of the conversation below the signature, as a
+          mail client does on "Reply" (PreviousMessage). No name attribute: the
+          issue form must not submit it, only the reply request reads it. %>
+      <tr>
+        <th></th>
+        <td>
+          <label class="hd-att-label" title="<%= h(l(:text_helpdesk_include_previous_message_hint)) %>">
+            <input type="checkbox" id="hd-include-previous" value="1" checked="checked" />
+            <%= l(:label_helpdesk_include_previous_message) %>
+          </label>
+        </td>
+      </tr>
+      <% end %>
     </table>
     <% if footer_text.present? %>
       <div class="hd-footer-preview">
@@ -683,6 +697,10 @@ function hdParseList(value) {
       formData.append('reply_cc',     ccVal);
       formData.append('reply_bcc',    bccVal);
       if (handoverMode) { formData.append('handover_mode', handoverMode); }
+      var includePrevious = document.getElementById('hd-include-previous');
+      if (includePrevious && includePrevious.checked) {
+        formData.append('include_previous', '1');
+      }
       // Kennzeichnet die gesendete Mail als KI-entworfen (siehe Migration 054).
       if (window.hdAiDraft && window.hdAiDraft.used()) {
         formData.append('hd_ai_drafted', '1');
