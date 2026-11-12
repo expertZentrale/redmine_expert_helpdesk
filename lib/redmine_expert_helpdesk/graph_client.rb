@@ -22,6 +22,15 @@ module RedmineExpertHelpdesk
     GRAPH_BASE  = 'https://graph.microsoft.com/v1.0'.freeze
     TOKEN_CACHE_PREFIX = 'redmine_expert_helpdesk/graph_token'.freeze
 
+    # Seconds. A JSON call (list, folder lookup, move, mark read, token) answers
+    # within a second or two when Graph is healthy; when it is not, Graph itself
+    # gives up after about 30 s with a 504. 20 s ends that wait sooner, and every
+    # second counts while a fetch holds a web thread (see FetchAll). Raw MIME and
+    # sending carry attachments and keep the long timeout.
+    OPEN_TIMEOUT     = 10
+    READ_TIMEOUT     = 20
+    TRANSFER_TIMEOUT = 60
+
     # GraphError inherits from ProviderError so callers can rescue the common
     # provider error and still catch Graph failures.
     class GraphError < MailProvider::ProviderError; end
@@ -118,8 +127,8 @@ module RedmineExpertHelpdesk
       uri  = URI("#{GRAPH_BASE}/users/#{escape(mailbox)}/sendMail")
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl     = true
-      http.open_timeout = 15
-      http.read_timeout = 60
+      http.open_timeout = OPEN_TIMEOUT
+      http.read_timeout = TRANSFER_TIMEOUT
       req = Net::HTTP::Post.new(uri)
       req['Authorization'] = "Bearer #{access_token}"
       req['Content-Type']  = 'text/plain'
@@ -164,11 +173,11 @@ module RedmineExpertHelpdesk
       raise ConfigurationError.new(I18n.t(:error_helpdesk_graph_not_configured)) unless configured?
 
       uri = URI("https://login.microsoftonline.com/#{@settings['tenant_id']}/oauth2/v2.0/token")
-      response = Net::HTTP.post_form(uri,
-                                     'client_id'     => @settings['client_id'],
-                                     'client_secret' => @settings['client_secret'],
-                                     'scope'         => 'https://graph.microsoft.com/.default',
-                                     'grant_type'    => 'client_credentials')
+      response = post_token_form(uri,
+                                 'client_id'     => @settings['client_id'],
+                                 'client_secret' => @settings['client_secret'],
+                                 'scope'         => 'https://graph.microsoft.com/.default',
+                                 'grant_type'    => 'client_credentials')
 
       body = JSON.parse(response.body) rescue {}
       unless response.is_a?(Net::HTTPSuccess) && body['access_token']
@@ -203,7 +212,7 @@ module RedmineExpertHelpdesk
     end
 
     def get_raw(path)
-      request(:get, path).body
+      request(:get, path, nil, :read_timeout => TRANSFER_TIMEOUT).body
     end
 
     def post(path, payload)
@@ -216,12 +225,23 @@ module RedmineExpertHelpdesk
       response.body.present? ? (JSON.parse(response.body) rescue {}) : {}
     end
 
-    def request(method, path, payload = nil)
+    # Net::HTTP.post_form has no timeouts of its own (60 s defaults).
+    def post_token_form(uri, params)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      http.open_timeout = OPEN_TIMEOUT
+      http.read_timeout = READ_TIMEOUT
+      req = Net::HTTP::Post.new(uri.request_uri)
+      req.set_form_data(params)
+      http.request(req)
+    end
+
+    def request(method, path, payload = nil, read_timeout: READ_TIMEOUT)
       uri = URI("#{GRAPH_BASE}#{path}")
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = true
-      http.open_timeout = 15
-      http.read_timeout = 60
+      http.open_timeout = OPEN_TIMEOUT
+      http.read_timeout = read_timeout
 
       req = case method
             when :get   then Net::HTTP::Get.new(uri)

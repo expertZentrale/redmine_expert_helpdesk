@@ -7,6 +7,31 @@
 
 ## [Unreleased]
 
+### Behoben
+
+- **Ein langsamer oder gestörter Mail-Dienst legt Redmine nicht mehr lahm.** `fetch_all` läuft in
+  einem Web-Request und belegt einen Thread des Anwendungsservers, solange es auf den Mail-Dienst
+  wartet. Bei einer Störung von Exchange Online hing jeder Graph-Aufruf 30 Sekunden, ein Lauf über
+  sieben Postfächer dauerte Minuten, ein Reverse-Proxy wiederholte den Request, während Redmine jeden
+  Versuch zu Ende rechnete, und bald war kein Thread mehr frei – auch nicht für den Login. Jetzt läuft
+  immer nur ein `fetch_all` über alle Prozesse hinweg (ein zweiter Aufruf antwortet sofort mit
+  `"skipped": true`), nach 150 Sekunden beginnt ein Lauf kein Postfach und keine Nachricht mehr, und
+  hat ein Mail-Dienst mit Timeout oder 5xx/429 geantwortet, verschiebt der Lauf die übrigen Postfächer
+  dieses Dienstes (`"deferred": "service_unavailable"`), statt auf jedes zu warten. Eine Nachricht,
+  die am Dienst gescheitert ist, bleibt ungelesen im Postfach, statt in den Fehlerordner zu wandern.
+  Aufrufe an Microsoft Graph geben nach 20 statt 60 Sekunden auf (Laden und Senden einer Mail behalten
+  60), und der Abruf des Graph-Tokens hat eigene Timeouts. Der Abgleich der Phishing-Feeds, der mit
+  `fetch_all` mitläuft, startet als Hintergrundjob, wenn ein Feed fällig ist; im Request lud und
+  importierte er Zehntausende URLs und hielt ihn minutenlang auf. Die Sperre liegt in Redmines Cache:
+  Der Standard-Dateicache deckt einen Server ab; bei mehreren Anwendungsservern einen gemeinsamen Cache
+  (Redis oder Memcached) einrichten, siehe README.
+
+### Hinzugefügt
+
+- **Die Automatisierungs-Keys gehen auch als Header.** `fetch_all`, `sla_check` und `maintenance`
+  nehmen `Authorization: Bearer <key>` an; `?key=` funktioniert weiter, landet als Query-String aber in
+  Proxy- und Zugriffslogs.
+
 ### Geändert
 
 - **Die Tests laufen auch auf MySQL und PostgreSQL.** Die CI führt die Suite für jede unterstützte

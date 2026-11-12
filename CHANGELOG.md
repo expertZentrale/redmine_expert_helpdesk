@@ -8,6 +8,30 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **A slow or failing mail service can no longer take Redmine down.** `fetch_all` runs inside a
+  web request and holds an application server thread while it waits for the mail service. In an
+  Exchange Online outage every Graph call hung for 30 seconds, one run over seven mailboxes took
+  minutes, a reverse proxy retried the request while Redmine finished every attempt, and soon no
+  thread was left for anyone - login included. Now only one `fetch_all` runs at a time across all
+  processes (a second call answers at once with `"skipped": true`), a run starts no mailbox and no
+  message after 150 seconds, and once a mail service timed out or answered 5xx/429 the run defers
+  the remaining mailboxes on that service (`"deferred": "service_unavailable"`) instead of waiting
+  on each. A message that failed because the service did stays unread in the mailbox instead of
+  going to the error folder. Microsoft Graph calls give up after 20 seconds instead of 60 (downloading
+  and sending a mail keep 60), and requesting the Graph token has timeouts of its own. The phishing
+  feed sync that piggybacks on `fetch_all` runs as a background job when a feed is due; inline it
+  downloaded and imported tens of thousands of URLs and kept the request busy for minutes. The lock
+  lives in Redmine's cache: the default file cache covers one server; with several application
+  servers, configure a shared cache (Redis or Memcached), see the README.
+
+### Added
+
+- **The automation keys can be sent as a header.** `fetch_all`, `sla_check` and `maintenance` accept
+  `Authorization: Bearer <key>`; `?key=` still works, but a query string ends up in proxy and access
+  logs.
+
 ### Changed
 
 - **The tests also run on MySQL and PostgreSQL.** CI runs the suite on MariaDB for every supported

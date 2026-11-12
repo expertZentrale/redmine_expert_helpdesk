@@ -993,11 +993,46 @@ There is intentionally no built-in scheduler. Two options:
 2. **HTTP endpoint** for curl/cron (all active mailboxes):
 
    ```bash
-   curl "https://redmine.example.com/helpdesk/fetch_all?key=API-KEY"
+   curl --max-time 240 -H "Authorization: Bearer API-KEY" "https://redmine.example.com/helpdesk/fetch_all"
    ```
 
    The API key is configured in the plugin settings. Without a configured key
-   the endpoint is disabled. The response is a JSON summary.
+   the endpoint is disabled. The response is a JSON summary. `?key=API-KEY`
+   works too, but a query string ends up in proxy and access logs, so prefer the
+   header; the same goes for `maintenance` and `sla_check`.
+
+   A fetch runs inside a web request and holds one of the application server's
+   threads while it waits for the mail service. So that a slow or failing mail
+   service cannot take Redmine down for everybody:
+
+   - Only one `fetch_all` runs at a time, across all processes. A call while
+     another one runs answers at once with `"skipped": true` and
+     `"reason": "already_running"`.
+   - A run starts no further mailbox and no further message after 150 seconds.
+     Those mailboxes report `"deferred": "time_budget"`; their mails are fetched
+     next time.
+   - When the mail service times out or answers with a server error, the run
+     does not ask it again. The remaining mailboxes on that service (all
+     Microsoft 365 mailboxes share one, IMAP mailboxes share their server)
+     report `"deferred": "service_unavailable"`. A message that failed this way
+     stays unread in the mailbox instead of going to the error folder.
+   - Microsoft Graph calls give up after 20 seconds (60 for downloading and
+     sending a mail).
+
+   Call the endpoint directly, not through a reverse proxy that retries timed-out
+   requests: Redmine keeps working on every attempt the proxy gave up on. Keep the
+   client timeout (`--max-time`) below the cron interval.
+
+   **The lock lives in Redmine's cache** (`Rails.cache`), so it only spans the
+   processes that share that cache. Redmine's default file cache (`tmp/cache`)
+   covers every process on one server. With several application servers (or
+   containers that do not share `tmp/cache`), configure a shared cache such as
+   Redis or Memcached in `config/additional_environment.rb`. Otherwise two servers
+   can fetch the same mailbox at once, and a mail fetched twice is added to its
+   ticket twice, unless *Match replies only within the mailbox's project* is on,
+   which skips a Message-ID the project already has. The SLA breach check and the
+   phishing feed sync use the same kind of lock; there a second run at most sends a
+   breach notice twice or downloads a feed twice.
 
 ### Maintenance mode (upgrades, scaling down)
 

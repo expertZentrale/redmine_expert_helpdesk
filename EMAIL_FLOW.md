@@ -63,24 +63,34 @@ flowchart LR
 ## 2. Fetching
 
 There is no scheduler inside the plugin. A fetch starts from the button in the project settings or
-from the cron endpoint `GET /helpdesk/fetch_all?key=…`, which also runs the SLA breach check and
+from the cron endpoint `GET /helpdesk/fetch_all`, which also runs the SLA breach check and
 the phishing feed sync.
 
 ```mermaid
 flowchart TD
   T["Fetch button<br/>or /helpdesk/fetch_all"] --> M{"Fetching paused?<br/><i>Pause mail fetching</i>"}
   M -- yes --> X["Nothing is fetched"]
-  M -- no --> L["For every mailbox that is enabled,<br/>in an active project with the Helpdesk module"]
-  L --> Q["Read up to 25 messages from the source folder<br/><i>Source folder</i><br/><i>Only fetch unread mails</i> (IMAP)"]
+  M -- no --> K{"fetch_all only:<br/>another fetch_all running?"}
+  K -- yes --> KS["Answer at once,<br/>nothing is fetched"]
+  K -- no --> L["For every mailbox that is enabled,<br/>in an active project with the Helpdesk module"]
+  L --> G{"fetch_all only: 150 s used up, or its<br/>mail service failed earlier in this run?"}
+  G -- yes --> DF["Mailbox deferred<br/>to the next fetch"]
+  G -- no --> Q["Read up to 25 messages from the source folder<br/><i>Source folder</i><br/><i>Only fetch unread mails</i> (IMAP)"]
   Q --> E["Process each message<br/>sections 3 to 5"]
-  E --> W{"Fetching paused<br/>in the meantime?"}
-  W -- yes --> STOP["Finish the current message,<br/>leave the rest for the next fetch"]
+  E --> W{"Fetching paused, fetch_all's 150 s<br/>used up, or the mail service failed?"}
+  W -- yes --> STOP["Stop, leave the rest unread<br/>for the next fetch"]
   W -- no --> E
 ```
 
 - **IMAP** reads all messages of the source folder, or only unread ones when *Only fetch unread
   mails* is set. Microsoft Graph always reads unread messages only.
 - A processed mail is marked as read and moved, so it is never picked up twice.
+- "The mail service failed" means a timeout, a broken connection, or an HTTP 5xx or 429 answer -
+  not a problem of one mailbox such as a missing folder or denied access. A message whose
+  processing failed that way stays unread in the source folder; any other failure moves it to the
+  error folder. All Microsoft 365 mailboxes share one service, IMAP mailboxes share their server.
+- `fetch_all` runs inside a web request, so these limits keep an outage of the mail service from
+  holding the application server's threads; the *Fetch mails now* button has no time limit.
 
 ---
 
