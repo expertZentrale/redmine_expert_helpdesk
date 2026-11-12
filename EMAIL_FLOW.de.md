@@ -89,9 +89,10 @@ flowchart TD
   abgeholt.
 - „Mail-Dienst ausgefallen“ heißt: Timeout, abgebrochene Verbindung oder eine Antwort mit HTTP 5xx
   oder 429 – kein Problem eines einzelnen Postfachs wie ein fehlender Ordner oder verweigerter
-  Zugriff. Eine Nachricht, die so gescheitert ist, bleibt ungelesen im Quellordner; jeder andere
-  Fehler verschiebt sie in den Fehlerordner. Alle Microsoft-365-Postfächer teilen sich einen Dienst,
-  IMAP-Postfächer ihren Server.
+  Zugriff. Eine Nachricht, die so gescheitert ist, bevor Redmines Mail-Handler sie bekam, bleibt
+  ungelesen im Quellordner; nach der Übergabe kann schon ein Ticket oder eine Notiz existieren, dann
+  kommt sie wie bei jedem anderen Fehler in den Fehlerordner und wird nie zweimal eingelesen. Alle
+  Microsoft-365-Postfächer teilen sich einen Dienst, IMAP-Postfächer ihren Server.
 - `fetch_all` läuft in einem Web-Request. Diese Grenzen verhindern, dass ein Ausfall des Mail-Dienstes
   die Threads des Anwendungsservers festhält; der Button *Mails jetzt abrufen* hat keine Zeitgrenze.
 

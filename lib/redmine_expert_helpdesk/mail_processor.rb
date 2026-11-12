@@ -82,11 +82,13 @@ module RedmineExpertHelpdesk
                               "stopped after #{i} of #{messages.size} message(s)"
             break
           end
-          if deadline && FetchAll.clock >= deadline
-            Rails.logger.warn "Helpdesk (#{@mailbox.mailbox_address}): time budget used up - " \
-                              "stopped after #{i} of #{messages.size} message(s), the rest waits for the next fetch"
-            break
-          end
+        end
+        # Before every message, the first included: listing alone may have used
+        # up the budget.
+        if deadline && FetchAll.clock >= deadline
+          Rails.logger.warn "Helpdesk (#{@mailbox.mailbox_address}): time budget used up - " \
+                            "stopped after #{i} of #{messages.size} message(s), the rest waits for the next fetch"
+          break
         end
 
         begin
@@ -94,17 +96,23 @@ module RedmineExpertHelpdesk
         rescue StandardError => e
           Rails.logger.error "Helpdesk: Fehler bei Nachricht #{meta.id} (#{@mailbox.mailbox_address}): #{e.message}"
           result.errors << { :subject => meta.subject, :error => e.message }
-          # The service is down, not the message: leave it unread where it is
-          # for the next fetch instead of filing it as failed, and do not try
-          # the remaining messages against a service that just timed out.
-          if MailProvider.service_unavailable?(e)
+          unavailable = MailProvider.service_unavailable?(e)
+          # The service failed, not the message. Before MailHandler saw the mail
+          # nothing was stored: leave it unread for the next fetch instead of
+          # filing a good mail as failed. After the hand-off a ticket or note may
+          # exist, and an unread mail would be ingested a second time - so it is
+          # filed as failed, as any other error.
+          unless unavailable && !@handed_to_mail_handler
+            begin
+              move_failed(meta.id)
+            rescue StandardError => move_err
+              Rails.logger.warn "Helpdesk: Nachricht #{meta.id} konnte nicht in Fehlerordner verschoben werden: #{move_err.message}"
+            end
+          end
+          # Do not try the remaining messages against a service that just failed.
+          if unavailable
             @service_unavailable = true
             break
-          end
-          begin
-            move_failed(meta.id)
-          rescue StandardError => move_err
-            Rails.logger.warn "Helpdesk: Nachricht #{meta.id} konnte nicht in Fehlerordner verschoben werden: #{move_err.message}"
           end
         end
       end
@@ -125,6 +133,9 @@ module RedmineExpertHelpdesk
     end
 
     def process_message(meta, result)
+      # Set right before MailHandler.receive: from there on a failure may leave
+      # a ticket or note behind (see run_cycle).
+      @handed_to_mail_handler = false
       sender = meta.from_address.to_s.downcase
       sender_name = meta.from_name.to_s
       subject = meta.subject.to_s
@@ -217,6 +228,7 @@ module RedmineExpertHelpdesk
       # embedded images (only needed when Redmine builds the body from the HTML
       # part - see InlineImages). The original MIME stays untouched, it is what
       # gets archived as .eml further down.
+      @handed_to_mail_handler = true
       object = MailHandler.receive(InlineImages.prepare_mime(mime), mail_handler_options)
 
       unless object

@@ -1055,7 +1055,9 @@ Es gibt bewusst keinen eingebauten Scheduler. Zwei Wege:
      ihn nicht noch einmal. Die übrigen Postfächer dieses Dienstes (alle
      Microsoft-365-Postfächer teilen sich einen, IMAP-Postfächer ihren Server)
      melden `"deferred": "service_unavailable"`. Eine so gescheiterte Nachricht
-     bleibt ungelesen im Postfach, statt in den Fehlerordner zu wandern.
+     bleibt ungelesen im Postfach, wenn Redmine sie noch nicht verarbeitet hatte,
+     statt in den Fehlerordner zu wandern; danach kommt sie wie bisher in den
+     Fehlerordner, damit sie nie zweimal eingelesen wird.
    - Aufrufe an Microsoft Graph geben nach 20 Sekunden auf (60 beim Laden und
      Senden einer Mail).
 

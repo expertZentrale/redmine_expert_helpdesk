@@ -1015,7 +1015,9 @@ There is intentionally no built-in scheduler. Two options:
      does not ask it again. The remaining mailboxes on that service (all
      Microsoft 365 mailboxes share one, IMAP mailboxes share their server)
      report `"deferred": "service_unavailable"`. A message that failed this way
-     stays unread in the mailbox instead of going to the error folder.
+     before Redmine processed it stays unread in the mailbox instead of going to
+     the error folder; once processed, it goes there as before, so it is never
+     ingested twice.
    - Microsoft Graph calls give up after 20 seconds (60 for downloading and
      sending a mail).
 

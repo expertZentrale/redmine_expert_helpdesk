@@ -18,8 +18,8 @@
   processes (a second call answers at once with `"skipped": true`), a run starts no mailbox and no
   message after 150 seconds, and once a mail service timed out or answered 5xx/429 the run defers
   the remaining mailboxes on that service (`"deferred": "service_unavailable"`) instead of waiting
-  on each. A message that failed because the service did stays unread in the mailbox instead of
-  going to the error folder. Microsoft Graph calls give up after 20 seconds instead of 60 (downloading
+  on each. A message that failed because the service did, before Redmine processed it, stays unread
+  in the mailbox instead of going to the error folder. Microsoft Graph calls give up after 20 seconds instead of 60 (downloading
   and sending a mail keep 60), and requesting the Graph token has timeouts of its own. The phishing
   feed sync that piggybacks on `fetch_all` runs as a background job when a feed is due; inline it
   downloaded and imported tens of thousands of URLs and kept the request busy for minutes. The lock

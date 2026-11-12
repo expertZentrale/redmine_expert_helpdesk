@@ -178,13 +178,16 @@ No built-in scheduler. Fetch runs via the project settings button
 phishing-feed sync.
 **`FetchAll` (`fetch_all.rb`) guards the cron run**, which holds a web thread for its whole
 duration (an Exchange outage on 2026-11-12 plus proxy retries took every thread): a cache lock
-(one run across pods, token-checked release, `LOCK_TTL` 10 min; Redmine's tests run a null store,
+(one run across pods, `LOCK_TTL` 10 min, deleted only while the run is `RELEASE_MARGIN` inside the
+TTL - cache stores have no atomic compare-and-delete; Redmine's tests run a null store,
 so lock tests swap in a `MemoryStore`), a `TIME_BUDGET` of 150 s passed to
 `MailProcessor#process_all(limit, deadline:)` as a monotonic `FetchAll.clock` value (stub that,
 not `Time`), and per-run deferral of every mailbox on a service (`FetchAll.service_key`: `graph`,
 or `imap:<host>`) after `MailProvider.service_unavailable?` (timeout/network error anywhere in the
 cause chain, or `ProviderError#status` 5xx/429). `MailProcessor` leaves a message that failed that
-way unread instead of `move_failed`. Graph JSON calls use `READ_TIMEOUT` 20 s, raw MIME and sending
+way unread instead of `move_failed` only before the `MailHandler` hand-off (`@handed_to_mail_handler`);
+after it a ticket may exist, so `move_failed` as before (never ingest a mail twice). The deadline is
+checked before every message, the first included. Graph JSON calls use `READ_TIMEOUT` 20 s, raw MIME and sending
 `TRANSFER_TIMEOUT` 60 s.
 **The cache locks** (`FetchAll`, `SlaBreachCheck`, `PhishingFeeds`) span only the processes that
 share `Rails.cache`: Redmine's default `FileStore` in `tmp/cache` covers one host, so installs with

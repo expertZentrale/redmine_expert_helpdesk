@@ -120,14 +120,23 @@ class FetchAllTest < ActiveSupport::TestCase
     assert_nil Rails.cache.read(FetchAll::LOCK_KEY)
   end
 
-  # After LOCK_TTL another run may have taken the lock; finishing late must not
-  # free it for a third.
-  def test_a_lock_taken_over_meanwhile_is_left_alone
-    box = mailbox('a@example.com')
-    processors(box => FakeProcessor.new { Rails.cache.write(FetchAll::LOCK_KEY, 'next run') })
+  # Near LOCK_TTL the entry may expire and be taken by the next run at any
+  # moment; deleting it then could free that run's lock for a third. Such a run
+  # leaves the lock to expire.
+  def test_a_run_that_came_close_to_the_ttl_leaves_the_lock_to_expire
+    FetchAll.any_instance.stubs(:run).returns({})
+    FetchAll.stubs(:clock).returns(0, FetchAll::LOCK_TTL.to_i - FetchAll::RELEASE_MARGIN)
 
-    FetchAll.run([box])
-    assert_equal 'next run', Rails.cache.read(FetchAll::LOCK_KEY)
+    FetchAll.run([])
+    assert Rails.cache.exist?(FetchAll::LOCK_KEY)
+  end
+
+  def test_a_normal_run_releases_the_lock
+    FetchAll.any_instance.stubs(:run).returns({})
+    FetchAll.stubs(:clock).returns(0, 5)
+
+    FetchAll.run([])
+    assert_not Rails.cache.exist?(FetchAll::LOCK_KEY)
   end
 
   # --- no second try against a service that is down -------------------------
@@ -217,10 +226,22 @@ class FetchAllTest < ActiveSupport::TestCase
     processor = processor_with(ListingProvider.new)
     handled = []
     processor.define_singleton_method(:process_message) { |meta, _result| handled << meta.id }
+    FetchAll.stubs(:clock).returns(0, 1000)
+
+    processor.process_all(25, :deadline => 500)
+    assert_equal %w[m1], handled
+  end
+
+  # A slow listing can use up the budget on its own; then not even the first
+  # message is started.
+  def test_processor_starts_no_message_when_listing_used_up_the_budget
+    processor = processor_with(ListingProvider.new)
+    handled = []
+    processor.define_singleton_method(:process_message) { |meta, _result| handled << meta.id }
     FetchAll.stubs(:clock).returns(1000)
 
     processor.process_all(25, :deadline => 500)
-    assert_equal %w[m1], handled, 'the first message is always handled, then the run stops'
+    assert_empty handled
   end
 
   def test_processor_without_deadline_handles_every_message
@@ -247,8 +268,9 @@ class FetchAllTest < ActiveSupport::TestCase
     assert_not processor.service_unavailable?
   end
 
-  # The service failed, not the message: it must stay unread in the source
-  # folder for the next fetch, not end up in the error folder.
+  # The service failed before MailHandler saw the mail (here: downloading the
+  # MIME): nothing was stored, so it stays unread for the next fetch instead of
+  # ending up in the error folder.
   def test_processor_leaves_a_message_in_place_and_stops_when_the_service_times_out
     provider = ListingProvider.new
     processor = processor_with(provider, :failed_folder => 'Fehler')
@@ -263,6 +285,26 @@ class FetchAllTest < ActiveSupport::TestCase
     assert_empty provider.calls, 'neither marked read nor moved'
     assert processor.service_unavailable?
     assert_equal 1, result.errors.size
+  end
+
+  # After the hand-off a ticket or note may exist. Left unread, the mail would
+  # be ingested a second time on the next fetch - it is filed as failed instead,
+  # and the cycle still stops.
+  def test_processor_files_a_message_as_failed_when_the_service_fails_after_the_hand_off
+    provider = ListingProvider.new
+    processor = processor_with(provider, :failed_folder => 'Fehler')
+    handled = []
+    processor.define_singleton_method(:process_message) do |meta, _result|
+      handled << meta.id
+      @handed_to_mail_handler = true
+      raise Net::ReadTimeout
+    end
+
+    processor.process_all
+    assert_equal %w[m1], handled
+    assert_includes provider.calls, [:mark_as_read, 'm1']
+    assert_includes provider.calls, [:move_message, 'm1', 'Fehler']
+    assert processor.service_unavailable?
   end
 
   def test_processor_still_files_a_broken_message_as_failed

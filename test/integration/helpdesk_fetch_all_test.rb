@@ -30,6 +30,16 @@ class HelpdeskFetchAllEndpointTest < Redmine::IntegrationTest
     assert_equal 2, json['mailboxes']['support@example.com']['processed']
   end
 
+  # The scheme name is case-insensitive (RFC 9110).
+  def test_accepts_the_bearer_scheme_in_any_case
+    RedmineExpertHelpdesk::FetchAll.expects(:run).twice.returns({})
+
+    get '/helpdesk/fetch_all', :headers => { 'Authorization' => "bearer #{KEY}" }
+    assert_response :success
+    get '/helpdesk/fetch_all', :headers => { 'Authorization' => "BEARER  #{KEY}" }
+    assert_response :success
+  end
+
   def test_still_accepts_the_key_as_query_parameter
     RedmineExpertHelpdesk::FetchAll.expects(:run).returns({})
 

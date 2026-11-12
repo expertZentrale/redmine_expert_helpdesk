@@ -123,8 +123,9 @@ class HelpdeskFetchController < ApplicationController
       ActiveSupport::SecurityUtils.secure_compare(configured, provided)
   end
 
+  # The scheme name is case-insensitive (RFC 9110), "bearer <key>" counts too.
   def bearer_key
-    header = request.authorization.to_s
-    header.start_with?('Bearer ') ? header.sub('Bearer ', '').strip : nil
+    match = request.authorization.to_s.match(/\ABearer\s+(\S.*)\z/i)
+    match && match[1].strip
   end
 end

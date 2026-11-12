@@ -18,7 +18,8 @@
   `"skipped": true`), nach 150 Sekunden beginnt ein Lauf kein Postfach und keine Nachricht mehr, und
   hat ein Mail-Dienst mit Timeout oder 5xx/429 geantwortet, verschiebt der Lauf die übrigen Postfächer
   dieses Dienstes (`"deferred": "service_unavailable"`), statt auf jedes zu warten. Eine Nachricht,
-  die am Dienst gescheitert ist, bleibt ungelesen im Postfach, statt in den Fehlerordner zu wandern.
+  die am Dienst gescheitert ist, bevor Redmine sie verarbeitet hat, bleibt ungelesen im Postfach,
+  statt in den Fehlerordner zu wandern.
   Aufrufe an Microsoft Graph geben nach 20 statt 60 Sekunden auf (Laden und Senden einer Mail behalten
   60), und der Abruf des Graph-Tokens hat eigene Timeouts. Der Abgleich der Phishing-Feeds, der mit
   `fetch_all` mitläuft, startet als Hintergrundjob, wenn ein Feed fällig ist; im Request lud und

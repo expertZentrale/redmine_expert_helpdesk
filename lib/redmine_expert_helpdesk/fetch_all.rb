@@ -29,6 +29,10 @@ module RedmineExpertHelpdesk
     # holding the lock: fetching resumes after this at the latest.
     LOCK_TTL = 10.minutes
 
+    # Seconds before LOCK_TTL from which a run no longer deletes the lock on
+    # its own (see run).
+    RELEASE_MARGIN = 60
+
     # Messages per mailbox and run, as for the project's "fetch now" button.
     LIMIT = 25
 
@@ -36,14 +40,17 @@ module RedmineExpertHelpdesk
       # Fetches +mailboxes+ and returns { address => result hash }, or nil when
       # another run holds the lock.
       def run(mailboxes)
-        token = SecureRandom.hex(8)
-        return nil unless Rails.cache.write(LOCK_KEY, token, :unless_exist => true, :expires_in => LOCK_TTL)
+        return nil unless Rails.cache.write(LOCK_KEY, Time.current.to_i, :unless_exist => true, :expires_in => LOCK_TTL)
 
+        started = clock
         begin
           new(mailboxes).run
         ensure
-          # Only our own lock: once LOCK_TTL has passed, another run may hold it.
-          Rails.cache.delete(LOCK_KEY) if Rails.cache.read(LOCK_KEY) == token
+          # Cache stores offer no atomic compare-and-delete, and reading the
+          # entry before deleting it leaves a gap. Well inside LOCK_TTL the entry
+          # cannot have expired, so it is still ours; a run that came close to
+          # LOCK_TTL leaves it to expire rather than delete the next run's lock.
+          Rails.cache.delete(LOCK_KEY) if clock - started < LOCK_TTL.to_i - RELEASE_MARGIN
         end
       end
 

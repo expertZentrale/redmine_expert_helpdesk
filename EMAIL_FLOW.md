@@ -86,9 +86,11 @@ flowchart TD
   mails* is set. Microsoft Graph always reads unread messages only.
 - A processed mail is marked as read and moved, so it is never picked up twice.
 - "The mail service failed" means a timeout, a broken connection, or an HTTP 5xx or 429 answer -
-  not a problem of one mailbox such as a missing folder or denied access. A message whose
-  processing failed that way stays unread in the source folder; any other failure moves it to the
-  error folder. All Microsoft 365 mailboxes share one service, IMAP mailboxes share their server.
+  not a problem of one mailbox such as a missing folder or denied access. A message that failed that
+  way before Redmine's mail handler got it stays unread in the source folder; after the hand-off a
+  ticket or note may already exist, so it goes to the error folder like any other failure and is
+  never ingested twice. All Microsoft 365 mailboxes share one service, IMAP mailboxes share their
+  server.
 - `fetch_all` runs inside a web request, so these limits keep an outage of the mail service from
   holding the application server's threads; the *Fetch mails now* button has no time limit.
 
