@@ -6,6 +6,17 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [Unreleased]
+
+### Fixed
+
+- **No mailbox is left behind while a mail service struggles.** 0.25.0 deferred the remaining
+  mailboxes of a service after its first timeout or server error, and fetched in a fixed order - so
+  one broken mailbox, or an outage that hit only some mailboxes (as Exchange outages often do), kept
+  the same mailboxes waiting on every run. `fetch_all` now takes the mailboxes in turn, the one
+  attempted longest ago first, and defers the rest of a service only after three failures in a row;
+  a success in between starts the count again.
+
 ## [0.25.0] - 2026-11-12
 
 ### Fixed

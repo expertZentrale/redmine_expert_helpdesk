@@ -13,10 +13,16 @@ class FetchAllTest < ActiveSupport::TestCase
 
   Meta = Struct.new(:id, :subject)
 
-  # What FetchAll reads from a mailbox.
-  FakeMailbox = Struct.new(:mailbox_address, :provider, :imap_host, :project) do
+  # What FetchAll reads from and writes to a mailbox.
+  FakeMailbox = Struct.new(:mailbox_address, :provider, :imap_host, :project, :id,
+                           :last_fetched_at, :last_error_at, :last_error) do
     def imap?
       provider == 'imap'
+    end
+
+    def update_columns(attributes)
+      attributes.each { |name, value| self[name] = value }
+      true
     end
   end
 
@@ -83,8 +89,11 @@ class FetchAllTest < ActiveSupport::TestCase
     Rails.cache = @previous_cache
   end
 
-  def mailbox(address, provider = 'graph', host = nil)
-    FakeMailbox.new(address, provider, host, @project)
+  # Never attempted, ids in creation order: in_turn keeps the order they are
+  # created in.
+  def mailbox(address, provider = 'graph', host = nil, last_attempt: nil)
+    @next_id = (@next_id || 0) + 1
+    FakeMailbox.new(address, provider, host, @project, @next_id, last_attempt)
   end
 
   def processors(map)
@@ -141,32 +150,88 @@ class FetchAllTest < ActiveSupport::TestCase
 
   # --- no second try against a service that is down -------------------------
 
-  def test_an_unavailable_service_defers_its_other_mailboxes_but_not_other_services
-    g1 = mailbox('g1@example.com')
-    g2 = mailbox('g2@example.com')
+  def test_three_failures_in_a_row_defer_the_rest_of_that_service_but_not_other_services
+    g1, g2, g3, g4 = %w[g1 g2 g3 g4].map { |name| mailbox("#{name}@example.com") }
     i1 = mailbox('i1@example.com', 'imap', 'mail.example.com')
-    processors(g1 => FakeProcessor.new(:unavailable => true), i1 => FakeProcessor.new)
-    MailProcessor.expects(:new).with(g2).never
+    processors(g1 => FakeProcessor.new(:unavailable => true), g2 => FakeProcessor.new(:unavailable => true),
+               g3 => FakeProcessor.new(:unavailable => true), i1 => FakeProcessor.new)
+    MailProcessor.expects(:new).with(g4).never
 
-    summary = FetchAll.new([g1, g2, i1]).run
-    assert summary['g1@example.com'].key?(:processed)
-    assert_equal({ :deferred => 'service_unavailable' }, summary['g2@example.com'])
+    summary = FetchAll.new([g1, g2, g3, g4, i1]).run
+    %w[g1 g2 g3].each { |name| assert summary["#{name}@example.com"].key?(:processed) }
+    assert_equal({ :deferred => 'service_unavailable' }, summary['g4@example.com'])
     assert summary['i1@example.com'].key?(:processed), 'an IMAP server is a service of its own'
+  end
+
+  # An Exchange outage often hits only some mailboxes, and a single broken one
+  # must not hold back the rest: a success in between starts the count again.
+  def test_a_success_in_between_resets_the_count
+    boxes = %w[g1 g2 g3 g4 g5].map { |name| mailbox("#{name}@example.com") }
+    unavailable = [true, false, true, true, false]
+    processors(boxes.zip(unavailable.map { |flag| FakeProcessor.new(:unavailable => flag) }).to_h)
+
+    summary = FetchAll.new(boxes).run
+    assert(summary.values.none? { |result| result.key?(:deferred) }, summary.inspect)
   end
 
   # IMAP wraps the whole session in Timeout, which raises out of process_all.
   def test_a_timeout_raised_out_of_the_fetch_counts_as_unavailable
-    i1 = mailbox('i1@example.com', 'imap', 'mail.example.com')
-    i2 = mailbox('i2@example.com', 'imap', 'MAIL.example.com')
-    i3 = mailbox('i3@example.com', 'imap', 'other.example.com')
-    processors(i1 => FakeProcessor.new(:raises => Timeout::Error.new('execution expired')),
-               i3 => FakeProcessor.new)
-    MailProcessor.expects(:new).with(i2).never
+    i1, i2, i3, i4 = %w[i1 i2 i3 i4].map { |name| mailbox("#{name}@example.com", 'imap', 'mail.example.com') }
+    i4.imap_host = 'MAIL.example.com'
+    other = mailbox('o1@example.com', 'imap', 'other.example.com')
+    timeout = Timeout::Error.new('execution expired')
+    processors(i1 => FakeProcessor.new(:raises => timeout), i2 => FakeProcessor.new(:raises => timeout),
+               i3 => FakeProcessor.new(:raises => timeout), other => FakeProcessor.new)
+    MailProcessor.expects(:new).with(i4).never
 
-    summary = FetchAll.new([i1, i2, i3]).run
+    summary = FetchAll.new([i1, i2, i3, i4, other]).run
     assert_equal({ :error => 'execution expired' }, summary['i1@example.com'])
-    assert_equal({ :deferred => 'service_unavailable' }, summary['i2@example.com'], 'host compared case-insensitively')
-    assert summary['i3@example.com'].key?(:processed)
+    assert_equal({ :deferred => 'service_unavailable' }, summary['i4@example.com'], 'host compared case-insensitively')
+    assert summary['o1@example.com'].key?(:processed)
+  end
+
+  # process_all records its outcome itself; an error raised out of it is
+  # recorded here, or the mailbox would look untried and stay first in line.
+  def test_an_error_raised_out_of_the_fetch_is_recorded_on_the_mailbox
+    box = mailbox('i1@example.com', 'imap', 'mail.example.com')
+    processors(box => FakeProcessor.new(:raises => Timeout::Error.new('execution expired')))
+
+    FetchAll.new([box]).run
+    assert_not_nil box.last_error_at
+    assert_includes box.last_error, 'execution expired'
+  end
+
+  # --- taking turns ----------------------------------------------------------
+
+  def test_mailboxes_take_turns_longest_since_the_last_attempt_first
+    recent    = mailbox('recent@example.com', :last_attempt => 1.minute.ago)
+    never     = mailbox('never@example.com')
+    long_ago  = mailbox('long-ago@example.com', :last_attempt => 2.hours.ago)
+    errored   = mailbox('errored@example.com')
+    errored.last_error_at = 30.minutes.ago
+
+    assert_equal %w[never long-ago errored recent],
+                 FetchAll.in_turn([recent, never, long_ago, errored]).map { |box| box.mailbox_address.split('@').first }
+  end
+
+  # The newer of the two timestamps counts: a mailbox that just failed goes to
+  # the back even if its last success is old.
+  def test_a_mailbox_that_just_failed_goes_to_the_back
+    failing = mailbox('failing@example.com', :last_attempt => 3.hours.ago)
+    failing.last_error_at = Time.current
+    other = mailbox('other@example.com', :last_attempt => 1.hour.ago)
+
+    assert_equal [other, failing], FetchAll.in_turn([failing, other])
+  end
+
+  def test_the_run_fetches_in_turn
+    late  = mailbox('late@example.com', :last_attempt => 1.minute.ago)
+    early = mailbox('early@example.com', :last_attempt => 1.hour.ago)
+    fetched = []
+    processors(late => FakeProcessor.new { fetched << 'late' }, early => FakeProcessor.new { fetched << 'early' })
+
+    FetchAll.new([late, early]).run
+    assert_equal %w[early late], fetched
   end
 
   def test_an_error_of_one_mailbox_does_not_stop_the_others

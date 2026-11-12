@@ -74,8 +74,8 @@ flowchart TD
   M -- ja --> X["Es wird nichts abgerufen"]
   M -- nein --> K{"Nur fetch_all:<br/>läuft schon ein fetch_all?"}
   K -- ja --> KS["Sofort antworten,<br/>es wird nichts abgerufen"]
-  K -- nein --> L["Für jedes aktive Postfach<br/>in einem aktiven Projekt mit Helpdesk-Modul"]
-  L --> G{"Nur fetch_all: 150 s verbraucht, oder sein<br/>Mail-Dienst ist in diesem Lauf schon ausgefallen?"}
+  K -- nein --> L["Für jedes aktive Postfach<br/>in einem aktiven Projekt mit Helpdesk-Modul<br/>(fetch_all: am längsten nicht versuchtes zuerst)"]
+  L --> G{"Nur fetch_all: 150 s verbraucht, oder sein Mail-Dienst<br/>in diesem Lauf dreimal in Folge ausgefallen?"}
   G -- ja --> DF["Postfach auf den<br/>nächsten Abruf verschoben"]
   G -- nein --> Q["Bis zu 25 Nachrichten aus dem Quellordner lesen<br/><i>Quellordner</i><br/><i>Nur ungelesene Mails abrufen</i> (IMAP)"]
   Q --> E["Jede Nachricht verarbeiten<br/>Abschnitte 3 bis 5"]
@@ -96,6 +96,9 @@ flowchart TD
   Microsoft-365-Postfächer teilen sich einen Dienst, IMAP-Postfächer ihren Server.
 - `fetch_all` läuft in einem Web-Request. Diese Grenzen verhindern, dass ein Ausfall des Mail-Dienstes
   die Threads des Anwendungsservers festhält; der Button *Mails jetzt abrufen* hat keine Zeitgrenze.
+- `fetch_all` nimmt die Postfächer reihum, das am längsten nicht versuchte zuerst, und verschiebt den Rest
+  eines Dienstes erst nach drei Ausfällen in Folge: Eine Störung trifft oft nur einen Teil der Postfächer,
+  und in fester Reihenfolge blieben bei jedem Lauf dieselben zurück.
 
 ---
 

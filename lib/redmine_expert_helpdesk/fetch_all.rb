@@ -14,8 +14,16 @@
 # * A time budget: after it, no further mailbox and no further message is
 #   started. What is left stays unread for the next run.
 # * A service that timed out or answered 5xx/429 (MailProvider.service_unavailable?)
-#   is not asked again in the same run: its other mailboxes are deferred, so an
-#   outage costs one timeout per run instead of one per mailbox.
+#   FAILURES_BEFORE_DEFERRING times in a row is not asked again in the same run:
+#   its other mailboxes are deferred. One failure is not enough - an Exchange
+#   outage often hits only the mailboxes on some of its servers, and one broken
+#   mailbox must not hold back all the others.
+#
+# Mailboxes take turns: a run starts with the one attempted longest ago
+# (last_fetched_at / last_error_at, never attempted first). A mailbox that keeps
+# failing moves to the back; the ones a run deferred or the budget cut off come
+# first next time. In a fixed order the same mailboxes would always be last and
+# never fetched while a service struggles.
 module RedmineExpertHelpdesk
   class FetchAll
     LOCK_KEY = 'redmine_expert_helpdesk/fetch_all_lock'.freeze
@@ -35,6 +43,10 @@ module RedmineExpertHelpdesk
 
     # Messages per mailbox and run, as for the project's "fetch now" button.
     LIMIT = 25
+
+    # Service failures in a row (a success resets the count) after which the
+    # remaining mailboxes of that service are deferred to the next run.
+    FAILURES_BEFORE_DEFERRING = 3
 
     class << self
       # Fetches +mailboxes+ and returns { address => result hash }, or nil when
@@ -65,6 +77,15 @@ module RedmineExpertHelpdesk
       def service_key(mailbox)
         mailbox.imap? ? "imap:#{mailbox.imap_host.to_s.downcase}" : 'graph'
       end
+
+      # Longest since the last attempt first, never attempted before all; the id
+      # keeps the order stable among equals.
+      def in_turn(mailboxes)
+        mailboxes.sort_by do |mailbox|
+          last = [mailbox.last_fetched_at, mailbox.last_error_at].compact.max
+          [last ? 1 : 0, last.to_f, mailbox.id.to_i]
+        end
+      end
     end
 
     def initialize(mailboxes, budget = TIME_BUDGET)
@@ -76,15 +97,15 @@ module RedmineExpertHelpdesk
     # instead of a result; their messages wait unread for the next run.
     def run
       deadline = self.class.clock + @budget
-      unavailable = {}
+      failures = Hash.new(0)
       summary = {}
 
-      @mailboxes.each do |mailbox|
+      self.class.in_turn(@mailboxes).each do |mailbox|
         next unless mailbox.project&.active? && mailbox.project.module_enabled?(:helpdesk)
 
         address = mailbox.mailbox_address
         service = self.class.service_key(mailbox)
-        if unavailable[service]
+        if failures[service] >= FAILURES_BEFORE_DEFERRING
           summary[address] = { :deferred => 'service_unavailable' }
           next
         end
@@ -93,7 +114,8 @@ module RedmineExpertHelpdesk
           next
         end
 
-        summary[address] = fetch(mailbox, deadline) { unavailable[service] = true }
+        summary[address], unavailable = fetch(mailbox, deadline)
+        failures[service] = unavailable ? failures[service] + 1 : 0
       end
 
       log_deferred(summary)
@@ -103,16 +125,25 @@ module RedmineExpertHelpdesk
 
     private
 
-    # Yields when the service turned out to be unavailable.
+    # [result hash, whether the service turned out to be unavailable]
     def fetch(mailbox, deadline)
       processor = MailProcessor.new(mailbox)
       result = processor.process_all(LIMIT, :deadline => deadline).to_h
-      yield if processor.service_unavailable?
-      result
+      [result, processor.service_unavailable?]
     rescue StandardError => e
       Rails.logger.error "Helpdesk: Abruf fuer #{mailbox.mailbox_address} fehlgeschlagen: #{e.message}"
-      yield if MailProvider.service_unavailable?(e)
-      { :error => e.message }
+      record_error(mailbox, e)
+      [{ :error => e.message }, MailProvider.service_unavailable?(e)]
+    end
+
+    # process_all records its outcome on the mailbox itself. An error raised out
+    # of it (IMAP's session timeout) would leave the mailbox looking untried, and
+    # so first in line on every run.
+    def record_error(mailbox, error)
+      mailbox.update_columns(:last_error    => I18n.t(:error_helpdesk_fetch_failed, :message => error.message),
+                             :last_error_at => Time.current)
+    rescue StandardError => e
+      Rails.logger.warn "Helpdesk: Fehler fuer #{mailbox.mailbox_address} nicht gespeichert: #{e.message}"
     end
 
     def log_deferred(summary)

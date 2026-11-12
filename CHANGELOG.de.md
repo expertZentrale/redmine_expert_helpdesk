@@ -5,6 +5,17 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [Unreleased]
+
+### Behoben
+
+- **Kein Postfach bleibt mehr zurück, während ein Mail-Dienst hakt.** 0.25.0 verschob die übrigen
+  Postfächer eines Dienstes schon nach dem ersten Timeout oder Serverfehler und rief in fester
+  Reihenfolge ab – ein kaputtes Postfach oder eine Störung, die nur einen Teil der Postfächer traf (wie
+  oft bei Exchange), ließ so bei jedem Lauf dieselben Postfächer warten. `fetch_all` nimmt die
+  Postfächer jetzt reihum, das am längsten nicht versuchte zuerst, und verschiebt den Rest eines
+  Dienstes erst nach drei Ausfällen in Folge; ein Erfolg dazwischen setzt die Zählung zurück.
+
 ## [0.25.0] - 2026-11-12
 
 ### Behoben
