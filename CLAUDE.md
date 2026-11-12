@@ -172,8 +172,29 @@ no container shell needed, just HTTP from the host.
 
 No built-in scheduler. Fetch runs via the project settings button
 (*Helpdesk → Fetch mails now*) or the API-key-secured global endpoint used by cron:
-`curl "https://redmine.example.com/helpdesk/fetch_all?key=API-KEY"`. The `fetch_all`
-cycle also piggybacks the SLA breach check and the phishing-feed sync.
+`curl -H "Authorization: Bearer API-KEY" "https://redmine.example.com/helpdesk/fetch_all"`
+(`?key=` works too; `valid_api_key?` takes the Bearer header first, for `sla_check` and
+`maintenance` as well). The `fetch_all` cycle also queues the phishing-feed sync
+(`HelpdeskPhishingFeedsJob`, only when a feed is due). The SLA breach check is **not** part of it:
+it has its own cron endpoint, `sla_check`.
+**`FetchAll` (`fetch_all.rb`) guards the cron run**, which holds a web thread for its whole
+duration (an Exchange outage on 2026-11-12 plus proxy retries took every thread): a cache lock
+(one run across pods, `LOCK_TTL` 10 min, deleted only while the run is `RELEASE_MARGIN` inside the
+TTL - cache stores have no atomic compare-and-delete; Redmine's tests run a null store,
+so lock tests swap in a `MemoryStore`), a `TIME_BUDGET` of 150 s passed to
+`MailProcessor#process_all(limit, deadline:)` as a monotonic `FetchAll.clock` value (stub that,
+not `Time`), and per-run deferral of every mailbox on a service (`FetchAll.service_key`: `graph`,
+or `imap:<host>`) after `MailProvider.service_unavailable?` (timeout/network error anywhere in the
+cause chain, or `ProviderError#status` 5xx/429). `MailProcessor` leaves a message that failed that
+way unread instead of `move_failed` only before the `MailHandler` hand-off (`@handed_to_mail_handler`);
+after it a ticket may exist, so `move_failed` as before (never ingest a mail twice). The deadline is
+checked before every message, the first included. Graph JSON calls use `READ_TIMEOUT` 20 s, raw MIME and sending
+`TRANSFER_TIMEOUT` 60 s.
+**The cache locks** (`FetchAll`, `SlaBreachCheck`, `PhishingFeeds`) span only the processes that
+share `Rails.cache`: Redmine's default `FileStore` in `tmp/cache` covers one host, so installs with
+several app servers need a shared cache (Redis/Memcached) - documented in the README. A portable
+lock table in the database was considered (2026-11-12) and deferred; do not assume Redis or
+Kubernetes anywhere else.
 **Maintenance mode** (`maintenance.rb`, plugin setting `maintenance_mode`, `GET/POST
 /helpdesk/maintenance?key=` with the fetch key) blocks both triggers, and
 `MailProcessor#process_all` re-reads the flag from the DB (`fresh: true`) before each message. Every

@@ -2,6 +2,9 @@
 #   - fetch:     Button in den Projekteinstellungen (Berechtigung :fetch_helpdesk_mail)
 #   - fetch_all: Globaler Endpunkt fuer curl/CronJob, gesichert per statischem API-Key
 #   - maintenance: status (GET) and switch (POST) of maintenance mode, same key as fetch_all
+# The keys of fetch_all, sla_check and maintenance are accepted as
+# "Authorization: Bearer <key>" or as ?key=. Prefer the header: a query string
+# ends up in proxy and access logs.
 class HelpdeskFetchController < ApplicationController
   before_action :find_project_by_project_id, :only => [:fetch]
   before_action :authorize, :only => [:fetch]
@@ -56,24 +59,13 @@ class HelpdeskFetchController < ApplicationController
       return
     end
 
-    summary = {}
-    HelpdeskMailbox.enabled.includes(:project).each do |mailbox|
-      next unless mailbox.project&.active? && mailbox.project.module_enabled?(:helpdesk)
-
-      begin
-        summary[mailbox.mailbox_address] = RedmineExpertHelpdesk::MailProcessor.new(mailbox).process_all.to_h
-      rescue StandardError => e
-        Rails.logger.error "Helpdesk: Abruf fuer #{mailbox.mailbox_address} fehlgeschlagen: #{e.message}"
-        summary[mailbox.mailbox_address] = { :error => e.message }
-      end
-    end
-
-    # Phishing-Feeds bei Bedarf aktualisieren (Piggyback auf den Cron-Abruf).
-    # Fehler duerfen den Mailabruf nie beeintraechtigen.
-    begin
-      RedmineExpertHelpdesk::PhishingFeeds.run_if_stale
-    rescue StandardError => e
-      Rails.logger.error "Helpdesk: Feed-Sync im fetch_all fehlgeschlagen: #{e.message}"
+    # One run at a time, a time budget and no second try against a service that
+    # is down: see FetchAll for why a cron fetch must never tie up web threads.
+    summary = RedmineExpertHelpdesk::FetchAll.run(HelpdeskMailbox.enabled.includes(:project).to_a)
+    if summary.nil?
+      render :json => { :fetched_at => Time.current.iso8601, :skipped => true, :reason => 'already_running',
+                        :mailboxes => {} }
+      return
     end
 
     render :json => { :fetched_at => Time.current.iso8601, :mailboxes => summary }
@@ -120,14 +112,20 @@ class HelpdeskFetchController < ApplicationController
 
   private
 
-  # Timing-sicherer Vergleich des uebergebenen ?key= gegen die in den
-  # Plugin-Einstellungen hinterlegte API-Key-Einstellung. Leerer/fehlender
-  # konfigurierter Key => Endpunkt deaktiviert (Vergleich schlaegt fehl).
+  # Timing-sicherer Vergleich des uebergebenen Keys (Bearer-Header oder ?key=)
+  # gegen die in den Plugin-Einstellungen hinterlegte API-Key-Einstellung.
+  # Leerer/fehlender konfigurierter Key => Endpunkt deaktiviert.
   def valid_api_key?(setting_key)
     configured = Setting.plugin_redmine_expert_helpdesk[setting_key].to_s
-    provided   = params[:key].to_s
+    provided   = bearer_key.presence || params[:key].to_s
 
     configured.present? && provided.present? &&
       ActiveSupport::SecurityUtils.secure_compare(configured, provided)
+  end
+
+  # The scheme name is case-insensitive (RFC 9110), "bearer <key>" counts too.
+  def bearer_key
+    match = request.authorization.to_s.match(/\ABearer\s+(\S.*)\z/i)
+    match && match[1].strip
   end
 end

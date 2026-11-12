@@ -1,6 +1,7 @@
 # Orchestriert die Phishing-Feed-Synchronisation (PhishTank + Phishing.Database):
-# - run_if_stale: automatischer Sync beim Mailabruf (fetch_all), pro Quelle
-#   nur wenn das Intervall abgelaufen ist; Rails.cache-Lock gegen Doppellaeufe
+# - run_if_stale: automatischer Sync, angestossen vom Mailabruf (fetch_all queues
+#   HelpdeskPhishingFeedsJob when due?), pro Quelle nur wenn das Intervall
+#   abgelaufen ist; Rails.cache-Lock gegen Doppellaeufe
 # - run_all: manueller Sync (Button in den Plugin-Einstellungen, Rake-Task)
 module RedmineExpertHelpdesk
   class PhishingFeeds
@@ -38,16 +39,26 @@ module RedmineExpertHelpdesk
       [results, errors]
     end
 
+    # Whether a sync is due - a cheap check (one query per feed) so fetch_all
+    # queues the job only when there is something to do.
+    def self.due?
+      due_feeds(Setting.plugin_redmine_expert_helpdesk).any?
+    end
+
+    # The enabled feeds whose interval has run out.
+    def self.due_feeds(settings)
+      return [] unless settings['phishtank_enabled'] == '1'
+
+      interval = [settings['phishtank_interval_hours'].to_i, 1].max
+      enabled_feeds(settings).select do |source, _sync|
+        HelpdeskPhishingUrl.stale?(interval, source)
+      end
+    end
+
     # Automatischer Sync: nur faellige Quellen, mit Lock gegen parallele Downloads.
     # Liefert true wenn mindestens ein Sync gelaufen ist.
     def self.run_if_stale
-      settings = Setting.plugin_redmine_expert_helpdesk
-      return false unless settings['phishtank_enabled'] == '1'
-
-      interval = [settings['phishtank_interval_hours'].to_i, 1].max
-      due = enabled_feeds(settings).select do |source, _sync|
-        HelpdeskPhishingUrl.stale?(interval, source)
-      end
+      due = due_feeds(Setting.plugin_redmine_expert_helpdesk)
       return false if due.empty?
 
       return false unless Rails.cache.write(LOCK_KEY, Time.current.to_i, :unless_exist => true, :expires_in => 30.minutes)

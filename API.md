@@ -133,12 +133,13 @@ accordingly; these may be added later.
 
 ### Separate machine endpoints (not part of this REST API)
 
-Two automation endpoints exist but use their **own** static API key (`?key=…`,
-configured in the plugin settings), **not** `X-Redmine-API-Key`, and are not
-permission-scoped like the resources above:
+Two automation endpoints exist but use their **own** static API key (configured in
+the plugin settings), **not** `X-Redmine-API-Key`, and are not permission-scoped
+like the resources above. Send it as `Authorization: Bearer <key>`; `?key=<key>`
+works too but ends up in proxy and access logs.
 
-- **Trigger mail fetch** — `GET`/`POST /helpdesk/fetch_all?key=<fetch_api_key>`
-- **Trigger SLA check** — `GET`/`POST /helpdesk/sla_check?key=<sla_api_key>`
+- **Trigger mail fetch** — `GET`/`POST /helpdesk/fetch_all` with `<fetch_api_key>`
+- **Trigger SLA check** — `GET`/`POST /helpdesk/sla_check` with `<sla_api_key>`
 
 See the plugin `README` for these.
 

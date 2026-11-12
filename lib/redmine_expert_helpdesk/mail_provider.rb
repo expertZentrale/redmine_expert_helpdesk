@@ -20,6 +20,10 @@
 #   test_connection              -> {:ok, :message, :folders}, never raises
 #   with_session { |p| ... }     -> block value; opens one connection for IMAP
 #   close                        -> nil
+require 'timeout'
+require 'socket'
+require 'openssl'
+
 module RedmineExpertHelpdesk
   module MailProvider
     # Normalized message metadata. Providers translate their native payload into
@@ -74,6 +78,36 @@ module RedmineExpertHelpdesk
       def normalize_message_id(value)
         value.to_s.strip.delete('<>')
       end
+
+      # True when +error+ says the mail service itself is down or overloaded -
+      # a timeout, a failed connection, HTTP 5xx or 429 - rather than that one
+      # mailbox has a problem (folder missing, access denied, bad credentials).
+      # The cause chain counts too: ImapClient wraps socket errors in ImapError.
+      # FetchAll stops asking a service that answered like this for the rest of
+      # its run, and MailProcessor leaves the message in place instead of moving
+      # it to the error folder.
+      def service_unavailable?(error)
+        seen = 0
+        while error && seen < 5
+          return true if NETWORK_ERRORS.any? { |klass| error.is_a?(klass) }
+          if error.is_a?(ProviderError)
+            status = error.status.to_i
+            return true if status >= 500 || status == 429
+          end
+          error = error.cause
+          seen += 1
+        end
+        false
+      end
     end
+
+    # Network failures only. Net::OpenTimeout and Net::ReadTimeout are
+    # Timeout::Errors. Not IOError or SystemCallError as a whole: a full disk or
+    # a file permission while storing attachments is no outage of the service.
+    NETWORK_ERRORS = [
+      Timeout::Error, SocketError, EOFError, OpenSSL::SSL::SSLError,
+      Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPIPE,
+      Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::ETIMEDOUT
+    ].freeze
   end
 end

@@ -1032,11 +1032,50 @@ Es gibt bewusst keinen eingebauten Scheduler. Zwei Wege:
 2. **HTTP-Endpunkt** für curl/CronJob (alle aktiven Postfächer):
 
    ```bash
-   curl "https://redmine.example.de/helpdesk/fetch_all?key=API-KEY"
+   curl --max-time 240 -H "Authorization: Bearer API-KEY" "https://redmine.example.de/helpdesk/fetch_all"
    ```
 
    Der API-Key wird in den Plugin-Einstellungen gepflegt. Ohne konfigurierten
    Key ist der Endpunkt deaktiviert. Antwort ist eine JSON-Zusammenfassung.
+   `?key=API-KEY` geht auch, landet als Query-String aber in Proxy- und
+   Zugriffslogs, deshalb besser den Header nutzen; das gilt ebenso für
+   `maintenance` und `sla_check`.
+
+   Ein Abruf läuft in einem Web-Request und belegt einen Thread des
+   Anwendungsservers, solange er auf den Mail-Dienst wartet. Damit ein langsamer
+   oder gestörter Mail-Dienst Redmine nicht für alle lahmlegt:
+
+   - Es läuft immer nur ein `fetch_all`, über alle Prozesse hinweg. Ein Aufruf,
+     während ein anderer läuft, antwortet sofort mit `"skipped": true` und
+     `"reason": "already_running"`.
+   - Nach 150 Sekunden beginnt ein Lauf kein weiteres Postfach und keine weitere
+     Nachricht. Diese Postfächer melden `"deferred": "time_budget"`, ihre Mails
+     kommen beim nächsten Abruf.
+   - Antwortet der Mail-Dienst mit einem Timeout oder Serverfehler, fragt der Lauf
+     ihn nicht noch einmal. Die übrigen Postfächer dieses Dienstes (alle
+     Microsoft-365-Postfächer teilen sich einen, IMAP-Postfächer ihren Server)
+     melden `"deferred": "service_unavailable"`. Eine so gescheiterte Nachricht
+     bleibt ungelesen im Postfach, wenn Redmine sie noch nicht verarbeitet hatte,
+     statt in den Fehlerordner zu wandern; danach kommt sie wie bisher in den
+     Fehlerordner, damit sie nie zweimal eingelesen wird.
+   - Aufrufe an Microsoft Graph geben nach 20 Sekunden auf (60 beim Laden und
+     Senden einer Mail).
+
+   Den Endpunkt direkt aufrufen, nicht über einen Reverse-Proxy, der Requests nach
+   einem Timeout wiederholt: Redmine arbeitet jeden Versuch zu Ende, den der Proxy
+   aufgegeben hat. Das Client-Timeout (`--max-time`) unter dem Cron-Intervall halten.
+
+   **Die Sperre liegt in Redmines Cache** (`Rails.cache`) und reicht deshalb nur
+   über die Prozesse, die sich diesen Cache teilen. Redmines Standard-Dateicache
+   (`tmp/cache`) deckt alle Prozesse auf einem Server ab. Bei mehreren
+   Anwendungsservern (oder Containern ohne gemeinsames `tmp/cache`) einen
+   gemeinsamen Cache wie Redis oder Memcached in `config/additional_environment.rb`
+   einrichten. Sonst können zwei Server dasselbe Postfach gleichzeitig abrufen, und
+   eine doppelt abgerufene Mail landet zweimal im Ticket – außer *Antworten nur im
+   Projekt des Postfachs zuordnen* ist an, das eine schon vorhandene Message-ID
+   überspringt. Die SLA-Prüfung und der Abgleich der Phishing-Feeds sperren genauso;
+   dort verschickt ein zweiter Lauf höchstens eine Überschreitungsmeldung doppelt
+   oder lädt einen Feed zweimal.
 
 ### Wartungsmodus (Upgrades, Herunterskalieren)
 

@@ -64,18 +64,23 @@ flowchart LR
 ## 2. Abruf
 
 Das Plugin hat keinen eigenen Zeitplaner. Ein Abruf startet über den Button in den
-Projekteinstellungen oder über den Cron-Endpunkt `GET /helpdesk/fetch_all?key=…`, der zusätzlich
-die SLA-Prüfung und den Abgleich der Phishing-Feeds anstößt.
+Projekteinstellungen oder über den Cron-Endpunkt `GET /helpdesk/fetch_all`, der zusätzlich
+den Abgleich der Phishing-Feeds anstößt. Die SLA-Prüfung hat einen eigenen Endpunkt,
+`GET /helpdesk/sla_check`.
 
 ```mermaid
 flowchart TD
   T["Abruf-Button<br/>oder /helpdesk/fetch_all"] --> M{"Mailabruf pausiert?<br/><i>Mailabruf pausieren</i>"}
   M -- ja --> X["Es wird nichts abgerufen"]
-  M -- nein --> L["Für jedes aktive Postfach<br/>in einem aktiven Projekt mit Helpdesk-Modul"]
-  L --> Q["Bis zu 25 Nachrichten aus dem Quellordner lesen<br/><i>Quellordner</i><br/><i>Nur ungelesene Mails abrufen</i> (IMAP)"]
+  M -- nein --> K{"Nur fetch_all:<br/>läuft schon ein fetch_all?"}
+  K -- ja --> KS["Sofort antworten,<br/>es wird nichts abgerufen"]
+  K -- nein --> L["Für jedes aktive Postfach<br/>in einem aktiven Projekt mit Helpdesk-Modul"]
+  L --> G{"Nur fetch_all: 150 s verbraucht, oder sein<br/>Mail-Dienst ist in diesem Lauf schon ausgefallen?"}
+  G -- ja --> DF["Postfach auf den<br/>nächsten Abruf verschoben"]
+  G -- nein --> Q["Bis zu 25 Nachrichten aus dem Quellordner lesen<br/><i>Quellordner</i><br/><i>Nur ungelesene Mails abrufen</i> (IMAP)"]
   Q --> E["Jede Nachricht verarbeiten<br/>Abschnitte 3 bis 5"]
-  E --> W{"Mailabruf inzwischen<br/>pausiert?"}
-  W -- ja --> STOP["Aktuelle Nachricht fertig verarbeiten,<br/>Rest beim nächsten Abruf"]
+  E --> W{"Mailabruf pausiert, die 150 s von fetch_all<br/>verbraucht oder der Mail-Dienst ausgefallen?"}
+  W -- ja --> STOP["Aufhören, den Rest ungelesen<br/>für den nächsten Abruf lassen"]
   W -- nein --> E
 ```
 
@@ -83,6 +88,14 @@ flowchart TD
   abrufen* gesetzt ist. Microsoft Graph liest immer nur ungelesene Nachrichten.
 - Eine verarbeitete Mail wird als gelesen markiert und verschoben, sie wird also nie zweimal
   abgeholt.
+- „Mail-Dienst ausgefallen“ heißt: Timeout, abgebrochene Verbindung oder eine Antwort mit HTTP 5xx
+  oder 429 – kein Problem eines einzelnen Postfachs wie ein fehlender Ordner oder verweigerter
+  Zugriff. Eine Nachricht, die so gescheitert ist, bevor Redmines Mail-Handler sie bekam, bleibt
+  ungelesen im Quellordner; nach der Übergabe kann schon ein Ticket oder eine Notiz existieren, dann
+  kommt sie wie bei jedem anderen Fehler in den Fehlerordner und wird nie zweimal eingelesen. Alle
+  Microsoft-365-Postfächer teilen sich einen Dienst, IMAP-Postfächer ihren Server.
+- `fetch_all` läuft in einem Web-Request. Diese Grenzen verhindern, dass ein Ausfall des Mail-Dienstes
+  die Threads des Anwendungsservers festhält; der Button *Mails jetzt abrufen* hat keine Zeitgrenze.
 
 ---
 

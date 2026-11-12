@@ -34,27 +34,37 @@ module RedmineExpertHelpdesk
     # Verarbeitet alle Nachrichten des Postfachs. Liefert ein Result-Objekt.
     # In maintenance mode nothing is fetched; the run is registered first so a
     # status read never misses a fetch that got past the check (see Maintenance).
-    def process_all(limit = 25)
+    # +deadline+ (FetchAll.clock seconds): no further message is started after
+    # it, the rest stays in the source folder for the next fetch.
+    def process_all(limit = 25, deadline: nil)
+      @service_unavailable = false
       HelpdeskFetchRun.track(@mailbox) do |run|
         @run = run
         next Result.new(0, [], [], 0, []) if Maintenance.active?(:fresh => true)
 
         # One session for the whole cycle: IMAP opens a single connection here
         # instead of one per message. Graph ignores it.
-        @provider.with_session { run_cycle(limit) }
+        @provider.with_session { run_cycle(limit, deadline) }
       end
     ensure
       @run = nil
     end
 
+    # Whether the last process_all stopped because the mail service timed out
+    # or answered 5xx/429 (MailProvider.service_unavailable?).
+    def service_unavailable?
+      @service_unavailable == true
+    end
+
     private
 
-    def run_cycle(limit)
+    def run_cycle(limit, deadline = nil)
       result = Result.new(0, [], [], 0, [])
 
       begin
         messages = Array(@provider.list_messages(limit))
       rescue StandardError => e
+        @service_unavailable = MailProvider.service_unavailable?(e)
         msg = I18n.t(:error_helpdesk_fetch_failed, :message => e.message)
         Rails.logger.error "Helpdesk (#{@mailbox.mailbox_address}): #{msg}"
         @mailbox.update_columns(:last_error => msg, :last_error_at => Time.current)
@@ -73,16 +83,38 @@ module RedmineExpertHelpdesk
             break
           end
         end
+        # Before every message, the first included: listing alone may have used
+        # up the budget.
+        if deadline && FetchAll.clock >= deadline
+          Rails.logger.warn "Helpdesk (#{@mailbox.mailbox_address}): time budget used up - " \
+                            "stopped after #{i} of #{messages.size} message(s), the rest waits for the next fetch"
+          break
+        end
 
         begin
           process_message(meta, result)
         rescue StandardError => e
           Rails.logger.error "Helpdesk: Fehler bei Nachricht #{meta.id} (#{@mailbox.mailbox_address}): #{e.message}"
           result.errors << { :subject => meta.subject, :error => e.message }
-          begin
-            move_failed(meta.id)
-          rescue StandardError => move_err
-            Rails.logger.warn "Helpdesk: Nachricht #{meta.id} konnte nicht in Fehlerordner verschoben werden: #{move_err.message}"
+          unavailable = MailProvider.service_unavailable?(e)
+          # The service failed, not the message. Before MailHandler saw the mail
+          # nothing was stored: leave it unread for the next fetch instead of
+          # filing a good mail as failed. After the hand-off a ticket or note may
+          # exist, and an unread mail would be ingested a second time - so it is
+          # filed as failed, as any other error.
+          unless unavailable && !@handed_to_mail_handler
+            begin
+              move_failed(meta.id)
+            rescue StandardError => move_err
+              Rails.logger.warn "Helpdesk: Nachricht #{meta.id} konnte nicht in Fehlerordner verschoben werden: #{move_err.message}"
+              # A mailbox-local error, but the service failed on the move.
+              unavailable ||= MailProvider.service_unavailable?(move_err)
+            end
+          end
+          # Do not try the remaining messages against a service that just failed.
+          if unavailable
+            @service_unavailable = true
+            break
           end
         end
       end
@@ -103,6 +135,9 @@ module RedmineExpertHelpdesk
     end
 
     def process_message(meta, result)
+      # Set right before MailHandler.receive: from there on a failure may leave
+      # a ticket or note behind (see run_cycle).
+      @handed_to_mail_handler = false
       sender = meta.from_address.to_s.downcase
       sender_name = meta.from_name.to_s
       subject = meta.subject.to_s
@@ -195,6 +230,7 @@ module RedmineExpertHelpdesk
       # embedded images (only needed when Redmine builds the body from the HTML
       # part - see InlineImages). The original MIME stays untouched, it is what
       # gets archived as .eml further down.
+      @handed_to_mail_handler = true
       object = MailHandler.receive(InlineImages.prepare_mime(mime), mail_handler_options)
 
       unless object
