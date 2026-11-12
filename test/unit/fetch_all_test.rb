@@ -307,6 +307,23 @@ class FetchAllTest < ActiveSupport::TestCase
     assert processor.service_unavailable?
   end
 
+  # A broken message, but the service fails on the move to the error folder:
+  # the cycle stops instead of trying the next message against it.
+  def test_processor_stops_when_the_move_to_the_error_folder_times_out
+    provider = ListingProvider.new
+    provider.define_singleton_method(:mark_as_read) { |_id| raise Net::ReadTimeout }
+    processor = processor_with(provider, :failed_folder => 'Fehler')
+    handled = []
+    processor.define_singleton_method(:process_message) do |meta, _result|
+      handled << meta.id
+      raise 'broken MIME'
+    end
+
+    processor.process_all
+    assert_equal %w[m1], handled
+    assert processor.service_unavailable?
+  end
+
   def test_processor_still_files_a_broken_message_as_failed
     provider = ListingProvider.new
     processor = processor_with(provider, :failed_folder => 'Fehler')
@@ -331,7 +348,8 @@ class FetchAllTest < ActiveSupport::TestCase
 
   def test_mailbox_problems_do_not_count_as_unavailable
     [GraphError.new('access denied', 403), GraphError.new('folder not found'),
-     MailProvider::AuthenticationError.new('bad credentials'), RuntimeError.new('bug')].each do |error|
+     MailProvider::AuthenticationError.new('bad credentials'), RuntimeError.new('bug'),
+     Errno::ENOSPC.new, Errno::EACCES.new, IOError.new('closed stream')].each do |error|
       assert_not MailProvider.service_unavailable?(error), "#{error.class}: #{error.message}"
     end
   end

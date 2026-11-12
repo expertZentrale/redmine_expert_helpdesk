@@ -63,8 +63,8 @@ flowchart LR
 ## 2. Fetching
 
 There is no scheduler inside the plugin. A fetch starts from the button in the project settings or
-from the cron endpoint `GET /helpdesk/fetch_all`, which also runs the SLA breach check and
-the phishing feed sync.
+from the cron endpoint `GET /helpdesk/fetch_all`, which also queues the phishing feed sync. The
+SLA breach check has its own endpoint, `GET /helpdesk/sla_check`.
 
 ```mermaid
 flowchart TD

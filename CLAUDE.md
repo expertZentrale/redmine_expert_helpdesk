@@ -174,8 +174,9 @@ No built-in scheduler. Fetch runs via the project settings button
 (*Helpdesk → Fetch mails now*) or the API-key-secured global endpoint used by cron:
 `curl -H "Authorization: Bearer API-KEY" "https://redmine.example.com/helpdesk/fetch_all"`
 (`?key=` works too; `valid_api_key?` takes the Bearer header first, for `sla_check` and
-`maintenance` as well). The `fetch_all` cycle also piggybacks the SLA breach check and the
-phishing-feed sync.
+`maintenance` as well). The `fetch_all` cycle also queues the phishing-feed sync
+(`HelpdeskPhishingFeedsJob`, only when a feed is due). The SLA breach check is **not** part of it:
+it has its own cron endpoint, `sla_check`.
 **`FetchAll` (`fetch_all.rb`) guards the cron run**, which holds a web thread for its whole
 duration (an Exchange outage on 2026-11-12 plus proxy retries took every thread): a cache lock
 (one run across pods, `LOCK_TTL` 10 min, deleted only while the run is `RELEASE_MARGIN` inside the

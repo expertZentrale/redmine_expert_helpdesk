@@ -107,6 +107,8 @@ module RedmineExpertHelpdesk
               move_failed(meta.id)
             rescue StandardError => move_err
               Rails.logger.warn "Helpdesk: Nachricht #{meta.id} konnte nicht in Fehlerordner verschoben werden: #{move_err.message}"
+              # A mailbox-local error, but the service failed on the move.
+              unavailable ||= MailProvider.service_unavailable?(move_err)
             end
           end
           # Do not try the remaining messages against a service that just failed.

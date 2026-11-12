@@ -115,7 +115,8 @@ module RedmineExpertHelpdesk
     # +message+ entspricht der Graph-Message-Struktur (subject, body, toRecipients, ...).
     def send_mail(mailbox, message, save_to_sent_items = true)
       post("/users/#{escape(mailbox)}/sendMail",
-           { 'message' => message, 'saveToSentItems' => save_to_sent_items })
+           { 'message' => message, 'saveToSentItems' => save_to_sent_items },
+           :read_timeout => TRANSFER_TIMEOUT)
     end
 
     # Versendet eine Mail als rohe RFC-2822-MIME-Nachricht ueber den Graph-MIME-Endpunkt.
@@ -215,8 +216,8 @@ module RedmineExpertHelpdesk
       request(:get, path, nil, :read_timeout => TRANSFER_TIMEOUT).body
     end
 
-    def post(path, payload)
-      response = request(:post, path, payload)
+    def post(path, payload, read_timeout: READ_TIMEOUT)
+      response = request(:post, path, payload, :read_timeout => read_timeout)
       response.body.present? ? (JSON.parse(response.body) rescue {}) : {}
     end
 

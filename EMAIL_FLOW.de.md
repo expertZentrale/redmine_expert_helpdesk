@@ -65,7 +65,8 @@ flowchart LR
 
 Das Plugin hat keinen eigenen Zeitplaner. Ein Abruf startet über den Button in den
 Projekteinstellungen oder über den Cron-Endpunkt `GET /helpdesk/fetch_all`, der zusätzlich
-die SLA-Prüfung und den Abgleich der Phishing-Feeds anstößt.
+den Abgleich der Phishing-Feeds anstößt. Die SLA-Prüfung hat einen eigenen Endpunkt,
+`GET /helpdesk/sla_check`.
 
 ```mermaid
 flowchart TD

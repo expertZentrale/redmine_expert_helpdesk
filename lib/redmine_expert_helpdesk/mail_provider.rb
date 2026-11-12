@@ -20,6 +20,10 @@
 #   test_connection              -> {:ok, :message, :folders}, never raises
 #   with_session { |p| ... }     -> block value; opens one connection for IMAP
 #   close                        -> nil
+require 'timeout'
+require 'socket'
+require 'openssl'
+
 module RedmineExpertHelpdesk
   module MailProvider
     # Normalized message metadata. Providers translate their native payload into
@@ -97,8 +101,13 @@ module RedmineExpertHelpdesk
       end
     end
 
-    # Net::OpenTimeout and Net::ReadTimeout are Timeout::Errors, EOFError an
-    # IOError, every Errno:: a SystemCallError.
-    NETWORK_ERRORS = [Timeout::Error, IOError, SocketError, SystemCallError, OpenSSL::SSL::SSLError].freeze
+    # Network failures only. Net::OpenTimeout and Net::ReadTimeout are
+    # Timeout::Errors. Not IOError or SystemCallError as a whole: a full disk or
+    # a file permission while storing attachments is no outage of the service.
+    NETWORK_ERRORS = [
+      Timeout::Error, SocketError, EOFError, OpenSSL::SSL::SSLError,
+      Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::ECONNABORTED, Errno::EPIPE,
+      Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::ETIMEDOUT
+    ].freeze
   end
 end
