@@ -72,8 +72,8 @@ flowchart TD
   M -- yes --> X["Nothing is fetched"]
   M -- no --> K{"fetch_all only:<br/>another fetch_all running?"}
   K -- yes --> KS["Answer at once,<br/>nothing is fetched"]
-  K -- no --> L["For every mailbox that is enabled,<br/>in an active project with the Helpdesk module"]
-  L --> G{"fetch_all only: 150 s used up, or its<br/>mail service failed earlier in this run?"}
+  K -- no --> L["For every mailbox that is enabled,<br/>in an active project with the Helpdesk module<br/>(fetch_all: attempted longest ago first)"]
+  L --> G{"fetch_all only: 150 s used up, or its mail<br/>service failed 3 times in a row in this run?"}
   G -- yes --> DF["Mailbox deferred<br/>to the next fetch"]
   G -- no --> Q["Read up to 25 messages from the source folder<br/><i>Source folder</i><br/><i>Only fetch unread mails</i> (IMAP)"]
   Q --> E["Process each message<br/>sections 3 to 5"]
@@ -93,6 +93,9 @@ flowchart TD
   server.
 - `fetch_all` runs inside a web request, so these limits keep an outage of the mail service from
   holding the application server's threads; the *Fetch mails now* button has no time limit.
+- `fetch_all` takes the mailboxes in turn, the one attempted longest ago first, and defers the rest
+  of a service only after three failures in a row: an outage often hits only some mailboxes, and a
+  fixed order would leave the same ones behind on every run.
 
 ---
 

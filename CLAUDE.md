@@ -183,8 +183,12 @@ duration (an Exchange outage on 2026-11-12 plus proxy retries took every thread)
 TTL - cache stores have no atomic compare-and-delete; Redmine's tests run a null store,
 so lock tests swap in a `MemoryStore`), a `TIME_BUDGET` of 150 s passed to
 `MailProcessor#process_all(limit, deadline:)` as a monotonic `FetchAll.clock` value (stub that,
-not `Time`), and per-run deferral of every mailbox on a service (`FetchAll.service_key`: `graph`,
-or `imap:<host>`) after `MailProvider.service_unavailable?` (timeout/network error anywhere in the
+not `Time`), per-run deferral of every mailbox on a service (`FetchAll.service_key`: `graph`,
+or `imap:<host>`) after `FAILURES_BEFORE_DEFERRING` (3) consecutive failures (a success resets; one
+failure deferred everything in 0.25.0 and starved the mailboxes behind a broken one), and
+`FetchAll.in_turn` ordering by the newer of `last_fetched_at` / `last_error_at` (never attempted
+first; `record_error` stamps errors raised out of `process_all`, so a failing mailbox moves to the
+back). A failure is `MailProvider.service_unavailable?` (timeout/network error anywhere in the
 cause chain, or `ProviderError#status` 5xx/429). `MailProcessor` leaves a message that failed that
 way unread instead of `move_failed` only before the `MailHandler` hand-off (`@handed_to_mail_handler`);
 after it a ticket may exist, so `move_failed` as before (never ingest a mail twice). The deadline is

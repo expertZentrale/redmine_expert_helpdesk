@@ -1051,10 +1051,16 @@ Es gibt bewusst keinen eingebauten Scheduler. Zwei Wege:
    - Nach 150 Sekunden beginnt ein Lauf kein weiteres Postfach und keine weitere
      Nachricht. Diese Postfächer melden `"deferred": "time_budget"`, ihre Mails
      kommen beim nächsten Abruf.
-   - Antwortet der Mail-Dienst mit einem Timeout oder Serverfehler, fragt der Lauf
+   - Antwortet der Mail-Dienst dreimal in Folge mit einem Timeout oder
+     Serverfehler (ein Erfolg dazwischen setzt die Zählung zurück), fragt der Lauf
      ihn nicht noch einmal. Die übrigen Postfächer dieses Dienstes (alle
      Microsoft-365-Postfächer teilen sich einen, IMAP-Postfächer ihren Server)
-     melden `"deferred": "service_unavailable"`. Eine so gescheiterte Nachricht
+     melden `"deferred": "service_unavailable"`. Ein einzelner Fehler reicht
+     nicht: Eine Störung trifft oft nur einen Teil der Postfächer, und ein
+     kaputtes Postfach darf die anderen nicht aufhalten.
+   - Die Postfächer kommen reihum dran: Ein Lauf beginnt mit dem, das am längsten
+     nicht versucht wurde. Ein Postfach, das immer wieder scheitert, rutscht nach
+     hinten; verschobene kommen beim nächsten Lauf zuerst. Eine so gescheiterte Nachricht
      bleibt ungelesen im Postfach, wenn Redmine sie noch nicht verarbeitet hatte,
      statt in den Fehlerordner zu wandern; danach kommt sie wie bisher in den
      Fehlerordner, damit sie nie zweimal eingelesen wird.

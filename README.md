@@ -1011,10 +1011,16 @@ There is intentionally no built-in scheduler. Two options:
    - A run starts no further mailbox and no further message after 150 seconds.
      Those mailboxes report `"deferred": "time_budget"`; their mails are fetched
      next time.
-   - When the mail service times out or answers with a server error, the run
-     does not ask it again. The remaining mailboxes on that service (all
-     Microsoft 365 mailboxes share one, IMAP mailboxes share their server)
-     report `"deferred": "service_unavailable"`. A message that failed this way
+   - When the mail service times out or answers with a server error three times
+     in a row (a success in between starts the count again), the run does not
+     ask it again. The remaining mailboxes on that service (all Microsoft 365
+     mailboxes share one, IMAP mailboxes share their server) report
+     `"deferred": "service_unavailable"`. A single failure is not enough: an
+     outage often hits only some mailboxes, and one broken mailbox must not hold
+     back the others.
+   - Mailboxes take turns: a run starts with the one attempted longest ago. A
+     mailbox that keeps failing moves to the back; deferred ones come first next
+     time. A message that failed this way
      before Redmine processed it stays unread in the mailbox instead of going to
      the error folder; once processed, it goes there as before, so it is never
      ingested twice.
