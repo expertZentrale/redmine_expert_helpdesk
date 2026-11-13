@@ -191,7 +191,8 @@ module RedmineExpertHelpdesk
 
       report('messages', 0, 1)
       # EML mit synthetischen Import-Messages verknuepfen (nur ohne Mailbox,
-      # echte Mail-Verlaeufe haben ihren EML-Verweis bereits)
+      # echte Mail-Verlaeufe haben ihren EML-Verweis bereits). The copy of an
+      # agent reply (SentMailArchive) is never the original of an imported mail.
       result.messages_linked = conn.update(<<~SQL)
         UPDATE helpdesk_messages hm
         INNER JOIN issues i ON i.id = hm.issue_id
@@ -199,6 +200,7 @@ module RedmineExpertHelpdesk
           ON a.container_type = 'Issue'
          AND a.container_id   = hm.issue_id
          AND a.content_type   = 'message/rfc822'
+         AND (a.description IS NULL OR a.description <> '#{SentMailArchive::DESCRIPTION}')
         SET hm.eml_attachment_id = a.id
         WHERE hm.eml_attachment_id IS NULL
           AND hm.helpdesk_mailbox_id IS NULL

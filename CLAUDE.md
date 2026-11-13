@@ -355,6 +355,19 @@ nested registration would never fire in production.
   **validated as hex and otherwise discarded** — they are interpolated into a stylesheet as CSS
   custom properties on `:root`, where an unchecked string is a style injection, not a colour.
   Migration 059.
+- **`previous_message.rb`** / **`sent_mail_archive.rb`** — "Include previous message" (#64): the
+  reply controller appends `PreviousMessage.html_for(issue)` to `body_html` **before** the
+  CID/data-URI pass, so its images embed like the note's. The latest `HelpdeskMessage` by
+  `COALESCE(sent_at, created_at)` counts when it is incoming or outgoing **with a Message-ID** —
+  autoresponder and info request store none and are skipped. Body from the archived `.eml` (HTML
+  part decoded via `InlineImages.decoded_body`, inner `<body>` only, Loofah deny-list scrubber),
+  `cid:` images mapped to ticket attachments with `InlineImages.cid_index` and rewritten to the
+  download path `ReplyImages` matches by id; anything unmapped is removed. Without an `.eml` it
+  falls back to the linked journal note (or the description for the first incoming mail).
+  `SentMailArchive.attach!` stores every sent reply and initial mail (`InitMailer`) as `sent_mail_*.eml` (*Sent E-Mail*, Bcc
+  header stripped) and sets the outgoing row's `eml_attachment_id`; it never raises. Readers of
+  `eml_attachment` that must only see customer mail filter on direction `in` (sidebar, header bar,
+  jobs) or on `SentMailArchive.archived_eml?`. No migration: the box has no stored default.
 - **`init_mailer.rb`** — outbound "initial" mail when an agent assigns a contact to a ticket
   and opts to email them (also used by the "New Helpdesk Ticket" flow). With the mail ticked it
   hands over like a reply (`take_out_handovers`), but without a mode: the target gets the mail text

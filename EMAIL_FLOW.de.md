@@ -324,6 +324,12 @@ flowchart LR
   landet also ebenfalls am Ticket.
 - **Kopfzeile** und **Fußzeile** des Postfachs rahmen den Antworttext ein. Der *Fußzeilen-Modus*
   entscheidet zwischen der Fußzeile des Postfachs und der zentralen Fußzeile.
+- **Vorherige Nachricht anhängen** (Antwortformular, standardmäßig angehakt) hängt die letzte Mail
+  des Verlaufs unter die Fußzeile: die letzte Mail des Kunden oder unsere letzte Antwort, mit einem
+  Kopf Von/Gesendet/An/Cc/Betreff und ihrem ursprünglichen HTML. Autoresponder und Rückfrage der
+  Vollständigkeitsprüfung werden übersprungen. Die Notiz am Ticket bleibt, wie sie geschrieben wurde.
+- Jede Bearbeiterantwort und Initialmail wird auf jedem Versandweg als `sent_mail_<Zeitstempel>.eml`
+  (*Sent E-Mail*) ohne ihren Bcc-Header am Ticket archiviert. Die nächste Antwort zitiert sie von dort.
 - Ausgehende Mails behalten ihre Marker, auch wenn die Helpdesk-Adresse eines anderen Projekts
   Empfänger ist. Das Postfach jenes Projekts entfernt sie beim Eingang
   ([Abschnitt 6](#6-eine-mail-mehrere-projekte)).
