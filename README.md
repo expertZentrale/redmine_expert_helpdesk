@@ -1025,7 +1025,7 @@ There is intentionally no built-in scheduler. Two options:
      the error folder; once processed, it goes there as before, so it is never
      ingested twice.
    - Microsoft Graph calls give up after 20 seconds (60 for downloading and
-     sending a mail).
+     sending a mail) and are not repeated within the run.
 
    Call the endpoint directly, not through a reverse proxy that retries timed-out
    requests: Redmine keeps working on every attempt the proxy gave up on. Keep the
