@@ -1,0 +1,7 @@
+h3. Fixed
+
+* *A timed-out Microsoft Graph call now costs 20 seconds, not 40.* Ruby's HTTP client silently repeats a read request once after a timeout. During an Exchange Online outage every mailbox therefore took 40 seconds to fail, and a @fetch_all@ run held its application server thread for two minutes instead of one. Graph requests are no longer repeated; the next run tries again.
+
+h3. Upgrade notes
+
+No new migrations, no new settings. Replace the plugin directory and restart.

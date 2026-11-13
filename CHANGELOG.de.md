@@ -5,6 +5,16 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [0.25.2] - 2026-11-13
+
+### Behoben
+
+- **Ein Graph-Aufruf mit Timeout kostet jetzt 20 Sekunden statt 40.** Rubys HTTP-Client wiederholt
+  eine lesende Anfrage nach einem Timeout stillschweigend einmal. Während einer Exchange-Online-Störung
+  brauchte so jedes Postfach 40 Sekunden bis zum Fehler, und ein `fetch_all`-Lauf belegte seinen
+  Thread im Anwendungsserver zwei Minuten statt einer. Graph-Anfragen werden nicht mehr wiederholt;
+  der nächste Lauf versucht es erneut.
+
 ## [0.25.1] - 2026-11-12
 
 ### Behoben

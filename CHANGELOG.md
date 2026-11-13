@@ -6,6 +6,15 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [0.25.2] - 2026-11-13
+
+### Fixed
+
+- **A timed-out Graph call now costs 20 seconds, not 40.** Ruby's HTTP client silently repeats a
+  read request once after a timeout. During an Exchange Online outage every mailbox therefore took
+  40 seconds to fail, and a `fetch_all` run held its application server thread for two minutes
+  instead of one. Graph requests are no longer repeated; the next run tries again.
+
 ## [0.25.1] - 2026-11-12
 
 ### Fixed

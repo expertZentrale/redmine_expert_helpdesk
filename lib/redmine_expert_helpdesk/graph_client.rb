@@ -30,6 +30,11 @@ module RedmineExpertHelpdesk
     OPEN_TIMEOUT     = 10
     READ_TIMEOUT     = 20
     TRANSFER_TIMEOUT = 60
+    # Net::HTTP silently repeats an idempotent request (GET) once after a read
+    # timeout, which made every timed-out list call cost 40 s instead of 20 s. A
+    # connection is never reused here, so the retry buys nothing; FetchAll
+    # decides when to try again.
+    MAX_RETRIES      = 0
 
     # GraphError inherits from ProviderError so callers can rescue the common
     # provider error and still catch Graph failures.
@@ -126,10 +131,7 @@ module RedmineExpertHelpdesk
     def send_mail_mime(mailbox, mime_string)
       encoded = Base64.strict_encode64(mime_string)
       uri  = URI("#{GRAPH_BASE}/users/#{escape(mailbox)}/sendMail")
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl     = true
-      http.open_timeout = OPEN_TIMEOUT
-      http.read_timeout = TRANSFER_TIMEOUT
+      http = http_for(uri, TRANSFER_TIMEOUT)
       req = Net::HTTP::Post.new(uri)
       req['Authorization'] = "Bearer #{access_token}"
       req['Content-Type']  = 'text/plain'
@@ -228,21 +230,26 @@ module RedmineExpertHelpdesk
 
     # Net::HTTP.post_form has no timeouts of its own (60 s defaults).
     def post_token_form(uri, params)
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = true
-      http.open_timeout = OPEN_TIMEOUT
-      http.read_timeout = READ_TIMEOUT
+      http = http_for(uri, READ_TIMEOUT)
       req = Net::HTTP::Post.new(uri.request_uri)
       req.set_form_data(params)
       http.request(req)
     end
 
-    def request(method, path, payload = nil, read_timeout: READ_TIMEOUT)
-      uri = URI("#{GRAPH_BASE}#{path}")
+    # The one place a Graph connection is built, so every call gets the same
+    # timeouts and no hidden retry.
+    def http_for(uri, read_timeout)
       http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = true
+      http.use_ssl      = true
       http.open_timeout = OPEN_TIMEOUT
       http.read_timeout = read_timeout
+      http.max_retries  = MAX_RETRIES
+      http
+    end
+
+    def request(method, path, payload = nil, read_timeout: READ_TIMEOUT)
+      uri = URI("#{GRAPH_BASE}#{path}")
+      http = http_for(uri, read_timeout)
 
       req = case method
             when :get   then Net::HTTP::Get.new(uri)

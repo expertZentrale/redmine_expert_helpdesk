@@ -1065,7 +1065,7 @@ Es gibt bewusst keinen eingebauten Scheduler. Zwei Wege:
      statt in den Fehlerordner zu wandern; danach kommt sie wie bisher in den
      Fehlerordner, damit sie nie zweimal eingelesen wird.
    - Aufrufe an Microsoft Graph geben nach 20 Sekunden auf (60 beim Laden und
-     Senden einer Mail).
+     Senden einer Mail) und werden im selben Lauf nicht wiederholt.
 
    Den Endpunkt direkt aufrufen, nicht über einen Reverse-Proxy, der Requests nach
    einem Timeout wiederholt: Redmine arbeitet jeden Versuch zu Ende, den der Proxy

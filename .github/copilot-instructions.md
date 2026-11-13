@@ -161,7 +161,8 @@ cause chain, or `ProviderError#status` 5xx/429). `MailProcessor` leaves a messag
 way unread instead of `move_failed` only before the `MailHandler` hand-off (`@handed_to_mail_handler`);
 after it a ticket may exist, so `move_failed` as before (never ingest a mail twice). The deadline is
 checked before every message, the first included. Graph JSON calls use `READ_TIMEOUT` 20 s, raw MIME and sending
-`TRANSFER_TIMEOUT` 60 s.
+`TRANSFER_TIMEOUT` 60 s; every Graph connection is built in `GraphClient#http_for` with
+`max_retries = 0` (Net::HTTP otherwise repeats a timed-out GET once, so 20 s became 40 s).
 **The cache locks** (`FetchAll`, `SlaBreachCheck`, `PhishingFeeds`) span only the processes that
 share `Rails.cache`: Redmine's default `FileStore` in `tmp/cache` covers one host, so installs with
 several app servers need a shared cache (Redis/Memcached) - documented in the README. A portable
