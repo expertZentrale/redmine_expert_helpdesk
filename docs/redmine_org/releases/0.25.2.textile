@@ -4,4 +4,4 @@ h3. Fixed
 
 h3. Upgrade notes
 
-No new migrations, no new settings. Replace the plugin directory and restart.
+No new migrations, no new settings. Replace the plugin directory and restart Redmine. If the plugin is copied into a Docker image, rebuild the image before restarting the container; a restart alone keeps running the old code.
