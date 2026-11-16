@@ -14,6 +14,7 @@ and example requests/responses for each case.
 - [Not yet available via REST](#not-yet-available-via-rest)
 - [Contacts](#contacts)
 - [Tickets](#tickets)
+- [Messages (Message-ID lookup)](#messages-message-id-lookup)
 - [Project settings](#project-settings)
 - [Mailboxes](#mailboxes)
 - [Knowledge base](#knowledge-base)
@@ -71,6 +72,7 @@ alongside the array.
 |----------|-------------------|------------------------------|
 | Contacts | `view_helpdesk_info` | `manage_helpdesk_contacts` |
 | Tickets | `view_issues` | `add_issues` / `edit_issues` / `delete_issues` |
+| Messages | `view_issues` (on the message's ticket) | – (read only) |
 | Project settings | `view_helpdesk_info` or `manage_helpdesk` | `manage_helpdesk` |
 | Mailboxes | `manage_helpdesk` | `manage_helpdesk` |
 | Knowledge base | `view_helpdesk_kb` | `edit_helpdesk_kb` (create/update/approve/reject), `manage_helpdesk_kb` (delete/reindex/reextract) |
@@ -114,7 +116,7 @@ Validation errors (422) use Redmine's standard envelope:
 
 ## Not yet available via REST
 
-Only **contacts**, **tickets**, **project settings**, **mailboxes** and the **knowledge base** are exposed via
+Only **contacts**, **tickets**, the **Message-ID lookup**, **project settings**, **mailboxes** and the **knowledge base** are exposed via
 this REST API (see the sections below). The following helpdesk resources are **not** yet
 available — they can currently only be managed through the Redmine UI. Plan automations
 accordingly; these may be added later.
@@ -123,7 +125,7 @@ accordingly; these may be added later.
 |----------|--------------|-------|-------|
 | **Rules** | `HelpdeskRule` | UI only | Per-mailbox automation rules (subject/sender → set field / ignore). |
 | **OAuth consent** | `/helpdesk/oauth/authorize` | UI only | The interactive `authorization_code` consent (and the refresh token it produces) cannot be driven through the API — an identity provider needs a browser. Mailboxes using that grant must be connected once in the UI. |
-| **Messages** (standalone) | `HelpdeskMessage` | Embedded only | The message log is available **inside a ticket** via `GET /helpdesk/tickets/:id.json?include=messages`. There is **no** standalone messages collection, single-message endpoint, or `.eml` download. |
+| **Messages** (standalone) | `HelpdeskMessage` | Embedded + lookup | The message log is available **inside a ticket** via `GET /helpdesk/tickets/:id.json?include=messages`, and by Message-ID via [`GET /helpdesk/messages`](#messages-message-id-lookup). There is **no** unfiltered messages collection, single-message endpoint, or `.eml` download. |
 | **Agent replies** | `helpdesk_replies` | UI only | Sending a reply e-mail to the customer (via the mailbox's own backend, Graph, or Redmine's global SMTP) is not exposed. |
 | **Initial outbound mail** | `helpdesk_init` | Partial | Assigning a customer to a ticket **is** possible via the ticket API (`contact_email` / `contact_id`), but **sending** the initial e-mail to the customer is not. |
 | **SLA statistics** | `helpdesk_sla_statistics` | UI only | The per-project statistics/aggregations have no REST endpoint. |
@@ -385,6 +387,7 @@ Response `200` (excerpt — the `messages` part):
       {
         "id": 900,
         "direction": "in",
+        "message_id": "CAF12abc@mail.acme.example",
         "subject": "Printer down",
         "sent_at": "2026-07-08T09:26:00Z",
         "recipient_to": "support@example.com",
@@ -400,7 +403,8 @@ Response `200` (excerpt — the `messages` part):
 ```
 
 `direction` is one of `in` (incoming customer mail), `out` (agent reply), `init`
-(initial/creation contact).
+(initial/creation contact). `message_id` is the mail's Message-ID without angle
+brackets, `null` where none was recorded (`init`, autoresponder, info request).
 
 ### Create a ticket
 
@@ -489,6 +493,72 @@ curl -X DELETE -H "X-Redmine-API-Key: $KEY" \
 ```
 
 Response: `204 No Content`.
+
+---
+
+## Messages (Message-ID lookup)
+
+Finds the mail log entries of one or more e-mails by their **Message-ID**: which ticket a
+customer mail went into, or which reply was sent with that ID. Useful for matching a mail
+server's message trace against Redmine — an ID that is not found was never imported.
+
+The lookup is **global**: it searches every project the caller can see, because whoever holds
+a Message-ID usually does not know the project. A message is listed when its ticket is
+visible to the caller (`view_issues`) and its project has the Helpdesk module enabled — the
+same rule as `include=messages` on a ticket.
+
+### Endpoints
+
+| Method | Path | Action |
+|--------|------|--------|
+| `GET` | `/helpdesk/messages.{json,xml}?message_id=…` | Look messages up by Message-ID |
+
+Query parameters:
+
+| Param | Description |
+|-------|-------------|
+| `message_id` | **Required.** One or more Message-IDs, comma-separated (`message_id=a@x,b@y`) or repeated as `message_id[]=…`. With or without angle brackets — both spellings match. At most **50** per request. |
+| `project_id` | Optional. Project id or identifier; limits the lookup to that project (404 if it does not exist or is not visible). |
+| `offset`, `limit` | [Pagination](#pagination). One Message-ID can match several rows (the same mail in two projects). |
+
+URL-encode the IDs (`<`, `>`, `+`, `/`, `=` and `$` occur in real Message-IDs).
+
+```bash
+curl -G -H "X-Redmine-API-Key: $KEY" \
+     --data-urlencode "message_id=CAF12abc@mail.acme.example,<4f2e@helpdesk.example.com>" \
+     "https://redmine.example.com/helpdesk/messages.json"
+```
+
+Response `200`:
+
+```json
+{
+  "helpdesk_messages": [
+    {
+      "id": 900,
+      "issue": { "id": 1024, "subject": "Printer down" },
+      "project": { "id": 3, "name": "Support" },
+      "direction": "in",
+      "message_id": "CAF12abc@mail.acme.example",
+      "subject": "Printer down",
+      "sent_at": "2026-07-08T09:26:00Z",
+      "recipient_to": "support@example.com",
+      "recipient_cc": null,
+      "recipient_bcc": null,
+      "contact": { "id": 7 },
+      "mailbox": { "id": 5 },
+      "created_on": "2026-07-08T09:26:05Z"
+    }
+  ],
+  "total_count": 1,
+  "offset": 0,
+  "limit": 25
+}
+```
+
+IDs without a match are simply absent from the list. Errors: **401** without a valid key,
+**422** when `message_id` is missing or holds more than 50 IDs, **404** for an unknown
+`project_id`.
 
 ---
 
@@ -1071,8 +1141,10 @@ a closed ticket without a recorded response, the close time.
 
 ### Message object
 
-`{ id, direction (in|out|init), subject, sent_at, recipient_to, recipient_cc,
-recipient_bcc, contact {id}?, mailbox {id}?, created_on }`.
+`{ id, direction (in|out|init), message_id, subject, sent_at, recipient_to, recipient_cc,
+recipient_bcc, contact {id}?, mailbox {id}?, created_on }`. `message_id` is bare (no angle
+brackets) or `null`. The [Message-ID lookup](#messages-message-id-lookup) adds
+`issue {id, subject}` and `project {id, name}`.
 
 ### Knowledge base entry object
 

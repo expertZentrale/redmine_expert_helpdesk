@@ -335,10 +335,18 @@ module RedmineExpertHelpdesk
     end
 
     # Einzelne Helpdesk-Nachricht (Nachrichtenverlauf eines Tickets).
-    def message(api, m)
+    # with_issue names the ticket and project, for the Message-ID lookup that
+    # lists messages of several tickets. message_id goes out bare, whichever
+    # spelling the row holds (HelpdeskMessage.message_id_variants).
+    def message(api, m, with_issue: false)
       api.message do
         api.id        m.id
+        if with_issue && m.issue
+          api.issue(:id => m.issue_id, :subject => m.issue.subject)
+          api.project(:id => m.issue.project_id, :name => m.issue.project.name)
+        end
         api.direction m.direction
+        api.message_id HelpdeskMessage.bare_message_id(m.message_id)
         api.subject   m.subject
         api.sent_at   m.sent_at
         api.recipient_to  m.recipient_to

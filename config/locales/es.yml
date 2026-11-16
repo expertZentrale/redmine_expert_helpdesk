@@ -737,6 +737,8 @@ es:
   text_helpdesk_kb_saved_not_indexed: "Guardado, pero no se pudo actualizar el vector (almacén o embeddings no accesibles/configurados). Use «Reconstruir índice» cuando estén disponibles."
   text_helpdesk_kb_problem_blank: "Guardado, pero no se puede buscar: el texto del problema está vacío."
   text_helpdesk_kb_unindex_failed: "No se pudo eliminar el vector del almacén (no accesible). La entrada se ha conservado; inténtelo de nuevo o use «Reconstruir índice» cuando el almacén esté disponible."
+  text_helpdesk_message_id_required: "Indique al menos un Message-ID en message_id."
+  text_helpdesk_message_id_too_many: "Como máximo %{count} Message-ID por solicitud."
   notice_helpdesk_kb_saved_indexed: "Guardado y embedding regenerado."
   notice_helpdesk_kb_reindex_queued: "Reconstrucción del índice iniciada. Se ejecuta en segundo plano."
   button_helpdesk_kb_reextract: "Volver a extraer entradas"

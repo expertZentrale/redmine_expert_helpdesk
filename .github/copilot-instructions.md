@@ -214,8 +214,12 @@ that order is what makes `safe_to_stop` trustworthy across pods.
     which `link!` also fills on replies). Removed tickets and
     other projects' tickets from the same Message-ID are related (`relate_across_projects`);
     `HelpdeskMessage.received_in_project?` skips a mail the project already has. Message-IDs are
-    stored in both spellings (incoming bare, outgoing `<id>`) — query via
-    `HelpdeskMessage.message_id_variants`. Experimental `handover.rb`: with the central
+    stored in both spellings (incoming bare, outgoing through the mailbox `<id>`, replies over
+    Redmine's SMTP bare, autoresponder/info request NULL) — query via
+    `HelpdeskMessage.message_id_variants`, emit `HelpdeskMessage.bare_message_id`. The REST lookup
+    `GET /helpdesk/messages?message_id=` (`HelpdeskMessagesApiController`) is global (Issue.visible +
+    helpdesk module, optional `project_id`), requires `message_id` (at most `MAX_IDS` 50) and never
+    lists the whole log. Experimental `handover.rb`: with the central
     `handover_enabled` and both projects' `HelpdeskProjectSetting#handover_enabled` on, the reply
     controller takes participating helpdesk addresses out of the mail and creates the ticket there
     (`note` or `history` mode, chosen by the agent; private notes never go over), before the mail,

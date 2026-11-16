@@ -264,7 +264,12 @@ nested registration would never fire in production.
   projects made from the same Message-ID are related (`relate_across_projects`, respects
   `Setting.cross_project_issue_relations`); `HelpdeskMessage.received_in_project?` skips a mail the
   project already has. **Message-IDs are stored in both spellings** (incoming bare, outgoing
-  `<id>`) — always query through `HelpdeskMessage.message_id_variants`. Returns a `Result` struct.
+  through the mailbox `<id>`, replies over Redmine's SMTP bare, autoresponder/info request NULL) —
+  always query through `HelpdeskMessage.message_id_variants`, and emit
+  `HelpdeskMessage.bare_message_id`. The REST lookup `GET /helpdesk/messages?message_id=`
+  (`HelpdeskMessagesApiController`) is global (Issue.visible + helpdesk module, optional
+  `project_id`), requires `message_id` (at most `MAX_IDS` 50) and never lists the whole log.
+  Returns a `Result` struct.
 - **`handover.rb`** — experimental hand-over to another project instead of a mail. Active only when
   the central `handover_enabled` **and** `HelpdeskProjectSetting#handover_enabled` of *both* projects
   are on (migration 067). `HelpdeskRepliesController#create` splits participating helpdesk

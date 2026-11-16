@@ -137,6 +137,22 @@ class HelpdeskApiTest < Redmine::IntegrationTest
     assert_not HelpdeskMessage.exists?(message.id)
   end
 
+  # The mail log names each mail's Message-ID, bare whatever the row holds.
+  def test_ticket_messages_carry_the_message_id
+    issue = Issue.create!(:project_id => 1, :tracker_id => 1, :author_id => 1, :subject => 'Mit Mail')
+    HelpdeskTicketInfo.create!(:issue_id => issue.id)
+    HelpdeskMessage.create!(:issue => issue, :direction => 'in', :message_id => 'in-1@example.com')
+    HelpdeskMessage.create!(:issue => issue, :direction => 'out', :message_id => '<out-1@example.com>')
+    HelpdeskMessage.create!(:issue => issue, :direction => 'init')
+
+    get "/helpdesk/tickets/#{issue.id}.json?include=messages", :headers => auth
+
+    assert_response :success
+    messages = ActiveSupport::JSON.decode(@response.body)['helpdesk_ticket']['messages']
+    assert_equal ['in-1@example.com', 'out-1@example.com', nil], messages.map { |m| m['message_id'] }
+    assert_not messages.first.key?('issue'), 'the ticket view does not repeat the ticket'
+  end
+
   # --- Projekt-Einstellungen: anzeigen + (partiell) aktualisieren -----------
 
   def test_project_settings_show_and_update

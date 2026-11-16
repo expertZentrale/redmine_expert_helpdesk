@@ -5,6 +5,18 @@
 > Die englische `CHANGELOG.md` ist maßgeblich und wird synchron gehalten. Diese deutsche Fassung
 > enthält zusätzlich die vollständige Historie vor dem 2026-07-24 (Einträge, die es nur auf Deutsch gibt).
 
+## [0.26.0] - 2026-11-16
+
+### Hinzugefügt
+
+- **Mails per Message-ID über die REST-API finden.** `GET /helpdesk/messages.json?message_id=…`
+  nimmt bis zu 50 Message-IDs, mit oder ohne spitze Klammern, und liefert die passenden Einträge des
+  Nachrichtenverlaufs mit Ticket und Projekt, über alle Projekte, die der Aufrufer sehen darf
+  (`project_id` schränkt ein). Eine ID, die nicht vorkommt, hat nie ein Ticket erreicht – genau das
+  braucht man, um die Nachrichtenablaufverfolgung eines Mailservers mit Redmine abzugleichen. Der
+  Nachrichtenverlauf eines Tickets (`GET /helpdesk/tickets/:id.json?include=messages`) enthält jetzt
+  ebenfalls die `message_id` jeder Mail, immer ohne spitze Klammern.
+
 ## [0.25.2] - 2026-11-13
 
 ### Behoben

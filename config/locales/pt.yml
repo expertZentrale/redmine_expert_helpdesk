@@ -737,6 +737,8 @@ pt:
   text_helpdesk_kb_saved_not_indexed: "Guardado, mas não foi possível atualizar o vetor (armazenamento ou embeddings inacessíveis/não configurados). Use «Reconstruir índice» quando estiver disponível."
   text_helpdesk_kb_problem_blank: "Guardado, mas não pesquisável: o texto do problema está vazio."
   text_helpdesk_kb_unindex_failed: "Não foi possível remover o vetor do armazenamento (inacessível). A entrada foi mantida; tente novamente ou use «Reconstruir índice» quando o armazenamento estiver disponível."
+  text_helpdesk_message_id_required: "Indique pelo menos um Message-ID em message_id."
+  text_helpdesk_message_id_too_many: "No máximo %{count} Message-ID por pedido."
   notice_helpdesk_kb_saved_indexed: "Guardado e com embedding recalculado."
   notice_helpdesk_kb_reindex_queued: "Reconstrução do índice iniciada. É executada em segundo plano."
   button_helpdesk_kb_reextract: "Reextrair entradas"

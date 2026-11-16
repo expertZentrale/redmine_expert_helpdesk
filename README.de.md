@@ -1181,6 +1181,7 @@ Parametern und Beispielen: [API.md](API.md).**
 | GET / PUT / DELETE | `/helpdesk/contacts/:id.{json,xml}` |
 | GET / POST | `/projects/:id/helpdesk/tickets.{json,xml}` |
 | GET / PUT / DELETE | `/helpdesk/tickets/:id.{json,xml}` |
+| GET | `/helpdesk/messages.{json,xml}?message_id=…` |
 | GET / PUT | `/projects/:id/helpdesk/settings.{json,xml}` |
 | GET / POST | `/projects/:id/helpdesk/mailboxes.{json,xml}` |
 | GET / PUT / DELETE | `/helpdesk/mailboxes/:id.{json,xml}` |
@@ -1195,6 +1196,12 @@ Konfiguration legt Mail-Hosts, Benutzernamen und OAuth-Client-/Tenant-IDs offen.
 Secrets (`mail_password`, `oauth_client_secret`, `oauth_sa_key`) sind **nur
 schreibbar** — die Antworten melden lediglich, ob eines hinterlegt ist, und ein `"-"`
 löscht es.
+
+`/helpdesk/messages` sucht Mails per **Message-ID** in allen Projekten, die der Aufrufer sehen
+darf (bis zu 50 IDs je Anfrage, mit oder ohne spitze Klammern), und nennt das Ticket, in dem
+die Mail gelandet ist — etwa um die Nachrichtenablaufverfolgung eines Mailservers mit Redmine
+abzugleichen. Auch die Nachrichten eines Tickets (`include=messages`) enthalten jetzt die
+`message_id`.
 
 ```bash
 # Helpdesk-Tickets des Projekts 42 auflisten
