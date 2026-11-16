@@ -1,0 +1,6 @@
+api.array :helpdesk_messages,
+          api_meta(:total_count => @message_count, :offset => @offset, :limit => @limit) do
+  @messages.each do |message|
+    RedmineExpertHelpdesk::ApiSerializers.message(api, message, :with_issue => true)
+  end
+end

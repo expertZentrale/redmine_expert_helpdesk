@@ -737,6 +737,8 @@ it:
   text_helpdesk_kb_saved_not_indexed: "Salvata, ma non è stato possibile aggiornare il vettore (archivio o embedding non raggiungibili/configurati). Usa «Ricostruisci indice» quando sarà disponibile."
   text_helpdesk_kb_problem_blank: "Salvata, ma non ricercabile: il testo del problema è vuoto."
   text_helpdesk_kb_unindex_failed: "Non è stato possibile rimuovere il vettore dall'archivio (non raggiungibile). La voce è stata mantenuta; riprova, oppure usa «Ricostruisci indice» quando l'archivio sarà disponibile."
+  text_helpdesk_message_id_required: "Indicare almeno un Message-ID in message_id."
+  text_helpdesk_message_id_too_many: "Al massimo %{count} Message-ID per richiesta."
   notice_helpdesk_kb_saved_indexed: "Salvata e con embedding ricalcolato."
   notice_helpdesk_kb_reindex_queued: "Ricostruzione dell'indice avviata. Viene eseguita in background."
   button_helpdesk_kb_reextract: "Estrai di nuovo le voci"

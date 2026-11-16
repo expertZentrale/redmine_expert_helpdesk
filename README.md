@@ -1139,6 +1139,7 @@ and append `.json`/`.xml`. **Full reference with all parameters and examples:
 | GET / PUT / DELETE | `/helpdesk/contacts/:id.{json,xml}` |
 | GET / POST | `/projects/:id/helpdesk/tickets.{json,xml}` |
 | GET / PUT / DELETE | `/helpdesk/tickets/:id.{json,xml}` |
+| GET | `/helpdesk/messages.{json,xml}?message_id=…` |
 | GET / PUT | `/projects/:id/helpdesk/settings.{json,xml}` |
 | GET / POST | `/projects/:id/helpdesk/mailboxes.{json,xml}` |
 | GET / PUT / DELETE | `/helpdesk/mailboxes/:id.{json,xml}` |
@@ -1152,6 +1153,11 @@ Mailboxes require `manage_helpdesk` for reading as well as writing, since their
 configuration exposes mail hosts, usernames and OAuth client/tenant ids. Their secrets
 (`mail_password`, `oauth_client_secret`, `oauth_sa_key`) are **write-only** — responses
 report only whether one is stored, and sending `"-"` clears it.
+
+`/helpdesk/messages` looks mails up by **Message-ID** across every project the caller can see
+(up to 50 IDs per request, with or without angle brackets) and names the ticket each one went
+into — for matching a mail server's message trace against Redmine. Ticket messages
+(`include=messages`) carry the `message_id` as well.
 
 ```bash
 # List helpdesk tickets of project 42

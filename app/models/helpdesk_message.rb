@@ -81,14 +81,20 @@ class HelpdeskMessage < HelpdeskApplicationRecord
   end
 
   # Both spellings of a Message-ID. Rows are not stored uniformly: incoming
-  # mail carries the provider's form (IMAP without, Graph with angle brackets),
-  # outgoing replies always store "<id>". A lookup with only one form misses
-  # half the rows.
+  # mail is stored bare (MailProvider.normalize_message_id), replies and initial
+  # mails sent through the mailbox store "<id>", replies over Redmine's SMTP the
+  # Mail gem's bare form, and the autoresponder and info requests store none.
+  # A lookup with only one form misses half the rows.
   def self.message_id_variants(id)
-    bare = id.to_s.strip.delete_prefix('<').delete_suffix('>')
-    return [] if bare.blank?
+    bare = bare_message_id(id)
+    return [] if bare.nil?
 
     [bare, "<#{bare}>"]
+  end
+
+  # The Message-ID without angle brackets, nil when there is none.
+  def self.bare_message_id(id)
+    id.to_s.strip.delete_prefix('<').delete_suffix('>').strip.presence
   end
 
   # True when this project already received the mail - a second mailbox of the

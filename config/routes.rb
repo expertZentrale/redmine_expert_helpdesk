@@ -132,6 +132,8 @@ RedmineApp::Application.routes.draw do
       post :reject
     end
   end
+  # Mail log lookup by Message-ID, across every project the caller can see
+  get 'helpdesk/messages', :to => 'helpdesk_messages_api#index', :as => 'helpdesk_messages_api'
 
   # Regeln je Postfach
   resources :helpdesk_mailboxes, :only => [] do

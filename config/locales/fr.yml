@@ -737,6 +737,8 @@ fr:
   text_helpdesk_kb_saved_not_indexed: "Enregistrée, mais le vecteur n'a pas pu être mis à jour (base vectorielle ou embeddings injoignables/non configurés). Utilisez « Reconstruire l'index » dès qu'ils sont disponibles."
   text_helpdesk_kb_problem_blank: "Enregistrée, mais exclue de la recherche : le texte du problème est vide."
   text_helpdesk_kb_unindex_failed: "Le vecteur n'a pas pu être retiré de la base vectorielle (injoignable). L'entrée a été conservée ; réessayez ou utilisez « Reconstruire l'index » dès que la base vectorielle est disponible."
+  text_helpdesk_message_id_required: "Indiquez au moins un Message-ID dans message_id."
+  text_helpdesk_message_id_too_many: "Au maximum %{count} Message-ID par requête."
   notice_helpdesk_kb_saved_indexed: "Enregistrée et embedding recalculé."
   notice_helpdesk_kb_reindex_queued: "Reconstruction de l'index lancée. Elle s'exécute en arrière-plan."
   button_helpdesk_kb_reextract: "Réextraire les entrées"

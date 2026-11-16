@@ -6,6 +6,19 @@
 > `CHANGELOG.de.md`. From here on, every change is recorded in **both** files (EN authoritative —
 > GitHub release notes are generated from this file).
 
+## [0.26.0] - 2026-11-16
+
+### Added
+
+- **Look mails up by Message-ID through the REST API.** `GET /helpdesk/messages.json?message_id=…`
+  takes up to 50 Message-IDs, with or without angle brackets, and returns the matching mail log
+  entries with their ticket and project, across every project the caller can see (`project_id`
+  narrows it). An ID that is not listed is in none of the helpdesk messages the caller can see: either
+  the mail was never imported, or its ticket is hidden from the caller or its project has the Helpdesk
+  module off. That is what you need to match a mail server's message trace against Redmine. The mail log of a ticket
+  (`GET /helpdesk/tickets/:id.json?include=messages`) now carries each mail's `message_id` as well,
+  always without angle brackets.
+
 ## [0.25.3] - 2026-11-16
 
 ### Fixed
