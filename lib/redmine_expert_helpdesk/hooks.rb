@@ -433,6 +433,8 @@ module RedmineExpertHelpdesk
           :reply_assign_to_sender => project_setting.reply_assign_to_sender,
           :original_to            => original[:to],
           :original_cc            => original[:cc],
+          # "Include previous message" is offered only when there is one.
+          :previous_message       => RedmineExpertHelpdesk::PreviousMessage.latest(issue).present?,
           :box_color              => project_setting.effective_reply_box_color,
           :hazard_color           => project_setting.effective_reply_hazard_color,
           # Experimental hand-over: addresses the form offers to hand over to.

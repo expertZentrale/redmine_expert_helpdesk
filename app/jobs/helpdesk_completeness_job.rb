@@ -234,12 +234,12 @@ class HelpdeskCompletenessJob < ActiveJob::Base
     nil
   end
 
-  # The real mail attachments of the ticket — without the Original .eml we attach
+  # The real mail attachments of the ticket — without the .eml files we attach
   # ourselves, which would otherwise make every mail look like it had evidence.
   def mail_attachments(issue, message)
     exclude_id = message&.eml_attachment_id
     issue.attachments.to_a.reject do |a|
-      a.id == exclude_id || a.description == 'Original E-Mail'
+      a.id == exclude_id || RedmineExpertHelpdesk::SentMailArchive.archived_eml?(a)
     end
   end
 

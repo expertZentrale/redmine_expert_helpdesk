@@ -221,7 +221,7 @@ module RedmineExpertHelpdesk
         end
       @delivered = true
 
-      HelpdeskMessage.create!(
+      message = HelpdeskMessage.create!(
         :issue            => @issue,
         :helpdesk_contact => contact,
         :helpdesk_mailbox => @mailbox,
@@ -234,6 +234,9 @@ module RedmineExpertHelpdesk
         :recipient_bcc    => @bcc_list.join(', ').presence,
         :sent_attachments => Array(sent_filenames).uniq.join(', ').presence
       )
+      # The copy a reply quotes when it follows the initial mail. Never raises.
+      SentMailArchive.attach!(message, @sent_mime, @user)
+      message
     end
 
     def rendered_subject(contact)
@@ -333,7 +336,8 @@ module RedmineExpertHelpdesk
         :detail => "delivery_method=#{ActionMailer::Base.delivery_method}"
       ) { mail_obj.deliver! }
       # Redmine's relay files nothing in the mailbox itself. No-op for Graph.
-      MailProvider.for(@mailbox).archive_sent(mail_obj.to_s)
+      @sent_mime = mail_obj.to_s
+      MailProvider.for(@mailbox).archive_sent(@sent_mime)
 
       # Versendete Dateien (regulaere Anhaenge + inline eingebettete Bilder) fuer die
       # Anzeige im Kundenbereich zurueckgeben.
@@ -354,6 +358,7 @@ module RedmineExpertHelpdesk
         :to => @to_list, :cc => @cc_list, :bcc => @bcc_list,
         :subject => subject, :message_id => message_id
       ) { MailProvider.outgoing_for(@mailbox).send_mail_mime(mime_msg) }
+      @sent_mime = mime_msg
 
       # Versendete Dateien (regulaere Anhaenge + inline eingebettete Bilder) fuer die
       # Anzeige im Kundenbereich zurueckgeben.

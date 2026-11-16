@@ -59,6 +59,8 @@ require File.expand_path('../lib/redmine_expert_helpdesk/attachment_blacklist', 
 require File.expand_path('../lib/redmine_expert_helpdesk/reply_images', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/reply_box', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/note_quoter', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/sent_mail_archive', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/previous_message', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/maintenance', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/thread_scope', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/handover', __FILE__)

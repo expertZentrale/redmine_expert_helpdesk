@@ -103,6 +103,14 @@ class HelpdeskRepliesController < ApplicationController
     header_html = plain_to_html(RedmineExpertHelpdesk::TemplateRenderer.render(mailbox.reply_header.to_s, context))
     footer_html = plain_to_html(RedmineExpertHelpdesk::TemplateRenderer.render(mailbox.effective_footer_template, context))
     body_html = [header_html, wiki_html, footer_html].reject(&:blank?).join("\n")
+    # Below the signature, as a mail client does on "Reply": the latest message
+    # of the conversation with its header. Only in the mail - the journal note
+    # stays what the agent typed. Appended before the image pass below, which
+    # embeds its pictures like the note's own.
+    if params[:include_previous].to_s == '1'
+      previous_html = RedmineExpertHelpdesk::PreviousMessage.html_for(@issue)
+      body_html = [body_html, previous_html].join("\n") if previous_html.present?
+    end
 
     # Anhaenge: nur IDs zulassen, die tatsaechlich zum Ticket gehoeren
     attachment_ids = Array(params[:attachment_ids]).map(&:to_i).reject(&:zero?)
@@ -147,6 +155,7 @@ class HelpdeskRepliesController < ApplicationController
     end
 
     message_id = nil
+    sent_mime  = nil
     delivered  = false
 
     # Inline image candidates: freshly inserted uploads AND the ticket's own
@@ -155,8 +164,8 @@ class HelpdeskRepliesController < ApplicationController
 
     if mailbox.outgoing_route == 'smtp'
       processed_html, embedded_atts = RedmineExpertHelpdesk::ReplyImages.to_data_uri(body_html, image_atts)
-      message_id = send_reply_smtp(mailbox, reply_to, reply_cc, reply_bcc, subject, processed_html,
-                                   valid_att_ids, embedded_atts, sent_filenames)
+      message_id, sent_mime = send_reply_smtp(mailbox, reply_to, reply_cc, reply_bcc, subject, processed_html,
+                                              valid_att_ids, embedded_atts, sent_filenames)
       delivered  = true
     else
       # Roher MIME-Versand fuer zuverlaessige CID-Inline-Bilder – sowohl ueber
@@ -177,6 +186,7 @@ class HelpdeskRepliesController < ApplicationController
         RedmineExpertHelpdesk::MailProvider.outgoing_for(mailbox).send_mail_mime(mime_msg)
       end
       delivered = true
+      sent_mime = mime_msg
       sent_filenames.concat(regular_atts.map(&:filename))
       sent_filenames.concat(cid_map.keys.map(&:filename))
     end
@@ -199,6 +209,8 @@ class HelpdeskRepliesController < ApplicationController
       # damit das Modell nicht seine eigene Ausgabe als Wahrheit einliest.
       :ai_drafted        => params[:hd_ai_drafted].to_s == '1'
     )
+    # The copy the next reply quotes from (PreviousMessage). Never raises.
+    RedmineExpertHelpdesk::SentMailArchive.attach!(hd_msg, sent_mime, User.current)
 
     # ID zurueckgeben: das Formular schickt sie beim Issue-Update als Hidden-Field
     # mit, der controller_issues_edit_after_save-Hook verknuepft dann das Journal.
@@ -272,7 +284,7 @@ class HelpdeskRepliesController < ApplicationController
   end
 
   # Sendet die Antwort via Redmines konfiguriertem SMTP-Transport.
-  # Gibt die Message-ID der gesendeten Mail zurueck.
+  # Returns the Message-ID and the MIME of the sent mail.
   def send_reply_smtp(mailbox, to, cc, bcc, subject, body_html, att_ids, embedded_atts, sent_filenames)
     mail_obj             = Mail.new
     mail_obj.message_id  = generate_message_id(mailbox.mailbox_address)
@@ -312,8 +324,9 @@ class HelpdeskRepliesController < ApplicationController
     ) { mail_obj.deliver! }
     # Redmine's relay files nothing in the mailbox itself; for an IMAP mailbox we
     # can still put the copy where the agents look. No-op for Graph mailboxes.
-    RedmineExpertHelpdesk::MailProvider.for(mailbox).archive_sent(mail_obj.to_s)
-    mail_obj.message_id
+    raw = mail_obj.to_s
+    RedmineExpertHelpdesk::MailProvider.for(mailbox).archive_sent(raw)
+    [mail_obj.message_id, raw]
   end
 
   # Erstellt eine vollstaendige RFC-2822-MIME-Nachricht mit CID-Inline-Bildern.
