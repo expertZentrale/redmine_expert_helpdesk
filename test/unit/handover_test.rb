@@ -76,7 +76,9 @@ class HandoverTest < ActiveSupport::TestCase
                               :provider => 'imap', :imap_host => 'mail.example.com')
     end
     queries = []
-    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql].include?('helpdesk_project_settings') }
+    counter = lambda do |*, payload|
+      queries << payload[:sql] if payload[:name] != 'SCHEMA' && payload[:sql].include?('helpdesk_project_settings')
+    end
     ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { Handover.targets_for(@project_a) }
 
     assert_operator queries.size, :<=, 2, queries.join("\n")

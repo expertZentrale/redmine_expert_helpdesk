@@ -1,0 +1,10 @@
+h3. Fixed
+
+* *Mail from people whose Redmine account is locked is no longer lost.* Redmine's own mail handler drops every mail from a locked account, or one that was never activated, and mentions it only at info level. A colleague whose Redmine login had been locked long ago could therefore answer a ticket by mail and the answer never arrived, while the same mailbox accepted mail from complete strangers. With _Unknown senders_ set to _Accept (anonymous)_ or _Create user account_ such mail is now filed under that account, as RedmineUP's helpdesk did; the account stays locked. With _Ignore_ it is skipped as before.
+* *Every skipped mail now says why in the log.* Each mail the helpdesk skips (allow/deny list, ignore rule, auto-reply filter, phishing quarantine, duplicate, or a mail Redmine's mail handler turned down) is logged at warn level with the reason, sender and subject. Before, several of these left no trace at all on a server logging at warn, and with no skipped folder set the mail sat among the processed ones.
+
+h3. Upgrade notes
+
+No new migrations, no new settings. Replace the plugin directory and restart Redmine. If the plugin is copied into a Docker image, rebuild the image before restarting the container; a restart alone keeps running the old code.
+
+To find mail lost this way before the upgrade, look in the mailbox's skipped folder, or in the processed folder when no skipped folder is set, for mail that is not on any ticket.

@@ -24,7 +24,9 @@ class HelpdeskMyPageAwaitingTest < Redmine::IntegrationTest
     log_user('jsmith', 'jsmith')
 
     queries = []
-    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql].include?('helpdesk_ticket_infos') }
+    counter = lambda do |*, payload|
+      queries << payload[:sql] if payload[:name] != 'SCHEMA' && payload[:sql].include?('helpdesk_ticket_infos')
+    end
     ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { get '/my/page' }
 
     assert_response :success

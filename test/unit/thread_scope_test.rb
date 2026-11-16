@@ -310,7 +310,9 @@ class ThreadScopeTest < ActiveSupport::TestCase
     refs = (1..30).map { |i| "<unknown-#{i}@else.example>" }.join(' ')
     raw  = mime(:subject => 'Hallo', :message_id => 'many@x', :references => refs)
     queries = []
-    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql].include?('helpdesk_messages') }
+    counter = lambda do |*, payload|
+      queries << payload[:sql] if payload[:name] != 'SCHEMA' && payload[:sql].include?('helpdesk_messages')
+    end
     ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { scrub(raw) }
 
     assert_equal 1, queries.size, queries.join("\n")
@@ -323,7 +325,9 @@ class ThreadScopeTest < ActiveSupport::TestCase
            (1..15).map { |i| "<redmine.issue-#{900_000 + i}.20260101000000@example.net>" }
     raw  = mime(:subject => 'Hallo', :message_id => 'many-redmine@x', :references => refs.join(' '))
     queries = []
-    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql] =~ /FROM [`"]?(issues|journals)[`"]?/ }
+    counter = lambda do |*, payload|
+      queries << payload[:sql] if payload[:name] != 'SCHEMA' && payload[:sql] =~ /FROM [`"]?(issues|journals)[`"]?/
+    end
     ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { scrub(raw) }
 
     assert_operator queries.size, :<=, 2, queries.join("\n")
@@ -357,7 +361,9 @@ class ThreadScopeTest < ActiveSupport::TestCase
   def test_many_subject_tags_are_removed_without_lookups
     tags    = (1..30).map { |i| "[##{900_000 + i}]" }.join(' ')
     queries = []
-    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql] =~ /FROM [`"]?issues[`"]?/ }
+    counter = lambda do |*, payload|
+      queries << payload[:sql] if payload[:name] != 'SCHEMA' && payload[:sql] =~ /FROM [`"]?issues[`"]?/
+    end
     result  = nil
     ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
       result = scrub(mime(:subject => "#{tags} Hallo", :message_id => 'tags@x'))
@@ -399,7 +405,9 @@ class ThreadScopeTest < ActiveSupport::TestCase
   def test_overlong_subject_is_defanged
     tags    = (1..200).map { |i| "[##{900_000 + i}]" }.join(' ') + " [##{@foreign.id}] Hallo"
     queries = []
-    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql] =~ /FROM [`"]?issues[`"]?/ }
+    counter = lambda do |*, payload|
+      queries << payload[:sql] if payload[:name] != 'SCHEMA' && payload[:sql] =~ /FROM [`"]?issues[`"]?/
+    end
     result  = nil
     ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
       result = scrub(mime(:subject => tags, :message_id => 'long@x'))
@@ -419,7 +427,9 @@ class ThreadScopeTest < ActiveSupport::TestCase
   def test_a_few_subject_tags_are_looked_up_together
     tags    = [@local.id, @foreign.id, 900_001].map { |id| "[##{id}]" }.join(' ')
     queries = []
-    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql] =~ /FROM [`"]?issues[`"]? WHERE/ }
+    counter = lambda do |*, payload|
+      queries << payload[:sql] if payload[:name] != 'SCHEMA' && payload[:sql] =~ /FROM [`"]?issues[`"]? WHERE/
+    end
     result  = nil
     ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
       result = scrub(mime(:subject => "#{tags} Hallo", :message_id => 'few@x'))
@@ -453,7 +463,9 @@ class ThreadScopeTest < ActiveSupport::TestCase
       "<batch-#{i}@x>"
     end
     queries = []
-    counter = ->(*, payload) { queries << payload[:sql] if payload[:sql].include?('helpdesk_messages') }
+    counter = lambda do |*, payload|
+      queries << payload[:sql] if payload[:name] != 'SCHEMA' && payload[:sql].include?('helpdesk_messages')
+    end
     ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') do
       scrub(mime(:subject => 'Hallo', :message_id => 'batch@x', :references => refs.join(' ')))
     end

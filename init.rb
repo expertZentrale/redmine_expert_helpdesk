@@ -87,12 +87,13 @@ require File.expand_path('../lib/redmine_expert_helpdesk/patches/queries_helper_
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/issue_css_classes_patch', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/issue_query_preload_patch', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/journal_patch', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/patches/mail_handler_patch', __FILE__)
 
 Redmine::Plugin.register :redmine_expert_helpdesk do
   name 'Redmine expert Helpdesk'
   author 'Dennis Buehring'
   description 'Helpdesk plugin: email-to-ticket via Microsoft Graph or IMAP/SMTP, autoresponder, customer replies, SLA, and rules engine'
-  version '0.25.2'
+  version '0.25.3'
   requires_redmine :version_or_higher => '5.0'
   url 'https://github.com/expertZentrale/redmine_expert_helpdesk'
 
@@ -366,6 +367,11 @@ RedmineExpertHelpdesk::Patches::IssueQueryPreloadPatch.apply!(IssueQuery)
 
 unless Journal.included_modules.include?(RedmineExpertHelpdesk::Patches::JournalPatch)
   Journal.include(RedmineExpertHelpdesk::Patches::JournalPatch)
+end
+# Mail from locked accounts (see mail_handler_patch.rb). RedmineUP aliases
+# MailHandler#receive_issue_reply, not #receive, so a prepend is safe here.
+unless MailHandler.ancestors.include?(RedmineExpertHelpdesk::Patches::MailHandlerPatch)
+  MailHandler.prepend(RedmineExpertHelpdesk::Patches::MailHandlerPatch)
 end
 # hd_icon_label global verfuegbar machen: Redmine setzt include_all_helpers = false,
 # daher werden Plugin-Helfer nicht automatisch in Kern-Views eingebunden.
