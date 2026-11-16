@@ -130,7 +130,8 @@ flowchart TD
   Bounce messages (NDRs) are never filtered, because a failed delivery is something an agent needs
   to see.
 - **Skipped folder** falls back to the processed folder when empty. When both are empty the mail
-  stays in the source folder and is only marked as read.
+  stays in the source folder and is only marked as read. Every skipped mail is logged at warn level
+  with its reason, sender and subject (`message skipped (…)`), whichever check skipped it.
 
 ---
 
@@ -161,7 +162,7 @@ flowchart TD
   STRIP --> MH{"Redmine MailHandler:<br/>marker of an existing ticket found?"}
   MH -- yes --> RE([Note on that ticket]):::reply
   MH -- no --> NEW(["New ticket in the mailbox's project<br/><i>Defaults for new tickets</i>"]):::new
-  MH -- "rejected<br/><i>Unknown senders: Ignore</i>" --> S[(Skipped folder)]:::skip
+  MH -- "rejected<br/><i>Unknown senders: Ignore</i><br/>(then also locked accounts)" --> S[(Skipped folder)]:::skip
   classDef new fill:#d8efe1,stroke:#1f7a4d,color:#10301f
   classDef reply fill:#dbe7f5,stroke:#2f5d8a,color:#13283d
   classDef skip fill:#f6ead6,stroke:#9a6412,color:#3d2806
@@ -179,7 +180,11 @@ flowchart TD
 - **Max. age (days)** forces a new ticket for an answer to a ticket that was closed long ago. `0`
   or empty turns the limit off.
 - **Unknown senders** decides what `MailHandler` does with an address that has no Redmine account:
-  *Accept (anonymous)*, *Create user account*, or *Ignore* (the mail is skipped).
+  *Accept (anonymous)*, *Create user account*, or *Ignore* (the mail is skipped). A sender whose
+  account is locked, or was never activated, gets no less than a stranger: with *Accept* or
+  *Create user account* the ticket or note is filed under that account (no account is created or
+  unlocked), with *Ignore* the mail is skipped. Redmine's own `MailHandler` drops such mail in every
+  mode.
 - `MailHandler` also rejects mails from Redmine's own *Emission email address*, and applies Redmine's
   *Incoming emails* settings (*Truncate emails after one of these lines*, *Exclude attachments by
   name*).

@@ -134,7 +134,9 @@ flowchart TD
   Unzustellbarkeitsberichte (NDRs) werden nie gefiltert, denn eine fehlgeschlagene Zustellung muss
   ein Bearbeiter sehen.
 - **Ordner übersprungen** fällt auf den Ordner für verarbeitete Mails zurück, wenn er leer ist. Sind
-  beide leer, bleibt die Mail im Quellordner und wird nur als gelesen markiert.
+  beide leer, bleibt die Mail im Quellordner und wird nur als gelesen markiert. Jede übersprungene
+  Mail wird mit Grund, Absender und Betreff als Warnung geloggt (`message skipped (…)`), gleich
+  welche Prüfung sie übersprungen hat.
 
 ---
 
@@ -165,7 +167,7 @@ flowchart TD
   STRIP --> MH{"Redmine MailHandler:<br/>Marker eines bestehenden Tickets gefunden?"}
   MH -- ja --> RE([Notiz an diesem Ticket]):::reply
   MH -- nein --> NEW(["Neues Ticket im Projekt des Postfachs<br/><i>Standardwerte für neue Tickets</i>"]):::new
-  MH -- "abgelehnt<br/><i>Unbekannte Absender: Ignorieren</i>" --> S[(Ordner übersprungen)]:::skip
+  MH -- "abgelehnt<br/><i>Unbekannte Absender: Ignorieren</i><br/>(dann auch gesperrte Konten)" --> S[(Ordner übersprungen)]:::skip
   classDef new fill:#d8efe1,stroke:#1f7a4d,color:#10301f
   classDef reply fill:#dbe7f5,stroke:#2f5d8a,color:#13283d
   classDef skip fill:#f6ead6,stroke:#9a6412,color:#3d2806
@@ -185,6 +187,10 @@ flowchart TD
   geschlossenes Ticket. `0` oder leer schaltet das Limit ab.
 - **Unbekannte Absender** bestimmt, was der `MailHandler` mit einer Adresse ohne Redmine-Konto macht:
   *Akzeptieren (anonym)*, *Benutzerkonto anlegen* oder *Ignorieren* (die Mail wird übersprungen).
+  Ein Absender, dessen Konto gesperrt oder nie aktiviert ist, bekommt nicht weniger als ein Fremder:
+  Mit *Akzeptieren* oder *Benutzerkonto anlegen* landen Ticket oder Notiz unter diesem Konto (es wird
+  kein Konto angelegt oder entsperrt), mit *Ignorieren* wird die Mail übersprungen. Redmines eigener
+  `MailHandler` verwirft solche Mails in jedem Modus.
 - Der `MailHandler` lehnt außerdem Mails von Redmines eigenem *E-Mail-Absender* ab und wendet
   Redmines Einstellungen unter *Eingehende E-Mails* an (*Schneide E-Mails nach einer dieser Zeilen
   ab*, *Anhänge nach Namen ausschließen*).

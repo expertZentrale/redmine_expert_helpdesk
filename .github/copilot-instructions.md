@@ -476,7 +476,14 @@ that order is what makes `safe_to_stop` trustworthy across pods.
   View-hook JS that touches journals must handle both.
 - Every processed mail is stored as an `.eml` attachment ("Original E-Mail") on the ticket.
 - `unknown_user_mode` on the mailbox (`accept`/`create`/`ignore`) controls senders with no
-  Redmine user, enforced by `MailHandler`.
+  Redmine user, enforced by `MailHandler`. Senders with a non-active account (locked, or
+  registered and never activated) are dropped by core `MailHandler` in every mode;
+  `Patches::MailHandlerPatch` (prepended on `MailHandler#receive`, opt-in via the handler option
+  `:accept_inactive_sender`, which `MailProcessor` sets unless the mode is `ignore`) receives them
+  under that account instead, as RedmineUP did. It repeats core's two pre-lookup checks (own
+  emission address, auto-generated headers) because core has no hook between lookup and status
+  check. Every skip goes through `MailProcessor#skip_message`, which logs the reason at warn —
+  production often runs at warn, so MailHandler's own info-level reasons are invisible there.
 - Azure app registration is a one-time external setup; central credentials live under
   *Administration → Plugins → Redmine expert Helpdesk*, which also holds the default IMAP/SMTP
   + OAuth2 credentials. The README's *Mail providers* section has setup recipes for Microsoft
