@@ -87,6 +87,7 @@ require File.expand_path('../lib/redmine_expert_helpdesk/patches/queries_helper_
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/issue_css_classes_patch', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/issue_query_preload_patch', __FILE__)
 require File.expand_path('../lib/redmine_expert_helpdesk/patches/journal_patch', __FILE__)
+require File.expand_path('../lib/redmine_expert_helpdesk/patches/mail_handler_patch', __FILE__)
 
 Redmine::Plugin.register :redmine_expert_helpdesk do
   name 'Redmine expert Helpdesk'

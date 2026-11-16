@@ -334,8 +334,8 @@ module RedmineExpertHelpdesk
     # so this names the likely one, checked in MailHandler's own order.
     def mail_handler_rejection(mime, sender)
       mail = Mail.read_from_string(mime) rescue nil
-      return 'auto-generated mail (Auto-Submitted or X-Autoreply)' if mail && Patches::MailHandlerPatch.auto_generated?(mail)
       return "sent from Redmine's own address" if Patches::MailHandlerPatch.emission_address?(sender)
+      return 'auto-generated mail (Auto-Submitted or X-Autoreply)' if mail && Patches::MailHandlerPatch.auto_generated?(mail)
 
       user = User.find_by_mail(sender)
       return "the sender's Redmine account #{user.login} is not active" if user && !user.active?
