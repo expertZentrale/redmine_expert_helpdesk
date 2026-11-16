@@ -500,7 +500,9 @@ Response: `204 No Content`.
 
 Finds the mail log entries of one or more e-mails by their **Message-ID**: which ticket a
 customer mail went into, or which reply was sent with that ID. Useful for matching a mail
-server's message trace against Redmine — an ID that is not found was never imported.
+server's message trace against Redmine. An ID that is not found is in none of the helpdesk
+messages the caller can see: it was never imported, or it went into a ticket the caller cannot
+see or into a project with the Helpdesk module disabled.
 
 The lookup is **global**: it searches every project the caller can see, because whoever holds
 a Message-ID usually does not know the project. A message is listed when its ticket is
@@ -556,7 +558,8 @@ Response `200`:
 }
 ```
 
-IDs without a match are simply absent from the list. Errors: **401** without a valid key,
+IDs without a match are simply absent from the list; that means no matching helpdesk message is
+visible to the caller, not necessarily that the mail was lost (see above). Errors: **401** without a valid key,
 **422** when `message_id` is missing or holds more than 50 IDs, **404** for an unknown
 `project_id`.
 

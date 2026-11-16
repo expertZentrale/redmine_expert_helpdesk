@@ -12,8 +12,10 @@
 - **Mails per Message-ID über die REST-API finden.** `GET /helpdesk/messages.json?message_id=…`
   nimmt bis zu 50 Message-IDs, mit oder ohne spitze Klammern, und liefert die passenden Einträge des
   Nachrichtenverlaufs mit Ticket und Projekt, über alle Projekte, die der Aufrufer sehen darf
-  (`project_id` schränkt ein). Eine ID, die nicht vorkommt, hat nie ein Ticket erreicht – genau das
-  braucht man, um die Nachrichtenablaufverfolgung eines Mailservers mit Redmine abzugleichen. Der
+  (`project_id` schränkt ein). Eine ID, die nicht vorkommt, steht in keiner Helpdesk-Nachricht, die der
+  Aufrufer sehen darf: Entweder wurde die Mail nie importiert, oder ihr Ticket ist für ihn unsichtbar
+  oder das Helpdesk-Modul im Projekt aus. Genau das braucht man, um die Nachrichtenablaufverfolgung
+  eines Mailservers mit Redmine abzugleichen. Der
   Nachrichtenverlauf eines Tickets (`GET /helpdesk/tickets/:id.json?include=messages`) enthält jetzt
   ebenfalls die `message_id` jeder Mail, immer ohne spitze Klammern.
 
