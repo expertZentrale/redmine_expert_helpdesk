@@ -512,7 +512,10 @@ Der `MailHandler` prüft in dieser Reihenfolge:
 
 > **Hinweis**: Der `MailHandler` verwaltet auch Benutzeranlage und
 > Berechtigungsprüfungen. `unknown_user_mode` am Postfach steuert, was bei
-> unbekannten Absendern passiert (`accept`, `create`, `ignore`).
+> unbekannten Absendern passiert (`accept`, `create`, `ignore`). Ein Absender, dessen
+> Redmine-Konto gesperrt (oder nie aktiviert) ist, wird bei `accept` und `create` unter diesem
+> Konto angenommen und bei `ignore` übersprungen – Redmines eigener `MailHandler` würde die Mail in
+> jedem Modus verwerfen. Jede übersprungene Mail wird mit Grund als Warnung geloggt.
 
 ### Mails an mehrere Projekte
 

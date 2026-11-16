@@ -492,7 +492,10 @@ The `MailHandler` checks in this order:
 
 > **Note**: The `MailHandler` also handles user creation and permission checks.
 > `unknown_user_mode` on the mailbox controls what happens with unknown senders
-> (`accept`, `create`, `ignore`).
+> (`accept`, `create`, `ignore`). A sender whose Redmine account is locked (or was never
+> activated) is accepted under that account in `accept` and `create` and skipped in `ignore` -
+> Redmine's own `MailHandler` would drop the mail in every mode. Every skipped mail is logged at
+> warn level with its reason.
 
 ### Mail addressed to several projects
 

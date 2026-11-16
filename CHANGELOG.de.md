@@ -19,6 +19,24 @@
   Nachrichtenverlauf eines Tickets (`GET /helpdesk/tickets/:id.json?include=messages`) enthält jetzt
   ebenfalls die `message_id` jeder Mail, immer ohne spitze Klammern.
 
+## [0.25.3] - 2026-11-16
+
+### Behoben
+
+- **Mails von Personen mit gesperrtem Redmine-Konto gehen nicht mehr verloren.** Redmines eigener
+  `MailHandler` verwirft jede Mail von einem gesperrten oder nie aktivierten Konto und sagt das nur
+  auf Info-Level. Ein Kollege, dessen Login vor langer Zeit gesperrt wurde, konnte so per Mail auf
+  ein Ticket antworten, ohne dass die Antwort ankam – während dasselbe Postfach Mails von völlig
+  Fremden annahm. Der Helpdesk von RedmineUP, von dem einige dieser Postfächer kamen, hat den
+  Kontostatus nie geprüft. Mit *Unbekannte Absender* auf *Akzeptieren (anonym)* oder
+  *Benutzerkonto anlegen* landen Ticket oder Notiz jetzt unter diesem Konto, das gesperrt bleibt.
+  Mit *Ignorieren* wird die Mail wie bisher übersprungen.
+- **Jede übersprungene Mail nennt jetzt im Log den Grund.** Jede Mail, die der Helpdesk überspringt
+  (Allow-/Deny-Liste, Ignorier-Regel, Auto-Reply-Filter, Phishing-Quarantäne, doppelte Message-ID
+  oder eine vom `MailHandler` abgelehnte Mail), wird mit Grund, Absender und Betreff als Warnung
+  geloggt. Bisher hinterließen mehrere davon auf einem Server mit Log-Level Warn keine Spur, und
+  ohne Ordner für übersprungene Mails lag die Mail zwischen den verarbeiteten.
+
 ## [0.25.2] - 2026-11-13
 
 ### Behoben

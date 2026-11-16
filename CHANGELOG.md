@@ -19,6 +19,23 @@
   (`GET /helpdesk/tickets/:id.json?include=messages`) now carries each mail's `message_id` as well,
   always without angle brackets.
 
+## [0.25.3] - 2026-11-16
+
+### Fixed
+
+- **Mail from people whose Redmine account is locked is no longer lost.** Redmine's own
+  `MailHandler` drops every mail from a locked account, or one that was never activated, and says
+  so only at info level. A colleague whose login had been locked long ago could answer a ticket by
+  mail and the answer never arrived, while the same mailbox accepted mail from complete strangers;
+  RedmineUP's helpdesk, which some of these mailboxes came from, never checked the account status.
+  With *Unknown senders* set to *Accept (anonymous)* or *Create user account* the ticket or note is
+  now filed under that account, which stays locked. With *Ignore* the mail is skipped as before.
+- **Every skipped mail now says why in the log.** Each mail the helpdesk skips (allow/deny list,
+  ignore rule, auto-reply filter, phishing quarantine, duplicate Message-ID, or a mail `MailHandler`
+  turned down) is logged at warn level with the reason, sender and subject. Before, several of
+  these left no trace on a server logging at warn, and with no skipped folder set the mail sat among
+  the processed ones.
+
 ## [0.25.2] - 2026-11-13
 
 ### Fixed

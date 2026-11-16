@@ -145,9 +145,12 @@ module RedmineExpertHelpdesk
       # Black-/Whitelist und Ignorieren-Regeln: Nachricht bleibt unangetastet liegen?
       # Nein – abgelehnte Mails werden ebenfalls verschoben, damit sie nicht
       # bei jedem Abruf erneut geprueft werden.
-      if sender_rejected?(sender) || ignore_rule_matches?(subject, sender)
-        move_skipped(meta.id)
-        result.skipped += 1
+      if sender_rejected?(sender)
+        skip_message(meta, result, 'sender not allowed by the allow/deny list')
+        return
+      end
+      if ignore_rule_matches?(subject, sender)
+        skip_message(meta, result, 'ignore rule')
         return
       end
 
@@ -157,19 +160,15 @@ module RedmineExpertHelpdesk
       # Part of the project-scoped matching: without it the second copy
       # threads into the same ticket anyway, as it always did.
       if thread_scope? && HelpdeskMessage.received_in_project?(meta.internet_message_id, @mailbox.project)
-        Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): Message-ID #{meta.internet_message_id} " \
-                          "already received in project #{@mailbox.project.identifier} - skipped"
-        move_skipped(meta.id)
-        result.skipped += 1
+        skip_message(meta, result, "Message-ID #{meta.internet_message_id} already received in project " \
+                                   "#{@mailbox.project.identifier}")
         return
       end
 
       mime = @provider.message_mime(meta.id)
 
       if auto_reply_filtered?(mime, sender)
-        Rails.logger.info "Helpdesk (#{@mailbox.mailbox_address}): Auto-Reply ignoriert – #{subject.inspect} von #{sender}"
-        move_skipped(meta.id)
-        result.skipped += 1
+        skip_message(meta, result, 'auto-reply filter')
         return
       end
 
@@ -183,10 +182,7 @@ module RedmineExpertHelpdesk
       if phishing_check_enabled?
         scan = PhishingScanner.scan(mime)
         if scan[:hits].any? && phishing_action == 'quarantine'
-          Rails.logger.warn "Helpdesk (#{@mailbox.mailbox_address}): Phishing-Mail in Quarantaene – " \
-                            "#{subject.inspect} von #{sender} (#{scan[:hits].size} URL(s))"
-          move_skipped(meta.id)
-          result.skipped += 1
+          skip_message(meta, result, "phishing quarantine, #{scan[:hits].size} URL(s)")
           return
         end
 
@@ -234,9 +230,8 @@ module RedmineExpertHelpdesk
       object = MailHandler.receive(InlineImages.prepare_mime(mime), mail_handler_options)
 
       unless object
-        # MailHandler hat die Mail abgelehnt (z. B. eigene Adresse, ungueltig)
-        move_skipped(meta.id)
-        result.skipped += 1
+        # MailHandler turned the mail down and logged why at info level only.
+        skip_message(meta, result, mail_handler_rejection(mime, sender))
         return
       end
 
@@ -315,12 +310,38 @@ module RedmineExpertHelpdesk
       issue_attrs[:status]   = @mailbox.default_status.name   if @mailbox.default_status
 
       {
-        :issue               => issue_attrs,
-        :unknown_user        => @mailbox.unknown_user_mode.presence || 'accept',
-        :no_account_notice   => '1',
-        :no_permission_check => '1',
-        :no_notification     => @mailbox.suppress_notifications? ? '1' : nil
+        :issue                  => issue_attrs,
+        :unknown_user           => unknown_user_mode,
+        :no_account_notice      => '1',
+        :no_permission_check    => '1',
+        :no_notification        => @mailbox.suppress_notifications? ? '1' : nil,
+        :accept_inactive_sender => accept_inactive_sender? || nil
       }.compact
+    end
+
+    def unknown_user_mode
+      @mailbox.unknown_user_mode.presence || 'accept'
+    end
+
+    # A mailbox that takes mail from people without any account takes it from
+    # people with a locked one too (see Patches::MailHandlerPatch). Only a
+    # mailbox that ignores unknown senders keeps core's rule.
+    def accept_inactive_sender?
+      unknown_user_mode != 'ignore'
+    end
+
+    # Why MailHandler returned no ticket. It logs the reason at info level only,
+    # so this names the likely one, checked in MailHandler's own order.
+    def mail_handler_rejection(mime, sender)
+      mail = Mail.read_from_string(mime) rescue nil
+      return "sent from Redmine's own address" if Patches::MailHandlerPatch.emission_address?(sender)
+      return 'auto-generated mail (Auto-Submitted or X-Autoreply)' if mail && Patches::MailHandlerPatch.auto_generated?(mail)
+
+      user = User.find_by_mail(sender)
+      return "the sender's Redmine account #{user.login} is not active" if user && !user.active?
+      return 'unknown sender, the mailbox ignores them' if user.nil? && unknown_user_mode == 'ignore'
+
+      'rejected by MailHandler, e.g. a reply to a ticket that no longer exists'
     end
 
     def extract_issue(object)
@@ -844,6 +865,17 @@ module RedmineExpertHelpdesk
       return if @mailbox.processed_folder.blank?
 
       @provider.move_message(message_id, @mailbox.processed_folder)
+    end
+
+    # Every skipped mail says why, at warn level: a log level of warn hides
+    # MailHandler's own info lines, and a mail skipped without a trace looks like
+    # one that never arrived - with no skipped folder set it even lies among the
+    # processed ones.
+    def skip_message(meta, result, reason)
+      Rails.logger.warn "Helpdesk (#{@mailbox.mailbox_address}): message skipped (#{reason}) - " \
+                        "#{meta.subject.to_s.inspect} from #{meta.from_address}"
+      move_skipped(meta.id)
+      result.skipped += 1
     end
 
     # Uebersprungene Mails (Blacklist, Ignorier-Regel, Auto-Reply) in den
